@@ -136,9 +136,13 @@ test('zurückgesetzte Rechnungen werden echte Entwürfe und verbrauchte Nummern 
   assert.match(readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8'), /In Entwurf zurücksetzen/)
 })
 
-test('IBAN-Prüfsumme wird validiert', () => {
+test('IBAN-Land, landesspezifische Länge und Prüfsumme werden validiert', () => {
   assert.equal(isValidIban('DE02 1203 0000 0000 2020 51'), true)
   assert.equal(isValidIban('DE02 1203 0000 0000 2020 52'), false)
+  assert.equal(isValidIban('DE31 1203 0000 0000 2020 5100'), false)
+  assert.equal(isValidIban('ZZ32 1203 0000 0000 2020 51'), false)
+  assert.equal(isValidIban('AE07 0331 2345 6789 0123 456'), false)
+  assert.equal(isValidIban('RS35 2600 0560 1001 6113 79'), true)
 })
 
 test('Rechnungsstart verlangt Absendernamen und eine gültige IBAN', () => {

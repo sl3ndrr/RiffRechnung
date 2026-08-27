@@ -382,9 +382,56 @@ export function formatIban(value: string): string {
   return cleanIban(value).replace(/(.{4})/g, '$1 ').trim()
 }
 
+export const SEPA_IBAN_LENGTH_BY_COUNTRY: Readonly<Record<string, number>> = {
+  AD: 24,
+  AL: 28,
+  AT: 20,
+  BE: 16,
+  BG: 22,
+  CH: 21,
+  CY: 28,
+  CZ: 24,
+  DE: 22,
+  DK: 18,
+  EE: 20,
+  ES: 24,
+  FI: 18,
+  FR: 27,
+  GB: 22,
+  GI: 23,
+  GR: 27,
+  HR: 21,
+  HU: 28,
+  IE: 22,
+  IS: 26,
+  IT: 27,
+  LI: 21,
+  LT: 20,
+  LU: 20,
+  LV: 21,
+  MC: 27,
+  MD: 24,
+  ME: 22,
+  MK: 19,
+  MT: 31,
+  NL: 18,
+  NO: 15,
+  PL: 28,
+  PT: 25,
+  RO: 24,
+  RS: 22,
+  SE: 24,
+  SI: 19,
+  SK: 24,
+  SM: 27,
+  VA: 22,
+}
+
 export function isValidIban(input: string): boolean {
   const iban = cleanIban(input)
-  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(iban)) return false
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]+$/.test(iban)) return false
+  const expectedLength = SEPA_IBAN_LENGTH_BY_COUNTRY[iban.slice(0, 2)]
+  if (expectedLength === undefined || iban.length !== expectedLength) return false
   const rearranged = iban.slice(4) + iban.slice(0, 4)
   const numeric = rearranged.replace(/[A-Z]/g, (letter) => String(letter.charCodeAt(0) - 55))
   let remainder = 0
