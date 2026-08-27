@@ -214,6 +214,8 @@ test('Geldbeträge werden positionsweise kaufmännisch auf Cent gerundet', () =>
 })
 
 test('versendete Rechnung wird nach Fälligkeit als überfällig erkannt', () => {
+  assert.equal(effectiveStatus(invoice(), new Date('2026-08-15T23:59:59')), 'sent')
+  assert.equal(effectiveStatus(invoice(), new Date('2026-08-16T00:00:00')), 'overdue')
   assert.equal(effectiveStatus(invoice(), new Date('2026-08-20T12:00:00')), 'overdue')
   assert.equal(effectiveStatus(invoice({ status: 'paid' }), new Date('2026-08-20T12:00:00')), 'paid')
 })

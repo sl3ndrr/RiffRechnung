@@ -190,8 +190,9 @@ export function itemTotal(item: InvoiceItem): number {
 }
 
 export function effectiveStatus(invoice: Invoice, reference = new Date()): InvoiceStatus {
-  if (invoice.status === 'sent' && invoice.dueDate && parseDate(invoice.dueDate).getTime() < reference.getTime()) {
-    return 'overdue'
+  if (invoice.status === 'sent' && invoice.dueDate) {
+    const dueDate = parseDate(invoice.dueDate)
+    if (!Number.isNaN(dueDate.getTime()) && isoDate(dueDate) < isoDate(reference)) return 'overdue'
   }
   return invoice.status
 }
