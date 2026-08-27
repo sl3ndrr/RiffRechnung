@@ -404,6 +404,23 @@ test('Entwurfsdrucke tragen ein Wasserzeichen und nur Entwürfe zeigen Positions
   assert.doesNotMatch(source, /<Download/)
 })
 
+test('Druck wartet auf den QR-Code des konkreten Druckauftrags', () => {
+  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  const printHandler = appSource.slice(appSource.indexOf('const print ='), appSource.indexOf('const exportBackup'))
+  const printSource = readFileSync(new URL('../src/components/InvoicePrint.tsx', import.meta.url), 'utf8')
+
+  assert.doesNotMatch(printHandler, /setTimeout/)
+  assert.match(printHandler, /printRequestRef/)
+  assert.match(appSource, /onPrintReady=\{handlePrintReady\}/)
+  assert.match(printSource, /setQrCode\(null\)/)
+  assert.match(printSource, /requestId: string/)
+  assert.match(printSource, /invoiceId: string/)
+  assert.match(printSource, /payload: string/)
+  assert.match(printSource, /qrCode\.invoiceId === invoice\.id/)
+  assert.match(printSource, /qrCode\.payload === qrRequest\.payload/)
+  assert.match(printSource, /onLoad=.*onPrintReady/)
+})
+
 test('alle Kebab-Menü-Aktionen werden an den vorgesehenen Handler weitergeleitet', () => {
   const calls: string[] = []
   const handlers = {

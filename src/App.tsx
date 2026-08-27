@@ -44,13 +44,18 @@ interface InvoiceEditorState {
   invoiceNumber: string | null
 }
 
+interface PrintRequest {
+  id: string
+  invoice: Invoice
+}
+
 function App() {
   const [state, setState] = useState<AppState>(loadState)
   const [page, setPage] = useState<PageKey>('dashboard')
   const [mobileNav, setMobileNav] = useState(false)
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
   const [editor, setEditor] = useState<InvoiceEditorState>({ open: false, draft: createEmptyInvoiceDraft(state.settings), editing: false, finalized: false, invoiceNumber: null })
-  const [printInvoice, setPrintInvoice] = useState<Invoice | null>(null)
+  const [printRequest, setPrintRequest] = useState<PrintRequest | null>(null)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
   const [changelogOpen, setChangelogOpen] = useState(false)
@@ -61,6 +66,7 @@ function App() {
   const [folderName, setFolderName] = useState('')
   const folderHandle = useRef<FileSystemDirectoryHandle | null>(null)
   const backupImportInput = useRef<HTMLInputElement | null>(null)
+  const printRequestRef = useRef<PrintRequest | null>(null)
   const firstSave = useRef(true)
 
   const toast = useCallback((message: string, tone: ToastMessage['tone'] = 'info') => {
@@ -429,21 +435,38 @@ function App() {
   })
 
   const print = (invoice: Invoice) => {
-    setPrintInvoice(invoice)
-    window.setTimeout(() => {
-      const previousTitle = document.title
-      const restoreTitle = () => { document.title = previousTitle }
-      document.title = invoicePdfTitle(invoice, state.students)
-      window.addEventListener('afterprint', restoreTitle, { once: true })
-      try {
-        window.print()
-      } catch {
-        window.removeEventListener('afterprint', restoreTitle)
-        restoreTitle()
-        toast('Druckdialog konnte nicht geöffnet werden.', 'error')
-      }
-    }, 500)
+    const request = { id: uid('print'), invoice }
+    printRequestRef.current = request
+    setPrintRequest(request)
   }
+
+  const handlePrintReady = useCallback((requestId: string, invoiceId: string) => {
+    const request = printRequestRef.current
+    if (!request || request.id !== requestId || request.invoice.id !== invoiceId) return
+    printRequestRef.current = null
+    const previousTitle = document.title
+    const restoreTitle = () => {
+      document.title = previousTitle
+      setPrintRequest((current) => current?.id === requestId ? null : current)
+    }
+    document.title = invoicePdfTitle(request.invoice, state.students)
+    window.addEventListener('afterprint', restoreTitle, { once: true })
+    try {
+      window.print()
+    } catch {
+      window.removeEventListener('afterprint', restoreTitle)
+      restoreTitle()
+      toast('Druckdialog konnte nicht geöffnet werden.', 'error')
+    }
+  }, [state.students, toast])
+
+  const handlePrintError = useCallback((requestId: string, invoiceId: string, message: string) => {
+    const request = printRequestRef.current
+    if (!request || request.id !== requestId || request.invoice.id !== invoiceId) return
+    printRequestRef.current = null
+    setPrintRequest((current) => current?.id === requestId ? null : current)
+    toast(message, 'error')
+  }, [toast])
 
   const exportBackup = () => {
     downloadText(`riffrechnung-backup-${new Date().toISOString().slice(0, 10)}.json`, serializeBackup(state))
@@ -580,7 +603,7 @@ function App() {
       <ChangelogModal open={changelogOpen} onClose={() => setChangelogOpen(false)} />
       <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />
       <ToastRegion messages={toasts} onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))} />
-      <div className="print-root"><InvoicePrint invoice={printInvoice} guardians={state.guardians} students={state.students} settings={state.settings} /></div>
+      <div className="print-root"><InvoicePrint invoice={printRequest?.invoice ?? null} guardians={state.guardians} students={state.students} settings={state.settings} requestId={printRequest?.id} onPrintReady={handlePrintReady} onPrintError={handlePrintError} /></div>
     </div>
   )
 }
