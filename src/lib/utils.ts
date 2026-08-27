@@ -338,7 +338,7 @@ export function invoiceStudentCode(state: Pick<AppState, 'students'>, studentIds
     .map((id) => state.students.find((student) => student.id === id)?.billingCode?.toLowerCase())
     .filter((code): code is string => Boolean(code)))]
     .sort((a, b) => studentCodeIndex(a) - studentCodeIndex(b))
-  return codes.join('') || 'x'
+  return codes.join('+') || 'x'
 }
 
 export function formatInvoiceNumber(settings: Settings, sequence: number, year: number, studentCode = 'a'): string {
@@ -357,7 +357,8 @@ export function nextInvoiceAllocation(state: AppState, invoiceDate: string, stud
   const studentCode = invoiceStudentCode(state, studentIds)
   const counterScope = state.settings.resetNumberAnnually ? String(year) : 'global'
   const counterKey = `${counterScope}:${studentCode}`
-  let sequence = Math.max(1, state.counters[counterKey] ?? 1)
+  const legacyCounterKey = `${counterScope}:${studentCode.replaceAll('+', '')}`
+  let sequence = Math.max(1, state.counters[counterKey] ?? state.counters[legacyCounterKey] ?? 1)
   let candidate = formatInvoiceNumber(state.settings, sequence, year, studentCode)
   const used = new Set([
     ...state.invoices.map((invoice) => invoice.number),

@@ -77,12 +77,13 @@ test('konfigurierbare Rechnungsnummern werden korrekt formatiert', () => {
 
 test('jedes Kind erhält einen eigenen fortlaufenden Nummernkreis', () => {
   const state = emptyState()
-  state.students = [student('student-a', 'Anna', 'a'), student('student-b', 'Ben', 'b')]
+  state.students = [student('student-a', 'Anna', 'a'), student('student-b', 'Ben', 'b'), student('student-ab', 'Zora', 'ab')]
   state.invoices = [invoice()]
-  state.counters = { '2026:a': 2 }
+  state.counters = { '2026:a': 2, '2026:ab': 4 }
   assert.deepEqual(nextInvoiceAllocation(state, '2026-08-01', ['student-a']), { number: '2026-a-0002', sequence: 2, counterKey: '2026:a' })
   assert.deepEqual(nextInvoiceAllocation(state, '2026-08-01', ['student-b']), { number: '2026-b-0001', sequence: 1, counterKey: '2026:b' })
-  assert.deepEqual(nextInvoiceAllocation(state, '2026-08-01', ['student-b', 'student-a']), { number: '2026-ab-0001', sequence: 1, counterKey: '2026:ab' })
+  assert.deepEqual(nextInvoiceAllocation(state, '2026-08-01', ['student-b', 'student-a']), { number: '2026-a+b-0004', sequence: 4, counterKey: '2026:a+b' })
+  assert.deepEqual(nextInvoiceAllocation(state, '2026-08-01', ['student-ab']), { number: '2026-ab-0004', sequence: 4, counterKey: '2026:ab' })
 })
 
 test('gelöschte finalisierte Rechnungsnummern bleiben reserviert', () => {
@@ -503,6 +504,16 @@ test('ältere Backups erhalten stabile Kinderkennzeichen in Speicherreihenfolge'
   assert.deepEqual(restored.students.map((item) => item.billingCode), ['a', 'b'])
   assert.equal(restored.nextStudentCodeIndex, 2)
   assert.equal(restored.settings.numberPattern, '{YYYY}-{K}-{NNNN}')
+})
+
+test('ältere Kombinationszähler werden auf segmentierte Schlüssel migriert', () => {
+  const state = emptyState()
+  state.students = [student('student-a', 'Anna', 'a'), student('student-b', 'Ben', 'b'), student('student-ab', 'Zora', 'ab')]
+  state.invoices = [invoice({ studentIds: ['student-a', 'student-b'], number: '2026-ab-0003', sequence: 3 })]
+  state.counters = { '2026:ab': 4 }
+  const restored = parseBackup(serializeBackup(state))
+  assert.equal(restored.counters['2026:a+b'], 4)
+  assert.equal(restored.counters['2026:ab'], 4)
 })
 
 test('ältere Rechnungspositionen erhalten einen Typ ohne Preis- oder Titeländerung', () => {

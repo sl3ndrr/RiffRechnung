@@ -1,6 +1,6 @@
 import type { AppState, Invoice, InvoiceItem, Student } from '../types'
 import { emptyState } from './defaults'
-import { ensureStudentCodePattern, studentCodeForIndex, studentCodeIndex } from './utils'
+import { ensureStudentCodePattern, invoiceStudentCode, studentCodeForIndex, studentCodeIndex } from './utils'
 
 const STORAGE_KEY = 'gitarrenrechnungen-state-v2'
 const LAST_BACKUP_AT_KEY = 'riffrechnung-last-backup-at'
@@ -42,24 +42,41 @@ function normalizeInvoices(invoices: Invoice[]): Invoice[] {
   }))
 }
 
+function normalizeCounters(counters: Record<string, number>, invoices: Invoice[], students: Student[], resetNumberAnnually: boolean): Record<string, number> {
+  const normalized = { ...counters }
+  for (const invoice of invoices) {
+    const studentCode = invoiceStudentCode({ students }, invoice.studentIds)
+    if (!studentCode.includes('+')) continue
+    const counterScope = resetNumberAnnually ? String(invoice.year) : 'global'
+    const counterKey = `${counterScope}:${studentCode}`
+    const legacyCounterKey = `${counterScope}:${studentCode.replaceAll('+', '')}`
+    if (normalized[counterKey] === undefined && normalized[legacyCounterKey] !== undefined) {
+      normalized[counterKey] = normalized[legacyCounterKey]
+    }
+  }
+  return normalized
+}
+
 function normalizeState(data: Partial<AppState>): AppState {
   const base = emptyState()
   const normalizedStudents = normalizeStudents(Array.isArray(data.students) ? data.students : [], data.nextStudentCodeIndex)
   const incomingSettings = data.settings ?? base.settings
+  const invoices = Array.isArray(data.invoices) ? normalizeInvoices(data.invoices) : []
+  const settings = {
+    ...base.settings,
+    ...incomingSettings,
+    issuer: { ...base.settings.issuer, ...incomingSettings.issuer },
+    numberPattern: ensureStudentCodePattern(incomingSettings.numberPattern),
+  }
   return {
     ...base,
     ...data,
     guardians: Array.isArray(data.guardians) ? data.guardians : [],
     students: normalizedStudents.students,
-    invoices: Array.isArray(data.invoices) ? normalizeInvoices(data.invoices) : [],
+    invoices,
     voidedInvoiceNumbers: Array.isArray(data.voidedInvoiceNumbers) ? data.voidedInvoiceNumbers : [],
-    settings: {
-      ...base.settings,
-      ...incomingSettings,
-      issuer: { ...base.settings.issuer, ...incomingSettings.issuer },
-      numberPattern: ensureStudentCodePattern(incomingSettings.numberPattern),
-    },
-    counters: data.counters ?? {},
+    settings,
+    counters: normalizeCounters(data.counters ?? {}, invoices, normalizedStudents.students, settings.resetNumberAnnually),
     nextStudentCodeIndex: normalizedStudents.nextStudentCodeIndex,
     audit: Array.isArray(data.audit) ? data.audit : [],
     updatedAt: data.updatedAt ?? new Date().toISOString(),
