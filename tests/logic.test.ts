@@ -10,7 +10,7 @@ import { Dashboard } from '../src/views/Dashboard'
 import { createDemoState, defaultSettings, emptyState } from '../src/lib/defaults'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, runInvoiceMenuAction } from '../src/lib/invoiceMenu'
 import { loadLastBackupAt, loadState, parseBackup, recordBackupExport, saveState, serializeBackup } from '../src/lib/storage'
-import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoicePdfTitle, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, reopenInvoiceAsDraft, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
+import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoicePdfTitle, invoiceTotal, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, reopenInvoiceAsDraft, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
 import { APP_VERSION } from '../src/version'
 
 const student = (id: string, name: string, billingCode: string): Student => ({
@@ -197,6 +197,20 @@ test('EPC-Payload enthält Version, Betrag und Rechnungsnummer', () => {
   assert.deepEqual(payload.split('\n').slice(0, 4), ['BCD', '002', '1', 'SCT'])
   assert.match(payload, /EUR125\.50/)
   assert.match(payload, /Rechnung 2026-a-0001/)
+})
+
+test('Geldbeträge werden positionsweise kaufmännisch auf Cent gerundet', () => {
+  const items = [
+    { ...createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-rounding-1'), quantity: 1.5, unitPrice: 0.67 },
+    { ...createLessonItem('student-a', '2026-08-12', defaultSettings, 'item-rounding-2'), quantity: 1.5, unitPrice: 0.67 },
+  ]
+  const testInvoice = invoice({ items })
+  const settings = { ...defaultSettings, accountHolder: 'Mara Beispiel', iban: 'DE02120300000000202051', bic: 'BYLADEM1001' }
+
+  assert.equal(itemTotal(items[0]), 1.01)
+  assert.equal(invoiceTotal(testInvoice), 2.02)
+  assert.match(buildEpcPayload(testInvoice, settings, invoiceTotal(testInvoice)), /EUR2\.02/)
+  assert.match(renderToStaticMarkup(createElement(InvoicePrint, { invoice: testInvoice, guardians: [], students: [student('student-a', 'Anna', 'a')], settings })), /2,02\s€/)
 })
 
 test('versendete Rechnung wird nach Fälligkeit als überfällig erkannt', () => {

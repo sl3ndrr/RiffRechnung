@@ -174,12 +174,19 @@ export function createLessonItem(studentId: string, serviceDate: string, setting
   }
 }
 
+function itemTotalCents(item: Pick<InvoiceItem, 'quantity' | 'unitPrice'>): number {
+  const total = item.quantity * item.unitPrice
+  const value = Math.abs(total)
+  const [coefficient, exponent = '0'] = value.toString().split('e')
+  return Math.sign(total) * Math.round(Number(`${coefficient}e${Number(exponent) + 2}`))
+}
+
 export function invoiceTotal(invoice: Pick<Invoice, 'items'>): number {
-  return invoice.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
+  return invoice.items.reduce((sum, item) => sum + itemTotalCents(item), 0) / 100
 }
 
 export function itemTotal(item: InvoiceItem): number {
-  return item.quantity * item.unitPrice
+  return itemTotalCents(item) / 100
 }
 
 export function effectiveStatus(invoice: Invoice, reference = new Date()): InvoiceStatus {
