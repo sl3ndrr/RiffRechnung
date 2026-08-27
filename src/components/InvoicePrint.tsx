@@ -68,7 +68,14 @@ export function InvoicePrint({ invoice, guardians, students, settings }: Invoice
       return
     }
     let cancelled = false
-    QRCode.toDataURL(buildEpcPayload(invoice, settings, total), {
+    let payload = ''
+    try {
+      payload = buildEpcPayload(invoice, settings, total)
+    } catch {
+      setQrCode('')
+      return
+    }
+    QRCode.toDataURL(payload, {
       errorCorrectionLevel: 'M',
       margin: 4,
       width: 420,

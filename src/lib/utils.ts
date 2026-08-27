@@ -448,12 +448,18 @@ function sanitizeEpc(value: string, maxLength: number): string {
 }
 
 export function buildEpcPayload(invoice: Invoice, settings: Settings, amount: number): string {
+  if (!Number.isFinite(amount) || amount < 0.01 || amount > 999_999_999.99) {
+    throw new Error('EPC-GiroCode: Der Betrag muss zwischen 0,01 und 999.999.999,99 EUR liegen.')
+  }
   const source = invoice.snapshot
   const name = source?.accountHolder || settings.accountHolder || source?.issuer.name || settings.issuer.name
   const iban = cleanIban(source?.iban || settings.iban)
   const bic = (source?.bic || settings.bic).replace(/\s/g, '').toUpperCase()
+  if (bic && !/^(?:[A-Z0-9]{8}|[A-Z0-9]{11})$/.test(bic)) {
+    throw new Error('EPC-GiroCode: Die BIC muss 8 oder 11 alphanumerische Zeichen enthalten.')
+  }
   const purpose = invoice.number ? `Rechnung ${invoice.number}` : 'Rechnung Entwurf'
-  return [
+  const fields = [
     'BCD',
     '002',
     '1',
@@ -466,7 +472,12 @@ export function buildEpcPayload(invoice: Invoice, settings: Settings, amount: nu
     '',
     sanitizeEpc(purpose, 140),
     '',
-  ].join('\n')
+  ]
+  while (fields.at(-1) === '') fields.pop()
+  const payload = fields.join('\n')
+  const byteLength = new TextEncoder().encode(payload).byteLength
+  if (byteLength > 331) throw new Error(`EPC-GiroCode: Die Payload überschreitet mit ${byteLength} Byte das Maximum von 331 Byte.`)
+  return payload
 }
 
 export function downloadText(filename: string, content: string, type = 'application/json'): void {

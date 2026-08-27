@@ -201,6 +201,20 @@ test('EPC-Payload enthält Version, Betrag und Rechnungsnummer', () => {
   assert.deepEqual(payload.split('\n').slice(0, 4), ['BCD', '002', '1', 'SCT'])
   assert.match(payload, /EUR125\.50/)
   assert.match(payload, /Rechnung 2026-a-0001/)
+  assert.doesNotMatch(payload, /\n$/)
+})
+
+test('EPC-Payload lehnt ungültige Beträge, BICs und überlange UTF-8-Daten ab', () => {
+  const settings = { ...defaultSettings, accountHolder: 'Mara Beispiel', iban: 'DE02120300000000202051', bic: 'BYLADEM1001' }
+  assert.throws(() => buildEpcPayload(invoice(), settings, 0), /Betrag.*0,01/)
+  assert.throws(() => buildEpcPayload(invoice(), settings, 1_000_000_000), /Betrag.*999\.999\.999,99/)
+  assert.throws(() => buildEpcPayload(invoice(), { ...settings, bic: 'INVALID!' }, 125.5), /BIC.*8.*11/)
+  assert.doesNotThrow(() => buildEpcPayload(invoice(), { ...settings, bic: '' }, 125.5))
+  assert.throws(() => buildEpcPayload(
+    invoice({ number: '€'.repeat(140) }),
+    { ...settings, accountHolder: 'ä'.repeat(70) },
+    125.5,
+  ), /331 Byte/)
 })
 
 test('Geldbeträge werden positionsweise kaufmännisch auf Cent gerundet', () => {
