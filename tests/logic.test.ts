@@ -10,7 +10,7 @@ import { Dashboard } from '../src/views/Dashboard'
 import { createDemoState, defaultSettings, emptyState } from '../src/lib/defaults'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, runInvoiceMenuAction } from '../src/lib/invoiceMenu'
 import { loadLastBackupAt, loadState, parseBackup, recordBackupExport, saveState, serializeBackup } from '../src/lib/storage'
-import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoicePdfTitle, invoiceTotal, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, reopenInvoiceAsDraft, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
+import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoicePdfTitle, invoiceTotal, invoicesToCsv, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, reopenInvoiceAsDraft, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
 import { APP_VERSION } from '../src/version'
 
 const student = (id: string, name: string, billingCode: string): Student => ({
@@ -297,6 +297,15 @@ test('Familien- und Rechnungslisten werden stabil nach der gewählten Spalte sor
   assert.deepEqual(ids('period'), ['invoice-second', 'invoice-first'])
   assert.deepEqual(ids('status'), ['invoice-second', 'invoice-first'])
   assert.deepEqual(ids('amount'), ['invoice-second', 'invoice-first'])
+})
+
+test('CSV-Export neutralisiert gefährliche Formelpräfixe', () => {
+  for (const prefix of ['=', '+', '-', '@', '\t', '\r']) {
+    const dangerousValue = `${prefix}FORMEL`
+    const csv = invoicesToCsv([invoice({ number: dangerousValue })], [], [])
+    assert.ok(csv.includes(`"'${dangerousValue}"`), JSON.stringify(prefix))
+  }
+  assert.ok(invoicesToCsv([invoice()], [], []).includes('"2026-a-0001"'))
 })
 
 test('Rechnungsdokument druckt automatisch berechneten Zeitraum und Fälligkeit', () => {
