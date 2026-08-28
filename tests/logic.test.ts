@@ -3,14 +3,14 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import type { Guardian, Invoice, Student } from '../src/types'
+import type { Guardian, Invoice, InvoiceDraft, Student } from '../src/types'
 import changelog from '../src/content/changelog.json'
 import { InvoicePrint } from '../src/components/InvoicePrint'
 import { Dashboard } from '../src/views/Dashboard'
 import { createDemoState, defaultSettings, emptyState } from '../src/lib/defaults'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, runInvoiceMenuAction } from '../src/lib/invoiceMenu'
 import { loadLastBackupAt, loadState, parseBackup, persistState, recordBackupExport, saveState, serializeBackup } from '../src/lib/storage'
-import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoiceFinalizationErrors, invoicePdfTitle, invoiceTotal, invoicesToCsv, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, reopenInvoiceAsDraft, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
+import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoiceFinalizationErrors, invoicePdfTitle, invoiceTotal, invoicesToCsv, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, reopenInvoiceAsDraft, SEPA_IBAN_LENGTH_BY_COUNTRY, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
 import { APP_VERSION } from '../src/version'
 
 const student = (id: string, name: string, billingCode: string): Student => ({
@@ -171,13 +171,25 @@ test('zurückgesetzte Rechnungen werden echte Entwürfe und verbrauchte Nummern 
   assert.match(readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8'), /In Entwurf zurücksetzen/)
 })
 
-test('IBAN-Land, landesspezifische Länge und Prüfsumme werden validiert', () => {
+test('nur IBANs aus der vorgegebenen SEPA-Länderliste werden akzeptiert', () => {
+  assert.deepEqual(Object.keys(SEPA_IBAN_LENGTH_BY_COUNTRY).sort(), [
+    'AD', 'AT', 'BE', 'BG', 'CH', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI',
+    'FR', 'GB', 'GR', 'HR', 'HU', 'IE', 'IS', 'IT', 'LI', 'LT', 'LU', 'LV',
+    'MC', 'MT', 'NL', 'NO', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK', 'SM', 'VA',
+  ])
   assert.equal(isValidIban('DE02 1203 0000 0000 2020 51'), true)
+  assert.equal(isValidIban('GB29 NWBK 6016 1331 9268 19'), true)
+  assert.equal(isValidIban('CH93 0076 2011 6238 5295 7'), true)
   assert.equal(isValidIban('DE02 1203 0000 0000 2020 52'), false)
   assert.equal(isValidIban('DE31 1203 0000 0000 2020 5100'), false)
   assert.equal(isValidIban('ZZ32 1203 0000 0000 2020 51'), false)
   assert.equal(isValidIban('AE07 0331 2345 6789 0123 456'), false)
-  assert.equal(isValidIban('RS35 2600 0560 1001 6113 79'), true)
+  assert.equal(isValidIban('AL47 2121 1009 0000 0002 3569 8741'), false)
+  assert.equal(isValidIban('MD24 AG00 0225 1000 1310 4168'), false)
+  assert.equal(isValidIban('ME25 5050 0001 2345 6789 51'), false)
+  assert.equal(isValidIban('MK07 2501 2000 0058 984'), false)
+  assert.equal(isValidIban('RS35 2600 0560 1001 6113 79'), false)
+  assert.equal(isValidIban('GI75 NWBK 0000 0000 7099 453'), false)
 })
 
 test('Rechnungsstart verlangt Absendernamen und eine gültige IBAN', () => {
@@ -740,6 +752,56 @@ test('Entwürfe lassen sich aus der Detailansicht nur mit vollständigen aktuell
   assert.match(appSource, /Vorläufige konservative Fachregel/)
 })
 
+test('Editor-Finalisierung wird vor Nummern- und Snapshot-Vergabe zentral validiert', () => {
+  const state = validImportState()
+  const validDraft: InvoiceDraft = {
+    invoiceDate: '2026-08-01',
+    dueDate: '2026-08-15',
+    period: 'August 2026',
+    guardianIds: ['guardian-a'],
+    studentIds: ['student-a'],
+    recipientStrategy: 'joint',
+    items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-editor-finalization')],
+    introText: '',
+    freeText: '',
+    legalText: '',
+  }
+  const unlinkedGuardian: Guardian = {
+    ...state.guardians[0],
+    id: 'guardian-unlinked',
+    name: 'Nicht zugeordnet',
+  }
+  const scenarios: Array<{ name: string; draft: InvoiceDraft; expected: RegExp; guardians?: Guardian[] }> = [
+    { name: 'kein Empfänger', draft: { ...validDraft, guardianIds: [] }, expected: /empfangende Person/ },
+    { name: 'gelöschter Empfänger', draft: { ...validDraft, guardianIds: ['guardian-missing'] }, expected: /Stammdaten/ },
+    { name: 'nicht zugeordneter Empfänger', draft: { ...validDraft, guardianIds: ['guardian-unlinked'] }, guardians: [...state.guardians, unlinkedGuardian], expected: /zugeordnet/ },
+    { name: 'kein Kind', draft: { ...validDraft, studentIds: [] }, expected: /Kind/ },
+    { name: 'gelöschtes Kind', draft: { ...validDraft, studentIds: ['student-missing'] }, expected: /Stammdaten/ },
+    { name: 'keine Position', draft: { ...validDraft, items: [] }, expected: /Position/ },
+    { name: 'Position mit gelöschtem Kind', draft: { ...validDraft, items: [{ ...validDraft.items[0], studentId: 'student-missing' }] }, expected: /aktuellen Stammdaten/ },
+  ]
+
+  assert.deepEqual(invoiceFinalizationErrors(state, validDraft), [])
+  scenarios.forEach(({ name, draft, expected, guardians = state.guardians }) => {
+    assert.match(invoiceFinalizationErrors({ guardians, students: state.students }, draft).join(' '), expected, name)
+  })
+
+  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  const saveInvoiceSource = appSource.slice(appSource.indexOf('  const saveInvoice'), appSource.indexOf('  const applyInvoiceStatus'))
+  const guardIndex = saveInvoiceSource.indexOf('const errors = invoiceFinalizationErrors(state, base)')
+  const recipientGroupsIndex = saveInvoiceSource.indexOf('const recipientGroups')
+  const allocationIndex = saveInvoiceSource.indexOf('nextInvoiceAllocation')
+  assert.ok(guardIndex >= 0)
+  assert.ok(guardIndex < recipientGroupsIndex)
+  assert.ok(guardIndex < allocationIndex)
+  assert.match(saveInvoiceSource.slice(guardIndex, recipientGroupsIndex), /toast\(`Finalisieren nicht möglich: \$\{errors\.join\(' '\)\}`, 'error'\)[\s\S]*return/)
+
+  const editorSource = readFileSync(new URL('../src/views/InvoiceEditor.tsx', import.meta.url), 'utf8')
+  const submitSource = editorSource.slice(editorSource.indexOf('  const submit'), editorSource.indexOf('\n\n  return ('))
+  assert.match(submitSource, /invoiceFinalizationErrors\(\{ guardians, students \}, form\)/)
+  assert.doesNotMatch(submitSource, /nextErrors\.push/)
+})
+
 test('lokales Speichern und Datei-Backup werden unabhängig voneinander ausgeführt', async () => {
   const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
   let writtenBackup = ''
@@ -840,7 +902,7 @@ test('Einstellungen werden gebündelt automatisch gespeichert', () => {
   const source = readFileSync(new URL('../src/views/Settings.tsx', import.meta.url), 'utf8')
   assert.match(source, /SETTINGS_AUTOSAVE_DELAY_MS = 600/)
   assert.match(source, /window\.setTimeout\(\(\) => persist\(form\), SETTINGS_AUTOSAVE_DELAY_MS\)/)
-  assert.match(source, /Die IBAN-Prüfsumme ist nicht gültig/)
+  assert.match(source, /Die IBAN ist ungültig oder gehört nicht zum unterstützten SEPA-Zahlungsraum/)
   assert.doesNotMatch(source, /if \(!isValidIban\([^)]*\)\) return/)
 })
 

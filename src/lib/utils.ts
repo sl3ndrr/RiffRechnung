@@ -19,7 +19,9 @@ export function limitFooterText(value: string): string {
   return value.slice(0, MAX_FOOTER_TEXT_LENGTH)
 }
 
-export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 'students'>, invoice: Invoice): string[] {
+type InvoiceFinalizationCandidate = Pick<Invoice, 'guardianIds' | 'studentIds' | 'invoiceDate' | 'dueDate' | 'items' | 'legalText'>
+
+export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 'students'>, invoice: InvoiceFinalizationCandidate): string[] {
   const errors: string[] = []
   const guardianIds = new Set(state.guardians.map((guardian) => guardian.id))
   const studentIds = new Set(state.students.map((student) => student.id))
@@ -421,7 +423,6 @@ export function formatIban(value: string): string {
 
 export const SEPA_IBAN_LENGTH_BY_COUNTRY: Readonly<Record<string, number>> = {
   AD: 24,
-  AL: 28,
   AT: 20,
   BE: 16,
   BG: 22,
@@ -435,7 +436,6 @@ export const SEPA_IBAN_LENGTH_BY_COUNTRY: Readonly<Record<string, number>> = {
   FI: 18,
   FR: 27,
   GB: 22,
-  GI: 23,
   GR: 27,
   HR: 21,
   HU: 28,
@@ -447,16 +447,12 @@ export const SEPA_IBAN_LENGTH_BY_COUNTRY: Readonly<Record<string, number>> = {
   LU: 20,
   LV: 21,
   MC: 27,
-  MD: 24,
-  ME: 22,
-  MK: 19,
   MT: 31,
   NL: 18,
   NO: 15,
   PL: 28,
   PT: 25,
   RO: 24,
-  RS: 22,
   SE: 24,
   SI: 19,
   SK: 24,
