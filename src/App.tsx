@@ -299,6 +299,32 @@ function App() {
       toast(`Rechnung ${existing.number} aktualisiert.`, 'success')
       return
     }
+    const base: Invoice = {
+      id: draft.id ?? '',
+      number: null,
+      sequence: null,
+      year: parseDate(draft.invoiceDate).getFullYear(),
+      invoiceDate: draft.invoiceDate,
+      dueDate: draft.dueDate,
+      period,
+      status: 'draft',
+      guardianIds: draft.guardianIds,
+      studentIds: draft.studentIds,
+      recipientStrategy: draft.recipientStrategy,
+      items: structuredClone(draft.items),
+      introText: draft.introText,
+      freeText: draft.freeText,
+      legalText: draft.legalText,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    }
+    if (finalize) {
+      const errors = invoiceFinalizationErrors(state, base)
+      if (errors.length) {
+        toast(`Finalisieren nicht möglich: ${errors.join(' ')}`, 'error')
+        return
+      }
+    }
     const recipientGroups = draft.recipientStrategy === 'separate' && draft.guardianIds.length > 1 ? draft.guardianIds.map((id) => [id]) : [draft.guardianIds]
     const createdIds = recipientGroups.map((_group, index) => index === 0 && existing ? existing.id : uid('invoice'))
     commit((current) => {
@@ -306,35 +332,23 @@ function App() {
       let working: AppState = { ...current, invoices: currentExisting ? current.invoices.filter((invoice) => invoice.id !== currentExisting.id) : [...current.invoices] }
       recipientGroups.forEach((guardianIds, index) => {
         const id = createdIds[index]
-        const base: Invoice = {
+        const savedInvoice: Invoice = {
+          ...base,
           id,
-          number: null,
-          sequence: null,
-          year: parseDate(draft.invoiceDate).getFullYear(),
-          invoiceDate: draft.invoiceDate,
-          dueDate: draft.dueDate,
-          period,
-          status: 'draft',
           guardianIds,
-          studentIds: draft.studentIds,
-          recipientStrategy: draft.recipientStrategy,
-          items: structuredClone(draft.items),
-          introText: draft.introText,
-          freeText: draft.freeText,
-          legalText: draft.legalText,
+          items: structuredClone(base.items),
           createdAt: currentExisting?.createdAt ?? now,
-          updatedAt: now,
         }
         if (finalize) {
           const allocation = nextInvoiceAllocation(working, draft.invoiceDate, draft.studentIds)
-          base.number = allocation.number
-          base.sequence = allocation.sequence
-          base.status = 'sent'
-          base.sentAt = now
-          base.snapshot = snapshotFor(working, guardianIds, draft.studentIds, draft.legalText)
+          savedInvoice.number = allocation.number
+          savedInvoice.sequence = allocation.sequence
+          savedInvoice.status = 'sent'
+          savedInvoice.sentAt = now
+          savedInvoice.snapshot = snapshotFor(working, guardianIds, draft.studentIds, draft.legalText)
           working = { ...working, counters: { ...working.counters, [allocation.counterKey]: allocation.sequence + 1 } }
         }
-        working = { ...working, invoices: [...working.invoices, base] }
+        working = { ...working, invoices: [...working.invoices, savedInvoice] }
       })
       return working
     }, finalize ? 'Rechnung finalisiert' : 'Rechnungsentwurf gespeichert', 'invoice', draft.id)

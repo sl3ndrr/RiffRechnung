@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Calendar, CircleDollarSign, FileCheck2, Minus, Plus, Save, Send, Trash2 } from 'lucide-react'
 import type { Guardian, InvoiceDraft, LessonType, Settings, Student } from '../types'
 import { Modal } from '../components/Modal'
-import { applyLessonType, billingPeriodFromItems, calculateDueDate, createLessonItem, euro, isFooterTextWithinLimit, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH } from '../lib/utils'
+import { applyLessonType, billingPeriodFromItems, calculateDueDate, createLessonItem, euro, invoiceFinalizationErrors, isFooterTextWithinLimit, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH } from '../lib/utils'
 
 const INVOICE_EDITOR_FORM_ID = 'invoice-editor-form'
 const MIN_QUANTITY = 0.01
@@ -11,13 +11,6 @@ const QUANTITY_INCREMENT = 0.25
 
 const roundQuantity = (quantity: number) => Math.round(quantity * 100) / 100
 const normalizeQuantity = (quantity: number) => Math.min(MAX_QUANTITY, Math.max(MIN_QUANTITY, roundQuantity(quantity)))
-const isValidQuantity = (quantity: number) => (
-  Number.isFinite(quantity)
-  && quantity >= MIN_QUANTITY
-  && quantity <= MAX_QUANTITY
-  && roundQuantity(quantity) === quantity
-)
-
 interface InvoiceEditorProps {
   open: boolean
   draft: InvoiceDraft
@@ -110,14 +103,7 @@ export function InvoiceEditor({ open, draft, guardians, students, settings, edit
   }
 
   const submit = (finalize: boolean) => {
-    const nextErrors: string[] = []
-    if (!form.studentIds.length) nextErrors.push('Mindestens ein Kind auswählen.')
-    if (!form.guardianIds.length) nextErrors.push('Mindestens eine empfangende Person auswählen.')
-    if (!form.invoiceDate || !form.dueDate) nextErrors.push('Rechnungs- und Fälligkeitsdatum angeben.')
-    if (!calculatedPeriod) nextErrors.push('Leistungszeitraum über die Positionsdaten angeben.')
-    if (!form.items.length) nextErrors.push('Mindestens eine Position ergänzen.')
-    if (form.items.some((item) => !item.serviceDate || !item.description.trim() || !isValidQuantity(item.quantity) || item.unitPrice < 0)) nextErrors.push('Alle Positionen vollständig und mit gültigen Werten ausfüllen.')
-    if (!footerTextValid) nextErrors.push(`Der Fußzeilen-/Rechtstext darf höchstens ${MAX_FOOTER_TEXT_LENGTH} Zeichen lang sein.`)
+    const nextErrors = invoiceFinalizationErrors({ guardians, students }, form)
     setErrors(nextErrors)
     if (!nextErrors.length) {
       const normalized = { ...form, period: calculatedPeriod, legalText: limitFooterText(form.legalText) }
