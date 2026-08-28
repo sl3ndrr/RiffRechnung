@@ -8,10 +8,20 @@ interface InvoicePrintProps {
   guardians: Guardian[]
   students: Student[]
   settings: Settings
+  requestId?: string
+  onPrintReady?: (requestId: string, invoiceId: string, payload: string | null) => void
+  onPrintError?: (requestId: string, invoiceId: string, message: string) => void
 }
 
-export function InvoicePrint({ invoice, guardians, students, settings }: InvoicePrintProps) {
-  const [qrCode, setQrCode] = useState('')
+interface GeneratedQrCode {
+  requestId: string
+  invoiceId: string
+  payload: string
+  url: string
+}
+
+export function InvoicePrint({ invoice, guardians, students, settings, requestId, onPrintReady, onPrintError }: InvoicePrintProps) {
+  const [qrCode, setQrCode] = useState<GeneratedQrCode | null>(null)
   const total = invoice ? invoiceTotal(invoice) : 0
   const period = invoice ? billingPeriodFromItems(invoice.items, invoice.invoiceDate) : ''
   const source = invoice?.snapshot
@@ -62,22 +72,48 @@ export function InvoicePrint({ invoice, guardians, students, settings }: Invoice
     })
   }, [invoice, period, studentList])
 
-  useEffect(() => {
+  const qrRequest = useMemo<{ payload: string | null; error: string | null }>(() => {
     if (!invoice || !invoice.number || !isValidIban(account.iban) || !account.holder || total <= 0) {
-      setQrCode('')
+      return { payload: null, error: null }
+    }
+    try {
+      return { payload: buildEpcPayload(invoice, settings, total), error: null }
+    } catch (error) {
+      return { payload: null, error: error instanceof Error ? error.message : 'GiroCode konnte nicht erzeugt werden.' }
+    }
+  }, [account.holder, account.iban, invoice, settings, total])
+
+  useEffect(() => {
+    setQrCode(null)
+    const invoiceId = invoice?.id
+    if (!invoiceId || !requestId) return
+    if (qrRequest.error) {
+      onPrintError?.(requestId, invoiceId, qrRequest.error)
       return
     }
+    if (qrRequest.payload === null) {
+      onPrintReady?.(requestId, invoiceId, null)
+      return
+    }
+    const payload = qrRequest.payload
     let cancelled = false
-    QRCode.toDataURL(buildEpcPayload(invoice, settings, total), {
+    QRCode.toDataURL(payload, {
       errorCorrectionLevel: 'M',
       margin: 4,
       width: 420,
       color: { dark: '#111827', light: '#ffffff' },
-    }).then((url) => !cancelled && setQrCode(url)).catch(() => !cancelled && setQrCode(''))
+    }).then((url) => !cancelled && setQrCode({ requestId, invoiceId, payload, url }))
+      .catch(() => !cancelled && onPrintError?.(requestId, invoiceId, 'GiroCode konnte nicht erzeugt werden.'))
     return () => { cancelled = true }
-  }, [account.holder, account.iban, invoice, settings, total])
+  }, [invoice?.id, onPrintError, onPrintReady, qrRequest.error, qrRequest.payload, requestId])
 
   if (!invoice) return null
+  const visibleQrCode = qrCode
+    && qrCode.requestId === requestId
+    && qrCode.invoiceId === invoice.id
+    && qrCode.payload === qrRequest.payload
+    ? qrCode
+    : null
   const salutation = recipientList.map((item) => item.name).join(' und ') || 'Damen und Herren'
 
   return (
@@ -150,7 +186,7 @@ export function InvoicePrint({ invoice, guardians, students, settings }: Invoice
               <dt>Verwendungszweck:</dt><dd><strong>Rechnung {invoice.number ?? 'Entwurf'}</strong></dd>
             </dl>
             <div className="invoice-qr">
-              {qrCode ? <img src={qrCode} alt="EPC-QR-Code für die SEPA-Überweisung" /> : <span>GiroCode nach Finalisierung und mit gültiger IBAN</span>}
+              {visibleQrCode ? <img src={visibleQrCode.url} alt="EPC-QR-Code für die SEPA-Überweisung" onLoad={() => onPrintReady?.(visibleQrCode.requestId, visibleQrCode.invoiceId, visibleQrCode.payload)} onError={() => onPrintError?.(visibleQrCode.requestId, visibleQrCode.invoiceId, 'GiroCode konnte nicht geladen werden.')} /> : <span>GiroCode nach Finalisierung und mit gültiger IBAN</span>}
               <p>Mit Banking-App scannen</p>
             </div>
           </section>

@@ -8,13 +8,14 @@ import { People } from './views/People'
 import { Reports } from './views/Reports'
 import { Settings } from './views/Settings'
 import { About } from './views/About'
+import { StorageRecovery } from './views/StorageRecovery'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { ChangelogModal } from './components/ChangelogModal'
 import { ToastRegion } from './components/ToastRegion'
 import { InvoicePrint } from './components/InvoicePrint'
 import { createDemoState, createEmptyInvoiceDraft, emptyState } from './lib/defaults'
-import { clearDirectoryHandle, ensureWritePermission, loadLastBackupAt, loadState, parseBackup, readDirectoryHandle, recordBackupExport, saveState, serializeBackup, storeDirectoryHandle, writeBackupToDirectory } from './lib/storage'
-import { billingPeriodFromItems, calculateDueDate, downloadText, ensureStudentCodePattern, guardianName, invoicePdfTitle, isInvoiceSetupComplete, limitFooterText, nextInvoiceAllocation, parseDate, reopenInvoiceAsDraft, statusLabel, studentCodeForIndex, uid } from './lib/utils'
+import { clearDirectoryHandle, ensureWritePermission, loadLastBackupAt, loadState, parseBackup, persistState, readDirectoryHandle, recordBackupExport, serializeBackup, STORAGE_KEY, storeDirectoryHandle, type StorageRecoveryState, writeBackupToDirectory } from './lib/storage'
+import { billingPeriodFromItems, calculateDueDate, downloadText, ensureStudentCodePattern, guardianName, invoiceFinalizationErrors, invoicePdfTitle, isInvoiceSetupComplete, limitFooterText, nextInvoiceAllocation, parseDate, reopenInvoiceAsDraft, statusLabel, studentCodeForIndex, uid } from './lib/utils'
 import { APP_VERSION } from './version'
 
 const navItems: Array<{ key: PageKey; label: string; icon: typeof LayoutDashboard }> = [
@@ -44,24 +45,44 @@ interface InvoiceEditorState {
   invoiceNumber: string | null
 }
 
+interface PrintRequest {
+  id: string
+  invoice: Invoice
+}
+
+type AuditEventDetails = Pick<AuditEvent, 'snapshotCorrection'>
+
 function App() {
-  const [state, setState] = useState<AppState>(loadState)
+  const [initialLoad] = useState(loadState)
+  const [state, setState] = useState<AppState>(() => initialLoad.status === 'ready' ? initialLoad.state : emptyState())
+  const [recovery, setRecovery] = useState<StorageRecoveryState | null>(() => initialLoad.status === 'recovery' ? initialLoad : null)
   const [page, setPage] = useState<PageKey>('dashboard')
   const [mobileNav, setMobileNav] = useState(false)
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
   const [editor, setEditor] = useState<InvoiceEditorState>({ open: false, draft: createEmptyInvoiceDraft(state.settings), editing: false, finalized: false, invoiceNumber: null })
-  const [printInvoice, setPrintInvoice] = useState<Invoice | null>(null)
+  const [printRequest, setPrintRequest] = useState<PrintRequest | null>(null)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
   const [changelogOpen, setChangelogOpen] = useState(false)
-  const [saveStateLabel, setSaveStateLabel] = useState<'saved' | 'saving'>('saved')
+  const [saveStateLabel, setSaveStateLabel] = useState<'saved' | 'saving' | 'error'>('saved')
+  const [localSaveError, setLocalSaveError] = useState<string | null>(null)
+  const [fileBackupStatus, setFileBackupStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [fileBackupError, setFileBackupError] = useState<string | null>(null)
+  const [saveRetry, setSaveRetry] = useState(0)
+  const [externalChangeDetected, setExternalChangeDetected] = useState(false)
   const [savedAt, setSavedAt] = useState(() => new Date())
   const [lastBackupAt, setLastBackupAt] = useState(loadLastBackupAt)
   const [folderConnected, setFolderConnected] = useState(false)
   const [folderName, setFolderName] = useState('')
   const folderHandle = useRef<FileSystemDirectoryHandle | null>(null)
   const backupImportInput = useRef<HTMLInputElement | null>(null)
+  const printRequestRef = useRef<PrintRequest | null>(null)
   const firstSave = useRef(true)
+  const persistedUpdatedAt = useRef(initialLoad.status === 'ready' ? initialLoad.persistedUpdatedAt : null)
+  const forceLocalOverwrite = useRef(initialLoad.status === 'recovery')
+  const persistenceQueue = useRef(Promise.resolve())
+  const broadcastChannel = useRef<BroadcastChannel | null>(null)
+  const tabId = useRef(uid('tab'))
 
   const toast = useCallback((message: string, tone: ToastMessage['tone'] = 'info') => {
     const id = uid('toast')
@@ -69,36 +90,81 @@ function App() {
     window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== id)), 4200)
   }, [])
 
-  const commit = useCallback((producer: (current: AppState) => AppState, label: string, entityType: AuditEvent['entityType'], entityId?: string) => {
+  const commit = useCallback((producer: (current: AppState) => AppState, label: string, entityType: AuditEvent['entityType'], entityId?: string, eventDetails?: (current: AppState, next: AppState) => AuditEventDetails) => {
     setState((current) => {
       const at = new Date().toISOString()
       const next = producer(current)
       return {
         ...next,
         updatedAt: at,
-        audit: [{ id: uid('event'), at, label, entityType, entityId }, ...next.audit].slice(0, 200),
+        audit: [{ id: uid('event'), at, label, entityType, entityId, ...eventDetails?.(current, next) }, ...next.audit].slice(0, 200),
       }
     })
   }, [])
 
   useEffect(() => {
+    if (recovery) return
+    const includeFileBackup = !firstSave.current && Boolean(folderHandle.current)
     setSaveStateLabel('saving')
-    const timer = window.setTimeout(async () => {
-      try {
-        saveState(state)
-        setSavedAt(new Date())
-        setSaveStateLabel('saved')
-        if (!firstSave.current && folderHandle.current && await ensureWritePermission(folderHandle.current)) {
-          await writeBackupToDirectory(folderHandle.current, state)
+    setLocalSaveError(null)
+    if (includeFileBackup) {
+      setFileBackupStatus('saving')
+      setFileBackupError(null)
+    }
+    const timer = window.setTimeout(() => {
+      persistenceQueue.current = persistenceQueue.current.then(async () => {
+        const result = await persistState(state, folderHandle.current, includeFileBackup, persistedUpdatedAt.current, forceLocalOverwrite.current)
+        if (result.local.status === 'saved') {
+          persistedUpdatedAt.current = state.updatedAt
+          forceLocalOverwrite.current = false
+          setExternalChangeDetected(false)
+          broadcastChannel.current?.postMessage({ source: tabId.current, updatedAt: state.updatedAt })
+          setSavedAt(new Date())
+          setSaveStateLabel('saved')
+        } else {
+          setSaveStateLabel('error')
+          setLocalSaveError(result.local.error ?? 'Lokales Speichern ist fehlgeschlagen.')
+          if (result.local.status === 'conflict') setExternalChangeDetected(true)
         }
-      } catch {
-        setSaveStateLabel('saved')
-        toast('Lokales Speichern ist fehlgeschlagen. Bitte JSON-Backup erstellen.', 'error')
-      }
-      firstSave.current = false
+        if (result.fileBackup.status === 'saved') {
+          setFileBackupStatus('saved')
+          setFileBackupError(null)
+        } else if (result.fileBackup.status === 'error') {
+          setFileBackupStatus('error')
+          setFileBackupError(result.fileBackup.error ?? 'Das Datei-Backup ist fehlgeschlagen.')
+        }
+        firstSave.current = false
+      })
     }, 450)
     return () => window.clearTimeout(timer)
-  }, [state, toast])
+  }, [recovery, saveRetry, state])
+
+  useEffect(() => {
+    const markExternalChange = (updatedAt?: string) => {
+      if (!updatedAt || updatedAt !== persistedUpdatedAt.current) setExternalChangeDetected(true)
+    }
+    const channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('riffrechnung-state')
+    broadcastChannel.current = channel
+    if (channel) channel.onmessage = (event: MessageEvent<{ source?: string; updatedAt?: string }>) => {
+      if (event.data.source !== tabId.current) markExternalChange(event.data.updatedAt)
+    }
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== STORAGE_KEY) return
+      if (!event.newValue) return markExternalChange()
+      try {
+        const stored = JSON.parse(event.newValue) as { updatedAt?: string }
+        markExternalChange(stored.updatedAt)
+      } catch {
+        markExternalChange()
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => {
+      window.removeEventListener('storage', handleStorage)
+      channel?.close()
+      if (broadcastChannel.current === channel) broadcastChannel.current = null
+    }
+  }, [])
 
   useEffect(() => {
     readDirectoryHandle().then(async (handle) => {
@@ -178,29 +244,26 @@ function App() {
     legalText,
   })
 
-  const saveInvoice = (draft: InvoiceDraft, finalize: boolean) => {
+  const saveInvoice = (draft: InvoiceDraft, finalize: boolean, requestSnapshotCorrection = false, snapshotCorrectionConfirmed = false) => {
     const now = new Date().toISOString()
     const period = billingPeriodFromItems(draft.items, draft.invoiceDate)
     const existing = draft.id ? state.invoices.find((invoice) => invoice.id === draft.id) : undefined
     if (existing?.number) {
+      if (requestSnapshotCorrection && !snapshotCorrectionConfirmed) {
+        setConfirmation({
+          title: 'Snapshot-Korrektur bestätigen',
+          message: 'Die eingefrorenen Empfänger-, Absender- und Kontodaten dieser finalisierten Rechnung werden durch die aktuellen Werte ersetzt. Alter und neuer Snapshot sowie der Zeitpunkt werden im Änderungsverlauf protokolliert.',
+          label: 'Snapshot korrigieren',
+          action: () => saveInvoice(draft, finalize, true, true),
+        })
+        return
+      }
       commit((current) => {
         const currentExisting = current.invoices.find((invoice) => invoice.id === existing.id)
         if (!currentExisting) return current
         const preservedStudentIds = currentExisting.studentIds
         const freshSnapshot = snapshotFor(current, draft.guardianIds, preservedStudentIds, draft.legalText)
         const previousSnapshot = currentExisting.snapshot
-        const revisedSnapshot: InvoiceSnapshot = {
-          ...(previousSnapshot ?? freshSnapshot),
-          guardians: draft.guardianIds.flatMap((id) => {
-            const guardian = freshSnapshot.guardians.find((item) => item.id === id) ?? previousSnapshot?.guardians.find((item) => item.id === id)
-            return guardian ? [guardian] : []
-          }),
-          students: preservedStudentIds.flatMap((id) => {
-            const student = freshSnapshot.students.find((item) => item.id === id) ?? previousSnapshot?.students.find((item) => item.id === id)
-            return student ? [student] : []
-          }),
-          legalText: draft.legalText,
-        }
         return {
           ...current,
           invoices: current.invoices.map((invoice) => invoice.id === currentExisting.id ? {
@@ -216,11 +279,20 @@ function App() {
             introText: draft.introText,
             freeText: draft.freeText,
             legalText: draft.legalText,
-            snapshot: revisedSnapshot,
+            snapshot: snapshotCorrectionConfirmed ? freshSnapshot : previousSnapshot ?? freshSnapshot,
             updatedAt: now,
           } : invoice),
         }
-      }, `Finalisierte Rechnung ${existing.number} bearbeitet`, 'invoice', existing.id)
+      }, snapshotCorrectionConfirmed ? `Snapshot-Korrektur für Rechnung ${existing.number}` : `Finalisierte Rechnung ${existing.number} bearbeitet`, 'invoice', existing.id, snapshotCorrectionConfirmed ? (current, next) => {
+        const oldSnapshot = current.invoices.find((invoice) => invoice.id === existing.id)?.snapshot
+        const newSnapshot = next.invoices.find((invoice) => invoice.id === existing.id)?.snapshot
+        return newSnapshot ? {
+          snapshotCorrection: {
+            oldValue: oldSnapshot ? structuredClone(oldSnapshot) : null,
+            newValue: structuredClone(newSnapshot),
+          },
+        } : {}
+      } : undefined)
       setEditor((current) => ({ ...current, open: false }))
       setPage('invoices')
       setSelectedInvoiceId(existing.id)
@@ -273,6 +345,14 @@ function App() {
   }
 
   const applyInvoiceStatus = (invoice: Invoice, status: InvoiceStatus) => {
+    // Vorläufige konservative Fachregel: Bis zur fachlichen Bestätigung zählen nur aktuelle Stammdaten und die vollständige Editor-Validierung.
+    if (invoice.status === 'draft' && status !== 'draft') {
+      const errors = invoiceFinalizationErrors(state, invoice)
+      if (errors.length) {
+        toast(`Finalisieren nicht möglich: ${errors.join(' ')}`, 'error')
+        return
+      }
+    }
     let allocatedNumber = ''
     const reopenedNumber = status === 'draft' ? invoice.number ?? '' : ''
     commit((current) => {
@@ -429,26 +509,53 @@ function App() {
   })
 
   const print = (invoice: Invoice) => {
-    setPrintInvoice(invoice)
-    window.setTimeout(() => {
-      const previousTitle = document.title
-      const restoreTitle = () => { document.title = previousTitle }
-      document.title = invoicePdfTitle(invoice, state.students)
-      window.addEventListener('afterprint', restoreTitle, { once: true })
-      try {
-        window.print()
-      } catch {
-        window.removeEventListener('afterprint', restoreTitle)
-        restoreTitle()
-        toast('Druckdialog konnte nicht geöffnet werden.', 'error')
-      }
-    }, 500)
+    const request = { id: uid('print'), invoice }
+    printRequestRef.current = request
+    setPrintRequest(request)
   }
+
+  const handlePrintReady = useCallback((requestId: string, invoiceId: string) => {
+    const request = printRequestRef.current
+    if (!request || request.id !== requestId || request.invoice.id !== invoiceId) return
+    printRequestRef.current = null
+    const previousTitle = document.title
+    const restoreTitle = () => {
+      document.title = previousTitle
+      setPrintRequest((current) => current?.id === requestId ? null : current)
+    }
+    document.title = invoicePdfTitle(request.invoice, state.students)
+    window.addEventListener('afterprint', restoreTitle, { once: true })
+    try {
+      window.print()
+    } catch {
+      window.removeEventListener('afterprint', restoreTitle)
+      restoreTitle()
+      toast('Druckdialog konnte nicht geöffnet werden.', 'error')
+    }
+  }, [state.students, toast])
+
+  const handlePrintError = useCallback((requestId: string, invoiceId: string, message: string) => {
+    const request = printRequestRef.current
+    if (!request || request.id !== requestId || request.invoice.id !== invoiceId) return
+    printRequestRef.current = null
+    setPrintRequest((current) => current?.id === requestId ? null : current)
+    toast(message, 'error')
+  }, [toast])
 
   const exportBackup = () => {
     downloadText(`riffrechnung-backup-${new Date().toISOString().slice(0, 10)}.json`, serializeBackup(state))
-    setLastBackupAt(recordBackupExport())
+    try {
+      setLastBackupAt(recordBackupExport())
+    } catch {
+      setLastBackupAt(new Date().toISOString())
+    }
     toast('JSON-Backup heruntergeladen.', 'success')
+  }
+
+  const exportRecoveryData = () => {
+    if (!recovery?.rawData) return
+    downloadText(`riffrechnung-beschaedigte-lokaldaten-${new Date().toISOString().slice(0, 10)}.txt`, recovery.rawData, 'text/plain')
+    toast('Beschädigte Rohdaten heruntergeladen.', 'success')
   }
 
   const importBackup = async (file: File) => {
@@ -458,7 +565,7 @@ function App() {
         title: 'Backup wiederherstellen?',
         message: `Die Datei enthält ${imported.students.length} Kinder und ${imported.invoices.length} Rechnungen. Der aktuelle lokale Datenstand wird vollständig ersetzt.`,
         label: 'Daten ersetzen', danger: true,
-        action: () => { setState(imported); setPage('dashboard'); setSelectedInvoiceId(null); toast('Backup erfolgreich wiederhergestellt.', 'success') },
+        action: () => { setState(imported); setRecovery(null); setPage('dashboard'); setSelectedInvoiceId(null); toast('Backup erfolgreich wiederhergestellt.', 'success') },
       })
     } catch (error) {
       toast(error instanceof Error ? error.message : 'Die Backup-Datei konnte nicht gelesen werden.', 'error')
@@ -469,16 +576,22 @@ function App() {
     if (!window.showDirectoryPicker) return
     try {
       const handle = await window.showDirectoryPicker({ mode: 'readwrite' })
+      setFileBackupStatus('saving')
+      setFileBackupError(null)
       if (!await ensureWritePermission(handle, true)) throw new Error('Keine Schreibberechtigung erteilt.')
       await storeDirectoryHandle(handle)
       await writeBackupToDirectory(handle, state)
       folderHandle.current = handle
       setFolderConnected(true)
       setFolderName(handle.name)
+      setFileBackupStatus('saved')
       toast('Backup-Ordner verbunden.', 'success')
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return
-      toast(error instanceof Error ? error.message : 'Ordner konnte nicht verbunden werden.', 'error')
+      const message = error instanceof Error ? error.message : 'Ordner konnte nicht verbunden werden.'
+      setFileBackupStatus('error')
+      setFileBackupError(message)
+      toast(message, 'error')
     }
   }
 
@@ -487,18 +600,26 @@ function App() {
     folderHandle.current = null
     setFolderConnected(false)
     setFolderName('')
+    setFileBackupStatus('idle')
+    setFileBackupError(null)
     toast('Backup-Ordner getrennt.', 'info')
   }
 
   const backupNow = async () => {
     const handle = folderHandle.current
     if (!handle) return exportBackup()
+    setFileBackupStatus('saving')
+    setFileBackupError(null)
     try {
       if (!await ensureWritePermission(handle, true)) throw new Error('Schreibberechtigung fehlt.')
       await writeBackupToDirectory(handle, state)
+      setFileBackupStatus('saved')
       toast('Backup-Datei aktualisiert.', 'success')
     } catch (error) {
-      toast(error instanceof Error ? error.message : 'Backup fehlgeschlagen.', 'error')
+      const message = error instanceof Error ? error.message : 'Backup fehlgeschlagen.'
+      setFileBackupStatus('error')
+      setFileBackupError(message)
+      toast(message, 'error')
     }
   }
 
@@ -538,6 +659,18 @@ function App() {
   const themeToggleLabel = `Aktuelles Farbschema: ${themeNames[state.settings.theme]}. Als Nächstes ${themeNames[nextTheme]} aktivieren.`
   const ThemeToggleIcon = state.settings.theme === 'system' ? Palette : state.settings.theme === 'light' ? Sun : Moon
   const backupStatusLabel = lastBackupAt ? `Letztes Backup: ${backupDateFormatter.format(new Date(lastBackupAt))}` : 'Noch kein Backup'
+  const fileBackupLabel = folderConnected
+    ? fileBackupStatus === 'saving' ? 'Datei-Backup speichert …' : fileBackupStatus === 'error' ? 'Datei-Backup fehlgeschlagen' : fileBackupStatus === 'saved' ? 'Datei-Backup gespeichert' : `Backup-Ordner: ${folderName}`
+    : backupStatusLabel
+  const persistenceErrorText = [localSaveError ? `Lokaler Speicher: ${localSaveError}` : '', fileBackupError ? `Datei-Backup: ${fileBackupError}` : ''].filter(Boolean).join(' ')
+
+  if (recovery) return (
+    <>
+      <StorageRecovery recovery={recovery} onExport={exportRecoveryData} onImport={importBackup} />
+      <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />
+      <ToastRegion messages={toasts} onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))} />
+    </>
+  )
 
   return (
     <div className="app-shell">
@@ -561,8 +694,11 @@ function App() {
         <header className="topbar">
           <button className="icon-button mobile-only" onClick={() => setMobileNav(true)} aria-label="Navigation öffnen"><Menu aria-hidden="true" /></button>
           <button className="topbar-search" onClick={() => { setPage('invoices'); requestAnimationFrame(() => document.querySelector<HTMLInputElement>('#invoice-search')?.focus()) }}><Search aria-hidden="true" /><span>Rechnungen durchsuchen</span></button>
-          <div className="topbar__end"><div className="topbar__storage-status"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : ''}`}><i />{saveStateLabel === 'saving' ? 'Speichert …' : `Gespeichert ${savedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`}</span><span className="backup-indicator">{backupStatusLabel}</span></div><button className="icon-button" onClick={toggleTheme} aria-label={themeToggleLabel} title={themeToggleLabel}><ThemeToggleIcon aria-hidden="true" /></button><button className="button button--primary topbar-new" onClick={openNewInvoice}><FilePlus2 aria-hidden="true" /><span>Neue Rechnung</span></button></div>
+          <div className="topbar__end"><div className="topbar__storage-status"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : saveStateLabel === 'error' ? 'is-error' : ''}`}><i />{saveStateLabel === 'saving' ? 'Speichert …' : saveStateLabel === 'error' ? 'Lokal nicht gespeichert' : `Lokal gespeichert ${savedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`}</span><span className={`backup-indicator ${fileBackupStatus === 'error' ? 'is-error' : ''}`}>{fileBackupLabel}</span></div><button className="icon-button" onClick={toggleTheme} aria-label={themeToggleLabel} title={themeToggleLabel}><ThemeToggleIcon aria-hidden="true" /></button><button className="button button--primary topbar-new" onClick={openNewInvoice}><FilePlus2 aria-hidden="true" /><span>Neue Rechnung</span></button></div>
         </header>
+
+        {externalChangeDetected && <section className="external-update" role="alert"><div><strong>Änderungen in einem anderen Tab erkannt</strong><p>Dieser Tab zeigt nicht mehr den aktuellen Datenstand. Lade neu, bevor du weiterarbeitest.</p></div><button className="button button--tonal" type="button" onClick={() => window.location.reload()}>Aktuellen Stand neu laden</button></section>}
+        {persistenceErrorText && <section className="persistence-error" role="alert"><div><strong>Speichern fehlgeschlagen</strong><p>{persistenceErrorText}</p></div><div className="button-row"><button className="button button--tonal" type="button" onClick={() => setSaveRetry((current) => current + 1)}>Erneut versuchen</button><button className="button button--text" type="button" onClick={exportBackup}>JSON-Backup exportieren</button></div></section>}
 
         <main id="main-content" tabIndex={-1}>
           {page === 'dashboard' && <Dashboard state={state} onNavigate={setCurrentPage} onNewInvoice={openNewInvoice} onLoadDemo={loadDemo} onOpenInvoice={openInvoice} />}
@@ -580,7 +716,7 @@ function App() {
       <ChangelogModal open={changelogOpen} onClose={() => setChangelogOpen(false)} />
       <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />
       <ToastRegion messages={toasts} onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))} />
-      <div className="print-root"><InvoicePrint invoice={printInvoice} guardians={state.guardians} students={state.students} settings={state.settings} /></div>
+      <div className="print-root"><InvoicePrint invoice={printRequest?.invoice ?? null} guardians={state.guardians} students={state.students} settings={state.settings} requestId={printRequest?.id} onPrintReady={handlePrintReady} onPrintError={handlePrintError} /></div>
     </div>
   )
 }

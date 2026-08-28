@@ -28,14 +28,18 @@ interface InvoiceEditorProps {
   finalized: boolean
   invoiceNumber?: string | null
   onClose: () => void
-  onSave: (draft: InvoiceDraft, finalize: boolean) => void
+  onSave: (draft: InvoiceDraft, finalize: boolean, snapshotCorrection: boolean) => void
 }
 
 export function InvoiceEditor({ open, draft, guardians, students, settings, editing, finalized, invoiceNumber, onClose, onSave }: InvoiceEditorProps) {
   const [form, setForm] = useState<InvoiceDraft>(draft)
   const [errors, setErrors] = useState<string[]>([])
+  const [snapshotCorrection, setSnapshotCorrection] = useState(false)
 
-  useEffect(() => setForm(structuredClone(draft)), [draft, open])
+  useEffect(() => {
+    setForm(structuredClone(draft))
+    setSnapshotCorrection(false)
+  }, [draft, open])
 
   const linkedGuardianIds = useMemo(() => new Set(form.studentIds.flatMap((id) => students.find((student) => student.id === id)?.guardianIds ?? [])), [form.studentIds, students])
   const eligibleGuardians = linkedGuardianIds.size ? guardians.filter((guardian) => linkedGuardianIds.has(guardian.id)) : guardians
@@ -117,7 +121,7 @@ export function InvoiceEditor({ open, draft, guardians, students, settings, edit
     setErrors(nextErrors)
     if (!nextErrors.length) {
       const normalized = { ...form, period: calculatedPeriod, legalText: limitFooterText(form.legalText) }
-      onSave(finalized ? { ...normalized, recipientStrategy: 'joint' } : normalized, finalize)
+      onSave(finalized ? { ...normalized, recipientStrategy: 'joint' } : normalized, finalize, finalized && snapshotCorrection)
     }
   }
 
@@ -142,6 +146,7 @@ export function InvoiceEditor({ open, draft, guardians, students, settings, edit
     >
       <form className="invoice-form" id={INVOICE_EDITOR_FORM_ID} onSubmit={(event) => { event.preventDefault(); submit(false) }}>
         {finalized && <div className="revision-banner"><FileCheck2 aria-hidden="true" /><div><strong>Finalisierte Rechnung</strong><p>Die Rechnungsnummer bleibt erhalten. Änderungen werden im lokalen Verlauf protokolliert und die Druckansicht wird aktualisiert.</p></div></div>}
+        {finalized && <label className="switch-row"><span><strong>Snapshot-Korrektur aktivieren</strong><small>Aktuelle Empfänger-, Absender- und Kontodaten erst nach zusätzlicher Bestätigung in die Rechnung übernehmen.</small></span><input type="checkbox" checked={snapshotCorrection} onChange={(event) => setSnapshotCorrection(event.target.checked)} /><i /></label>}
         {errors.length > 0 && <div className="form-errors" role="alert"><strong>Bitte noch prüfen:</strong><ul>{errors.map((error) => <li key={error}>{error}</li>)}</ul></div>}
 
         <section className="form-section">

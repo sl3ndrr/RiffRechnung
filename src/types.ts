@@ -117,6 +117,10 @@ export interface AuditEvent {
   label: string
   entityType: 'invoice' | 'person' | 'settings' | 'backup' | 'system'
   entityId?: string
+  snapshotCorrection?: {
+    oldValue: InvoiceSnapshot | null
+    newValue: InvoiceSnapshot
+  }
 }
 
 export interface VoidedInvoiceNumber {

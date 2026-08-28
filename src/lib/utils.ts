@@ -19,6 +19,42 @@ export function limitFooterText(value: string): string {
   return value.slice(0, MAX_FOOTER_TEXT_LENGTH)
 }
 
+export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 'students'>, invoice: Invoice): string[] {
+  const errors: string[] = []
+  const guardianIds = new Set(state.guardians.map((guardian) => guardian.id))
+  const studentIds = new Set(state.students.map((student) => student.id))
+  const selectedStudentIds = new Set(invoice.studentIds)
+  const selectedStudents = state.students.filter((student) => selectedStudentIds.has(student.id))
+
+  if (!invoice.guardianIds.length) errors.push('Mindestens eine empfangende Person auswählen.')
+  else if (invoice.guardianIds.some((id) => !guardianIds.has(id))) errors.push('Alle empfangenden Personen müssen in den aktuellen Stammdaten vorhanden sein.')
+  if (!invoice.studentIds.length) errors.push('Mindestens ein Kind auswählen.')
+  else if (invoice.studentIds.some((id) => !studentIds.has(id))) errors.push('Alle ausgewählten Kinder müssen in den aktuellen Stammdaten vorhanden sein.')
+
+  const linkedGuardianIds = new Set(selectedStudents.flatMap((student) => student.guardianIds))
+  if (invoice.guardianIds.length && invoice.guardianIds.some((id) => guardianIds.has(id) && !linkedGuardianIds.has(id))) {
+    errors.push('Alle empfangenden Personen müssen einem ausgewählten Kind zugeordnet sein.')
+  }
+  if (!invoice.invoiceDate || !invoice.dueDate) errors.push('Rechnungs- und Fälligkeitsdatum angeben.')
+  if (!billingPeriodFromItems(invoice.items, invoice.invoiceDate)) errors.push('Leistungszeitraum über die Positionsdaten angeben.')
+  if (!invoice.items.length) errors.push('Mindestens eine Position ergänzen.')
+  if (invoice.items.some((item) => (
+    !item.serviceDate
+    || !item.description.trim()
+    || !Number.isFinite(item.quantity)
+    || item.quantity < .01
+    || item.quantity > 99.99
+    || Math.round(item.quantity * 100) / 100 !== item.quantity
+    || !Number.isFinite(item.unitPrice)
+    || item.unitPrice < 0
+  ))) errors.push('Alle Positionen vollständig und mit gültigen Werten ausfüllen.')
+  if (invoice.items.some((item) => !studentIds.has(item.studentId) || !selectedStudentIds.has(item.studentId))) {
+    errors.push('Alle Positionen müssen einem ausgewählten Kind aus den aktuellen Stammdaten zugeordnet sein.')
+  }
+  if (!isFooterTextWithinLimit(invoice.legalText)) errors.push(`Der Fußzeilen-/Rechtstext darf höchstens ${MAX_FOOTER_TEXT_LENGTH} Zeichen lang sein.`)
+  return errors
+}
+
 export function footerTextForPrint(value: string): string {
   return limitFooterText(value.replace(/\s+/g, ' ').trim())
 }
@@ -174,17 +210,25 @@ export function createLessonItem(studentId: string, serviceDate: string, setting
   }
 }
 
+function itemTotalCents(item: Pick<InvoiceItem, 'quantity' | 'unitPrice'>): number {
+  const total = item.quantity * item.unitPrice
+  const value = Math.abs(total)
+  const [coefficient, exponent = '0'] = value.toString().split('e')
+  return Math.sign(total) * Math.round(Number(`${coefficient}e${Number(exponent) + 2}`))
+}
+
 export function invoiceTotal(invoice: Pick<Invoice, 'items'>): number {
-  return invoice.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
+  return invoice.items.reduce((sum, item) => sum + itemTotalCents(item), 0) / 100
 }
 
 export function itemTotal(item: InvoiceItem): number {
-  return item.quantity * item.unitPrice
+  return itemTotalCents(item) / 100
 }
 
 export function effectiveStatus(invoice: Invoice, reference = new Date()): InvoiceStatus {
-  if (invoice.status === 'sent' && invoice.dueDate && parseDate(invoice.dueDate).getTime() < reference.getTime()) {
-    return 'overdue'
+  if (invoice.status === 'sent' && invoice.dueDate) {
+    const dueDate = parseDate(invoice.dueDate)
+    if (!Number.isNaN(dueDate.getTime()) && isoDate(dueDate) < isoDate(reference)) return 'overdue'
   }
   return invoice.status
 }
@@ -330,7 +374,7 @@ export function invoiceStudentCode(state: Pick<AppState, 'students'>, studentIds
     .map((id) => state.students.find((student) => student.id === id)?.billingCode?.toLowerCase())
     .filter((code): code is string => Boolean(code)))]
     .sort((a, b) => studentCodeIndex(a) - studentCodeIndex(b))
-  return codes.join('') || 'x'
+  return codes.join('+') || 'x'
 }
 
 export function formatInvoiceNumber(settings: Settings, sequence: number, year: number, studentCode = 'a'): string {
@@ -349,7 +393,8 @@ export function nextInvoiceAllocation(state: AppState, invoiceDate: string, stud
   const studentCode = invoiceStudentCode(state, studentIds)
   const counterScope = state.settings.resetNumberAnnually ? String(year) : 'global'
   const counterKey = `${counterScope}:${studentCode}`
-  let sequence = Math.max(1, state.counters[counterKey] ?? 1)
+  const legacyCounterKey = `${counterScope}:${studentCode.replaceAll('+', '')}`
+  let sequence = Math.max(1, state.counters[counterKey] ?? state.counters[legacyCounterKey] ?? 1)
   let candidate = formatInvoiceNumber(state.settings, sequence, year, studentCode)
   const used = new Set([
     ...state.invoices.map((invoice) => invoice.number),
@@ -374,9 +419,56 @@ export function formatIban(value: string): string {
   return cleanIban(value).replace(/(.{4})/g, '$1 ').trim()
 }
 
+export const SEPA_IBAN_LENGTH_BY_COUNTRY: Readonly<Record<string, number>> = {
+  AD: 24,
+  AL: 28,
+  AT: 20,
+  BE: 16,
+  BG: 22,
+  CH: 21,
+  CY: 28,
+  CZ: 24,
+  DE: 22,
+  DK: 18,
+  EE: 20,
+  ES: 24,
+  FI: 18,
+  FR: 27,
+  GB: 22,
+  GI: 23,
+  GR: 27,
+  HR: 21,
+  HU: 28,
+  IE: 22,
+  IS: 26,
+  IT: 27,
+  LI: 21,
+  LT: 20,
+  LU: 20,
+  LV: 21,
+  MC: 27,
+  MD: 24,
+  ME: 22,
+  MK: 19,
+  MT: 31,
+  NL: 18,
+  NO: 15,
+  PL: 28,
+  PT: 25,
+  RO: 24,
+  RS: 22,
+  SE: 24,
+  SI: 19,
+  SK: 24,
+  SM: 27,
+  VA: 22,
+}
+
 export function isValidIban(input: string): boolean {
   const iban = cleanIban(input)
-  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(iban)) return false
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]+$/.test(iban)) return false
+  const expectedLength = SEPA_IBAN_LENGTH_BY_COUNTRY[iban.slice(0, 2)]
+  if (expectedLength === undefined || iban.length !== expectedLength) return false
   const rearranged = iban.slice(4) + iban.slice(0, 4)
   const numeric = rearranged.replace(/[A-Z]/g, (letter) => String(letter.charCodeAt(0) - 55))
   let remainder = 0
@@ -393,12 +485,18 @@ function sanitizeEpc(value: string, maxLength: number): string {
 }
 
 export function buildEpcPayload(invoice: Invoice, settings: Settings, amount: number): string {
+  if (!Number.isFinite(amount) || amount < 0.01 || amount > 999_999_999.99) {
+    throw new Error('EPC-GiroCode: Der Betrag muss zwischen 0,01 und 999.999.999,99 EUR liegen.')
+  }
   const source = invoice.snapshot
   const name = source?.accountHolder || settings.accountHolder || source?.issuer.name || settings.issuer.name
   const iban = cleanIban(source?.iban || settings.iban)
   const bic = (source?.bic || settings.bic).replace(/\s/g, '').toUpperCase()
+  if (bic && !/^(?:[A-Z0-9]{8}|[A-Z0-9]{11})$/.test(bic)) {
+    throw new Error('EPC-GiroCode: Die BIC muss 8 oder 11 alphanumerische Zeichen enthalten.')
+  }
   const purpose = invoice.number ? `Rechnung ${invoice.number}` : 'Rechnung Entwurf'
-  return [
+  const fields = [
     'BCD',
     '002',
     '1',
@@ -411,7 +509,12 @@ export function buildEpcPayload(invoice: Invoice, settings: Settings, amount: nu
     '',
     sanitizeEpc(purpose, 140),
     '',
-  ].join('\n')
+  ]
+  while (fields.at(-1) === '') fields.pop()
+  const payload = fields.join('\n')
+  const byteLength = new TextEncoder().encode(payload).byteLength
+  if (byteLength > 331) throw new Error(`EPC-GiroCode: Die Payload überschreitet mit ${byteLength} Byte das Maximum von 331 Byte.`)
+  return payload
 }
 
 export function downloadText(filename: string, content: string, type = 'application/json'): void {
@@ -427,7 +530,9 @@ export function downloadText(filename: string, content: string, type = 'applicat
 }
 
 function csvCell(value: string | number): string {
-  const normalized = String(value).replaceAll('"', '""')
+  const raw = String(value)
+  const safe = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw
+  const normalized = safe.replaceAll('"', '""')
   return `"${normalized}"`
 }
 

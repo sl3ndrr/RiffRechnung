@@ -193,7 +193,7 @@ export function createDemoState(referenceDate = new Date()): AppState {
     const finalized = status !== 'draft'
     const studentCode = family.studentIds
       .map((studentId) => studentSeeds.find((student) => student.id === studentId)?.billingCode ?? '')
-      .join('')
+      .join('+')
     const counterKey = `${year}:${studentCode}`
     const sequence = finalized ? (sequenceByScope.get(counterKey) ?? 0) + 1 : null
     if (sequence) sequenceByScope.set(counterKey, sequence)

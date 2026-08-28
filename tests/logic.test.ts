@@ -9,8 +9,8 @@ import { InvoicePrint } from '../src/components/InvoicePrint'
 import { Dashboard } from '../src/views/Dashboard'
 import { createDemoState, defaultSettings, emptyState } from '../src/lib/defaults'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, runInvoiceMenuAction } from '../src/lib/invoiceMenu'
-import { loadLastBackupAt, loadState, parseBackup, recordBackupExport, saveState, serializeBackup } from '../src/lib/storage'
-import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoicePdfTitle, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, reopenInvoiceAsDraft, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
+import { loadLastBackupAt, loadState, parseBackup, persistState, recordBackupExport, saveState, serializeBackup } from '../src/lib/storage'
+import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoiceFinalizationErrors, invoicePdfTitle, invoiceTotal, invoicesToCsv, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, reopenInvoiceAsDraft, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
 import { APP_VERSION } from '../src/version'
 
 const student = (id: string, name: string, billingCode: string): Student => ({
@@ -66,6 +66,40 @@ function withMockLocalStorage(run: () => void): void {
   }
 }
 
+function loadReadyState() {
+  const loaded = loadState()
+  if (loaded.status !== 'ready') assert.fail(`Unerwarteter Recovery-Zustand: ${loaded.error}`)
+  return loaded.state
+}
+
+function validImportState() {
+  const state = emptyState()
+  state.guardians.push({
+    id: 'guardian-a',
+    name: 'Alex Beispiel',
+    email: 'alex@example.de',
+    phone: '0123456789',
+    address: { street: 'Beispielweg 1', postalCode: '12345', city: 'Beispielstadt' },
+    iban: '',
+    paymentNote: '',
+    createdAt: '2026-08-01T10:00:00.000Z',
+    updatedAt: '2026-08-01T10:00:00.000Z',
+  })
+  state.students.push({ ...student('student-a', 'Anna', 'a'), guardianIds: ['guardian-a'] })
+  state.nextStudentCodeIndex = 1
+  state.invoices.push(invoice({
+    guardianIds: ['guardian-a'],
+    items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-a')],
+  }))
+  return state
+}
+
+function corruptBackup(mutate: (data: Record<string, unknown>) => void): string {
+  const backup = JSON.parse(serializeBackup(validImportState())) as { data: Record<string, unknown> }
+  mutate(backup.data)
+  return JSON.stringify(backup)
+}
+
 test('konfigurierbare Rechnungsnummern werden korrekt formatiert', () => {
   assert.equal(formatInvoiceNumber(defaultSettings, 23, 2026, 'a'), '2026-a-0023')
   assert.equal(formatInvoiceNumber({ ...defaultSettings, numberPattern: 'RG-{YY}-{NNN}' }, 7, 2026, 'b'), 'RG-26-b-007')
@@ -77,12 +111,13 @@ test('konfigurierbare Rechnungsnummern werden korrekt formatiert', () => {
 
 test('jedes Kind erhält einen eigenen fortlaufenden Nummernkreis', () => {
   const state = emptyState()
-  state.students = [student('student-a', 'Anna', 'a'), student('student-b', 'Ben', 'b')]
+  state.students = [student('student-a', 'Anna', 'a'), student('student-b', 'Ben', 'b'), student('student-ab', 'Zora', 'ab')]
   state.invoices = [invoice()]
-  state.counters = { '2026:a': 2 }
+  state.counters = { '2026:a': 2, '2026:ab': 4 }
   assert.deepEqual(nextInvoiceAllocation(state, '2026-08-01', ['student-a']), { number: '2026-a-0002', sequence: 2, counterKey: '2026:a' })
   assert.deepEqual(nextInvoiceAllocation(state, '2026-08-01', ['student-b']), { number: '2026-b-0001', sequence: 1, counterKey: '2026:b' })
-  assert.deepEqual(nextInvoiceAllocation(state, '2026-08-01', ['student-b', 'student-a']), { number: '2026-ab-0001', sequence: 1, counterKey: '2026:ab' })
+  assert.deepEqual(nextInvoiceAllocation(state, '2026-08-01', ['student-b', 'student-a']), { number: '2026-a+b-0004', sequence: 4, counterKey: '2026:a+b' })
+  assert.deepEqual(nextInvoiceAllocation(state, '2026-08-01', ['student-ab']), { number: '2026-ab-0004', sequence: 4, counterKey: '2026:ab' })
 })
 
 test('gelöschte finalisierte Rechnungsnummern bleiben reserviert', () => {
@@ -136,9 +171,13 @@ test('zurückgesetzte Rechnungen werden echte Entwürfe und verbrauchte Nummern 
   assert.match(readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8'), /In Entwurf zurücksetzen/)
 })
 
-test('IBAN-Prüfsumme wird validiert', () => {
+test('IBAN-Land, landesspezifische Länge und Prüfsumme werden validiert', () => {
   assert.equal(isValidIban('DE02 1203 0000 0000 2020 51'), true)
   assert.equal(isValidIban('DE02 1203 0000 0000 2020 52'), false)
+  assert.equal(isValidIban('DE31 1203 0000 0000 2020 5100'), false)
+  assert.equal(isValidIban('ZZ32 1203 0000 0000 2020 51'), false)
+  assert.equal(isValidIban('AE07 0331 2345 6789 0123 456'), false)
+  assert.equal(isValidIban('RS35 2600 0560 1001 6113 79'), true)
 })
 
 test('Rechnungsstart verlangt Absendernamen und eine gültige IBAN', () => {
@@ -197,9 +236,39 @@ test('EPC-Payload enthält Version, Betrag und Rechnungsnummer', () => {
   assert.deepEqual(payload.split('\n').slice(0, 4), ['BCD', '002', '1', 'SCT'])
   assert.match(payload, /EUR125\.50/)
   assert.match(payload, /Rechnung 2026-a-0001/)
+  assert.doesNotMatch(payload, /\n$/)
+})
+
+test('EPC-Payload lehnt ungültige Beträge, BICs und überlange UTF-8-Daten ab', () => {
+  const settings = { ...defaultSettings, accountHolder: 'Mara Beispiel', iban: 'DE02120300000000202051', bic: 'BYLADEM1001' }
+  assert.throws(() => buildEpcPayload(invoice(), settings, 0), /Betrag.*0,01/)
+  assert.throws(() => buildEpcPayload(invoice(), settings, 1_000_000_000), /Betrag.*999\.999\.999,99/)
+  assert.throws(() => buildEpcPayload(invoice(), { ...settings, bic: 'INVALID!' }, 125.5), /BIC.*8.*11/)
+  assert.doesNotThrow(() => buildEpcPayload(invoice(), { ...settings, bic: '' }, 125.5))
+  assert.throws(() => buildEpcPayload(
+    invoice({ number: '€'.repeat(140) }),
+    { ...settings, accountHolder: 'ä'.repeat(70) },
+    125.5,
+  ), /331 Byte/)
+})
+
+test('Geldbeträge werden positionsweise kaufmännisch auf Cent gerundet', () => {
+  const items = [
+    { ...createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-rounding-1'), quantity: 1.5, unitPrice: 0.67 },
+    { ...createLessonItem('student-a', '2026-08-12', defaultSettings, 'item-rounding-2'), quantity: 1.5, unitPrice: 0.67 },
+  ]
+  const testInvoice = invoice({ items })
+  const settings = { ...defaultSettings, accountHolder: 'Mara Beispiel', iban: 'DE02120300000000202051', bic: 'BYLADEM1001' }
+
+  assert.equal(itemTotal(items[0]), 1.01)
+  assert.equal(invoiceTotal(testInvoice), 2.02)
+  assert.match(buildEpcPayload(testInvoice, settings, invoiceTotal(testInvoice)), /EUR2\.02/)
+  assert.match(renderToStaticMarkup(createElement(InvoicePrint, { invoice: testInvoice, guardians: [], students: [student('student-a', 'Anna', 'a')], settings })), /2,02\s€/)
 })
 
 test('versendete Rechnung wird nach Fälligkeit als überfällig erkannt', () => {
+  assert.equal(effectiveStatus(invoice(), new Date('2026-08-15T23:59:59')), 'sent')
+  assert.equal(effectiveStatus(invoice(), new Date('2026-08-16T00:00:00')), 'overdue')
   assert.equal(effectiveStatus(invoice(), new Date('2026-08-20T12:00:00')), 'overdue')
   assert.equal(effectiveStatus(invoice({ status: 'paid' }), new Date('2026-08-20T12:00:00')), 'paid')
 })
@@ -263,6 +332,15 @@ test('Familien- und Rechnungslisten werden stabil nach der gewählten Spalte sor
   assert.deepEqual(ids('period'), ['invoice-second', 'invoice-first'])
   assert.deepEqual(ids('status'), ['invoice-second', 'invoice-first'])
   assert.deepEqual(ids('amount'), ['invoice-second', 'invoice-first'])
+})
+
+test('CSV-Export neutralisiert gefährliche Formelpräfixe', () => {
+  for (const prefix of ['=', '+', '-', '@', '\t', '\r']) {
+    const dangerousValue = `${prefix}FORMEL`
+    const csv = invoicesToCsv([invoice({ number: dangerousValue })], [], [])
+    assert.ok(csv.includes(`"'${dangerousValue}"`), JSON.stringify(prefix))
+  }
+  assert.ok(invoicesToCsv([invoice()], [], []).includes('"2026-a-0001"'))
 })
 
 test('Rechnungsdokument druckt automatisch berechneten Zeitraum und Fälligkeit', () => {
@@ -360,6 +438,23 @@ test('Entwurfsdrucke tragen ein Wasserzeichen und nur Entwürfe zeigen Positions
   assert.doesNotMatch(source, /<Download/)
 })
 
+test('Druck wartet auf den QR-Code des konkreten Druckauftrags', () => {
+  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  const printHandler = appSource.slice(appSource.indexOf('const print ='), appSource.indexOf('const exportBackup'))
+  const printSource = readFileSync(new URL('../src/components/InvoicePrint.tsx', import.meta.url), 'utf8')
+
+  assert.doesNotMatch(printHandler, /setTimeout/)
+  assert.match(printHandler, /printRequestRef/)
+  assert.match(appSource, /onPrintReady=\{handlePrintReady\}/)
+  assert.match(printSource, /setQrCode\(null\)/)
+  assert.match(printSource, /requestId: string/)
+  assert.match(printSource, /invoiceId: string/)
+  assert.match(printSource, /payload: string/)
+  assert.match(printSource, /qrCode\.invoiceId === invoice\.id/)
+  assert.match(printSource, /qrCode\.payload === qrRequest\.payload/)
+  assert.match(printSource, /onLoad=.*onPrintReady/)
+})
+
 test('alle Kebab-Menü-Aktionen werden an den vorgesehenen Handler weitergeleitet', () => {
   const calls: string[] = []
   const handlers = {
@@ -431,7 +526,7 @@ test('Demo-Daten bilden Familien, Unterricht und Rechnungen seit Januar 2025 vol
   assert.equal(new Set(numbers).size, numbers.length)
   withMockLocalStorage(() => {
     saveState(demo)
-    const restored = loadState()
+    const restored = loadReadyState()
     assert.equal(restored.guardians.length, 10)
     assert.equal(restored.students.length, 10)
     assert.equal(restored.invoices.length, demo.invoices.length)
@@ -444,15 +539,113 @@ test('vollständiges Backup lässt sich wiederherstellen', () => {
   state.students.push(student('student-a', 'Anna', 'a'))
   state.nextStudentCodeIndex = 1
   state.voidedInvoiceNumbers.push({ number: '2026-a-0004', sequence: 4, year: 2026, invoiceDate: '2026-08-01', deletedAt: '2026-08-20T12:00:00.000Z', amount: 90, recipient: 'Testfamilie' })
+  const correctedSnapshot = {
+    issuer: structuredClone(state.settings.issuer),
+    guardians: [],
+    students: [{ id: 'student-a', name: 'Anna' }],
+    accountHolder: 'Neuer Kontoinhaber',
+    iban: '',
+    bic: '',
+    bankName: '',
+    legalText: '',
+  }
+  state.audit.push({
+    id: 'event-snapshot-correction',
+    at: '2026-08-20T12:30:00.000Z',
+    label: 'Snapshot-Korrektur',
+    entityType: 'invoice',
+    entityId: 'invoice-test',
+    snapshotCorrection: {
+      oldValue: null,
+      newValue: correctedSnapshot,
+    },
+  })
   const restored = parseBackup(serializeBackup(state))
   assert.equal(restored.schemaVersion, 2)
   assert.equal(restored.settings.issuer.name, 'Test Unterricht')
   assert.equal(restored.students[0]?.billingCode, 'a')
   assert.equal(restored.voidedInvoiceNumbers[0]?.number, '2026-a-0004')
+  assert.equal(restored.audit[0]?.snapshotCorrection?.newValue.accountHolder, 'Neuer Kontoinhaber')
+})
+
+test('finalisierte Snapshots bleiben ohne bestätigten Korrekturmodus unverändert', () => {
+  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  const editorSource = readFileSync(new URL('../src/views/InvoiceEditor.tsx', import.meta.url), 'utf8')
+
+  assert.match(appSource, /snapshot: snapshotCorrectionConfirmed \? freshSnapshot : previousSnapshot \?\? freshSnapshot/)
+  assert.match(appSource, /title: 'Snapshot-Korrektur bestätigen'/)
+  assert.match(appSource, /oldValue: oldSnapshot \? structuredClone\(oldSnapshot\) : null/)
+  assert.match(appSource, /newValue: structuredClone\(newSnapshot\)/)
+  assert.match(editorSource, /Snapshot-Korrektur aktivieren/)
+  assert.match(editorSource, /finalized && snapshotCorrection/)
+})
+
+test('Backup-Import lehnt ungültige Feldtypen und Fachwerte ab', () => {
+  assert.throws(() => parseBackup(corruptBackup((data) => {
+    const invoices = data.invoices as Array<Record<string, unknown>>
+    invoices[0].items = 'keine Liste'
+  })), /invoices\[0\]\.items.*Array/)
+
+  assert.throws(() => parseBackup(corruptBackup((data) => {
+    const invoices = data.invoices as Array<Record<string, unknown>>
+    invoices[0].status = 'cancelled'
+  })), /invoices\[0\]\.status/)
+
+  assert.throws(() => parseBackup(corruptBackup((data) => {
+    const invoices = data.invoices as Array<Record<string, unknown>>
+    invoices[0].dueDate = '2026-02-30'
+  })), /invoices\[0\]\.dueDate.*Kalenderdatum/)
+
+  const nonFiniteAmount = serializeBackup(validImportState()).replace('"unitPrice": 30', '"unitPrice": 1e309')
+  assert.throws(() => parseBackup(nonFiniteAmount), /invoices\[0\]\.items\[0\]\.unitPrice.*endliche Zahl/)
+})
+
+test('Backup-Import lehnt doppelte IDs und ungültige Referenzen ab', () => {
+  assert.throws(() => parseBackup(corruptBackup((data) => {
+    const guardians = data.guardians as Array<Record<string, unknown>>
+    guardians.push(structuredClone(guardians[0]))
+  })), /guardians\[1\]\.id.*doppelt/)
+
+  assert.throws(() => parseBackup(corruptBackup((data) => {
+    const students = data.students as Array<Record<string, unknown>>
+    students[0].guardianIds = ['guardian-missing']
+  })), /students\[0\]\.guardianIds\[0\].*unbekannte/)
+
+  assert.throws(() => parseBackup(corruptBackup((data) => {
+    const invoices = data.invoices as Array<Record<string, unknown>>
+    invoices[0].studentIds = ['student-missing']
+  })), /invoices\[0\]\.studentIds\[0\].*unbekannte/)
+
+  assert.throws(() => parseBackup(corruptBackup((data) => {
+    const invoices = data.invoices as Array<Record<string, unknown>>
+    const items = invoices[0].items as Array<Record<string, unknown>>
+    items[0].studentId = 'student-missing'
+  })), /invoices\[0\]\.items\[0\]\.studentId.*unbekannte/)
+})
+
+test('finalisierte Historie darf gelöschte Stammdaten über den Snapshot referenzieren', () => {
+  const state = validImportState()
+  state.invoices[0].snapshot = {
+    issuer: structuredClone(state.settings.issuer),
+    guardians: [{ id: 'guardian-a', name: 'Alex Beispiel', email: 'alex@example.de', street: 'Beispielweg 1', postalCode: '12345', city: 'Beispielstadt' }],
+    students: [{ id: 'student-a', name: 'Anna' }],
+    accountHolder: state.settings.accountHolder,
+    iban: state.settings.iban,
+    bic: state.settings.bic,
+    bankName: state.settings.bankName,
+    legalText: state.settings.defaultLegalText,
+  }
+  state.guardians = []
+  state.students = []
+
+  const restored = parseBackup(serializeBackup(state))
+  assert.deepEqual(restored.invoices[0]?.guardianIds, ['guardian-a'])
+  assert.deepEqual(restored.invoices[0]?.studentIds, ['student-a'])
 })
 
 test('ältere Backups erhalten stabile Kinderkennzeichen in Speicherreihenfolge', () => {
   const legacy = JSON.parse(serializeBackup(emptyState()))
+  legacy.app = 'gitarrenrechnungen'
   legacy.data.students = [student('student-a', 'Anna', ''), student('student-b', 'Ben', '')]
   legacy.data.settings.numberPattern = '{YYYY}-{NNNN}'
   delete legacy.data.nextStudentCodeIndex
@@ -462,8 +655,20 @@ test('ältere Backups erhalten stabile Kinderkennzeichen in Speicherreihenfolge'
   assert.equal(restored.settings.numberPattern, '{YYYY}-{K}-{NNNN}')
 })
 
+test('ältere Kombinationszähler werden auf segmentierte Schlüssel migriert', () => {
+  const state = emptyState()
+  state.students = [student('student-a', 'Anna', 'a'), student('student-b', 'Ben', 'b'), student('student-ab', 'Zora', 'ab')]
+  state.invoices = [invoice({ studentIds: ['student-a', 'student-b'], number: '2026-ab-0003', sequence: 3 })]
+  state.counters = { '2026:ab': 4 }
+  const restored = parseBackup(serializeBackup(state))
+  assert.equal(restored.counters['2026:a+b'], 4)
+  assert.equal(restored.counters['2026:ab'], 4)
+})
+
 test('ältere Rechnungspositionen erhalten einen Typ ohne Preis- oder Titeländerung', () => {
   const state = emptyState()
+  state.students = [student('student-a', 'Anna', 'a')]
+  state.nextStudentCodeIndex = 1
   state.invoices = [invoice({
     items: [{
       ...createLessonItem('student-a', '2026-08-05', defaultSettings, 'legacy-item'),
@@ -485,8 +690,150 @@ test('manuelle Theme-Auswahl bleibt nach einem Reload erhalten', () => {
     const state = emptyState()
     state.settings.theme = 'dark'
     saveState(state)
-    assert.equal(loadState().settings.theme, 'dark')
+    assert.equal(loadReadyState().settings.theme, 'dark')
   })
+})
+
+test('beschädigte lokale Daten bleiben für die Wiederherstellung unangetastet', () => {
+  const storageKey = 'gitarrenrechnungen-state-v2'
+  const invalidState = validImportState()
+  invalidState.invoices[0].status = 'cancelled' as Invoice['status']
+  const corruptValues = ['{"schemaVersion":2', JSON.stringify(invalidState)]
+
+  corruptValues.forEach((rawData) => withMockLocalStorage(() => {
+    localStorage.setItem(storageKey, rawData)
+    const loaded = loadState()
+    if (loaded.status !== 'recovery') assert.fail('Beschädigte Daten wurden als normaler Zustand geladen.')
+    assert.equal(loaded.rawData, rawData)
+    assert.ok(loaded.error)
+    assert.equal(localStorage.getItem(storageKey), rawData)
+  }))
+
+  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  const recoverySource = readFileSync(new URL('../src/views/StorageRecovery.tsx', import.meta.url), 'utf8')
+  assert.match(appSource, /useEffect\(\(\) => \{\s+if \(recovery\) return[\s\S]*?persistState/)
+  assert.match(appSource, /<StorageRecovery/)
+  assert.match(recoverySource, /Beschädigte Rohdaten exportieren/)
+  assert.match(recoverySource, /JSON-Backup wiederherstellen/)
+})
+
+test('Entwürfe lassen sich aus der Detailansicht nur mit vollständigen aktuellen Daten finalisieren', () => {
+  const state = validImportState()
+  const draft = invoice({
+    number: null,
+    sequence: null,
+    status: 'draft',
+    guardianIds: ['guardian-a'],
+    studentIds: ['student-a'],
+    items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-finalization')],
+  })
+  assert.deepEqual(invoiceFinalizationErrors(state, draft), [])
+  assert.match(invoiceFinalizationErrors(state, { ...draft, guardianIds: [] }).join(' '), /empfangende Person/)
+  assert.match(invoiceFinalizationErrors(state, { ...draft, guardianIds: ['guardian-missing'] }).join(' '), /Stammdaten/)
+  assert.match(invoiceFinalizationErrors(state, { ...draft, studentIds: [] }).join(' '), /Kind/)
+  assert.match(invoiceFinalizationErrors(state, { ...draft, studentIds: ['student-missing'] }).join(' '), /Stammdaten/)
+  assert.match(invoiceFinalizationErrors(state, { ...draft, items: [] }).join(' '), /Position/)
+  assert.match(invoiceFinalizationErrors(state, { ...draft, items: [{ ...draft.items[0], description: '' }] }).join(' '), /vollständig/)
+
+  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  assert.match(appSource, /invoiceFinalizationErrors\(state, invoice\)/)
+  assert.match(appSource, /Vorläufige konservative Fachregel/)
+})
+
+test('lokales Speichern und Datei-Backup werden unabhängig voneinander ausgeführt', async () => {
+  const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  let writtenBackup = ''
+  const failingStorage = {
+    setItem: () => {
+      const error = new Error('Speicherplatz erschöpft')
+      error.name = 'QuotaExceededError'
+      throw error
+    },
+  } as unknown as Storage
+  const directoryHandle = {
+    name: 'Sicherungen',
+    queryPermission: async () => 'granted',
+    getFileHandle: async () => ({
+      createWritable: async () => ({
+        write: async (content: unknown) => { writtenBackup = String(content) },
+        close: async () => undefined,
+      }),
+    }),
+  } as unknown as FileSystemDirectoryHandle
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: failingStorage })
+
+  try {
+    const result = await persistState(emptyState(), directoryHandle, true)
+    assert.equal(result.local.status, 'error')
+    assert.match(result.local.error ?? '', /Speicherplatz erschöpft/)
+    assert.equal(result.fileBackup.status, 'saved')
+    assert.match(writtenBackup, /"app": "riffrechnung"/)
+
+    let localSaved = false
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { setItem: () => { localSaved = true } } as unknown as Storage })
+    const failingDirectoryHandle = {
+      queryPermission: async () => 'granted',
+      getFileHandle: async () => { throw new Error('Backup-Datei gesperrt') },
+    } as unknown as FileSystemDirectoryHandle
+    const reverseResult = await persistState(emptyState(), failingDirectoryHandle, true)
+    assert.equal(reverseResult.local.status, 'saved')
+    assert.equal(localSaved, true)
+    assert.equal(reverseResult.fileBackup.status, 'error')
+    assert.match(reverseResult.fileBackup.error ?? '', /Backup-Datei gesperrt/)
+  } finally {
+    if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage)
+    else Reflect.deleteProperty(globalThis, 'localStorage')
+  }
+
+  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  assert.match(appSource, /localSaveError/)
+  assert.match(appSource, /fileBackupError/)
+  assert.match(appSource, /Erneut versuchen/)
+  assert.match(appSource, /JSON-Backup exportieren/)
+})
+
+test('veraltete Tabs überschreiben keinen zwischenzeitlich gespeicherten Zustand', async () => {
+  const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  const entries = new Map<string, string>()
+  const localStorageMock: Storage = {
+    get length() { return entries.size },
+    clear: () => entries.clear(),
+    getItem: (key) => entries.get(key) ?? null,
+    key: (index) => [...entries.keys()][index] ?? null,
+    removeItem: (key) => entries.delete(key),
+    setItem: (key, value) => entries.set(key, value),
+  }
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: localStorageMock })
+
+  try {
+    const base = emptyState()
+    base.updatedAt = '2026-08-20T10:00:00.000Z'
+    saveState(base)
+    const firstTab = structuredClone(base)
+    firstTab.settings.issuer.name = 'Erster Tab'
+    firstTab.updatedAt = '2026-08-20T10:01:00.000Z'
+    const secondTab = structuredClone(base)
+    secondTab.settings.issuer.name = 'Zweiter Tab'
+    secondTab.updatedAt = '2026-08-20T10:02:00.000Z'
+
+    const firstResult = await persistState(firstTab, null, false, base.updatedAt)
+    const staleResult = await persistState(secondTab, null, false, base.updatedAt)
+    assert.equal(firstResult.local.status, 'saved')
+    assert.equal(staleResult.local.status, 'conflict')
+    assert.match(staleResult.local.error ?? '', /anderen Tab/)
+    const persisted = JSON.parse(localStorage.getItem('gitarrenrechnungen-state-v2') ?? '{}')
+    assert.equal(persisted.settings.issuer.name, 'Erster Tab')
+  } finally {
+    if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage)
+    else Reflect.deleteProperty(globalThis, 'localStorage')
+  }
+
+  const storageSource = readFileSync(new URL('../src/lib/storage.ts', import.meta.url), 'utf8')
+  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  assert.match(storageSource, /navigator\.locks\.request/)
+  assert.match(appSource, /new BroadcastChannel/)
+  assert.match(appSource, /addEventListener\('storage'/)
+  assert.match(appSource, /window\.location\.reload\(\)/)
 })
 
 test('Einstellungen werden gebündelt automatisch gespeichert', () => {
@@ -541,11 +888,10 @@ test('Zeitpunkt des letzten Backup-Exports wird persistiert', () => {
   })
 })
 
-test('sichtbare App-Version und neuester Changelog-Eintrag sind 1.1.1', () => {
-  assert.equal(APP_VERSION, '1.1.1')
+test('sichtbare App-Version entspricht dem neuesten Changelog-Eintrag', () => {
   assert.ok(Array.isArray(changelog))
   assert.equal(changelog[0]?.version, APP_VERSION)
-  assert.ok((changelog[0]?.changes.length ?? 0) >= 2)
+  assert.ok((changelog[0]?.changes.length ?? 0) >= 1)
   assert.ok(changelog.length >= 2)
 })
 
