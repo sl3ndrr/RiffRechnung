@@ -2,8 +2,6 @@
 
 Eine vollständig clientseitige Web-App für Rechnungen rund um Gitarrenunterricht. Sie läuft als statische Vite-App auf GitHub Pages; es gibt weder Server noch Datenbank, Benutzerkonto, Tracking oder externe API-Aufrufe.
 
-Aktuelle App-Version: **1.1.2**
-
 ## Funktionsumfang
 
 - Kinder und mehrere Erziehungsberechtigte verwalten, filtern, sortieren und miteinander verknüpfen
