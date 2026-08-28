@@ -66,6 +66,12 @@ function withMockLocalStorage(run: () => void): void {
   }
 }
 
+function loadReadyState() {
+  const loaded = loadState()
+  if (loaded.status !== 'ready') assert.fail(`Unerwarteter Recovery-Zustand: ${loaded.error}`)
+  return loaded.state
+}
+
 function validImportState() {
   const state = emptyState()
   state.guardians.push({
@@ -520,7 +526,7 @@ test('Demo-Daten bilden Familien, Unterricht und Rechnungen seit Januar 2025 vol
   assert.equal(new Set(numbers).size, numbers.length)
   withMockLocalStorage(() => {
     saveState(demo)
-    const restored = loadState()
+    const restored = loadReadyState()
     assert.equal(restored.guardians.length, 10)
     assert.equal(restored.students.length, 10)
     assert.equal(restored.invoices.length, demo.invoices.length)
@@ -684,8 +690,31 @@ test('manuelle Theme-Auswahl bleibt nach einem Reload erhalten', () => {
     const state = emptyState()
     state.settings.theme = 'dark'
     saveState(state)
-    assert.equal(loadState().settings.theme, 'dark')
+    assert.equal(loadReadyState().settings.theme, 'dark')
   })
+})
+
+test('beschädigte lokale Daten bleiben für die Wiederherstellung unangetastet', () => {
+  const storageKey = 'gitarrenrechnungen-state-v2'
+  const invalidState = validImportState()
+  invalidState.invoices[0].status = 'cancelled' as Invoice['status']
+  const corruptValues = ['{"schemaVersion":2', JSON.stringify(invalidState)]
+
+  corruptValues.forEach((rawData) => withMockLocalStorage(() => {
+    localStorage.setItem(storageKey, rawData)
+    const loaded = loadState()
+    if (loaded.status !== 'recovery') assert.fail('Beschädigte Daten wurden als normaler Zustand geladen.')
+    assert.equal(loaded.rawData, rawData)
+    assert.ok(loaded.error)
+    assert.equal(localStorage.getItem(storageKey), rawData)
+  }))
+
+  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  const recoverySource = readFileSync(new URL('../src/views/StorageRecovery.tsx', import.meta.url), 'utf8')
+  assert.match(appSource, /useEffect\(\(\) => \{\s+if \(recovery\) return\s+setSaveStateLabel/)
+  assert.match(appSource, /<StorageRecovery/)
+  assert.match(recoverySource, /Beschädigte Rohdaten exportieren/)
+  assert.match(recoverySource, /JSON-Backup wiederherstellen/)
 })
 
 test('Einstellungen werden gebündelt automatisch gespeichert', () => {

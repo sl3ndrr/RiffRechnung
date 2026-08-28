@@ -9,6 +9,14 @@ const HANDLE_KEY = 'backup-directory'
 
 type BackupObject = Record<string, unknown>
 
+export interface StorageRecoveryState {
+  status: 'recovery'
+  rawData: string
+  error: string
+}
+
+export type StateLoadResult = { status: 'ready'; state: AppState } | StorageRecoveryState
+
 const INVOICE_STATUSES = ['draft', 'sent', 'paid', 'overdue'] as const
 const RECIPIENT_STRATEGIES = ['joint', 'separate'] as const
 const LESSON_TYPES = ['solo', 'duo'] as const
@@ -361,17 +369,28 @@ function normalizeState(data: Partial<AppState>): AppState {
   }
 }
 
-export function loadState(): AppState {
+export function loadState(): StateLoadResult {
+  let raw: string | null
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return emptyState()
-    const parsed = JSON.parse(raw) as Partial<AppState>
-    if (parsed.schemaVersion !== 2 || !Array.isArray(parsed.invoices) || !Array.isArray(parsed.guardians) || !Array.isArray(parsed.students)) {
-      return emptyState()
+    raw = localStorage.getItem(STORAGE_KEY)
+  } catch (error) {
+    return {
+      status: 'recovery',
+      rawData: '',
+      error: error instanceof Error ? error.message : 'Der lokale Speicher konnte nicht gelesen werden.',
     }
-    return normalizeState(parsed)
-  } catch {
-    return emptyState()
+  }
+  if (!raw) return { status: 'ready', state: emptyState() }
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    validateBackupState(parsed)
+    return { status: 'ready', state: normalizeState(parsed as Partial<AppState>) }
+  } catch (error) {
+    return {
+      status: 'recovery',
+      rawData: raw,
+      error: error instanceof Error ? error.message : 'Die lokalen Daten konnten nicht validiert werden.',
+    }
   }
 }
 

@@ -8,12 +8,13 @@ import { People } from './views/People'
 import { Reports } from './views/Reports'
 import { Settings } from './views/Settings'
 import { About } from './views/About'
+import { StorageRecovery } from './views/StorageRecovery'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { ChangelogModal } from './components/ChangelogModal'
 import { ToastRegion } from './components/ToastRegion'
 import { InvoicePrint } from './components/InvoicePrint'
 import { createDemoState, createEmptyInvoiceDraft, emptyState } from './lib/defaults'
-import { clearDirectoryHandle, ensureWritePermission, loadLastBackupAt, loadState, parseBackup, readDirectoryHandle, recordBackupExport, saveState, serializeBackup, storeDirectoryHandle, writeBackupToDirectory } from './lib/storage'
+import { clearDirectoryHandle, ensureWritePermission, loadLastBackupAt, loadState, parseBackup, readDirectoryHandle, recordBackupExport, saveState, serializeBackup, storeDirectoryHandle, type StorageRecoveryState, writeBackupToDirectory } from './lib/storage'
 import { billingPeriodFromItems, calculateDueDate, downloadText, ensureStudentCodePattern, guardianName, invoicePdfTitle, isInvoiceSetupComplete, limitFooterText, nextInvoiceAllocation, parseDate, reopenInvoiceAsDraft, statusLabel, studentCodeForIndex, uid } from './lib/utils'
 import { APP_VERSION } from './version'
 
@@ -52,7 +53,9 @@ interface PrintRequest {
 type AuditEventDetails = Pick<AuditEvent, 'snapshotCorrection'>
 
 function App() {
-  const [state, setState] = useState<AppState>(loadState)
+  const [initialLoad] = useState(loadState)
+  const [state, setState] = useState<AppState>(() => initialLoad.status === 'ready' ? initialLoad.state : emptyState())
+  const [recovery, setRecovery] = useState<StorageRecoveryState | null>(() => initialLoad.status === 'recovery' ? initialLoad : null)
   const [page, setPage] = useState<PageKey>('dashboard')
   const [mobileNav, setMobileNav] = useState(false)
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
@@ -90,6 +93,7 @@ function App() {
   }, [])
 
   useEffect(() => {
+    if (recovery) return
     setSaveStateLabel('saving')
     const timer = window.setTimeout(async () => {
       try {
@@ -106,7 +110,7 @@ function App() {
       firstSave.current = false
     }, 450)
     return () => window.clearTimeout(timer)
-  }, [state, toast])
+  }, [recovery, state, toast])
 
   useEffect(() => {
     readDirectoryHandle().then(async (handle) => {
@@ -482,6 +486,12 @@ function App() {
     toast('JSON-Backup heruntergeladen.', 'success')
   }
 
+  const exportRecoveryData = () => {
+    if (!recovery?.rawData) return
+    downloadText(`riffrechnung-beschaedigte-lokaldaten-${new Date().toISOString().slice(0, 10)}.txt`, recovery.rawData, 'text/plain')
+    toast('Beschädigte Rohdaten heruntergeladen.', 'success')
+  }
+
   const importBackup = async (file: File) => {
     try {
       const imported = parseBackup(await file.text())
@@ -489,7 +499,7 @@ function App() {
         title: 'Backup wiederherstellen?',
         message: `Die Datei enthält ${imported.students.length} Kinder und ${imported.invoices.length} Rechnungen. Der aktuelle lokale Datenstand wird vollständig ersetzt.`,
         label: 'Daten ersetzen', danger: true,
-        action: () => { setState(imported); setPage('dashboard'); setSelectedInvoiceId(null); toast('Backup erfolgreich wiederhergestellt.', 'success') },
+        action: () => { setState(imported); setRecovery(null); setPage('dashboard'); setSelectedInvoiceId(null); toast('Backup erfolgreich wiederhergestellt.', 'success') },
       })
     } catch (error) {
       toast(error instanceof Error ? error.message : 'Die Backup-Datei konnte nicht gelesen werden.', 'error')
@@ -569,6 +579,14 @@ function App() {
   const themeToggleLabel = `Aktuelles Farbschema: ${themeNames[state.settings.theme]}. Als Nächstes ${themeNames[nextTheme]} aktivieren.`
   const ThemeToggleIcon = state.settings.theme === 'system' ? Palette : state.settings.theme === 'light' ? Sun : Moon
   const backupStatusLabel = lastBackupAt ? `Letztes Backup: ${backupDateFormatter.format(new Date(lastBackupAt))}` : 'Noch kein Backup'
+
+  if (recovery) return (
+    <>
+      <StorageRecovery recovery={recovery} onExport={exportRecoveryData} onImport={importBackup} />
+      <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />
+      <ToastRegion messages={toasts} onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))} />
+    </>
+  )
 
   return (
     <div className="app-shell">
