@@ -14,7 +14,7 @@ import { ChangelogModal } from './components/ChangelogModal'
 import { ToastRegion } from './components/ToastRegion'
 import { InvoicePrint } from './components/InvoicePrint'
 import { createDemoState, createEmptyInvoiceDraft, emptyState } from './lib/defaults'
-import { clearDirectoryHandle, ensureWritePermission, loadLastBackupAt, loadState, parseBackup, persistState, readDirectoryHandle, recordBackupExport, serializeBackup, storeDirectoryHandle, type StorageRecoveryState, writeBackupToDirectory } from './lib/storage'
+import { clearDirectoryHandle, ensureWritePermission, loadLastBackupAt, loadState, parseBackup, persistState, readDirectoryHandle, recordBackupExport, serializeBackup, STORAGE_KEY, storeDirectoryHandle, type StorageRecoveryState, writeBackupToDirectory } from './lib/storage'
 import { billingPeriodFromItems, calculateDueDate, downloadText, ensureStudentCodePattern, guardianName, invoiceFinalizationErrors, invoicePdfTitle, isInvoiceSetupComplete, limitFooterText, nextInvoiceAllocation, parseDate, reopenInvoiceAsDraft, statusLabel, studentCodeForIndex, uid } from './lib/utils'
 import { APP_VERSION } from './version'
 
@@ -69,6 +69,7 @@ function App() {
   const [fileBackupStatus, setFileBackupStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [fileBackupError, setFileBackupError] = useState<string | null>(null)
   const [saveRetry, setSaveRetry] = useState(0)
+  const [externalChangeDetected, setExternalChangeDetected] = useState(false)
   const [savedAt, setSavedAt] = useState(() => new Date())
   const [lastBackupAt, setLastBackupAt] = useState(loadLastBackupAt)
   const [folderConnected, setFolderConnected] = useState(false)
@@ -77,6 +78,11 @@ function App() {
   const backupImportInput = useRef<HTMLInputElement | null>(null)
   const printRequestRef = useRef<PrintRequest | null>(null)
   const firstSave = useRef(true)
+  const persistedUpdatedAt = useRef(initialLoad.status === 'ready' ? initialLoad.persistedUpdatedAt : null)
+  const forceLocalOverwrite = useRef(initialLoad.status === 'recovery')
+  const persistenceQueue = useRef(Promise.resolve())
+  const broadcastChannel = useRef<BroadcastChannel | null>(null)
+  const tabId = useRef(uid('tab'))
 
   const toast = useCallback((message: string, tone: ToastMessage['tone'] = 'info') => {
     const id = uid('toast')
@@ -105,26 +111,60 @@ function App() {
       setFileBackupStatus('saving')
       setFileBackupError(null)
     }
-    const timer = window.setTimeout(async () => {
-      const result = await persistState(state, folderHandle.current, includeFileBackup)
-      if (result.local.status === 'saved') {
-        setSavedAt(new Date())
-        setSaveStateLabel('saved')
-      } else {
-        setSaveStateLabel('error')
-        setLocalSaveError(result.local.error ?? 'Lokales Speichern ist fehlgeschlagen.')
-      }
-      if (result.fileBackup.status === 'saved') {
-        setFileBackupStatus('saved')
-        setFileBackupError(null)
-      } else if (result.fileBackup.status === 'error') {
-        setFileBackupStatus('error')
-        setFileBackupError(result.fileBackup.error ?? 'Das Datei-Backup ist fehlgeschlagen.')
-      }
-      firstSave.current = false
+    const timer = window.setTimeout(() => {
+      persistenceQueue.current = persistenceQueue.current.then(async () => {
+        const result = await persistState(state, folderHandle.current, includeFileBackup, persistedUpdatedAt.current, forceLocalOverwrite.current)
+        if (result.local.status === 'saved') {
+          persistedUpdatedAt.current = state.updatedAt
+          forceLocalOverwrite.current = false
+          setExternalChangeDetected(false)
+          broadcastChannel.current?.postMessage({ source: tabId.current, updatedAt: state.updatedAt })
+          setSavedAt(new Date())
+          setSaveStateLabel('saved')
+        } else {
+          setSaveStateLabel('error')
+          setLocalSaveError(result.local.error ?? 'Lokales Speichern ist fehlgeschlagen.')
+          if (result.local.status === 'conflict') setExternalChangeDetected(true)
+        }
+        if (result.fileBackup.status === 'saved') {
+          setFileBackupStatus('saved')
+          setFileBackupError(null)
+        } else if (result.fileBackup.status === 'error') {
+          setFileBackupStatus('error')
+          setFileBackupError(result.fileBackup.error ?? 'Das Datei-Backup ist fehlgeschlagen.')
+        }
+        firstSave.current = false
+      })
     }, 450)
     return () => window.clearTimeout(timer)
   }, [recovery, saveRetry, state])
+
+  useEffect(() => {
+    const markExternalChange = (updatedAt?: string) => {
+      if (!updatedAt || updatedAt !== persistedUpdatedAt.current) setExternalChangeDetected(true)
+    }
+    const channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('riffrechnung-state')
+    broadcastChannel.current = channel
+    if (channel) channel.onmessage = (event: MessageEvent<{ source?: string; updatedAt?: string }>) => {
+      if (event.data.source !== tabId.current) markExternalChange(event.data.updatedAt)
+    }
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== STORAGE_KEY) return
+      if (!event.newValue) return markExternalChange()
+      try {
+        const stored = JSON.parse(event.newValue) as { updatedAt?: string }
+        markExternalChange(stored.updatedAt)
+      } catch {
+        markExternalChange()
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => {
+      window.removeEventListener('storage', handleStorage)
+      channel?.close()
+      if (broadcastChannel.current === channel) broadcastChannel.current = null
+    }
+  }, [])
 
   useEffect(() => {
     readDirectoryHandle().then(async (handle) => {
@@ -657,6 +697,7 @@ function App() {
           <div className="topbar__end"><div className="topbar__storage-status"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : saveStateLabel === 'error' ? 'is-error' : ''}`}><i />{saveStateLabel === 'saving' ? 'Speichert …' : saveStateLabel === 'error' ? 'Lokal nicht gespeichert' : `Lokal gespeichert ${savedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`}</span><span className={`backup-indicator ${fileBackupStatus === 'error' ? 'is-error' : ''}`}>{fileBackupLabel}</span></div><button className="icon-button" onClick={toggleTheme} aria-label={themeToggleLabel} title={themeToggleLabel}><ThemeToggleIcon aria-hidden="true" /></button><button className="button button--primary topbar-new" onClick={openNewInvoice}><FilePlus2 aria-hidden="true" /><span>Neue Rechnung</span></button></div>
         </header>
 
+        {externalChangeDetected && <section className="external-update" role="alert"><div><strong>Änderungen in einem anderen Tab erkannt</strong><p>Dieser Tab zeigt nicht mehr den aktuellen Datenstand. Lade neu, bevor du weiterarbeitest.</p></div><button className="button button--tonal" type="button" onClick={() => window.location.reload()}>Aktuellen Stand neu laden</button></section>}
         {persistenceErrorText && <section className="persistence-error" role="alert"><div><strong>Speichern fehlgeschlagen</strong><p>{persistenceErrorText}</p></div><div className="button-row"><button className="button button--tonal" type="button" onClick={() => setSaveRetry((current) => current + 1)}>Erneut versuchen</button><button className="button button--text" type="button" onClick={exportBackup}>JSON-Backup exportieren</button></div></section>}
 
         <main id="main-content" tabIndex={-1}>

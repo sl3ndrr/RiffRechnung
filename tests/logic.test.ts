@@ -792,6 +792,50 @@ test('lokales Speichern und Datei-Backup werden unabhängig voneinander ausgefü
   assert.match(appSource, /JSON-Backup exportieren/)
 })
 
+test('veraltete Tabs überschreiben keinen zwischenzeitlich gespeicherten Zustand', async () => {
+  const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  const entries = new Map<string, string>()
+  const localStorageMock: Storage = {
+    get length() { return entries.size },
+    clear: () => entries.clear(),
+    getItem: (key) => entries.get(key) ?? null,
+    key: (index) => [...entries.keys()][index] ?? null,
+    removeItem: (key) => entries.delete(key),
+    setItem: (key, value) => entries.set(key, value),
+  }
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: localStorageMock })
+
+  try {
+    const base = emptyState()
+    base.updatedAt = '2026-08-20T10:00:00.000Z'
+    saveState(base)
+    const firstTab = structuredClone(base)
+    firstTab.settings.issuer.name = 'Erster Tab'
+    firstTab.updatedAt = '2026-08-20T10:01:00.000Z'
+    const secondTab = structuredClone(base)
+    secondTab.settings.issuer.name = 'Zweiter Tab'
+    secondTab.updatedAt = '2026-08-20T10:02:00.000Z'
+
+    const firstResult = await persistState(firstTab, null, false, base.updatedAt)
+    const staleResult = await persistState(secondTab, null, false, base.updatedAt)
+    assert.equal(firstResult.local.status, 'saved')
+    assert.equal(staleResult.local.status, 'conflict')
+    assert.match(staleResult.local.error ?? '', /anderen Tab/)
+    const persisted = JSON.parse(localStorage.getItem('gitarrenrechnungen-state-v2') ?? '{}')
+    assert.equal(persisted.settings.issuer.name, 'Erster Tab')
+  } finally {
+    if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage)
+    else Reflect.deleteProperty(globalThis, 'localStorage')
+  }
+
+  const storageSource = readFileSync(new URL('../src/lib/storage.ts', import.meta.url), 'utf8')
+  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  assert.match(storageSource, /navigator\.locks\.request/)
+  assert.match(appSource, /new BroadcastChannel/)
+  assert.match(appSource, /addEventListener\('storage'/)
+  assert.match(appSource, /window\.location\.reload\(\)/)
+})
+
 test('Einstellungen werden gebündelt automatisch gespeichert', () => {
   const source = readFileSync(new URL('../src/views/Settings.tsx', import.meta.url), 'utf8')
   assert.match(source, /SETTINGS_AUTOSAVE_DELAY_MS = 600/)

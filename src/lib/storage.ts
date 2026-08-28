@@ -2,10 +2,11 @@ import type { AppState, Invoice, InvoiceItem, Student } from '../types'
 import { emptyState } from './defaults'
 import { ensureStudentCodePattern, invoiceStudentCode, studentCodeForIndex, studentCodeIndex } from './utils'
 
-const STORAGE_KEY = 'gitarrenrechnungen-state-v2'
+export const STORAGE_KEY = 'gitarrenrechnungen-state-v2'
 const LAST_BACKUP_AT_KEY = 'riffrechnung-last-backup-at'
 const DB_NAME = 'gitarrenrechnungen-handles'
 const HANDLE_KEY = 'backup-directory'
+const STATE_WRITE_LOCK = 'riffrechnung-state-write'
 
 type BackupObject = Record<string, unknown>
 
@@ -15,10 +16,10 @@ export interface StorageRecoveryState {
   error: string
 }
 
-export type StateLoadResult = { status: 'ready'; state: AppState } | StorageRecoveryState
+export type StateLoadResult = { status: 'ready'; state: AppState; persistedUpdatedAt: string | null } | StorageRecoveryState
 
 export interface PersistenceResult {
-  local: { status: 'saved' | 'error'; error?: string }
+  local: { status: 'saved' | 'conflict' | 'error'; error?: string }
   fileBackup: { status: 'skipped' | 'saved' | 'error'; error?: string }
 }
 
@@ -385,11 +386,12 @@ export function loadState(): StateLoadResult {
       error: error instanceof Error ? error.message : 'Der lokale Speicher konnte nicht gelesen werden.',
     }
   }
-  if (!raw) return { status: 'ready', state: emptyState() }
+  if (!raw) return { status: 'ready', state: emptyState(), persistedUpdatedAt: null }
   try {
     const parsed: unknown = JSON.parse(raw)
     validateBackupState(parsed)
-    return { status: 'ready', state: normalizeState(parsed as Partial<AppState>) }
+    const state = normalizeState(parsed as Partial<AppState>)
+    return { status: 'ready', state, persistedUpdatedAt: state.updatedAt }
   } catch (error) {
     return {
       status: 'recovery',
@@ -403,17 +405,45 @@ export function saveState(state: AppState): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
 }
 
-export async function persistState(state: AppState, directoryHandle: FileSystemDirectoryHandle | null, includeFileBackup: boolean): Promise<PersistenceResult> {
+async function persistLocalState(state: AppState, expectedUpdatedAt: string | null | undefined, forceOverwrite: boolean): Promise<PersistenceResult['local']> {
+  const write = (): PersistenceResult['local'] => {
+    try {
+      if (expectedUpdatedAt !== undefined && !forceOverwrite) {
+        const storedRaw = localStorage.getItem(STORAGE_KEY)
+        let storedUpdatedAt: string | null = null
+        if (storedRaw) {
+          try {
+            const stored: unknown = JSON.parse(storedRaw)
+            validateBackupState(stored)
+            storedUpdatedAt = (stored as AppState).updatedAt
+          } catch {
+            return { status: 'conflict', error: 'Die lokalen Daten wurden in einem anderen Tab geändert oder sind nicht mehr lesbar.' }
+          }
+        }
+        if (storedUpdatedAt !== expectedUpdatedAt) {
+          return { status: 'conflict', error: 'Die lokalen Daten wurden in einem anderen Tab geändert. Bitte lade den aktuellen Stand neu.' }
+        }
+      }
+      saveState(state)
+      return { status: 'saved' }
+    } catch (error) {
+      return { status: 'error', error: error instanceof Error ? error.message : 'Lokales Speichern ist fehlgeschlagen.' }
+    }
+  }
+  if (typeof navigator !== 'undefined' && navigator.locks) return navigator.locks.request(STATE_WRITE_LOCK, write)
+  return write()
+}
+
+export async function persistState(state: AppState, directoryHandle: FileSystemDirectoryHandle | null, includeFileBackup: boolean, expectedUpdatedAt?: string | null, forceLocalOverwrite = false): Promise<PersistenceResult> {
   let local: PersistenceResult['local']
   try {
-    saveState(state)
-    local = { status: 'saved' }
+    local = await persistLocalState(state, expectedUpdatedAt, forceLocalOverwrite)
   } catch (error) {
     local = { status: 'error', error: error instanceof Error ? error.message : 'Lokales Speichern ist fehlgeschlagen.' }
   }
 
   let fileBackup: PersistenceResult['fileBackup'] = { status: 'skipped' }
-  if (includeFileBackup && directoryHandle) {
+  if (local.status !== 'conflict' && includeFileBackup && directoryHandle) {
     try {
       if (!await ensureWritePermission(directoryHandle)) throw new Error('Die Schreibberechtigung für den Backup-Ordner fehlt.')
       await writeBackupToDirectory(directoryHandle, state)
