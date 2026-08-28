@@ -66,6 +66,34 @@ function withMockLocalStorage(run: () => void): void {
   }
 }
 
+function validImportState() {
+  const state = emptyState()
+  state.guardians.push({
+    id: 'guardian-a',
+    name: 'Alex Beispiel',
+    email: 'alex@example.de',
+    phone: '0123456789',
+    address: { street: 'Beispielweg 1', postalCode: '12345', city: 'Beispielstadt' },
+    iban: '',
+    paymentNote: '',
+    createdAt: '2026-08-01T10:00:00.000Z',
+    updatedAt: '2026-08-01T10:00:00.000Z',
+  })
+  state.students.push({ ...student('student-a', 'Anna', 'a'), guardianIds: ['guardian-a'] })
+  state.nextStudentCodeIndex = 1
+  state.invoices.push(invoice({
+    guardianIds: ['guardian-a'],
+    items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-a')],
+  }))
+  return state
+}
+
+function corruptBackup(mutate: (data: Record<string, unknown>) => void): string {
+  const backup = JSON.parse(serializeBackup(validImportState())) as { data: Record<string, unknown> }
+  mutate(backup.data)
+  return JSON.stringify(backup)
+}
+
 test('konfigurierbare Rechnungsnummern werden korrekt formatiert', () => {
   assert.equal(formatInvoiceNumber(defaultSettings, 23, 2026, 'a'), '2026-a-0023')
   assert.equal(formatInvoiceNumber({ ...defaultSettings, numberPattern: 'RG-{YY}-{NNN}' }, 7, 2026, 'b'), 'RG-26-b-007')
@@ -546,8 +574,72 @@ test('finalisierte Snapshots bleiben ohne bestätigten Korrekturmodus unverände
   assert.match(editorSource, /finalized && snapshotCorrection/)
 })
 
+test('Backup-Import lehnt ungültige Feldtypen und Fachwerte ab', () => {
+  assert.throws(() => parseBackup(corruptBackup((data) => {
+    const invoices = data.invoices as Array<Record<string, unknown>>
+    invoices[0].items = 'keine Liste'
+  })), /invoices\[0\]\.items.*Array/)
+
+  assert.throws(() => parseBackup(corruptBackup((data) => {
+    const invoices = data.invoices as Array<Record<string, unknown>>
+    invoices[0].status = 'cancelled'
+  })), /invoices\[0\]\.status/)
+
+  assert.throws(() => parseBackup(corruptBackup((data) => {
+    const invoices = data.invoices as Array<Record<string, unknown>>
+    invoices[0].dueDate = '2026-02-30'
+  })), /invoices\[0\]\.dueDate.*Kalenderdatum/)
+
+  const nonFiniteAmount = serializeBackup(validImportState()).replace('"unitPrice": 30', '"unitPrice": 1e309')
+  assert.throws(() => parseBackup(nonFiniteAmount), /invoices\[0\]\.items\[0\]\.unitPrice.*endliche Zahl/)
+})
+
+test('Backup-Import lehnt doppelte IDs und ungültige Referenzen ab', () => {
+  assert.throws(() => parseBackup(corruptBackup((data) => {
+    const guardians = data.guardians as Array<Record<string, unknown>>
+    guardians.push(structuredClone(guardians[0]))
+  })), /guardians\[1\]\.id.*doppelt/)
+
+  assert.throws(() => parseBackup(corruptBackup((data) => {
+    const students = data.students as Array<Record<string, unknown>>
+    students[0].guardianIds = ['guardian-missing']
+  })), /students\[0\]\.guardianIds\[0\].*unbekannte/)
+
+  assert.throws(() => parseBackup(corruptBackup((data) => {
+    const invoices = data.invoices as Array<Record<string, unknown>>
+    invoices[0].studentIds = ['student-missing']
+  })), /invoices\[0\]\.studentIds\[0\].*unbekannte/)
+
+  assert.throws(() => parseBackup(corruptBackup((data) => {
+    const invoices = data.invoices as Array<Record<string, unknown>>
+    const items = invoices[0].items as Array<Record<string, unknown>>
+    items[0].studentId = 'student-missing'
+  })), /invoices\[0\]\.items\[0\]\.studentId.*unbekannte/)
+})
+
+test('finalisierte Historie darf gelöschte Stammdaten über den Snapshot referenzieren', () => {
+  const state = validImportState()
+  state.invoices[0].snapshot = {
+    issuer: structuredClone(state.settings.issuer),
+    guardians: [{ id: 'guardian-a', name: 'Alex Beispiel', email: 'alex@example.de', street: 'Beispielweg 1', postalCode: '12345', city: 'Beispielstadt' }],
+    students: [{ id: 'student-a', name: 'Anna' }],
+    accountHolder: state.settings.accountHolder,
+    iban: state.settings.iban,
+    bic: state.settings.bic,
+    bankName: state.settings.bankName,
+    legalText: state.settings.defaultLegalText,
+  }
+  state.guardians = []
+  state.students = []
+
+  const restored = parseBackup(serializeBackup(state))
+  assert.deepEqual(restored.invoices[0]?.guardianIds, ['guardian-a'])
+  assert.deepEqual(restored.invoices[0]?.studentIds, ['student-a'])
+})
+
 test('ältere Backups erhalten stabile Kinderkennzeichen in Speicherreihenfolge', () => {
   const legacy = JSON.parse(serializeBackup(emptyState()))
+  legacy.app = 'gitarrenrechnungen'
   legacy.data.students = [student('student-a', 'Anna', ''), student('student-b', 'Ben', '')]
   legacy.data.settings.numberPattern = '{YYYY}-{NNNN}'
   delete legacy.data.nextStudentCodeIndex
@@ -569,6 +661,8 @@ test('ältere Kombinationszähler werden auf segmentierte Schlüssel migriert', 
 
 test('ältere Rechnungspositionen erhalten einen Typ ohne Preis- oder Titeländerung', () => {
   const state = emptyState()
+  state.students = [student('student-a', 'Anna', 'a')]
+  state.nextStudentCodeIndex = 1
   state.invoices = [invoice({
     items: [{
       ...createLessonItem('student-a', '2026-08-05', defaultSettings, 'legacy-item'),
