@@ -505,11 +505,45 @@ test('vollständiges Backup lässt sich wiederherstellen', () => {
   state.students.push(student('student-a', 'Anna', 'a'))
   state.nextStudentCodeIndex = 1
   state.voidedInvoiceNumbers.push({ number: '2026-a-0004', sequence: 4, year: 2026, invoiceDate: '2026-08-01', deletedAt: '2026-08-20T12:00:00.000Z', amount: 90, recipient: 'Testfamilie' })
+  const correctedSnapshot = {
+    issuer: structuredClone(state.settings.issuer),
+    guardians: [],
+    students: [{ id: 'student-a', name: 'Anna' }],
+    accountHolder: 'Neuer Kontoinhaber',
+    iban: '',
+    bic: '',
+    bankName: '',
+    legalText: '',
+  }
+  state.audit.push({
+    id: 'event-snapshot-correction',
+    at: '2026-08-20T12:30:00.000Z',
+    label: 'Snapshot-Korrektur',
+    entityType: 'invoice',
+    entityId: 'invoice-test',
+    snapshotCorrection: {
+      oldValue: null,
+      newValue: correctedSnapshot,
+    },
+  })
   const restored = parseBackup(serializeBackup(state))
   assert.equal(restored.schemaVersion, 2)
   assert.equal(restored.settings.issuer.name, 'Test Unterricht')
   assert.equal(restored.students[0]?.billingCode, 'a')
   assert.equal(restored.voidedInvoiceNumbers[0]?.number, '2026-a-0004')
+  assert.equal(restored.audit[0]?.snapshotCorrection?.newValue.accountHolder, 'Neuer Kontoinhaber')
+})
+
+test('finalisierte Snapshots bleiben ohne bestätigten Korrekturmodus unverändert', () => {
+  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  const editorSource = readFileSync(new URL('../src/views/InvoiceEditor.tsx', import.meta.url), 'utf8')
+
+  assert.match(appSource, /snapshot: snapshotCorrectionConfirmed \? freshSnapshot : previousSnapshot \?\? freshSnapshot/)
+  assert.match(appSource, /title: 'Snapshot-Korrektur bestätigen'/)
+  assert.match(appSource, /oldValue: oldSnapshot \? structuredClone\(oldSnapshot\) : null/)
+  assert.match(appSource, /newValue: structuredClone\(newSnapshot\)/)
+  assert.match(editorSource, /Snapshot-Korrektur aktivieren/)
+  assert.match(editorSource, /finalized && snapshotCorrection/)
 })
 
 test('ältere Backups erhalten stabile Kinderkennzeichen in Speicherreihenfolge', () => {

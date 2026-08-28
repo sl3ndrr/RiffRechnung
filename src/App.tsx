@@ -49,6 +49,8 @@ interface PrintRequest {
   invoice: Invoice
 }
 
+type AuditEventDetails = Pick<AuditEvent, 'snapshotCorrection'>
+
 function App() {
   const [state, setState] = useState<AppState>(loadState)
   const [page, setPage] = useState<PageKey>('dashboard')
@@ -75,14 +77,14 @@ function App() {
     window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== id)), 4200)
   }, [])
 
-  const commit = useCallback((producer: (current: AppState) => AppState, label: string, entityType: AuditEvent['entityType'], entityId?: string) => {
+  const commit = useCallback((producer: (current: AppState) => AppState, label: string, entityType: AuditEvent['entityType'], entityId?: string, eventDetails?: (current: AppState, next: AppState) => AuditEventDetails) => {
     setState((current) => {
       const at = new Date().toISOString()
       const next = producer(current)
       return {
         ...next,
         updatedAt: at,
-        audit: [{ id: uid('event'), at, label, entityType, entityId }, ...next.audit].slice(0, 200),
+        audit: [{ id: uid('event'), at, label, entityType, entityId, ...eventDetails?.(current, next) }, ...next.audit].slice(0, 200),
       }
     })
   }, [])
@@ -184,29 +186,26 @@ function App() {
     legalText,
   })
 
-  const saveInvoice = (draft: InvoiceDraft, finalize: boolean) => {
+  const saveInvoice = (draft: InvoiceDraft, finalize: boolean, requestSnapshotCorrection = false, snapshotCorrectionConfirmed = false) => {
     const now = new Date().toISOString()
     const period = billingPeriodFromItems(draft.items, draft.invoiceDate)
     const existing = draft.id ? state.invoices.find((invoice) => invoice.id === draft.id) : undefined
     if (existing?.number) {
+      if (requestSnapshotCorrection && !snapshotCorrectionConfirmed) {
+        setConfirmation({
+          title: 'Snapshot-Korrektur bestätigen',
+          message: 'Die eingefrorenen Empfänger-, Absender- und Kontodaten dieser finalisierten Rechnung werden durch die aktuellen Werte ersetzt. Alter und neuer Snapshot sowie der Zeitpunkt werden im Änderungsverlauf protokolliert.',
+          label: 'Snapshot korrigieren',
+          action: () => saveInvoice(draft, finalize, true, true),
+        })
+        return
+      }
       commit((current) => {
         const currentExisting = current.invoices.find((invoice) => invoice.id === existing.id)
         if (!currentExisting) return current
         const preservedStudentIds = currentExisting.studentIds
         const freshSnapshot = snapshotFor(current, draft.guardianIds, preservedStudentIds, draft.legalText)
         const previousSnapshot = currentExisting.snapshot
-        const revisedSnapshot: InvoiceSnapshot = {
-          ...(previousSnapshot ?? freshSnapshot),
-          guardians: draft.guardianIds.flatMap((id) => {
-            const guardian = freshSnapshot.guardians.find((item) => item.id === id) ?? previousSnapshot?.guardians.find((item) => item.id === id)
-            return guardian ? [guardian] : []
-          }),
-          students: preservedStudentIds.flatMap((id) => {
-            const student = freshSnapshot.students.find((item) => item.id === id) ?? previousSnapshot?.students.find((item) => item.id === id)
-            return student ? [student] : []
-          }),
-          legalText: draft.legalText,
-        }
         return {
           ...current,
           invoices: current.invoices.map((invoice) => invoice.id === currentExisting.id ? {
@@ -222,11 +221,20 @@ function App() {
             introText: draft.introText,
             freeText: draft.freeText,
             legalText: draft.legalText,
-            snapshot: revisedSnapshot,
+            snapshot: snapshotCorrectionConfirmed ? freshSnapshot : previousSnapshot ?? freshSnapshot,
             updatedAt: now,
           } : invoice),
         }
-      }, `Finalisierte Rechnung ${existing.number} bearbeitet`, 'invoice', existing.id)
+      }, snapshotCorrectionConfirmed ? `Snapshot-Korrektur für Rechnung ${existing.number}` : `Finalisierte Rechnung ${existing.number} bearbeitet`, 'invoice', existing.id, snapshotCorrectionConfirmed ? (current, next) => {
+        const oldSnapshot = current.invoices.find((invoice) => invoice.id === existing.id)?.snapshot
+        const newSnapshot = next.invoices.find((invoice) => invoice.id === existing.id)?.snapshot
+        return newSnapshot ? {
+          snapshotCorrection: {
+            oldValue: oldSnapshot ? structuredClone(oldSnapshot) : null,
+            newValue: structuredClone(newSnapshot),
+          },
+        } : {}
+      } : undefined)
       setEditor((current) => ({ ...current, open: false }))
       setPage('invoices')
       setSelectedInvoiceId(existing.id)
