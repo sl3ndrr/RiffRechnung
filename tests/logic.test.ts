@@ -10,7 +10,7 @@ import { Dashboard } from '../src/views/Dashboard'
 import { createDemoState, defaultSettings, emptyState } from '../src/lib/defaults'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, runInvoiceMenuAction } from '../src/lib/invoiceMenu'
 import { loadLastBackupAt, loadState, parseBackup, recordBackupExport, saveState, serializeBackup } from '../src/lib/storage'
-import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoicePdfTitle, invoiceTotal, invoicesToCsv, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, reopenInvoiceAsDraft, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
+import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoiceFinalizationErrors, invoicePdfTitle, invoiceTotal, invoicesToCsv, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, reopenInvoiceAsDraft, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
 import { APP_VERSION } from '../src/version'
 
 const student = (id: string, name: string, billingCode: string): Student => ({
@@ -715,6 +715,29 @@ test('beschädigte lokale Daten bleiben für die Wiederherstellung unangetastet'
   assert.match(appSource, /<StorageRecovery/)
   assert.match(recoverySource, /Beschädigte Rohdaten exportieren/)
   assert.match(recoverySource, /JSON-Backup wiederherstellen/)
+})
+
+test('Entwürfe lassen sich aus der Detailansicht nur mit vollständigen aktuellen Daten finalisieren', () => {
+  const state = validImportState()
+  const draft = invoice({
+    number: null,
+    sequence: null,
+    status: 'draft',
+    guardianIds: ['guardian-a'],
+    studentIds: ['student-a'],
+    items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-finalization')],
+  })
+  assert.deepEqual(invoiceFinalizationErrors(state, draft), [])
+  assert.match(invoiceFinalizationErrors(state, { ...draft, guardianIds: [] }).join(' '), /empfangende Person/)
+  assert.match(invoiceFinalizationErrors(state, { ...draft, guardianIds: ['guardian-missing'] }).join(' '), /Stammdaten/)
+  assert.match(invoiceFinalizationErrors(state, { ...draft, studentIds: [] }).join(' '), /Kind/)
+  assert.match(invoiceFinalizationErrors(state, { ...draft, studentIds: ['student-missing'] }).join(' '), /Stammdaten/)
+  assert.match(invoiceFinalizationErrors(state, { ...draft, items: [] }).join(' '), /Position/)
+  assert.match(invoiceFinalizationErrors(state, { ...draft, items: [{ ...draft.items[0], description: '' }] }).join(' '), /vollständig/)
+
+  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  assert.match(appSource, /invoiceFinalizationErrors\(state, invoice\)/)
+  assert.match(appSource, /Vorläufige konservative Fachregel/)
 })
 
 test('Einstellungen werden gebündelt automatisch gespeichert', () => {

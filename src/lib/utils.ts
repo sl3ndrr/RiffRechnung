@@ -19,6 +19,42 @@ export function limitFooterText(value: string): string {
   return value.slice(0, MAX_FOOTER_TEXT_LENGTH)
 }
 
+export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 'students'>, invoice: Invoice): string[] {
+  const errors: string[] = []
+  const guardianIds = new Set(state.guardians.map((guardian) => guardian.id))
+  const studentIds = new Set(state.students.map((student) => student.id))
+  const selectedStudentIds = new Set(invoice.studentIds)
+  const selectedStudents = state.students.filter((student) => selectedStudentIds.has(student.id))
+
+  if (!invoice.guardianIds.length) errors.push('Mindestens eine empfangende Person auswählen.')
+  else if (invoice.guardianIds.some((id) => !guardianIds.has(id))) errors.push('Alle empfangenden Personen müssen in den aktuellen Stammdaten vorhanden sein.')
+  if (!invoice.studentIds.length) errors.push('Mindestens ein Kind auswählen.')
+  else if (invoice.studentIds.some((id) => !studentIds.has(id))) errors.push('Alle ausgewählten Kinder müssen in den aktuellen Stammdaten vorhanden sein.')
+
+  const linkedGuardianIds = new Set(selectedStudents.flatMap((student) => student.guardianIds))
+  if (invoice.guardianIds.length && invoice.guardianIds.some((id) => guardianIds.has(id) && !linkedGuardianIds.has(id))) {
+    errors.push('Alle empfangenden Personen müssen einem ausgewählten Kind zugeordnet sein.')
+  }
+  if (!invoice.invoiceDate || !invoice.dueDate) errors.push('Rechnungs- und Fälligkeitsdatum angeben.')
+  if (!billingPeriodFromItems(invoice.items, invoice.invoiceDate)) errors.push('Leistungszeitraum über die Positionsdaten angeben.')
+  if (!invoice.items.length) errors.push('Mindestens eine Position ergänzen.')
+  if (invoice.items.some((item) => (
+    !item.serviceDate
+    || !item.description.trim()
+    || !Number.isFinite(item.quantity)
+    || item.quantity < .01
+    || item.quantity > 99.99
+    || Math.round(item.quantity * 100) / 100 !== item.quantity
+    || !Number.isFinite(item.unitPrice)
+    || item.unitPrice < 0
+  ))) errors.push('Alle Positionen vollständig und mit gültigen Werten ausfüllen.')
+  if (invoice.items.some((item) => !studentIds.has(item.studentId) || !selectedStudentIds.has(item.studentId))) {
+    errors.push('Alle Positionen müssen einem ausgewählten Kind aus den aktuellen Stammdaten zugeordnet sein.')
+  }
+  if (!isFooterTextWithinLimit(invoice.legalText)) errors.push(`Der Fußzeilen-/Rechtstext darf höchstens ${MAX_FOOTER_TEXT_LENGTH} Zeichen lang sein.`)
+  return errors
+}
+
 export function footerTextForPrint(value: string): string {
   return limitFooterText(value.replace(/\s+/g, ' ').trim())
 }
