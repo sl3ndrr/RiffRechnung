@@ -14,7 +14,7 @@ import { ChangelogModal } from './components/ChangelogModal'
 import { ToastRegion } from './components/ToastRegion'
 import { InvoicePrint } from './components/InvoicePrint'
 import { createDemoState, createEmptyInvoiceDraft, emptyState } from './lib/defaults'
-import { clearDirectoryHandle, ensureWritePermission, loadLastBackupAt, loadState, parseBackup, readDirectoryHandle, recordBackupExport, saveState, serializeBackup, storeDirectoryHandle, type StorageRecoveryState, writeBackupToDirectory } from './lib/storage'
+import { clearDirectoryHandle, ensureWritePermission, loadLastBackupAt, loadState, parseBackup, persistState, readDirectoryHandle, recordBackupExport, serializeBackup, storeDirectoryHandle, type StorageRecoveryState, writeBackupToDirectory } from './lib/storage'
 import { billingPeriodFromItems, calculateDueDate, downloadText, ensureStudentCodePattern, guardianName, invoiceFinalizationErrors, invoicePdfTitle, isInvoiceSetupComplete, limitFooterText, nextInvoiceAllocation, parseDate, reopenInvoiceAsDraft, statusLabel, studentCodeForIndex, uid } from './lib/utils'
 import { APP_VERSION } from './version'
 
@@ -64,7 +64,11 @@ function App() {
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
   const [changelogOpen, setChangelogOpen] = useState(false)
-  const [saveStateLabel, setSaveStateLabel] = useState<'saved' | 'saving'>('saved')
+  const [saveStateLabel, setSaveStateLabel] = useState<'saved' | 'saving' | 'error'>('saved')
+  const [localSaveError, setLocalSaveError] = useState<string | null>(null)
+  const [fileBackupStatus, setFileBackupStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [fileBackupError, setFileBackupError] = useState<string | null>(null)
+  const [saveRetry, setSaveRetry] = useState(0)
   const [savedAt, setSavedAt] = useState(() => new Date())
   const [lastBackupAt, setLastBackupAt] = useState(loadLastBackupAt)
   const [folderConnected, setFolderConnected] = useState(false)
@@ -94,23 +98,33 @@ function App() {
 
   useEffect(() => {
     if (recovery) return
+    const includeFileBackup = !firstSave.current && Boolean(folderHandle.current)
     setSaveStateLabel('saving')
+    setLocalSaveError(null)
+    if (includeFileBackup) {
+      setFileBackupStatus('saving')
+      setFileBackupError(null)
+    }
     const timer = window.setTimeout(async () => {
-      try {
-        saveState(state)
+      const result = await persistState(state, folderHandle.current, includeFileBackup)
+      if (result.local.status === 'saved') {
         setSavedAt(new Date())
         setSaveStateLabel('saved')
-        if (!firstSave.current && folderHandle.current && await ensureWritePermission(folderHandle.current)) {
-          await writeBackupToDirectory(folderHandle.current, state)
-        }
-      } catch {
-        setSaveStateLabel('saved')
-        toast('Lokales Speichern ist fehlgeschlagen. Bitte JSON-Backup erstellen.', 'error')
+      } else {
+        setSaveStateLabel('error')
+        setLocalSaveError(result.local.error ?? 'Lokales Speichern ist fehlgeschlagen.')
+      }
+      if (result.fileBackup.status === 'saved') {
+        setFileBackupStatus('saved')
+        setFileBackupError(null)
+      } else if (result.fileBackup.status === 'error') {
+        setFileBackupStatus('error')
+        setFileBackupError(result.fileBackup.error ?? 'Das Datei-Backup ist fehlgeschlagen.')
       }
       firstSave.current = false
     }, 450)
     return () => window.clearTimeout(timer)
-  }, [recovery, state, toast])
+  }, [recovery, saveRetry, state])
 
   useEffect(() => {
     readDirectoryHandle().then(async (handle) => {
@@ -490,7 +504,11 @@ function App() {
 
   const exportBackup = () => {
     downloadText(`riffrechnung-backup-${new Date().toISOString().slice(0, 10)}.json`, serializeBackup(state))
-    setLastBackupAt(recordBackupExport())
+    try {
+      setLastBackupAt(recordBackupExport())
+    } catch {
+      setLastBackupAt(new Date().toISOString())
+    }
     toast('JSON-Backup heruntergeladen.', 'success')
   }
 
@@ -518,16 +536,22 @@ function App() {
     if (!window.showDirectoryPicker) return
     try {
       const handle = await window.showDirectoryPicker({ mode: 'readwrite' })
+      setFileBackupStatus('saving')
+      setFileBackupError(null)
       if (!await ensureWritePermission(handle, true)) throw new Error('Keine Schreibberechtigung erteilt.')
       await storeDirectoryHandle(handle)
       await writeBackupToDirectory(handle, state)
       folderHandle.current = handle
       setFolderConnected(true)
       setFolderName(handle.name)
+      setFileBackupStatus('saved')
       toast('Backup-Ordner verbunden.', 'success')
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return
-      toast(error instanceof Error ? error.message : 'Ordner konnte nicht verbunden werden.', 'error')
+      const message = error instanceof Error ? error.message : 'Ordner konnte nicht verbunden werden.'
+      setFileBackupStatus('error')
+      setFileBackupError(message)
+      toast(message, 'error')
     }
   }
 
@@ -536,18 +560,26 @@ function App() {
     folderHandle.current = null
     setFolderConnected(false)
     setFolderName('')
+    setFileBackupStatus('idle')
+    setFileBackupError(null)
     toast('Backup-Ordner getrennt.', 'info')
   }
 
   const backupNow = async () => {
     const handle = folderHandle.current
     if (!handle) return exportBackup()
+    setFileBackupStatus('saving')
+    setFileBackupError(null)
     try {
       if (!await ensureWritePermission(handle, true)) throw new Error('Schreibberechtigung fehlt.')
       await writeBackupToDirectory(handle, state)
+      setFileBackupStatus('saved')
       toast('Backup-Datei aktualisiert.', 'success')
     } catch (error) {
-      toast(error instanceof Error ? error.message : 'Backup fehlgeschlagen.', 'error')
+      const message = error instanceof Error ? error.message : 'Backup fehlgeschlagen.'
+      setFileBackupStatus('error')
+      setFileBackupError(message)
+      toast(message, 'error')
     }
   }
 
@@ -587,6 +619,10 @@ function App() {
   const themeToggleLabel = `Aktuelles Farbschema: ${themeNames[state.settings.theme]}. Als Nächstes ${themeNames[nextTheme]} aktivieren.`
   const ThemeToggleIcon = state.settings.theme === 'system' ? Palette : state.settings.theme === 'light' ? Sun : Moon
   const backupStatusLabel = lastBackupAt ? `Letztes Backup: ${backupDateFormatter.format(new Date(lastBackupAt))}` : 'Noch kein Backup'
+  const fileBackupLabel = folderConnected
+    ? fileBackupStatus === 'saving' ? 'Datei-Backup speichert …' : fileBackupStatus === 'error' ? 'Datei-Backup fehlgeschlagen' : fileBackupStatus === 'saved' ? 'Datei-Backup gespeichert' : `Backup-Ordner: ${folderName}`
+    : backupStatusLabel
+  const persistenceErrorText = [localSaveError ? `Lokaler Speicher: ${localSaveError}` : '', fileBackupError ? `Datei-Backup: ${fileBackupError}` : ''].filter(Boolean).join(' ')
 
   if (recovery) return (
     <>
@@ -618,8 +654,10 @@ function App() {
         <header className="topbar">
           <button className="icon-button mobile-only" onClick={() => setMobileNav(true)} aria-label="Navigation öffnen"><Menu aria-hidden="true" /></button>
           <button className="topbar-search" onClick={() => { setPage('invoices'); requestAnimationFrame(() => document.querySelector<HTMLInputElement>('#invoice-search')?.focus()) }}><Search aria-hidden="true" /><span>Rechnungen durchsuchen</span></button>
-          <div className="topbar__end"><div className="topbar__storage-status"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : ''}`}><i />{saveStateLabel === 'saving' ? 'Speichert …' : `Gespeichert ${savedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`}</span><span className="backup-indicator">{backupStatusLabel}</span></div><button className="icon-button" onClick={toggleTheme} aria-label={themeToggleLabel} title={themeToggleLabel}><ThemeToggleIcon aria-hidden="true" /></button><button className="button button--primary topbar-new" onClick={openNewInvoice}><FilePlus2 aria-hidden="true" /><span>Neue Rechnung</span></button></div>
+          <div className="topbar__end"><div className="topbar__storage-status"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : saveStateLabel === 'error' ? 'is-error' : ''}`}><i />{saveStateLabel === 'saving' ? 'Speichert …' : saveStateLabel === 'error' ? 'Lokal nicht gespeichert' : `Lokal gespeichert ${savedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`}</span><span className={`backup-indicator ${fileBackupStatus === 'error' ? 'is-error' : ''}`}>{fileBackupLabel}</span></div><button className="icon-button" onClick={toggleTheme} aria-label={themeToggleLabel} title={themeToggleLabel}><ThemeToggleIcon aria-hidden="true" /></button><button className="button button--primary topbar-new" onClick={openNewInvoice}><FilePlus2 aria-hidden="true" /><span>Neue Rechnung</span></button></div>
         </header>
+
+        {persistenceErrorText && <section className="persistence-error" role="alert"><div><strong>Speichern fehlgeschlagen</strong><p>{persistenceErrorText}</p></div><div className="button-row"><button className="button button--tonal" type="button" onClick={() => setSaveRetry((current) => current + 1)}>Erneut versuchen</button><button className="button button--text" type="button" onClick={exportBackup}>JSON-Backup exportieren</button></div></section>}
 
         <main id="main-content" tabIndex={-1}>
           {page === 'dashboard' && <Dashboard state={state} onNavigate={setCurrentPage} onNewInvoice={openNewInvoice} onLoadDemo={loadDemo} onOpenInvoice={openInvoice} />}

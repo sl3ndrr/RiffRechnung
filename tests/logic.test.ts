@@ -9,7 +9,7 @@ import { InvoicePrint } from '../src/components/InvoicePrint'
 import { Dashboard } from '../src/views/Dashboard'
 import { createDemoState, defaultSettings, emptyState } from '../src/lib/defaults'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, runInvoiceMenuAction } from '../src/lib/invoiceMenu'
-import { loadLastBackupAt, loadState, parseBackup, recordBackupExport, saveState, serializeBackup } from '../src/lib/storage'
+import { loadLastBackupAt, loadState, parseBackup, persistState, recordBackupExport, saveState, serializeBackup } from '../src/lib/storage'
 import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoiceFinalizationErrors, invoicePdfTitle, invoiceTotal, invoicesToCsv, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, reopenInvoiceAsDraft, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
 import { APP_VERSION } from '../src/version'
 
@@ -711,7 +711,7 @@ test('beschädigte lokale Daten bleiben für die Wiederherstellung unangetastet'
 
   const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
   const recoverySource = readFileSync(new URL('../src/views/StorageRecovery.tsx', import.meta.url), 'utf8')
-  assert.match(appSource, /useEffect\(\(\) => \{\s+if \(recovery\) return\s+setSaveStateLabel/)
+  assert.match(appSource, /useEffect\(\(\) => \{\s+if \(recovery\) return[\s\S]*?persistState/)
   assert.match(appSource, /<StorageRecovery/)
   assert.match(recoverySource, /Beschädigte Rohdaten exportieren/)
   assert.match(recoverySource, /JSON-Backup wiederherstellen/)
@@ -738,6 +738,58 @@ test('Entwürfe lassen sich aus der Detailansicht nur mit vollständigen aktuell
   const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
   assert.match(appSource, /invoiceFinalizationErrors\(state, invoice\)/)
   assert.match(appSource, /Vorläufige konservative Fachregel/)
+})
+
+test('lokales Speichern und Datei-Backup werden unabhängig voneinander ausgeführt', async () => {
+  const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+  let writtenBackup = ''
+  const failingStorage = {
+    setItem: () => {
+      const error = new Error('Speicherplatz erschöpft')
+      error.name = 'QuotaExceededError'
+      throw error
+    },
+  } as unknown as Storage
+  const directoryHandle = {
+    name: 'Sicherungen',
+    queryPermission: async () => 'granted',
+    getFileHandle: async () => ({
+      createWritable: async () => ({
+        write: async (content: unknown) => { writtenBackup = String(content) },
+        close: async () => undefined,
+      }),
+    }),
+  } as unknown as FileSystemDirectoryHandle
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: failingStorage })
+
+  try {
+    const result = await persistState(emptyState(), directoryHandle, true)
+    assert.equal(result.local.status, 'error')
+    assert.match(result.local.error ?? '', /Speicherplatz erschöpft/)
+    assert.equal(result.fileBackup.status, 'saved')
+    assert.match(writtenBackup, /"app": "riffrechnung"/)
+
+    let localSaved = false
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { setItem: () => { localSaved = true } } as unknown as Storage })
+    const failingDirectoryHandle = {
+      queryPermission: async () => 'granted',
+      getFileHandle: async () => { throw new Error('Backup-Datei gesperrt') },
+    } as unknown as FileSystemDirectoryHandle
+    const reverseResult = await persistState(emptyState(), failingDirectoryHandle, true)
+    assert.equal(reverseResult.local.status, 'saved')
+    assert.equal(localSaved, true)
+    assert.equal(reverseResult.fileBackup.status, 'error')
+    assert.match(reverseResult.fileBackup.error ?? '', /Backup-Datei gesperrt/)
+  } finally {
+    if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage)
+    else Reflect.deleteProperty(globalThis, 'localStorage')
+  }
+
+  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+  assert.match(appSource, /localSaveError/)
+  assert.match(appSource, /fileBackupError/)
+  assert.match(appSource, /Erneut versuchen/)
+  assert.match(appSource, /JSON-Backup exportieren/)
 })
 
 test('Einstellungen werden gebündelt automatisch gespeichert', () => {

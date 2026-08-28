@@ -17,6 +17,11 @@ export interface StorageRecoveryState {
 
 export type StateLoadResult = { status: 'ready'; state: AppState } | StorageRecoveryState
 
+export interface PersistenceResult {
+  local: { status: 'saved' | 'error'; error?: string }
+  fileBackup: { status: 'skipped' | 'saved' | 'error'; error?: string }
+}
+
 const INVOICE_STATUSES = ['draft', 'sent', 'paid', 'overdue'] as const
 const RECIPIENT_STRATEGIES = ['joint', 'separate'] as const
 const LESSON_TYPES = ['solo', 'duo'] as const
@@ -396,6 +401,28 @@ export function loadState(): StateLoadResult {
 
 export function saveState(state: AppState): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+}
+
+export async function persistState(state: AppState, directoryHandle: FileSystemDirectoryHandle | null, includeFileBackup: boolean): Promise<PersistenceResult> {
+  let local: PersistenceResult['local']
+  try {
+    saveState(state)
+    local = { status: 'saved' }
+  } catch (error) {
+    local = { status: 'error', error: error instanceof Error ? error.message : 'Lokales Speichern ist fehlgeschlagen.' }
+  }
+
+  let fileBackup: PersistenceResult['fileBackup'] = { status: 'skipped' }
+  if (includeFileBackup && directoryHandle) {
+    try {
+      if (!await ensureWritePermission(directoryHandle)) throw new Error('Die Schreibberechtigung für den Backup-Ordner fehlt.')
+      await writeBackupToDirectory(directoryHandle, state)
+      fileBackup = { status: 'saved' }
+    } catch (error) {
+      fileBackup = { status: 'error', error: error instanceof Error ? error.message : 'Das Datei-Backup ist fehlgeschlagen.' }
+    }
+  }
+  return { local, fileBackup }
 }
 
 export function loadLastBackupAt(): string | null {
