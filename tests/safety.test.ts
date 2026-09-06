@@ -53,8 +53,7 @@ function roundTrip(state: AppState): AppState {
   assert.deepEqual({ ...again, updatedAt: imported.updatedAt }, imported)
   saveState(imported)
   const loaded = loadState()
-  assert.equal(loaded.status, 'ready')
-  if (loaded.status !== 'ready') throw new Error(loaded.error)
+  if (loaded.status !== 'ready') assert.fail(`Unerwarteter Recovery-Zustand: ${loaded.error}`)
   assert.deepEqual(loaded.state, imported)
   return loaded.state
 }
