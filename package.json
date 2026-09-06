@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
+    "typecheck": "tsc -b",
     "test": "npm run test:bundle && node --test .test-dist/logic.test.mjs",
     "test:bundle": "esbuild tests/logic.test.ts --bundle --platform=node --format=esm --packages=external --jsx=automatic --outfile=.test-dist/logic.test.mjs"
   },
@@ -28,7 +29,7 @@
     "eslint": "^9.17.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.16",
-    "esbuild": "^0.24.2",
+    "esbuild": "0.25.12",
     "globals": "^15.14.0",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.19.1",
