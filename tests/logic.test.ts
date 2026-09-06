@@ -1,4 +1,8 @@
+import { prepareNewInvoice, saveInvoiceState } from '../src/lib/commands'
+import { requireSuccess } from '../src/lib/result'
+import { adjustQuantity, parseQuantityInput } from '../src/lib/values'
 import './safety.test'
+import './commands.test'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -189,7 +193,7 @@ test('historische EPC-Kontodaten behalten die bisherige IBAN-Prüfung', () => {
   assert.equal(isValidIban('GI75 NWBK 0000 0000 7099 453'), false)
 })
 
-test('Rechnungsstart verlangt Absendernamen und eine gültige IBAN', () => {
+test('Entwürfe dürfen vor der Einrichtung starten; vollständige Einrichtung verlangt gültige IBAN', () => {
   const settings = structuredClone(defaultSettings)
   assert.equal(isInvoiceSetupComplete(settings), false)
   settings.issuer.name = '  Gitarrenstudio Beispiel  '
@@ -198,14 +202,13 @@ test('Rechnungsstart verlangt Absendernamen und eine gültige IBAN', () => {
   settings.iban = 'DE02 1203 0000 0000 2020 51'
   assert.equal(isInvoiceSetupComplete(settings), true)
 
-  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
-  const invoiceGuard = appSource.slice(appSource.indexOf('const openNewInvoice'), appSource.indexOf('const editInvoice'))
-  assert.ok(invoiceGuard.indexOf('isInvoiceSetupComplete') < invoiceGuard.indexOf('!state.students.length'))
-  assert.match(invoiceGuard, /setPage\('settings'\)/)
-  assert.match(invoiceGuard, /setPage\('people'\)/)
+  const initial = emptyState()
+  const draft = requireSuccess(prepareNewInvoice(initial))
+  const saved = requireSuccess(saveInvoiceState(initial, draft, false))
+  assert.equal(saved.invoices.length, 1)
+  assert.equal(saved.invoices[0].number, null)
+  assert.throws(() => changeInvoiceStatus(saved, saved.invoices[0].id, 'sent'), /Finalisieren nicht möglich/)
 
-  const invoiceSource = readFileSync(new URL('../src/views/Invoices.tsx', import.meta.url), 'utf8')
-  assert.equal(invoiceSource.match(/onClick=\{onNew\}/g)?.length, 2)
 })
 
 test('Onboarding priorisiert die Einrichtung und hält den Demo-Zugang sichtbar', () => {
@@ -571,7 +574,7 @@ test('vollständiges Backup lässt sich wiederherstellen', () => {
     },
   })
   const restored = parseBackup(serializeBackup(state))
-  assert.equal(restored.schemaVersion, 2)
+  assert.equal(restored.schemaVersion, 3)
   assert.equal(restored.settings.issuer.name, 'Test Unterricht')
   assert.equal(restored.students[0]?.billingCode, 'a')
   assert.equal(restored.voidedInvoiceNumbers[0]?.number, '2026-a-0004')
@@ -655,6 +658,8 @@ test('finalisierte Historie darf gelöschte Stammdaten über den Snapshot refere
 test('ältere Backups erhalten stabile Kinderkennzeichen in Speicherreihenfolge', () => {
   const legacy = JSON.parse(serializeBackup(emptyState()))
   legacy.app = 'gitarrenrechnungen'
+  legacy.schemaVersion = 2
+  legacy.data.schemaVersion = 2
   legacy.data.students = [student('student-a', 'Anna', ''), student('student-b', 'Ben', '')]
   legacy.data.settings.numberPattern = '{YYYY}-{NNNN}'
   delete legacy.data.nextStudentCodeIndex
@@ -669,7 +674,7 @@ test('ältere Kombinationszähler werden auf segmentierte Schlüssel migriert', 
   state.students = [student('student-a', 'Anna', 'a'), student('student-b', 'Ben', 'b'), student('student-ab', 'Zora', 'ab')]
   state.invoices = [invoice({ studentIds: ['student-a', 'student-b'], number: '2026-ab-0003', sequence: 3 })]
   state.counters = { '2026:ab': 4 }
-  const restored = parseBackup(serializeBackup(state))
+  const restored = parseBackup(JSON.stringify({ ...state, schemaVersion: 2 }))
   assert.equal(restored.counters['2026:a+b'], 4)
   assert.equal(restored.counters['2026:ab'], 4)
 })
@@ -687,6 +692,8 @@ test('ältere Rechnungspositionen erhalten einen Typ ohne Preis- oder Titelände
     }],
   })]
   const legacy = JSON.parse(serializeBackup(state))
+  legacy.schemaVersion = 2
+  legacy.data.schemaVersion = 2
   delete legacy.data.invoices[0].items[0].lessonType
   const restoredItem = parseBackup(JSON.stringify(legacy)).invoices[0]?.items[0]
   assert.equal(restoredItem?.lessonType, 'duo')
@@ -922,13 +929,14 @@ test('Modal-Formulare verknüpfen ihre Footer-Buttons mit dem nativen Submit', (
 })
 
 test('Mengenfeld akzeptiert Hundertstelwerte und bietet Viertelschritt-Steuerung', () => {
-  const source = readFileSync(new URL('../src/views/InvoiceEditor.tsx', import.meta.url), 'utf8')
-  assert.match(source, /const MIN_QUANTITY = 0\.01/)
-  assert.match(source, /const MAX_QUANTITY = 99\.99/)
-  assert.match(source, /const QUANTITY_INCREMENT = 0\.25/)
-  assert.match(source, /min=\{MIN_QUANTITY\} max=\{MAX_QUANTITY\} step="0\.01"/)
-  assert.match(source, /event\.key === 'ArrowUp' \|\| event\.key === 'ArrowDown'/)
-  assert.match(source, /className="quantity-stepper"/)
+  assert.equal(parseQuantityInput('0,01'), 0.01)
+  assert.equal(parseQuantityInput('99.99'), 99.99)
+  for (const raw of ['', '0', '-1', '100', '1.001', 'NaN', 'Infinity']) assert.equal(parseQuantityInput(raw), null)
+  assert.equal(adjustQuantity(.75, 1), 1)
+  assert.equal(adjustQuantity(.75, -1), .5)
+  assert.equal(adjustQuantity(.01, -1), .01)
+  assert.equal(adjustQuantity(99.99, 1), 99.99)
+
 })
 
 test('Kinderliste startet mit aktivem Aktiv-Filter', () => {

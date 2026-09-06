@@ -135,7 +135,7 @@ export interface VoidedInvoiceNumber {
 }
 
 export interface AppState {
-  schemaVersion: 2
+  schemaVersion: 3
   guardians: Guardian[]
   students: Student[]
   invoices: Invoice[]

@@ -9,16 +9,19 @@ import { Reports } from './views/Reports'
 import { Settings } from './views/Settings'
 import { About } from './views/About'
 import { StorageRecovery } from './views/StorageRecovery'
+import { ImportReview, type ImportReviewData } from './views/ImportReview'
+import { applyImport, inspectImportBytes, type ImportPreview } from './lib/importState'
+import { requireSuccess } from './lib/result'
+import { prepareInvoiceCopy, prepareNewInvoice, saveGuardianState, saveInvoiceState, saveSettingsState, saveStudentState } from './lib/commands'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { ChangelogModal } from './components/ChangelogModal'
 import { ToastRegion } from './components/ToastRegion'
 import { InvoicePrint } from './components/InvoicePrint'
 import { createEmptyInvoiceDraft, emptyState } from './lib/defaults'
-import { clearDirectoryHandle, inspectBackupDirectory, loadLastBackupAt, loadState, parseBackup, persistState, readDirectoryHandle, recordBackupExport, serializeBackup, STORAGE_KEY, storeDirectoryHandle, type StorageRecoveryState, validateBackupState, writeBackupToDirectory } from './lib/storage'
-import { billingPeriodFromItems, calculateDueDate, downloadText, invoicePdfTitle, isInvoiceSetupComplete, parseDate, statusLabel, studentCodeForIndex, uid } from './lib/utils'
-import { changeInvoiceStatus, saveInvoiceDraft } from './lib/invoiceActions'
+import { clearDirectoryHandle, inspectBackupDirectory, loadLastBackupAt, loadState, persistState, readDirectoryHandle, recordBackupExport, serializeBackup, STORAGE_KEY, storeDirectoryHandle, type StorageRecoveryState, validateBackupState, writeBackupToDirectory } from './lib/storage'
+import { downloadText, invoicePdfTitle, statusLabel, uid } from './lib/utils'
+import { changeInvoiceStatus } from './lib/invoiceActions'
 import { assertOriginalsPreserved, assertReplacementAllowed, demoBlockedReason, FINALIZED_INVOICE_BLOCKED, isFinalizedInvoice, loadDemoState } from './lib/safety'
-import { updateSettings } from './lib/settings'
 import { APP_VERSION } from './version'
 
 const navItems: Array<{ key: PageKey; label: string; icon: typeof LayoutDashboard }> = [
@@ -56,7 +59,7 @@ interface PrintRequest {
 function App() {
   const [initialLoad] = useState(loadState)
   const [state, setState] = useState<AppState>(() => initialLoad.status === 'ready' ? initialLoad.state : emptyState())
-  const [recovery, setRecovery] = useState<StorageRecoveryState | null>(() => initialLoad.status === 'recovery' ? initialLoad : null)
+  const [recovery] = useState<StorageRecoveryState | null>(() => initialLoad.status === 'recovery' ? initialLoad : null)
   const stateRef = useRef(state)
   stateRef.current = state
   const [settingsTouched, setSettingsTouched] = useState(false)
@@ -68,6 +71,7 @@ function App() {
   const [printRequest, setPrintRequest] = useState<PrintRequest | null>(null)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
+  const [importReview, setImportReview] = useState<ImportReviewData | null>(null)
   const [changelogOpen, setChangelogOpen] = useState(false)
   const [saveStateLabel, setSaveStateLabel] = useState<'saved' | 'saving' | 'error'>('saved')
   const [localSaveError, setLocalSaveError] = useState<string | null>(null)
@@ -84,7 +88,7 @@ function App() {
   const printRequestRef = useRef<PrintRequest | null>(null)
   const firstSave = useRef(true)
   const persistedUpdatedAt = useRef(initialLoad.status === 'ready' ? initialLoad.persistedUpdatedAt : null)
-  const forceLocalOverwrite = useRef(initialLoad.status === 'recovery')
+  const forceLocalOverwrite = useRef(false)
   const persistenceQueue = useRef(Promise.resolve())
   const broadcastChannel = useRef<BroadcastChannel | null>(null)
   const tabId = useRef(uid('tab'))
@@ -213,18 +217,10 @@ function App() {
   }, [state.settings.reducedMotion, state.settings.theme])
 
   const openNewInvoice = useCallback(() => {
-    if (!isInvoiceSetupComplete(state.settings)) {
-      setPage('settings')
-      toast('Richte zuerst Absender & Konto mit deinem Namen und einer gültigen IBAN ein.', 'info')
-      return
-    }
-    if (!state.students.length) {
-      setPage('people')
-      toast('Lege danach ein Kind mit einer erziehungsberechtigten Person an.', 'info')
-      return
-    }
-    setEditor({ open: true, draft: createEmptyInvoiceDraft(state.settings), editing: false, finalized: false, invoiceNumber: null })
-  }, [state.settings, state.students.length, toast])
+    const result = prepareNewInvoice(stateRef.current)
+    if (!result.ok) return toast(result.errors.map((error) => error.message).join(' '), 'error')
+    setEditor({ open: true, draft: result.value, editing: false, finalized: false, invoiceNumber: null })
+  }, [toast])
 
   const editInvoice = (invoice: Invoice) => {
     if (isFinalizedInvoice(invoice)) return toast(FINALIZED_INVOICE_BLOCKED, 'error')
@@ -252,7 +248,7 @@ function App() {
   const saveInvoice = (draft: InvoiceDraft, finalize: boolean) => {
     let savedId: string | null = null
     const saved = commit((current) => {
-      const next = saveInvoiceDraft(current, draft, finalize)
+      const next = requireSuccess(saveInvoiceState(current, draft, finalize))
       savedId = next.invoices.at(-1)?.id ?? null
       return next
     }, finalize ? 'Rechnung finalisiert' : 'Rechnungsentwurf gespeichert', 'invoice', draft.id)
@@ -270,28 +266,9 @@ function App() {
   }
 
   const duplicateInvoice = (invoice: Invoice) => {
-    const sourceDate = parseDate(invoice.invoiceDate)
-    const targetDate = new Date()
-    const monthDelta = (targetDate.getFullYear() - sourceDate.getFullYear()) * 12 + targetDate.getMonth() - sourceDate.getMonth()
-    const shiftDate = (value: string) => {
-      const date = parseDate(value)
-      if (Number.isNaN(date.getTime())) return targetDate.toISOString().slice(0, 10)
-      date.setMonth(date.getMonth() + monthDelta)
-      return date.toISOString().slice(0, 10)
-    }
-    const items = invoice.items.map((item) => ({ ...item, id: uid('item'), serviceDate: shiftDate(item.serviceDate) }))
-    setEditor({ open: true, editing: false, finalized: false, invoiceNumber: null, draft: {
-      invoiceDate: targetDate.toISOString().slice(0, 10),
-      dueDate: calculateDueDate(targetDate.toISOString().slice(0, 10), state.settings.paymentTermDays),
-      period: billingPeriodFromItems(items, targetDate.toISOString().slice(0, 10)),
-      guardianIds: invoice.guardianIds.filter((id) => state.guardians.some((guardian) => guardian.id === id)),
-      studentIds: invoice.studentIds.filter((id) => state.students.some((student) => student.id === id)),
-      recipientStrategy: invoice.recipientStrategy,
-      items,
-      introText: invoice.introText,
-      freeText: invoice.freeText,
-      legalText: state.settings.defaultLegalText,
-    } })
+    const result = prepareInvoiceCopy(stateRef.current, invoice.id)
+    if (!result.ok) return toast(result.errors.map((error) => error.message).join(' '), 'error')
+    setEditor({ open: true, editing: false, finalized: false, invoiceNumber: null, draft: result.value })
   }
 
   const requestDeleteInvoice = (invoice: Invoice) => {
@@ -308,27 +285,18 @@ function App() {
     })
   }
 
-  const saveGuardian = (guardian: Guardian) => {
-    const exists = state.guardians.some((item) => item.id === guardian.id)
-    if (!commit((current) => ({ ...current, guardians: exists ? current.guardians.map((item) => item.id === guardian.id ? guardian : item) : [...current.guardians, guardian] }), exists ? 'Elternteil aktualisiert' : 'Elternteil angelegt', 'person', guardian.id)) return
-    toast(exists ? 'Kontakt aktualisiert.' : 'Kontakt angelegt.', 'success')
+  const saveGuardian = (guardian: Guardian): boolean => {
+    const exists = stateRef.current.guardians.some((item) => item.id === guardian.id)
+    const saved = commit((current) => requireSuccess(saveGuardianState(current, guardian)), exists ? 'Elternteil aktualisiert' : 'Elternteil angelegt', 'person', guardian.id)
+    if (saved) toast(exists ? 'Kontakt aktualisiert.' : 'Kontakt angelegt.', 'success')
+    return saved
   }
 
-  const saveStudent = (student: Student) => {
-    const exists = state.students.some((item) => item.id === student.id)
-    if (!commit((current) => {
-      const existing = current.students.find((item) => item.id === student.id)
-      if (existing) {
-        return { ...current, students: current.students.map((item) => item.id === student.id ? { ...student, billingCode: existing.billingCode } : item) }
-      }
-      const billingCode = studentCodeForIndex(current.nextStudentCodeIndex)
-      return {
-        ...current,
-        students: [...current.students, { ...student, billingCode }],
-        nextStudentCodeIndex: current.nextStudentCodeIndex + 1,
-      }
-    }, exists ? 'Kind aktualisiert' : 'Kind angelegt', 'person', student.id)) return
-    toast(exists ? 'Kind aktualisiert.' : 'Kind angelegt.', 'success')
+  const saveStudent = (student: Student): boolean => {
+    const exists = stateRef.current.students.some((item) => item.id === student.id)
+    const saved = commit((current) => requireSuccess(saveStudentState(current, student)), exists ? 'Kind aktualisiert' : 'Kind angelegt', 'person', student.id)
+    if (saved) toast(exists ? 'Kind aktualisiert.' : 'Kind angelegt.', 'success')
+    return saved
   }
 
   const deleteGuardian = (guardian: Guardian) => setConfirmation({
@@ -410,28 +378,36 @@ function App() {
     toast('Beschädigte Rohdaten heruntergeladen.', 'success')
   }
 
+  const reviewRecovery = () => {
+    if (!recovery) return
+    const bytes = new TextEncoder().encode(recovery.rawData)
+    setImportReview({ bytes, result: inspectImportBytes(bytes) })
+  }
+
   const importBackup = async (file: File) => {
     try {
-      const imported = parseBackup(await file.text())
-      setConfirmation({
-        title: 'Backup wiederherstellen?',
-        message: `Die Datei enthält ${imported.students.length} Kinder und ${imported.invoices.length} Rechnungen. Der aktuelle lokale Datenstand wird vollständig ersetzt.`,
-        label: 'Daten ersetzen', danger: true,
-        action: () => {
-          try {
-            assertReplacementAllowed(stateRef.current)
-            stateRef.current = imported
-            setState(imported)
-            setRecovery(null)
-            setPage('dashboard')
-            setSelectedInvoiceId(null)
-            toast('Backup zur lokalen Wiederherstellung übernommen.', 'info')
-          } catch (error) { toast(error instanceof Error ? error.message : 'Wiederherstellung gesperrt.', 'error') }
-        },
-      })
-    } catch (error) {
-      toast(error instanceof Error ? error.message : 'Die Backup-Datei konnte nicht gelesen werden.', 'error')
-    }
+      const bytes = new Uint8Array(await file.arrayBuffer())
+      setImportReview({ bytes, result: inspectImportBytes(bytes) })
+    } catch (error) { toast(error instanceof Error ? error.message : 'Die Backup-Datei konnte nicht gelesen werden.', 'error') }
+  }
+
+  const confirmImport = (preview: ImportPreview) => {
+    setImportReview(null)
+    setConfirmation({
+      title: 'Backup wiederherstellen?',
+      message: `Die Datei enthält ${preview.state.students.length} Kinder und ${preview.state.invoices.length} Rechnungen. Der aktuelle lokale Datenstand wird vollständig ersetzt.`,
+      label: 'Daten ersetzen', danger: true,
+      action: () => {
+        try {
+          const imported = requireSuccess(applyImport(stateRef.current, preview))
+          stateRef.current = imported
+          setState(imported)
+          setPage('dashboard')
+          setSelectedInvoiceId(null)
+          toast('Backup zur lokalen Wiederherstellung übernommen.', 'info')
+        } catch (error) { toast(error instanceof Error ? error.message : 'Wiederherstellung gesperrt.', 'error') }
+      },
+    })
   }
 
   const connectFolder = async () => {
@@ -518,9 +494,7 @@ function App() {
     },
   })
 
-  const saveSettings = useCallback((settings: SettingsType) => commit((current) => ({
-    ...current, settings: updateSettings(current.settings, settings),
-  }), 'Einstellungen aktualisiert', 'settings'), [commit])
+  const saveSettings = useCallback((settings: SettingsType) => commit((current) => requireSuccess(saveSettingsState(current, settings)), 'Einstellungen aktualisiert', 'settings'), [commit])
   const loadDemo = () => {
     try {
       const stored = loadState()
@@ -548,7 +522,8 @@ function App() {
 
   if (recovery) return (
     <>
-      <StorageRecovery recovery={recovery} onExport={exportRecoveryData} onImport={importBackup} />
+      <StorageRecovery recovery={recovery} onExport={exportRecoveryData} onImport={importBackup} onReview={reviewRecovery} />
+      <ImportReview review={importReview} onClose={() => setImportReview(null)} />
       <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />
       <ToastRegion messages={toasts} onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))} />
     </>
@@ -594,7 +569,8 @@ function App() {
 
       <nav className="mobile-bottom-nav" aria-label="Mobile Hauptnavigation">{navItems.slice(0, 4).map(({ key, label, icon: Icon }) => <button className={page === key ? 'is-active' : ''} aria-current={page === key ? 'page' : undefined} key={key} onClick={() => setCurrentPage(key)}><Icon aria-hidden="true" /><span>{label}</span></button>)}</nav>
 
-      <InvoiceEditor open={editor.open} draft={editor.draft} editing={editor.editing} finalized={editor.finalized} invoiceNumber={editor.invoiceNumber} guardians={state.guardians} students={state.students} settings={state.settings} onClose={() => setEditor((current) => ({ ...current, open: false }))} onSave={saveInvoice} />
+      <ImportReview review={importReview} onClose={() => setImportReview(null)} onApply={confirmImport} />
+      <InvoiceEditor state={state} open={editor.open} draft={editor.draft} editing={editor.editing} finalized={editor.finalized} invoiceNumber={editor.invoiceNumber} guardians={state.guardians} students={state.students} settings={state.settings} onClose={() => setEditor((current) => ({ ...current, open: false }))} onSave={saveInvoice} />
       <ChangelogModal open={changelogOpen} onClose={() => setChangelogOpen(false)} />
       <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />
       <ToastRegion messages={toasts} onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))} />

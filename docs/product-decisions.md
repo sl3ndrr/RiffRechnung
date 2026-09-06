@@ -1,6 +1,6 @@
 # Produktentscheidungen
 
-Stand: Pakete 00/01, 2026-09-06. Quelle: beauftragter Umsetzungsplan zur Analyse von
+Stand: Pakete 00–02, 2026-09-06. Quelle: beauftragter Umsetzungsplan zur Analyse von
 `ba7857fd9180fa392c42a0235643e478e5077ee5`. Diese Regeln sind verbindliche Ziele;
 ihre technische Umsetzung wird pro Paket im [Umsetzungsstatus](implementation-status.md) belegt.
 
@@ -59,3 +59,67 @@ PRs prüfen GitHubs Merge-Stand; Pages prüft und veröffentlicht den auslösend
 Paket 01 ändert kein Datenformat und erfindet keine Originalhistorie. Vorhandene
 Normalisierung und Import-Zeitstempel bleiben unverändert; Migrationen folgen erst
 in Paket 02, revisionssichere Speicherung in Paket 03.
+
+
+## Paket 02 – Speicherbare Zustände und Reparaturen
+
+- **Drei Ebenen:** Leere/unvollständige Zahlen bleiben ausschließlich im Formular;
+  sie überschreiben keinen letzten gültigen Wert. Speicherbare Entwürfe dürfen
+  ohne Personen, Positionen und vollständige Einrichtung beginnen. Vorhandene
+  Positionen brauchen gültige IDs, Kalenderdaten und aktuelle Kindreferenzen.
+  Finalisierung verlangt zusätzlich vollständige Leistungen/Empfänger und eine
+  gültige deutsche IBAN. Die Aufteilungssperre aus 01 bleibt bis 06 erhalten.
+- **Zahlen/Identitäten:** Preise sind endlich, nicht negativ und höchstens
+  `Number.MAX_SAFE_INTEGER / 100`; auch die Positions-/Rechnungssumme muss in
+  sicheren Centzahlen darstellbar bleiben. Untercentpreise bleiben unverändert
+  zulässig, die exakte Geldrechnung folgt in 05. Mengen: 0,01–99,99 mit höchstens
+  zwei Nachkommastellen. Zahlungsziel: sichere ganze Zahl ab 0. Formulare erlauben
+  Punkt/Komma, keine Exponentialschreibweise; numerischer Unterlauf wird abgewiesen.
+  IDs: 1–200 ASCII-Zeichen, Beginn alphanumerisch, danach zusätzlich `._:-`.
+- **Kopien:** Aktive Rechnungen haben global eindeutige Positions-IDs. Die gemeinsame
+  Kopierfunktion vergibt neue IDs und erkennt Generatorfehler/Kollisionen. Fehlende
+  historische Personen sperren eine Kopie, ohne Referenzen oder Positionen zu
+  entfernen. Belegversionen aus 04 bekommen einen eigenen Identitäts-/Referenzbereich.
+  Die vorhandene Monatsverschiebung bleibt bis 05 bestehen; Kopien sind neue Entwürfe.
+- **Format 3 / Altformat 2:** Rohzustände und Umschläge der Apps `riffrechnung` und
+  `gitarrenrechnungen` werden geprüft. Versionsangaben müssen übereinstimmen;
+  unbekannte Felder, Fremdformate und neuere Versionen werden abgewiesen. Normale
+  Format-3-Lesevorgänge ändern nichts, auch keinen Zeitstempel. Bisherige optionale
+  Format-2-Felder werden nur in der versionierten Migration ergänzt und einzeln
+  protokolliert (Kinderkennzeichen, Typ, Nummernmuster/Kombinationszähler,
+  Reservierungsliste). Vorhandene Typen, Beträge, Nummern und Snapshots bleiben.
+- **Begrenzte ID-Reparatur:** Algorithmus `riffrechnung-v2-to-v3`, Version 1,
+  prüft zuerst sämtliche Struktur-, Zahlen- und Referenzregeln mit Positions-IDs
+  je Rechnung. Nur der nachgewiesene alte Erzeugungsfall wird repariert: separate
+  Rechnungen für unterschiedliche einzelne Empfänger, gleiche vollständige
+  Positionen, Texte, Daten und Erstellungszeit; übereinstimmende Snapshot-Anteile.
+  Die Herkunft ist eine überprüfbare Format-/Inhaltsbedingung, kein kryptografischer
+  Herkunftsnachweis. Doppelte IDs innerhalb einer Rechnung oder abweichende Inhalte
+  werden nicht repariert. Die erste ID bleibt, weitere erhalten deterministische,
+  kollisionsfreie IDs mit vollständiger Zuordnung. Danach gilt die volle globale
+  Format-3-Prüfung. Ausgestellte Forderungen werden nicht fachlich neu aufgeteilt.
+- **Rohdaten/Wiederherstellung:** Importdateien werden als Bytes behalten und nur
+  mit strikter UTF-8-Dekodierung geprüft. Export des Originals erhält auch BOM,
+  Zeilenenden und ungültige UTF-8-Bytes. Der Bericht enthält zusätzlich den exakten
+  ursprünglichen UTF-8-Text. Migration ist über Import UND Wiederherstellungsmodus
+  erreichbar. Migrierte oder beschädigte lokale Bestände werden in 02 ausschließlich
+  separat exportiert, nicht übernommen/automatisch überschrieben. Ein korrigierter
+  Format-3-Export kann in einem leeren Browserprofil geprüft/importiert werden.
+  Sichere Übernahme im bestehenden Profil folgt in 03. Rückkehr zu altem Code:
+  ursprüngliche Datei in einem getrennten alten Profil verwenden; niemals Schema 3
+  mit altem Code überschreiben. Negative Preise, fehlende Personen oder Positionen
+  werden nicht erfunden, entfernt oder auf null gesetzt.
+- **Mailbox-Regel (R15):** Ein Feld ist leer oder genau eine ASCII-Mailbox:
+  lokaler Dot-Atom-Teil bis 64 Zeichen, gesamte Adresse bis 254, DNS-Domain mit
+  mindestens zwei Labels (je höchstens 63 Zeichen, keine Rand-Bindestriche).
+  Unterstützt werden Buchstaben/Ziffern und die Zeichen
+  ``!#$%&'*+-/=?^_`{|}~`` zwischen Punkten. Keine führenden, abschließenden oder aufeinanderfolgenden Punkte im lokalen
+  Teil, Anzeigenamen, Anführungszeichen, Listen, Unicode-Mailboxen, Leer- oder
+  Steuerzeichen. Punycode-Domains sind möglich. Keine stille Trimmung/Entfernung.
+  `?`, `&`, `#` im gültigen lokalen Teil werden als Mailboxzeichen erhalten und
+  pro Empfänger kodiert; erst danach werden mehrere Empfänger durch Komma verbunden.
+  Betreff und Nachricht werden separat kodiert, Steuerzeichen im Betreff abgewiesen.
+  Fehlerhafte Live-Adressen blockieren Eingabe/Import sichtbar mit Feldpfad.
+  Historische Snapshot-Adressen bleiben originalgetreu und werden als Warnungen
+  ausgewiesen; ungültige Empfänger sperren den E-Mail-Link. Ein vorhandener Snapshot
+  mit leerer Adresse fällt nicht auf heutige Kontaktdaten zurück. Kein Versand erfolgt.

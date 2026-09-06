@@ -1,3 +1,4 @@
+import { commandResult } from '../lib/result'
 import { FINALIZED_INVOICE_BLOCKED, isFinalizedInvoice } from '../lib/safety'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -231,6 +232,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
   const status = effectiveStatus(invoice)
   const period = billingPeriodFromItems(invoice.items, invoice.invoiceDate)
   const reminder = createReminder(invoice, state.guardians, state.students)
+  const mailto = commandResult(() => mailtoUrl(invoice, state.guardians, state.students))
   const canRemind = status === 'sent' || status === 'overdue'
 
   const copyReminder = async () => {
@@ -267,7 +269,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
       {canRemind && (
         <section className="reminder-panel">
           <div><Mail aria-hidden="true" /><div><strong>Zahlungserinnerung</strong><p>Fertig formuliert, ohne automatischen Versand.</p></div></div>
-          <div className="button-row"><a className="button button--text" href={mailtoUrl(invoice, state.guardians, state.students)}><Mail aria-hidden="true" /> E-Mail öffnen</a><button className="button button--text" onClick={copyReminder}><Copy aria-hidden="true" /> Text kopieren</button></div>
+          <div className="button-row">{mailto.ok ? <a className="button button--text" href={mailto.value}><Mail aria-hidden="true" /> E-Mail öffnen</a> : <p role="alert">{mailto.errors.map((error) => error.message).join(' ')}</p>}<button className="button button--text" onClick={copyReminder}><Copy aria-hidden="true" /> Text kopieren</button></div>
         </section>
       )}
 

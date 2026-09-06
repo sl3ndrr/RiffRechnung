@@ -1,6 +1,6 @@
 # Umsetzungsstatus
 
-Stand: 2026-09-06, Pakete 00/01. Paket 01 baut auf dem noch offenen PR #19 auf. Analyse und Zielbranch `main` wurden
+Stand: 2026-09-06, Pakete 00–02. Paket 01 baut auf dem noch offenen PR #19 auf. Analyse und Zielbranch `main` wurden
 auf `ba7857fd9180fa392c42a0235643e478e5077ee5` abgeglichen (Tree
 `c00c371e0c8052bccaabc1208e6fd796a35c293e`). Keine `AGENTS.md` oder bisherigen
 Status-/Entscheidungsdateien im vollständig gelesenen Repository-Tree vorhanden.
@@ -17,7 +17,7 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 | --- | --- | --- | --- |
 | 00 | Ausgangsbasis, CI, esbuild | R23, R25, N01 | Implementiert und in CI geprüft; administrative Abnahme offen |
 | 01 | Gefährliche Abläufe vorläufig absichern | R01–R05, R10, R22 (Sofortschutz) | Sofortschutz implementiert und CI-geprüft; reale Browserabnahmen offen |
-| 02 | Fachbefehle, Validatoren, reparierbare Formate | R01, R04, R15, R24 | Laut Analyse offen |
+| 02 | Fachbefehle, Validatoren, reparierbare Formate | R01, R04, R15, R24 | Implementiert; Ergebnis-CI und Abnahmematrix werden unten nachgeführt |
 | 03 | Speicherung, Backups, isolierte Demo | R05, R08, R22, N06 | Laut Analyse offen |
 | 04 | Originalbelege und Korrekturen | R03, R09, R10, F03, N09 | Laut Analyse offen |
 | 05 | Exaktes Geld und Kalenderdaten | R06, R12 | Laut Analyse offen |
@@ -134,4 +134,46 @@ Produktregeln und offene fachliche Entscheidungen: [product-decisions.md](produc
 
 Weitere Ausführungsdetails: [quality-gates.md](quality-gates.md).
 
-Nächstes vorgesehenes Paket: **02**, nur nach gesondertem Auftrag; nicht begonnen.
+## Paket 02
+
+- **Ausgangsstand:** `main` unverändert
+  `ba7857fd9180fa392c42a0235643e478e5077ee5`; Arbeits-/PR-Basis ist der noch offene
+  PR #20, `codex/paket-01-sofortschutz` auf
+  `aa775b842aec2ef3b27dc6e3697de7e6eb850b12`. Vollständiger Tree und 48 Dateien
+  blobverifiziert; keine `AGENTS.md`. Arbeitsbranch:
+  `codex/paket-02-fachbefehle-migration`. Ergebnis-Commit/CI werden im PR belegt.
+- **Befunde:** R01 bestätigt für Altbestände, normale Kopien hatten bereits neue
+  IDs, aber filterten fehlende Referenzen; R04/R24 bestätigt für ungleiche
+  Formular-/Befehls-/Importregeln und weitere inline Fachoperationen; R15 bestätigt
+  für ungeprüfte Empfänger in `mailto:`. Keine F-/N-Erweiterung beauftragt.
+- **Änderungen:** Erzeugen/Kopieren, Personen/Kinder, Einstellungen und Import
+  als Fachfunktionen mit Ergebniszuständen/strukturierten Fehlern. Gemeinsame
+  Struktur-/Werteprüfung ohne Speicherzugriff, getrennte Entwurfs-/Finalisierungs-
+  anforderungen, rohe Zahlenfelder, globale aktive Positions-IDs. Sichere Mailbox-
+  prüfung/-Kodierung; historische fehlerhafte Adressen bleiben sichtbar erhalten.
+- **Migration:** Format 3; explizite Migration 2→3 mit Algorithmusversion 1,
+  Herkunftsprüfung des bekannten Empfängerkopierfehlers, vollständiger Nachprüfung,
+  deterministischen ID-Zuordnungen und Bericht samt Originaltext. UTF-8-Dateibytes
+  bleiben separat exportierbar. Beschädigte/neue unbekannte Daten bleiben gesperrt.
+  Keine automatische Übernahme reparierter Daten und keine Ordnerschreibwege;
+  abgesicherte Übernahme folgt in 03. Separate Exporte erlauben Prüfung und Import
+  in einem leeren Browserprofil; Originalexport ist der Rückweg für alten Code.
+- **Invarianten/Prüfung:** Neue Regressionen für 2/3 Empfängerkopien als Entwurf und
+  finalisiert, Beträge/Nummern/Snapshots, idempotente Migration, fehlende Referenzen,
+  ungültige Zahlen/Dezimalgrenzen, globale IDs, Mailbox-Grenzfälle, reservierte
+  Nummern, historische Adressen und erzwungene Schreibversuche auf Rohdaten.
+  Extrahierte Befehle werden durch Export–Import und Storage-Reload geprüft.
+  Betroffene Quelltexttests für Rechnungsstart/Mengen werden durch Verhalten ersetzt;
+  übrige Schutz-, CSV-, Geld-, Referenz- und Konfliktprüfungen bleiben erhalten.
+- **Ausführungsgrenze:** Lokal Node 24.19.0/npm 11.9.0; Node-22-Abruf und `npm ci`
+  E403. Lint/Test/Typecheck/Build werden vom Werkzeug vor Prozessstart wegen der
+  Netzwerkfreigabe abgebrochen; kein lokaler regulärer Testlauf behauptet. Die
+  bestehenden CI-Schranken verwenden unverändert Node 22 einschließlich Testtypen.
+  Ergebnis-CI wird noch ausgeführt. Keine neue Abhängigkeit.
+- **Offene Abnahmen:** Echte Browserbedienung und Dateiberechtigungen, Fokus,
+  parallele Tabs, Druck, Banking-Scans und konkrete Mailprogramme nicht geprüft.
+  SSR-/Storage-Mocks gelten nur als Funktionsnachweis. Administrative Pflichtchecks
+  aus 00 sowie vorläufige Sperren aus 01 bleiben den jeweiligen Folgepaketen zugeordnet.
+
+Nächstes vorgesehenes Paket: **03 – verlässliche Speicherung, sichere Backups,
+isolierter Demomodus**, nur nach gesondertem Auftrag; nicht begonnen.

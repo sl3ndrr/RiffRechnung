@@ -25,7 +25,7 @@ export const defaultSettings: Settings = {
 
 export function emptyState(): AppState {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     guardians: [],
     students: [],
     invoices: [],
@@ -258,7 +258,7 @@ export function createDemoState(referenceDate = new Date()): AppState {
   families.forEach((family, index) => invoices.push(createInvoice(family, currentYear, currentMonth, index < 2 ? 'sent' : 'draft')))
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     guardians,
     students,
     invoices,

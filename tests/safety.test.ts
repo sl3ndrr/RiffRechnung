@@ -49,8 +49,8 @@ function roundTrip(state: AppState): AppState {
   validateBackupState(state)
   const imported = parseBackup(serializeBackup(state))
   const again = parseBackup(serializeBackup(imported))
-  // The existing importer refreshes updatedAt; package 01 adds no migration.
-  assert.deepEqual({ ...again, updatedAt: imported.updatedAt }, imported)
+  // Current-format reads preserve the complete state, including updatedAt.
+  assert.deepEqual(again, imported)
   saveState(imported)
   const loaded = loadState()
   if (loaded.status !== 'ready') assert.fail(`Unerwarteter Recovery-Zustand: ${loaded.error}`)

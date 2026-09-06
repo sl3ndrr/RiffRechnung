@@ -1,3 +1,5 @@
+import { mailboxError } from '../lib/mailbox'
+import { parsePaymentTermInput } from '../lib/values'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArchiveRestore, CheckCircle2, CloudOff, Download, FileJson, FolderSync, HardDrive, History, Moon, Palette, Save, ShieldCheck, Sun, Upload } from 'lucide-react'
 import type { AppState, Settings as SettingsType, ThemeMode } from '../types'
@@ -26,6 +28,7 @@ interface SettingsProps {
 export function Settings({ state, folderSupported, folderConnected, folderName, onSave, onSetupStarted, onExport, onImport, onConnectFolder, onDisconnectFolder, onBackupNow, onReset }: SettingsProps) {
   const [form, setForm] = useState<SettingsType>(state.settings)
   const [rateInputs, setRateInputs] = useState({ privateRate: String(state.settings.privateRate), duoRate: String(state.settings.duoRate) })
+  const [paymentTermInput, setPaymentTermInput] = useState(String(state.settings.paymentTermDays))
   const [saveStatus, setSaveStatus] = useState<'saved' | 'pending' | 'invalid'>('saved')
   const lastSubmitted = useRef(JSON.stringify(state.settings))
   const formRef = useRef(form)
@@ -35,6 +38,8 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
 
   const ibanError = form.iban.trim() ? germanIbanError(form.iban) : null
   const replacementBlocked = state.invoices.some(isFinalizedInvoice) || state.voidedInvoiceNumbers.length > 0
+  const emailError = mailboxError(form.issuer.email)
+  const paymentTermError = parsePaymentTermInput(paymentTermInput) === null
   const invalidRateInput = Object.values(rateInputs).some((raw) => parseStandardRate(raw) === null)
 
   const setRate = (field: 'privateRate' | 'duoRate', raw: string) => {
@@ -57,6 +62,7 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
     if (serialized !== lastSubmitted.current) {
       lastSubmitted.current = serialized
       setForm(state.settings)
+      setPaymentTermInput(String(state.settings.paymentTermDays))
       setRateInputs({ privateRate: String(state.settings.privateRate), duoRate: String(state.settings.duoRate) })
     }
     setSaveStatus(JSON.stringify(formRef.current) === serialized ? 'saved' : 'pending')
@@ -83,7 +89,7 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
     <div className="page settings-page">
       <header className="page-header">
         <div><p className="eyebrow">Konfiguration</p><h1>Einstellungen</h1><p>Absender, Konto, Nummernkreis, Darstellung und Datensicherung.</p></div>
-        <button className={`button ${saveStatus === 'saved' ? 'button--success' : 'button--primary'} button--large`} onClick={() => persist(form)} disabled={saveStatus !== 'pending'} aria-live="polite">{saveStatus === 'saved' ? <CheckCircle2 aria-hidden="true" /> : <Save aria-hidden="true" />}{invalidRateInput || saveStatus === 'invalid' ? 'Eingabe prüfen' : saveStatus === 'saved' ? 'Automatisch gespeichert' : 'Jetzt speichern'}</button>
+        <button className={`button ${saveStatus === 'saved' ? 'button--success' : 'button--primary'} button--large`} onClick={() => persist(form)} disabled={saveStatus !== 'pending'} aria-live="polite">{saveStatus === 'saved' ? <CheckCircle2 aria-hidden="true" /> : <Save aria-hidden="true" />}{invalidRateInput || paymentTermError || emailError || saveStatus === 'invalid' ? 'Eingabe prüfen' : saveStatus === 'saved' ? 'Automatisch gespeichert' : 'Jetzt speichern'}</button>
       </header>
 
       <div className="settings-layout">
@@ -96,7 +102,7 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
               <label className="field field--full"><span>Straße & Hausnummer</span><input value={form.issuer.street} onChange={(event) => setForm({ ...form, issuer: { ...form.issuer, street: event.target.value } })} /></label>
               <label className="field"><span>PLZ</span><input value={form.issuer.postalCode} onChange={(event) => setForm({ ...form, issuer: { ...form.issuer, postalCode: event.target.value } })} /></label>
               <label className="field"><span>Ort</span><input value={form.issuer.city} onChange={(event) => setForm({ ...form, issuer: { ...form.issuer, city: event.target.value } })} /></label>
-              <label className="field"><span>E-Mail</span><input type="email" value={form.issuer.email} onChange={(event) => setForm({ ...form, issuer: { ...form.issuer, email: event.target.value } })} /></label>
+              <label className="field"><span>E-Mail</span><input type="text" inputMode="email" aria-invalid={Boolean(emailError)} value={form.issuer.email} onChange={(event) => setForm({ ...form, issuer: { ...form.issuer, email: event.target.value } })} />{emailError && <small role="alert">{emailError}</small>}</label>
               <label className="field"><span>Telefon</span><input type="tel" value={form.issuer.phone} onChange={(event) => setForm({ ...form, issuer: { ...form.issuer, phone: event.target.value } })} /></label>
             </div>
           </section>
@@ -108,7 +114,7 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
               <label className="field"><span>Bank</span><input value={form.bankName} onChange={(event) => setForm({ ...form, bankName: event.target.value })} /></label>
               <label className="field field--full"><span>IBAN</span><input className="mono" value={formatIban(form.iban)} onChange={(event) => setForm({ ...form, iban: event.target.value })} aria-invalid={Boolean(ibanError)} aria-describedby="iban-error" />{ibanError && <small id="iban-error" className="field-error">{ibanError}</small>}</label>
               <label className="field"><span>BIC (optional im EPC-QR)</span><input className="mono" value={form.bic} onChange={(event) => setForm({ ...form, bic: event.target.value.toUpperCase() })} /></label>
-              <label className="field"><span>Standard-Zahlungsziel (Tage)</span><input type="number" min="0" step="1" value={form.paymentTermDays} onChange={(event) => setForm({ ...form, paymentTermDays: Math.max(0, Math.trunc(Number(event.target.value))) })} /><small>Wird bei neuen Rechnungen zum Rechnungsdatum addiert.</small></label>
+              <label className="field"><span>Standard-Zahlungsziel (Tage)</span><input type="text" inputMode="numeric" aria-invalid={paymentTermError} value={paymentTermInput} onChange={(event) => { const raw = event.target.value; setPaymentTermInput(raw); const value = parsePaymentTermInput(raw); if (value !== null) setForm({ ...form, paymentTermDays: value }) }} /><small>{paymentTermError ? 'Bitte eine ganze Anzahl Tage ab 0 eingeben; der letzte gültige Wert bleibt erhalten.' : 'Wird bei neuen Rechnungen zum Rechnungsdatum addiert.'}</small></label>
             </div>
             <div className="info-banner"><ShieldCheck aria-hidden="true" /><p>Der QR-Code füllt eine SEPA-Überweisung in unterstützten Banking-Apps aus. Ob sie als Echtzeitüberweisung ausgeführt wird, entscheidet die Banking-App bzw. die zahlende Person.</p></div>
           </section>

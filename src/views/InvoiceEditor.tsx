@@ -1,18 +1,15 @@
+import { applyItemNumberInput, itemNumberInput, adjustQuantity as adjustedQuantity, MIN_QUANTITY, MAX_QUANTITY, QUANTITY_INCREMENT } from '../lib/values'
+import { invoiceDraftErrors } from '../lib/invoiceActions'
 import { useEffect, useMemo, useState } from 'react'
 import { Calendar, CircleDollarSign, FileCheck2, Minus, Plus, Save, Send, Trash2 } from 'lucide-react'
-import type { Guardian, InvoiceDraft, LessonType, Settings, Student } from '../types'
+import type { AppState, Guardian, InvoiceDraft, LessonType, Settings, Student } from '../types'
 import { FINALIZED_INVOICE_BLOCKED, SPLIT_INVOICE_BLOCKED } from '../lib/safety'
 import { Modal } from '../components/Modal'
-import { applyLessonType, billingPeriodFromItems, calculateDueDate, createLessonItem, euro, invoiceFinalizationErrors, isFooterTextWithinLimit, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH } from '../lib/utils'
+import { applyLessonType, billingPeriodFromItems, calculateDueDate, createLessonItem, euro, germanIbanError, invoiceFinalizationErrors, isFooterTextWithinLimit, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH } from '../lib/utils'
 
 const INVOICE_EDITOR_FORM_ID = 'invoice-editor-form'
-const MIN_QUANTITY = 0.01
-const MAX_QUANTITY = 99.99
-const QUANTITY_INCREMENT = 0.25
-
-const roundQuantity = (quantity: number) => Math.round(quantity * 100) / 100
-const normalizeQuantity = (quantity: number) => Math.min(MAX_QUANTITY, Math.max(MIN_QUANTITY, roundQuantity(quantity)))
 interface InvoiceEditorProps {
+  state: AppState
   open: boolean
   draft: InvoiceDraft
   guardians: Guardian[]
@@ -25,12 +22,15 @@ interface InvoiceEditorProps {
   onSave: (draft: InvoiceDraft, finalize: boolean) => void
 }
 
-export function InvoiceEditor({ open, draft, guardians, students, settings, editing, finalized, invoiceNumber, onClose, onSave }: InvoiceEditorProps) {
+export function InvoiceEditor({ state, open, draft, guardians, students, settings, editing, finalized, invoiceNumber, onClose, onSave }: InvoiceEditorProps) {
   const [form, setForm] = useState<InvoiceDraft>(draft)
+  const [numberInputs, setNumberInputs] = useState<Record<string, Partial<Record<'quantity' | 'unitPrice', string>>>>({})
   const [errors, setErrors] = useState<string[]>([])
 
   useEffect(() => {
     setForm(structuredClone(draft))
+    setNumberInputs({})
+    setErrors([])
   }, [draft, open])
 
   const linkedGuardianIds = useMemo(() => new Set(form.studentIds.flatMap((id) => students.find((student) => student.id === id)?.guardianIds ?? [])), [form.studentIds, students])
@@ -57,13 +57,14 @@ export function InvoiceEditor({ open, draft, guardians, students, settings, edit
     setForm((current) => ({ ...current, items: current.items.map((item) => item.id === id ? { ...item, [key]: value } : item) }))
   }
 
+  const updateNumber = (id: string, field: 'quantity' | 'unitPrice', raw: string) => {
+    setNumberInputs((current) => ({ ...current, [id]: { ...current[id], [field]: raw } }))
+    setForm((current) => ({ ...current, items: current.items.map((item) => item.id === id ? applyItemNumberInput(item, field, raw) : item) }))
+  }
+
   const adjustQuantity = (id: string, direction: 1 | -1) => {
-    setForm((current) => ({
-      ...current,
-      items: current.items.map((item) => item.id === id
-        ? { ...item, quantity: normalizeQuantity(item.quantity + direction * QUANTITY_INCREMENT) }
-        : item),
-    }))
+    const item = form.items.find((entry) => entry.id === id)
+    if (item) updateNumber(id, 'quantity', String(adjustedQuantity(item.quantity, direction)))
   }
 
   const updateServiceDate = (id: string, serviceDate: string) => {
@@ -74,6 +75,7 @@ export function InvoiceEditor({ open, draft, guardians, students, settings, edit
   }
 
   const updateLessonType = (id: string, lessonType: LessonType) => {
+    setNumberInputs((current) => ({ ...current, [id]: { ...current[id], unitPrice: undefined } }))
     setForm((current) => ({
       ...current,
       items: current.items.map((item) => item.id === id ? applyLessonType(item, lessonType, settings) : item),
@@ -102,7 +104,14 @@ export function InvoiceEditor({ open, draft, guardians, students, settings, edit
   }
 
   const submit = (finalize: boolean) => {
-    const nextErrors = finalized ? [FINALIZED_INVOICE_BLOCKED] : invoiceFinalizationErrors({ guardians, students }, form)
+    const invalidNumbers = form.items.some((item) => (['quantity', 'unitPrice'] as const).some((field) => itemNumberInput(numberInputs[item.id]?.[field] ?? String(item[field]), field) === null))
+    const nextErrors = finalized ? [FINALIZED_INVOICE_BLOCKED] : invoiceDraftErrors(state, form)
+    if (invalidNumbers) nextErrors.push('Bitte die Preise und Mengen vervollständigen. Ungültige Zwischenwerte werden nicht gespeichert.')
+    if (finalize) {
+      nextErrors.push(...invoiceFinalizationErrors({ guardians, students }, form))
+      const ibanError = germanIbanError(settings.iban)
+      if (ibanError) nextErrors.push(ibanError)
+    }
     setErrors(nextErrors)
     if (!nextErrors.length) {
       const normalized = { ...form, period: calculatedPeriod, legalText: limitFooterText(form.legalText) }
@@ -159,9 +168,9 @@ export function InvoiceEditor({ open, draft, guardians, students, settings, edit
                 <label className="field field--lesson-type"><span>Art</span><select value={item.lessonType} onChange={(event) => updateLessonType(item.id, event.target.value as LessonType)}><option value="solo">Solo</option><option value="duo">Duo</option></select></label>
                 <label className="field field--description"><span>Beschreibung</span><input type="text" value={item.description} onChange={(event) => updateItem(item.id, 'description', event.target.value)} placeholder="z. B. Akkordwechsel (Solo)" /></label>
                 {form.studentIds.length > 1 && <label className="field field--student"><span>Kind</span><select value={item.studentId} onChange={(event) => updateItem(item.id, 'studentId', event.target.value)}>{form.studentIds.map((id) => <option key={id} value={id}>{students.find((student) => student.id === id)?.name}</option>)}</select></label>}
-                <div className="field field--quantity"><span id={`quantity-label-${item.id}`}>Menge</span><div className="quantity-stepper"><input aria-labelledby={`quantity-label-${item.id}`} type="number" inputMode="decimal" min={MIN_QUANTITY} max={MAX_QUANTITY} step="0.01" value={item.quantity} onKeyDown={(event) => { if (event.key === 'ArrowUp' || event.key === 'ArrowDown') { event.preventDefault(); adjustQuantity(item.id, event.key === 'ArrowUp' ? 1 : -1) } }} onChange={(event) => updateItem(item.id, 'quantity', Number(event.target.value))} /><button type="button" onClick={() => adjustQuantity(item.id, 1)} disabled={item.quantity >= MAX_QUANTITY} aria-label={`Menge für Position ${index + 1} um ${QUANTITY_INCREMENT} erhöhen`}><Plus aria-hidden="true" /></button><button type="button" onClick={() => adjustQuantity(item.id, -1)} disabled={item.quantity <= MIN_QUANTITY} aria-label={`Menge für Position ${index + 1} um ${QUANTITY_INCREMENT} verringern`}><Minus aria-hidden="true" /></button></div></div>
+                <div className="field field--quantity"><span id={`quantity-label-${item.id}`}>Menge</span><div className="quantity-stepper"><input aria-labelledby={`quantity-label-${item.id}`} type="text" inputMode="decimal" aria-invalid={itemNumberInput(numberInputs[item.id]?.quantity ?? String(item.quantity), 'quantity') === null} value={numberInputs[item.id]?.quantity ?? String(item.quantity)} onKeyDown={(event) => { if (event.key === 'ArrowUp' || event.key === 'ArrowDown') { event.preventDefault(); adjustQuantity(item.id, event.key === 'ArrowUp' ? 1 : -1) } }} onChange={(event) => updateNumber(item.id, 'quantity', event.target.value)} /><button type="button" onClick={() => adjustQuantity(item.id, 1)} disabled={item.quantity >= MAX_QUANTITY} aria-label={`Menge für Position ${index + 1} um ${QUANTITY_INCREMENT} erhöhen`}><Plus aria-hidden="true" /></button><button type="button" onClick={() => adjustQuantity(item.id, -1)} disabled={item.quantity <= MIN_QUANTITY} aria-label={`Menge für Position ${index + 1} um ${QUANTITY_INCREMENT} verringern`}><Minus aria-hidden="true" /></button></div></div>
                 <label className="field field--unit"><span>Einheit</span><select value={item.unit} onChange={(event) => updateItem(item.id, 'unit', event.target.value)}><option>Std.</option><option>Pauschale</option><option>Stück</option></select></label>
-                <label className="field field--price"><span>Einzelpreis</span><div className="input-with-suffix"><input type="number" min="0" step="0.01" value={item.unitPrice} onChange={(event) => updateItem(item.id, 'unitPrice', Number(event.target.value))} /><span>€</span></div></label>
+                <label className="field field--price"><span>Einzelpreis</span><div className="input-with-suffix"><input type="text" inputMode="decimal" aria-invalid={itemNumberInput(numberInputs[item.id]?.unitPrice ?? String(item.unitPrice), 'unitPrice') === null} value={numberInputs[item.id]?.unitPrice ?? String(item.unitPrice)} onChange={(event) => updateNumber(item.id, 'unitPrice', event.target.value)} /><span>€</span></div></label>
                 <div className="editor-item__total"><span>Betrag</span><strong>{euro.format(itemTotal(item))}</strong></div>
                 <button className="icon-button icon-button--small editor-item__delete" type="button" onClick={() => setForm((current) => { const items = current.items.filter((candidate) => candidate.id !== item.id); return { ...current, items, period: billingPeriodFromItems(items, current.invoiceDate) } })} aria-label={`Position ${index + 1} löschen`}><Trash2 aria-hidden="true" /></button>
               </div>

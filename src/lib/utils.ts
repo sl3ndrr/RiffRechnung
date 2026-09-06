@@ -1,3 +1,5 @@
+import { buildMailto } from './mailbox'
+import { validId, validPrice, validQuantity } from './values'
 import { assertInvoiceEditable, SPLIT_INVOICE_BLOCKED } from './safety'
 import type { AppState, Guardian, Invoice, InvoiceItem, InvoiceStatus, LessonType, Settings, Student } from '../types'
 
@@ -45,12 +47,8 @@ export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 's
   if (invoice.items.some((item) => (
     !item.serviceDate
     || !item.description.trim()
-    || !Number.isFinite(item.quantity)
-    || item.quantity < .01
-    || item.quantity > 99.99
-    || Math.round(item.quantity * 100) / 100 !== item.quantity
-    || !Number.isFinite(item.unitPrice)
-    || item.unitPrice < 0
+    || !validQuantity(item.quantity)
+    || !validPrice(item.unitPrice)
   ))) errors.push('Alle Positionen vollständig und mit gültigen Werten ausfüllen.')
   if (invoice.items.some((item) => !studentIds.has(item.studentId) || !selectedStudentIds.has(item.studentId))) {
     errors.push('Alle Positionen müssen einem ausgewählten Kind aus den aktuellen Stammdaten zugeordnet sein.')
@@ -202,6 +200,8 @@ export function applyLessonType(item: InvoiceItem, lessonType: LessonType, setti
 
 export function createLessonItem(studentId: string, serviceDate: string, settings: Pick<Settings, 'privateRate' | 'duoRate'>, id = uid('item')): InvoiceItem {
   const lessonType: LessonType = 'solo'
+  if (!validId(id) || !validId(studentId)) throw new Error('Eine gültige Positions- und Kind-ID wird benötigt.')
+  if (!validPrice(lessonRate(settings, lessonType))) throw new Error('Der Standardpreis ist ungültig.')
   return {
     id,
     studentId,
@@ -543,7 +543,7 @@ export function createReminder(invoice: Invoice, guardians: Guardian[], students
   const liveEmails = invoice.guardianIds
     .map((id) => guardians.find((guardian) => guardian.id === id)?.email)
     .filter((email): email is string => Boolean(email))
-  const recipients = snapshotEmails.length ? snapshotEmails : liveEmails
+  const recipients = invoice.snapshot ? snapshotEmails : liveEmails
   const subject = `Zahlungserinnerung zur Rechnung ${numberText}`
   const body = `Guten Tag ${names},\n\nbei der Durchsicht meiner Unterlagen ist mir aufgefallen, dass die Rechnung ${numberText} für den Gitarrenunterricht von ${child} über ${euro.format(invoiceTotal(invoice))} mit Fälligkeit zum ${formatDateLong(invoice.dueDate)} noch offen ist.\n\nFalls die Zahlung bereits veranlasst wurde, betrachten Sie diese Nachricht bitte als gegenstandslos. Andernfalls freue ich mich über eine zeitnahe Überweisung unter Angabe der Rechnungsnummer.\n\nVielen Dank und freundliche Grüße`
   return { subject, body, recipients }
@@ -551,7 +551,7 @@ export function createReminder(invoice: Invoice, guardians: Guardian[], students
 
 export function mailtoUrl(invoice: Invoice, guardians: Guardian[], students: Student[]): string {
   const reminder = createReminder(invoice, guardians, students)
-  return `mailto:${reminder.recipients.join(',')}?subject=${encodeURIComponent(reminder.subject)}&body=${encodeURIComponent(reminder.body)}`
+  return buildMailto(reminder.recipients, reminder.subject, reminder.body)
 }
 
 export function monthKey(date: string): string {
@@ -571,4 +571,13 @@ export function groupItemsByStudent(items: InvoiceItem[], studentIds: string[]):
     groups.set(key, [...(groups.get(key) ?? []), item])
   }
   return [...groups.entries()]
+}
+
+export function downloadBytes(fileName: string, bytes: Uint8Array): void {
+  const url = URL.createObjectURL(new Blob([bytes.slice().buffer], { type: 'application/octet-stream' }))
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = fileName
+  anchor.click()
+  URL.revokeObjectURL(url)
 }

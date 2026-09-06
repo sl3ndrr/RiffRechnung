@@ -81,3 +81,22 @@ Das ist **keine Google-Drive-, Dropbox- oder sonstige Cloud-Integration**. Wenn 
 - kein automatischer E-Mail-Versand und keine Zugangsdaten in der App; Erinnerungen werden nur an das lokale E-Mail-Programm übergeben
 - keine Mehrsprachigkeit, da der aktuelle Einsatz deutschsprachig ist und ein schlankes, zuverlässiges Rechnungs-Template Vorrang hat
 - keine Mehrgeräte-Synchronisation oder kollaborative Bearbeitung, da dies ohne Backend nicht konfliktfrei und sicher möglich wäre
+
+
+### Datenprüfung und Altformat-Reparatur (Paket 02)
+
+Neue Bestände verwenden Format 3. Entwürfe können unvollständig sein; ungültige
+Preise, Mengen, IDs oder Referenzen werden nicht gespeichert. Nur deutsche IBANs
+sind für neue/geänderte Kontoeinstellungen und neue Finalisierungen zugelassen.
+
+Beim Import und im Wiederherstellungsmodus lässt sich Format 2 prüfen. Bekannte
+Empfängerkopien mit doppelten Positions-IDs erhalten eine Reparaturvorschau,
+separate Exporte und einen Bericht mit Originaldaten. Sichere Übernahme im
+bestehenden Browserprofil folgt in Paket 03; vorhandene Rohdaten und Ordnerbackups
+werden nicht überschrieben. Für eine Prüfung kann der Format-3-Export in einem
+leeren Browserprofil importiert werden. Originaldatei und Bericht unabhängig
+aufbewahren; alter Anwendungscode benötigt die unveränderte Originaldatei in
+einem getrennten Profil. Andere Schäden werden nicht automatisch korrigiert.
+
+Die unterstützte E-Mail-Regel und die genauen Format-/Reparaturgrenzen stehen in
+[Produktentscheidungen](docs/product-decisions.md#paket-02--speicherbare-zustände-und-reparaturen).
