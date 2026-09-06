@@ -15,9 +15,16 @@ export function ImportReview({ review, onClose, onApply }: {
   onApply?: (preview: ImportPreview) => void
 }) {
   if (!review) return null
-  const preview = review.result.ok ? review.result.value : null
   return (
     <Modal open onClose={onClose} title="Import und Reparatur prüfen" eyebrow="Datensicherung" size="large" footer={<button className="button button--text" onClick={onClose}>Schließen</button>}>
+      <ImportReviewContent review={review} onApply={onApply} />
+    </Modal>
+  )
+}
+
+export function ImportReviewContent({ review, onApply }: { review: ImportReviewData; onApply?: (preview: ImportPreview) => void }) {
+  const preview = review.result.ok ? review.result.value : null
+  return (
       <div className="form-section">
         {!review.result.ok && <div className="form-errors" role="alert"><strong>Keine Übernahme möglich</strong><ul>{review.result.errors.map((error, index) => <li key={index}>{error.message}</li>)}</ul><p>Der aktuelle Bestand bleibt unverändert. Exportiere die Originaldatei und korrigiere eine separate Kopie bewusst. Es werden keine Personen erfunden, Preise ersetzt oder Positionen gelöscht.</p></div>}
         {preview && <>
@@ -40,6 +47,5 @@ export function ImportReview({ review, onClose, onApply }: {
           </>}
         </div>
       </div>
-    </Modal>
   )
 }

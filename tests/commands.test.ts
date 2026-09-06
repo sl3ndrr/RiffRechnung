@@ -14,7 +14,7 @@ import { applyStandardRateInput, parseStandardRate } from '../src/lib/settings'
 import { applyItemNumberInput, adjustQuantity, itemNumberInput, MAX_PRICE, parsePaymentTermInput, validId } from '../src/lib/values'
 import { loadState, parseBackup, persistState, saveState, serializeBackup, STORAGE_KEY, validateBackupState } from '../src/lib/storage'
 import { createLessonItem, invoiceTotal, mailtoUrl, nextInvoiceAllocation } from '../src/lib/utils'
-import { ImportReview } from '../src/views/ImportReview'
+import { ImportReviewContent } from '../src/views/ImportReview'
 
 const at = '2026-09-06T12:00:00.000Z'
 
@@ -332,7 +332,7 @@ test('P02: fehlerhafte importierte Mailboxen sind sichtbar, historische Werte bl
   const state = family()
   const raw = JSON.stringify({ ...state, guardians: [{ ...state.guardians[0], email: 'bad@example.org?bcc=x@example.org' }] })
   const review = { bytes: new TextEncoder().encode(raw), result: inspectImport(raw) }
-  const markup = renderToStaticMarkup(createElement(ImportReview, { review, onClose: () => undefined }))
+  const markup = renderToStaticMarkup(createElement(ImportReviewContent, { review }))
   assert.match(markup, /Keine Übernahme möglich/)
   assert.match(markup, /guardians\[0\]\.email/)
   assert.match(markup, /Originaldatei exportieren/)

@@ -46,7 +46,7 @@ export function saveInvoiceDraft(state: AppState, draft: InvoiceDraft, finalize:
   const existing = draft.id ? state.invoices.find((invoice) => invoice.id === draft.id) : undefined
   if (draft.id && !existing) throw new Error('Der Entwurf ist nicht mehr vorhanden. Bitte neu laden.')
   assertInvoiceEditable(existing)
-  const errors = draftAudienceErrors(state, draft)
+  const errors = finalize ? invoiceFinalizationErrors(state, draft) : draftAudienceErrors(state, draft)
   if (errors.length) throw new Error(errors.join(' '))
   const saved: Invoice = {
     ...structuredClone(draft), id: existing?.id ?? freshId('invoice', new Set(state.invoices.map((invoice) => invoice.id)), uid), number: null, sequence: null,

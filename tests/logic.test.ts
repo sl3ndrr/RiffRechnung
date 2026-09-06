@@ -1,5 +1,5 @@
 import { prepareNewInvoice, saveInvoiceState } from '../src/lib/commands'
-import { requireSuccess } from '../src/lib/result'
+import { requireSuccess, ValidationError } from '../src/lib/result'
 import { adjustQuantity, parseQuantityInput } from '../src/lib/values'
 import './safety.test'
 import './commands.test'
@@ -754,7 +754,7 @@ test('Entwürfe lassen sich aus der Detailansicht nur mit vollständigen aktuell
   state.settings.iban = 'DE02120300000000202051'
   state.invoices = [draft]
   const original = structuredClone(state)
-  assert.throws(() => changeInvoiceStatus({ ...state, guardians: [] }, draft.id, 'sent'), /Stammdaten/)
+  assert.throws(() => changeInvoiceStatus({ ...state, guardians: [] }, draft.id, 'sent'), (error: unknown) => error instanceof ValidationError && error.path === 'students[0].guardianIds[0]')
   assert.deepEqual(state, original)
   assert.equal(changeInvoiceStatus(state, draft.id, 'sent').invoices[0].number, '2026-a-0001')
 
@@ -810,6 +810,7 @@ test('lokales Speichern bleibt unabhängig vom vorläufig gesperrten Datei-Backu
   const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
   let writtenBackup = ''
   const failingStorage = {
+    getItem: () => null,
     setItem: () => {
       const error = new Error('Speicherplatz erschöpft')
       error.name = 'QuotaExceededError'
@@ -837,7 +838,7 @@ test('lokales Speichern bleibt unabhängig vom vorläufig gesperrten Datei-Backu
     assert.equal(writtenBackup, '')
 
     let localSaved = false
-    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { setItem: () => { localSaved = true } } as unknown as Storage })
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: () => null, setItem: () => { localSaved = true } } as unknown as Storage })
     const failingDirectoryHandle = {
       queryPermission: async () => 'granted',
       getFileHandle: async () => { throw new Error('Backup-Datei gesperrt') },

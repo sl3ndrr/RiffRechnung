@@ -1,3 +1,4 @@
+import { ValidationError } from '../src/lib/result'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import type { AppState, Invoice, InvoiceDraft } from '../src/types'
@@ -105,7 +106,7 @@ test('P01: fehlende Referenzen und doppelte Positions-IDs werden vor Übernahme 
   const state = families()
   const saved = saveInvoiceDraft(state, draftFor(state), false, at)
   assert.throws(() => saveInvoiceDraft(saved, draftFor(state), false, at), /id ist doppelt/)
-  assert.throws(() => saveInvoiceDraft(saved, { ...draftFor(state), studentIds: ['missing'] }, false, at), /Stammdaten/)
+  assert.throws(() => saveInvoiceDraft(saved, { ...draftFor(state), studentIds: ['missing'] }, false, at), (error: unknown) => error instanceof ValidationError && error.code === 'INVALID_STATE' && error.path === 'invoices[1].studentIds[0]')
   assert.throws(() => saveInvoiceDraft(saved, { ...draftFor(state), id: 'missing' }, false, at), /nicht mehr vorhanden/)
   assert.equal(saved.invoices.length, 1)
   assert.deepEqual(saved.counters, {})
@@ -246,7 +247,7 @@ test('P01: Demo respektiert jede begonnene Einstellung, Nutzerdaten und ungeprü
   }
   for (const key of Object.keys(emptyState().settings.issuer)) {
     const state = emptyState()
-    Object.assign(state.settings.issuer, { [key]: 'Begonnen' })
+    Object.assign(state.settings.issuer, { [key]: key === 'email' ? 'begonnen@example.org' : 'Begonnen' })
     states.push(state)
   }
   for (const state of states) {
@@ -259,6 +260,11 @@ test('P01: Demo respektiert jede begonnene Einstellung, Nutzerdaten und ungeprü
   for (const [checked, connected, touched] of [[false, false, false], [true, true, false], [true, false, true]]) {
     assert.throws(() => loadDemoState(emptyState(), checked, connected, touched), /gesperrt/)
   }
+  const incomplete = emptyState()
+  incomplete.settings.issuer.email = 'Begonnen'
+  assert.ok(demoBlockedReason(incomplete, true, false))
+  assert.throws(() => loadDemoState(incomplete, true, false), /gesperrt/)
+  assert.throws(() => validateBackupState(incomplete), /settings.issuer.email/)
   const empty = emptyState()
   assert.equal(demoBlockedReason(empty, true, false), null)
   const demo = loadDemoState(empty, true, false)
