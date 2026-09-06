@@ -36,14 +36,14 @@ export function ImportReviewContent({ review, onApply }: { review: ImportReviewD
             <p>Die Reparatur bestätigt keine korrekte Aufteilung der Leistungen. Prüfe die alten Empfängerrechnungen fachlich; dieses Paket ändert keine Forderung.</p>
           </>}
           {preview.warnings.length > 0 && <div className="form-errors" role="alert"><strong>Historische E-Mail-Adressen prüfen</strong><ul>{preview.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div>}
-          {(preview.report || !onApply) && <p>Die lokalen Eingangsbytes bleiben geschützt. Du kannst den geprüften Bestand separat exportieren und in einem leeren Browserprofil importieren. Das Ersetzen beschädigter oder migrierter Bestände folgt mit dem abgesicherten Schreibweg in Paket 03.</p>}
+          {!onApply && <p>Die lokalen Eingangsbytes bleiben geschützt. Du kannst den geprüften Bestand separat exportieren und in einem leeren Browserprofil importieren. Unbekannte neuere lokale Formate bleiben schreibgeschützt.</p>}
         </>}
         <div className="button-row">
           <button className="button button--tonal" onClick={() => downloadBytes('riffrechnung-originaldaten.bin', review.bytes)}>Unveränderte Originaldatei exportieren</button>
           {preview && <>
             <button className="button button--tonal" onClick={() => downloadText('riffrechnung-migrationsbericht.json', serializeMigrationReport(preview))}>Bericht mit Originaldaten exportieren</button>
             <button className="button button--tonal" onClick={() => downloadText('riffrechnung-gepruefter-bestand-v3.json', serializeBackup(preview.state))}>Geprüften Bestand separat exportieren</button>
-            {!preview.report && onApply && <button className="button button--primary" onClick={() => onApply(preview)}>Wiederherstellung vorbereiten</button>}
+            {onApply && <button className="button button--primary" onClick={() => onApply(preview)}>Wiederherstellung vorbereiten</button>}
           </>}
         </div>
       </div>

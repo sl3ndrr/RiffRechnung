@@ -1,8 +1,10 @@
+import { seedState, sharedLock, fakeDirectory } from './storageHarness'
 import { prepareNewInvoice, saveInvoiceState } from '../src/lib/commands'
 import { requireSuccess, ValidationError } from '../src/lib/result'
 import { adjustQuantity, parseQuantityInput } from '../src/lib/values'
 import './safety.test'
 import './commands.test'
+import './storage.test'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -14,7 +16,7 @@ import { InvoicePrint } from '../src/components/InvoicePrint'
 import { Dashboard } from '../src/views/Dashboard'
 import { createDemoState, defaultSettings, emptyState } from '../src/lib/defaults'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, runInvoiceMenuAction } from '../src/lib/invoiceMenu'
-import { loadLastBackupAt, loadState, parseBackup, persistState, recordBackupExport, saveState, serializeBackup } from '../src/lib/storage'
+import { loadLastBackupAt, StorageSession, loadState, parseBackup, recordBackupExport, serializeBackup } from '../src/lib/storage'
 import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoiceFinalizationErrors, invoicePdfTitle, invoiceTotal, invoicesToCsv, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, reopenInvoiceAsDraft, SEPA_IBAN_LENGTH_BY_COUNTRY, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
 import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { assertOriginalsPreserved } from '../src/lib/safety'
@@ -538,7 +540,7 @@ test('Demo-Daten bilden Familien, Unterricht und Rechnungen seit Januar 2025 vol
   const numbers = demo.invoices.flatMap((entry) => entry.number ? [entry.number] : [])
   assert.equal(new Set(numbers).size, numbers.length)
   withMockLocalStorage(() => {
-    saveState(demo)
+    seedState(demo)
     const restored = loadReadyState()
     assert.equal(restored.guardians.length, 10)
     assert.equal(restored.students.length, 10)
@@ -705,7 +707,7 @@ test('manuelle Theme-Auswahl bleibt nach einem Reload erhalten', () => {
   withMockLocalStorage(() => {
     const state = emptyState()
     state.settings.theme = 'dark'
-    saveState(state)
+    seedState(state)
     assert.equal(loadReadyState().settings.theme, 'dark')
   })
 })
@@ -725,12 +727,9 @@ test('beschädigte lokale Daten bleiben für die Wiederherstellung unangetastet'
     assert.equal(localStorage.getItem(storageKey), rawData)
   }))
 
-  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
-  const recoverySource = readFileSync(new URL('../src/views/StorageRecovery.tsx', import.meta.url), 'utf8')
-  assert.match(appSource, /useEffect\(\(\) => \{\s+if \(recovery\) return[\s\S]*?persistState/)
-  assert.match(appSource, /<StorageRecovery/)
-  assert.match(recoverySource, /Beschädigte Rohdaten exportieren/)
-  assert.match(recoverySource, /JSON-Backup wiederherstellen/)
+  // Writable recovery is exercised through StorageSession (including rejected
+  // unconfirmed writes, raw export, confirmed restore and reload) in storage.test.
+
 })
 
 test('Entwürfe lassen sich aus der Detailansicht nur mit vollständigen aktuellen Daten finalisieren', () => {
@@ -806,102 +805,34 @@ test('Editor-Finalisierung wird vor Nummern- und Snapshot-Vergabe zentral validi
 
 })
 
-test('lokales Speichern bleibt unabhängig vom vorläufig gesperrten Datei-Backup', async () => {
-  const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
-  let writtenBackup = ''
-  const failingStorage = {
-    getItem: () => null,
-    setItem: () => {
-      const error = new Error('Speicherplatz erschöpft')
-      error.name = 'QuotaExceededError'
-      throw error
-    },
-  } as unknown as Storage
-  const directoryHandle = {
-    name: 'Sicherungen',
-    queryPermission: async () => 'granted',
-    getFileHandle: async () => ({
-      createWritable: async () => ({
-        write: async (content: unknown) => { writtenBackup = String(content) },
-        close: async () => undefined,
-      }),
-    }),
-  } as unknown as FileSystemDirectoryHandle
-  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: failingStorage })
-
-  try {
-    const result = await persistState(emptyState(), directoryHandle, true)
-    assert.equal(result.local.status, 'error')
-    assert.match(result.local.error ?? '', /Speicherplatz erschöpft/)
-    assert.equal(result.fileBackup.status, 'error')
-    assert.match(result.fileBackup.error ?? '', /schreibgeschützt/)
-    assert.equal(writtenBackup, '')
-
-    let localSaved = false
-    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: () => null, setItem: () => { localSaved = true } } as unknown as Storage })
-    const failingDirectoryHandle = {
-      queryPermission: async () => 'granted',
-      getFileHandle: async () => { throw new Error('Backup-Datei gesperrt') },
-    } as unknown as FileSystemDirectoryHandle
-    const reverseResult = await persistState(emptyState(), failingDirectoryHandle, true)
-    assert.equal(reverseResult.local.status, 'saved')
-    assert.equal(localSaved, true)
-    assert.equal(reverseResult.fileBackup.status, 'error')
-    assert.match(reverseResult.fileBackup.error ?? '', /schreibgeschützt/)
-  } finally {
-    if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage)
-    else Reflect.deleteProperty(globalThis, 'localStorage')
-  }
-
-  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
-  assert.match(appSource, /localSaveError/)
-  assert.match(appSource, /fileBackupError/)
-  assert.match(appSource, /Erneut versuchen/)
-  assert.match(appSource, /JSON-Backup exportieren/)
+test('lokales Speichern bleibt unabhängig vom Datei-Backup; Fehler erlauben keinen voreiligen Erfolg', async () => {
+  const { memoryStorage } = await import('./storageHarness')
+  const storage = memoryStorage()
+  const session = new StorageSession({ storage, lock: sharedLock() })
+  const directory = fakeDirectory()
+  storage.fail = 'write'
+  await assert.rejects(session.change(() => emptyState()), /Speicherplatz/)
+  await assert.rejects(session.backup(), /lokales Speichern/)
+  assert.equal(directory.controls.writes, 0)
+  storage.fail = null
+  await session.change(() => emptyState())
+  await session.connect({ handle: directory.handle, datasetId: session.revision!.datasetId, legacyFiles: [] })
+  directory.controls.fail = 'write'
+  await assert.rejects(session.backup(), /write fehlgeschlagen/)
+  assert.equal(loadState(storage).status, 'ready')
 })
 
 test('veraltete Tabs überschreiben keinen zwischenzeitlich gespeicherten Zustand', async () => {
-  const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
-  const entries = new Map<string, string>()
-  const localStorageMock: Storage = {
-    get length() { return entries.size },
-    clear: () => entries.clear(),
-    getItem: (key) => entries.get(key) ?? null,
-    key: (index) => [...entries.keys()][index] ?? null,
-    removeItem: (key) => entries.delete(key),
-    setItem: (key, value) => entries.set(key, value),
-  }
-  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: localStorageMock })
-
-  try {
-    const base = emptyState()
-    base.updatedAt = '2026-08-20T10:00:00.000Z'
-    saveState(base)
-    const firstTab = structuredClone(base)
-    firstTab.settings.issuer.name = 'Erster Tab'
-    firstTab.updatedAt = '2026-08-20T10:01:00.000Z'
-    const secondTab = structuredClone(base)
-    secondTab.settings.issuer.name = 'Zweiter Tab'
-    secondTab.updatedAt = '2026-08-20T10:02:00.000Z'
-
-    const firstResult = await persistState(firstTab, null, false, base.updatedAt)
-    const staleResult = await persistState(secondTab, null, false, base.updatedAt)
-    assert.equal(firstResult.local.status, 'saved')
-    assert.equal(staleResult.local.status, 'conflict')
-    assert.match(staleResult.local.error ?? '', /anderen Tab/)
-    const persisted = JSON.parse(localStorage.getItem('gitarrenrechnungen-state-v2') ?? '{}')
-    assert.equal(persisted.settings.issuer.name, 'Erster Tab')
-  } finally {
-    if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage)
-    else Reflect.deleteProperty(globalThis, 'localStorage')
-  }
-
-  const storageSource = readFileSync(new URL('../src/lib/storage.ts', import.meta.url), 'utf8')
-  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
-  assert.match(storageSource, /navigator\.locks\.request/)
-  assert.match(appSource, /new BroadcastChannel/)
-  assert.match(appSource, /addEventListener\('storage'/)
-  assert.match(appSource, /window\.location\.reload\(\)/)
+  const { memoryStorage } = await import('./storageHarness')
+  const storage = memoryStorage()
+  const lock = sharedLock()
+  seedState(emptyState(), storage)
+  const first = new StorageSession({ storage, lock })
+  const stale = new StorageSession({ storage, lock })
+  await first.change((state) => ({ ...state, settings: { ...state.settings, accountHolder: 'Erster Tab' } }))
+  await assert.rejects(stale.change((state) => ({ ...state, settings: { ...state.settings, accountHolder: 'Zweiter Tab' } })), /anderen Tab/)
+  const loaded = loadState(storage)
+  assert.equal(loaded.status === 'ready' && loaded.state.settings.accountHolder, 'Erster Tab')
 })
 
 test('ungültige Preise bleiben lokal und überschreiben den letzten gültigen Einstellungswert nicht', () => {
@@ -912,7 +843,7 @@ test('ungültige Preise bleiben lokal und überschreiben den letzten gültigen E
     const incomplete = applyStandardRateInput(valid, 'privateRate', '')
     assert.equal(incomplete, valid)
     state.settings = updateSettings(state.settings, incomplete)
-    saveState(state)
+    seedState(state)
     assert.equal(loadReadyState().settings.privateRate, 34.5)
     assert.equal(parseBackup(serializeBackup(state)).settings.privateRate, 34.5)
     assert.throws(() => updateSettings(state.settings, { ...state.settings, duoRate: -1 }), /gültige Preis/)

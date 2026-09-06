@@ -5,3 +5,5 @@ dist
 .vite
 coverage
 .test-dist
+test-results
+playwright-report

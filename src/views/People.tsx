@@ -11,8 +11,8 @@ const STUDENT_FORM_ID = 'student-entry-form'
 
 interface PeopleProps {
   state: AppState
-  onSaveGuardian: (guardian: Guardian) => boolean
-  onSaveStudent: (student: Student) => boolean
+  onSaveGuardian: (guardian: Guardian) => Promise<boolean>
+  onSaveStudent: (student: Student) => Promise<boolean>
   onDeleteGuardian: (guardian: Guardian) => void
   onDeleteStudent: (student: Student) => void
 }
@@ -46,18 +46,18 @@ export function People({ state, onSaveGuardian, onSaveStudent, onDeleteGuardian,
   const closeGuardianForm = () => { setGuardianForm(null); setError('') }
   const closeStudentForm = () => { setStudentForm(null); setError('') }
 
-  const saveGuardian = () => {
+  const saveGuardian = async () => {
     if (!guardianForm?.name.trim()) return setError('Bitte einen Namen eintragen.')
     if (mailboxError(guardianForm.email)) return setError(MAILBOX_ERROR)
-    if (!onSaveGuardian({ ...guardianForm, updatedAt: new Date().toISOString() })) return
+    if (!await onSaveGuardian({ ...guardianForm, updatedAt: new Date().toISOString() })) return
     setGuardianForm(null)
     setError('')
   }
 
-  const saveStudent = () => {
+  const saveStudent = async () => {
     if (!studentForm?.name.trim()) return setError('Bitte den Namen des Kindes eintragen.')
     if (!studentForm.guardianIds.length) return setError('Bitte mindestens eine erziehungsberechtigte Person zuordnen.')
-    if (!onSaveStudent({ ...studentForm, updatedAt: new Date().toISOString() })) return
+    if (!await onSaveStudent({ ...studentForm, updatedAt: new Date().toISOString() })) return
     setStudentForm(null)
     setError('')
   }

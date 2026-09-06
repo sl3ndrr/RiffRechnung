@@ -1,9 +1,9 @@
+import { validateEnvelope, type StorageEnvelope } from './envelope'
 import type { AppState, Invoice, InvoiceItem, Student } from '../types'
 import { commandResult, requireSuccess, type CommandResult } from './result'
 import { backupEnum, backupObject, backupTimestamp, knownKeys, validateBackupState, validateLegacyV2Structure } from './validation'
 import { ensureStudentCodePattern, invoiceStudentCode, studentCodeForIndex, studentCodeIndex } from './utils'
 import { mailboxError } from './mailbox'
-import { assertReplacementAllowed } from './safety'
 
 interface MigrationChange { path: string; before: unknown; after: unknown; reason: string }
 export interface IdMapping { invoiceId: string; itemIndex: number; oldId: string; newId: string }
@@ -17,6 +17,7 @@ export interface MigrationReport {
   idMappings: IdMapping[]
 }
 export interface ImportPreview {
+  envelope: StorageEnvelope | null
   state: AppState
   rawData: string
   report: MigrationReport | null
@@ -154,7 +155,12 @@ export function inspectImport(rawData: string): CommandResult<ImportPreview> {
     const root = backupObject(parsed, 'Backup')
     let data: unknown = root
     let source: MigrationReport['source'] = 'local-state'
-    if ('data' in root) {
+    let envelope: StorageEnvelope | null = null
+    if ('storageVersion' in root) {
+      validateEnvelope(root)
+      envelope = root
+      data = root.data
+    } else if ('data' in root) {
       knownKeys(root, 'Backup', 'app exportedAt schemaVersion data')
       source = backupEnum(root.app, 'app', ['riffrechnung', 'gitarrenrechnungen']) as MigrationReport['source']
       backupTimestamp(root.exportedAt, 'exportedAt')
@@ -167,7 +173,7 @@ export function inspectImport(rawData: string): CommandResult<ImportPreview> {
     let state: AppState
     if (version === 2) ({ state, report } = migrateV2(data, source))
     else { validateBackupState(data); state = structuredClone(data) }
-    return { rawData, state, report, warnings: historicalEmailWarnings(state) }
+    return { rawData, state, report, envelope, warnings: historicalEmailWarnings(state) }
   })
 }
 
@@ -180,18 +186,6 @@ export function inspectImportBytes(bytes: Uint8Array): CommandResult<ImportPrevi
 // Read-only conversion; callers must inspect the report before a replacement.
 export function parseBackup(text: string): AppState {
   return requireSuccess(inspectImport(text)).state
-}
-
-export function applyImport(state: AppState, preview: ImportPreview): CommandResult<AppState> {
-  return commandResult(() => {
-    validateBackupState(state)
-    assertReplacementAllowed(state)
-    // Re-read the retained source rather than trusting a mutable preview.
-    const checked = requireSuccess(inspectImport(preview.rawData))
-    if (checked.report) throw new Error('Migrierte Daten bitte separat exportieren. Der abgesicherte Schreibweg folgt in Paket 03.')
-    validateBackupState(checked.state)
-    return checked.state
-  })
 }
 
 export function serializeMigrationReport(preview: ImportPreview): string {

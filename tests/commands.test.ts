@@ -1,3 +1,4 @@
+import { seedState, sharedLock } from './storageHarness'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createElement } from 'react'
@@ -7,12 +8,12 @@ import { emptyState } from '../src/lib/defaults'
 import { prepareInvoiceCopy, prepareNewInvoice, saveGuardianState, saveInvoiceState, saveSettingsState, saveStudentState } from '../src/lib/commands'
 import { changeInvoiceStatus, invoiceDraftErrors, saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { copyItemsWithFreshIds } from '../src/lib/identities'
-import { applyImport, inspectImport, inspectImportBytes, serializeMigrationReport } from '../src/lib/importState'
+import { inspectImport, inspectImportBytes, serializeMigrationReport } from '../src/lib/importState'
 import { buildMailto, mailboxError } from '../src/lib/mailbox'
 import { requireSuccess } from '../src/lib/result'
 import { applyStandardRateInput, parseStandardRate } from '../src/lib/settings'
 import { applyItemNumberInput, adjustQuantity, itemNumberInput, MAX_PRICE, parsePaymentTermInput, validId } from '../src/lib/values'
-import { loadState, parseBackup, persistState, saveState, serializeBackup, STORAGE_KEY, validateBackupState } from '../src/lib/storage'
+import { StorageSession, loadState, parseBackup, serializeBackup, STORAGE_KEY, validateBackupState } from '../src/lib/storage'
 import { createLessonItem, invoiceTotal, mailtoUrl, nextInvoiceAllocation } from '../src/lib/utils'
 import { ImportReviewContent } from '../src/views/ImportReview'
 
@@ -51,7 +52,7 @@ function roundTrip(state: AppState): AppState {
   const imported = parseBackup(serializeBackup(state))
   assert.deepEqual(imported, state, 'kein neuer Zeitstempel und keine passive Normalisierung')
   assert.deepEqual(parseBackup(JSON.stringify(imported)), state)
-  saveState(imported)
+  seedState(imported)
   const loaded = loadState()
   if (loaded.status !== 'ready') assert.fail(loaded.error)
   assert.deepEqual(loaded.state, state)
@@ -155,7 +156,7 @@ test('P02: gemeinsame ID-Funktion erkennt Generatorfehler und Kollisionen auch f
   assert.throws(() => createLessonItem('s0', '2026-09-01', family().settings, ''), /gültige Positions/)
 })
 
-for (const count of [2, 3]) for (const finalized of [false, true]) test(`P02: ${count} bekannte ${finalized ? 'finalisierte' : 'Entwurfs-'}Empfängerkopien werden verlustfrei und idempotent repariert`, async () => withStorage((entries) => {
+for (const count of [2, 3]) for (const finalized of [false, true]) test(`P02: ${count} bekannte ${finalized ? 'finalisierte' : 'Entwurfs-'}Empfängerkopien werden verlustfrei und idempotent repariert`, async () => withStorage(async (entries) => {
   const legacy = legacyCopies(count, finalized)
   const before = structuredClone(legacy)
   const raw = legacyRaw(legacy)
@@ -180,12 +181,13 @@ for (const count of [2, 3]) for (const finalized of [false, true]) test(`P02: ${
   const again = requireSuccess(inspectImport(serializeBackup(preview.state)))
   assert.equal(again.report, null)
   assert.deepEqual(again.state, preview.state)
-  assert.equal(applyImport(emptyState(), preview).ok, false, 'keine automatische Reparaturübernahme')
-  assert.throws(() => saveState(preview.state), /unterstütztes Backup-Format/)
+  const recoverySession = new StorageSession({ lock: sharedLock() })
+  await assert.rejects(recoverySession.change(() => preview.state), /Rohdaten/)
   assert.equal(entries.get(STORAGE_KEY), raw)
   // Only the synthetic destination is cleared, modeling an empty browser profile.
   entries.clear()
-  roundTrip(requireSuccess(applyImport(emptyState(), again)))
+  const destination = new StorageSession({ lock: sharedLock() })
+  roundTrip(await destination.restore(serializeBackup(again.state)))
 }))
 
 test('P02: Reparatur verweigert unklare Herkunft, lokale Kollisionen und andere Schäden', () => {
@@ -348,25 +350,26 @@ test('P02: fehlerhafte importierte Mailboxen sind sichtbar, historische Werte bl
   assert.equal(new URL(mailtoUrl(emptySnapshot, state.guardians, state.students)).pathname, '', 'kein stiller Wechsel auf eine heutige Adresse')
 })
 
-test('P02: Import prüft den aktuellen Zielzustand erneut und erhält Nummernreservierungen', async () => withStorage(() => {
+test('P03: Import prüft den aktuellen Zielzustand erneut und erhält Nummernreservierungen', async () => withStorage(async () => {
   const initial = family()
   const saved = saveInvoiceDraft(initial, draft(initial), true, at)
   saved.voidedInvoiceNumbers.push({ number: '2026-a-0002', sequence: 2, year: 2026, invoiceDate: '2026-08-15', deletedAt: at, amount: 30, recipient: 'Test', reason: 'deleted' })
   const preview = requireSuccess(inspectImport(serializeBackup(saved)))
-  const imported = roundTrip(requireSuccess(applyImport(emptyState(), preview)))
+  const session = new StorageSession({ lock: sharedLock() })
+  const imported = await session.restore(preview.rawData)
   assert.equal(nextInvoiceAllocation(imported, '2026-08-15', ['s0']).number, '2026-a-0003')
-  const other = requireSuccess(inspectImport(serializeBackup(emptyState())))
-  assert.equal(applyImport(imported, other).ok, false, 'zwischen Vorschau und Bestätigung ausgestellte Belege schützen')
-  const manipulated = { ...preview, state: emptyState() }
-  assert.deepEqual(requireSuccess(applyImport(emptyState(), manipulated)), saved, 'Vorschau ersetzt nicht die erneut geprüften Eingangsbytes')
+  await assert.rejects(session.restore(serializeBackup(emptyState())), /Finalisierte/)
+  preview.state = emptyState()
+  assert.deepEqual(await session.restore(preview.rawData), saved, 'Vorschau ersetzt nicht die erneut geprüften Eingangsbytes')
+  assert.deepEqual(loadState().status === 'ready', true)
 }))
 
 test('P02: ältere, beschädigte und unbekannte neuere lokale Daten können auch erzwungen nicht überschrieben werden', async () => withStorage(async (entries) => {
   for (const raw of [legacyRaw(legacyCopies(2, true)), '{bad json', '{"schemaVersion":99}', JSON.stringify({ ...family(), settings: { ...family().settings, privateRate: -1 } })]) {
     entries.set(STORAGE_KEY, raw)
     assert.equal(loadState().status, 'recovery')
-    const result = await persistState(emptyState(), null, false, null, true)
-    assert.notEqual(result.local.status, 'saved')
+    const session = new StorageSession({ lock: sharedLock() })
+    await assert.rejects(session.change(() => emptyState()))
     assert.equal(entries.get(STORAGE_KEY), raw)
   }
 }))

@@ -1,217 +1,225 @@
-import { DIRECTORY_BACKUP_BLOCKED } from './safety'
 import type { AppState } from '../types'
-import { emptyState } from './defaults'
+import { createDemoState, emptyState } from './defaults'
+import { inspectImport, type ImportPreview } from './importState'
 import { validateBackupState } from './validation'
-import { inspectImport, parseBackup } from './importState'
+import { assertOriginalsPreserved } from './safety'
+import { canonical, descendsFrom, fingerprint, reference, type StorageEnvelope } from './envelope'
+import { appendBackup, checkDirectory, inspectBackupDirectory, StorageConflict, type DirectoryBinding, type DirectoryInspection } from './backupDirectory'
 export { validateBackupState } from './validation'
 export { parseBackup } from './importState'
+export { ensureWritePermission, inspectBackupDirectory, StorageConflict } from './backupDirectory'
+export { storeDirectoryHandle, readDirectoryHandle, clearDirectoryHandle } from './handleStore'
 
-export const STORAGE_KEY = 'gitarrenrechnungen-state-v2'
-const LAST_BACKUP_AT_KEY = 'riffrechnung-last-backup-at'
-const DB_NAME = 'gitarrenrechnungen-handles'
-const HANDLE_KEY = 'backup-directory'
-const STATE_WRITE_LOCK = 'riffrechnung-state-write'
+export const STORAGE_KEY = 'riffrechnung-state-v4'
+export const LEGACY_STORAGE_KEY = 'gitarrenrechnungen-state-v2'
+export const PREVIOUS_STORAGE_KEY = 'riffrechnung-state-v4-previous'
+export const LEGACY_GUARD_KEY = 'riffrechnung-state-v4-legacy-original'
+const LAST_BACKUP_AT_KEY = 'riffrechnung-v4-last-export-at'
+export const STATE_WRITE_LOCK = 'riffrechnung-write-v4'
 
-export interface StorageRecoveryState {
-  status: 'recovery'
-  rawData: string
-  error: string
+export interface StorageRecoveryState { status: 'recovery'; rawData: string; error: string; readOnly: boolean }
+export type StateLoadResult = { status: 'ready'; state: AppState; envelope: StorageEnvelope | null; rawData: string | null } | StorageRecoveryState
+export type WriteLock = <T>(action: () => Promise<T>) => Promise<T>
+
+export function newerFormat(raw: string): boolean {
+  try {
+    const root = JSON.parse(raw)
+    return root.storageVersion > 4 || root.schemaVersion > 3 || root.data?.schemaVersion > 3
+  } catch { return false }
 }
 
-export type StateLoadResult = { status: 'ready'; state: AppState; persistedUpdatedAt: string | null } | StorageRecoveryState
-
-export interface PersistenceResult {
-  local: { status: 'saved' | 'conflict' | 'error'; error?: string }
-  fileBackup: { status: 'skipped' | 'saved' | 'error'; error?: string }
-}
-
-export function loadState(): StateLoadResult {
-  let raw: string | null
+export function loadState(storage: Storage = localStorage): StateLoadResult {
+  let raw: string | null = null
   try {
-    raw = localStorage.getItem(STORAGE_KEY)
-  } catch (error) {
-    return {
-      status: 'recovery',
-      rawData: '',
-      error: error instanceof Error ? error.message : 'Der lokale Speicher konnte nicht gelesen werden.',
+    raw = storage.getItem(STORAGE_KEY)
+    if (raw !== null) {
+      const inspected = inspectImport(raw)
+      if (!inspected.ok || !inspected.value.envelope) throw new Error(inspected.ok ? 'Der Speicherumschlag fehlt. Bitte Übernahme ausdrücklich bestätigen.' : inspected.errors.map((error) => error.message).join(' '))
+      return { status: 'ready', state: inspected.value.state, envelope: inspected.value.envelope, rawData: raw }
     }
-  }
-  if (!raw) return { status: 'ready', state: emptyState(), persistedUpdatedAt: null }
-  try {
-    const inspection = inspectImport(raw)
-    if (!inspection.ok) throw new Error(inspection.errors.map((error) => error.message).join(' '))
-    if (inspection.value.report) return { status: 'recovery', rawData: raw, error: 'Altformat erkannt. Bitte Migration prüfen und separat exportieren; die lokalen Eingangsbytes bleiben geschützt.' }
-    const state = inspection.value.state
-    return { status: 'ready', state, persistedUpdatedAt: state.updatedAt }
+    raw = storage.getItem(LEGACY_STORAGE_KEY)
+    if (raw !== null) return { status: 'recovery', rawData: raw, readOnly: newerFormat(raw), error: 'Bisheriger Speicher gefunden. Alle alten Tabs schließen, Originaldaten exportieren und den kontrollierten Umstieg bestätigen. Der alte Speicher bleibt unverändert.' }
+    return { status: 'ready', state: emptyState(), envelope: null, rawData: null }
   } catch (error) {
-    return {
-      status: 'recovery',
-      rawData: raw,
-      error: error instanceof Error ? error.message : 'Die lokalen Daten konnten nicht validiert werden.',
-    }
+    return { status: 'recovery', rawData: raw ?? '', readOnly: newerFormat(raw ?? ''), error: error instanceof Error ? error.message : 'Der lokale Speicher ist nicht verfügbar.' }
   }
 }
 
-export function saveState(state: AppState): void {
+const browserLock: WriteLock = (action) => {
+  if (typeof navigator === 'undefined' || !navigator.locks) return Promise.reject(new Error('Sicheres Speichern benötigt Web Locks. Dieser Browser bleibt schreibgeschützt; JSON-Export ist möglich.'))
+  return navigator.locks.request(STATE_WRITE_LOCK, action)
+}
+
+interface SessionOptions { mode?: 'real' | 'demo'; storage?: Storage; lock?: WriteLock }
+
+// All application writes go through one queue and one origin-wide Web Lock.
+// Demo never accesses Storage, IndexedDB, permission APIs or directory handles.
+export class StorageSession {
+  readonly mode: 'real' | 'demo'
+  readonly initial: StateLoadResult
+  private storage?: Storage
+  private lock: WriteLock
+  private queue: Promise<unknown> = Promise.resolve()
+  private token: string | null = null
+  private legacy: string | null = null
+  private current: AppState
+  private envelope: StorageEnvelope | null = null
+  private recovery: StorageRecoveryState | null = null
+  private binding: DirectoryBinding | null = null
+
+  constructor(options: SessionOptions = {}) {
+    this.mode = options.mode ?? 'real'
+    this.lock = options.lock ?? browserLock
+    if (this.mode === 'demo') {
+      this.current = createDemoState()
+      this.initial = { status: 'ready', state: this.current, envelope: null, rawData: null }
+      return
+    }
+    try {
+      this.storage = options.storage ?? localStorage
+      this.initial = loadState(this.storage)
+      this.token = this.storage.getItem(STORAGE_KEY)
+      this.legacy = this.storage.getItem(LEGACY_STORAGE_KEY)
+    } catch (error) {
+      this.initial = { status: 'recovery', rawData: '', readOnly: false, error: error instanceof Error ? error.message : 'Lokaler Speicher nicht verfügbar.' }
+    }
+    this.current = this.initial.status === 'ready' ? this.initial.state : emptyState()
+    this.envelope = this.initial.status === 'ready' ? this.initial.envelope : null
+    this.recovery = this.initial.status === 'recovery' ? this.initial : null
+  }
+
+  get state(): AppState { return structuredClone(this.current) }
+  get revision(): StorageEnvelope | null { return this.envelope ? structuredClone(this.envelope) : null }
+  get directory(): DirectoryBinding | null { return this.binding }
+  async idle(): Promise<void> { await this.queue }
+
+  private run<T>(action: () => Promise<T>): Promise<T> {
+    const task = this.queue.then(() => this.mode === 'demo' ? action() : this.lock(action))
+    this.queue = task.catch(() => undefined)
+    return task
+  }
+
+  checkCurrent = (): void => {
+    if (this.mode === 'demo') return
+    if (!this.storage) throw new Error('Lokaler Speicher nicht verfügbar.')
+    if (this.storage.getItem(STORAGE_KEY) !== this.token) throw new StorageConflict('Der Inhalt wurde in einem anderen Tab geändert. Bitte aktuellen Stand neu laden; dieser Tab überschreibt ihn nicht.')
+    const guard = this.storage.getItem(LEGACY_GUARD_KEY)
+    const actualLegacy = this.storage.getItem(LEGACY_STORAGE_KEY)
+    if (actualLegacy !== this.legacy || (guard !== null && guard !== JSON.stringify(actualLegacy))) throw new StorageConflict('Eine alte Anwendungsversion hat den bisherigen Speicher geändert. Alte Tabs schließen; beide Stände separat sichern und bewusst prüfen.')
+  }
+
+  private async write(next: AppState, operation: StorageEnvelope['operation'], preview?: ImportPreview): Promise<AppState> {
+    validateBackupState(next)
+    if (this.mode === 'demo') { this.current = structuredClone(next); return this.state }
+    this.checkCurrent()
+    if (!this.storage) throw new Error('Lokaler Speicher nicht verfügbar.')
+    if (this.recovery && !preview) throw new Error('Geschützte Rohdaten: bitte eine Wiederherstellung prüfen und bestätigen.')
+    if (this.recovery?.readOnly || newerFormat(this.token ?? this.legacy ?? '')) throw new Error('Unbekannte neuere Formate bleiben schreibgeschützt. Bitte eine passende Anwendungsversion verwenden.')
+    const previous = this.envelope
+    const source = preview?.envelope ?? null
+    // An empty/recovery profile can adopt a known source identity. A populated
+    // valid profile keeps its identity; foreign backups then require a new folder.
+    const base = previous ?? source
+    const maxRevision = Math.max(previous?.revision ?? 0, source?.revision ?? 0)
+    if (!Number.isSafeInteger(maxRevision + 1)) throw new Error('Revisionszähler ausgeschöpft. Der Bestand bleibt unverändert.')
+    const envelope: StorageEnvelope = {
+      app: 'riffrechnung', storageVersion: 4, schemaVersion: 3,
+      datasetId: base?.datasetId ?? crypto.randomUUID(), commitId: crypto.randomUUID(), revision: maxRevision + 1,
+      savedAt: new Date().toISOString(), operation,
+      ancestors: base ? [...base.ancestors, await reference(base)] : [],
+      source: preview ? { datasetId: source?.datasetId ?? null, revision: source?.revision ?? null, fingerprint: await fingerprint(preview.rawData) } : null,
+      data: structuredClone(next),
+    }
+    // An explicitly restored newer branch of the SAME dataset becomes the base;
+    // divergent existing branches remain conflicts, not an invented common history.
+    if (previous && source && await descendsFrom(source, previous)) envelope.ancestors = [...source.ancestors, await reference(source)]
+    const raw = JSON.stringify(envelope)
+    this.checkCurrent()
+    if (preview) {
+      const archive = JSON.stringify({ version: 1, at: envelope.savedAt, previousRaw: this.token, legacyRaw: this.legacy, sourceRaw: preview.rawData, report: preview.report })
+      this.storage.setItem(`${STORAGE_KEY}-recovery-${envelope.commitId}`, archive)
+    }
+    // Each individual setItem is atomic. A failed prerequisite aborts the write;
+    // the current copy is never removed, including Quota/Security failures.
+    if (this.token !== null) this.storage.setItem(PREVIOUS_STORAGE_KEY, this.token)
+    if (this.storage.getItem(LEGACY_GUARD_KEY) === null) this.storage.setItem(LEGACY_GUARD_KEY, JSON.stringify(this.legacy))
+    this.storage.setItem(STORAGE_KEY, raw)
+    this.token = raw
+    this.envelope = envelope
+    this.current = structuredClone(next)
+    this.recovery = null
+    return this.state
+  }
+
+  change(producer: (current: AppState) => AppState, operation: 'edit' | 'reset' = 'edit'): Promise<AppState> {
+    return this.run(async () => {
+      this.checkCurrent()
+      const next = producer(this.state)
+      assertOriginalsPreserved(this.current, next)
+      if (canonical(next) === canonical(this.current) && this.envelope) return this.state
+      return this.write(next, operation)
+    })
+  }
+
+  restore(rawData: string): Promise<AppState> {
+    return this.run(async () => {
+      this.checkCurrent()
+      const inspected = inspectImport(rawData)
+      if (!inspected.ok) throw new Error(inspected.errors.map((error) => error.message).join(' '))
+      const preview = inspected.value
+      // Original-content protection from package 01 remains valid for known local
+      // issued records. A damaged source is archived, never silently repaired here.
+      if (!this.recovery) assertOriginalsPreserved(this.current, preview.state)
+      const next = structuredClone(preview.state)
+      // Reserve known counters/numbers even when an older backup is restored.
+      for (const [key, count] of Object.entries(this.current.counters)) next.counters[key] = Math.max(count, next.counters[key] ?? 0)
+      next.voidedInvoiceNumbers = [...new Map([...next.voidedInvoiceNumbers, ...this.current.voidedInvoiceNumbers].map((entry) => [entry.number, entry])).values()]
+      next.nextStudentCodeIndex = Math.max(next.nextStudentCodeIndex, this.current.nextStudentCodeIndex)
+      return this.write(next, this.token === null && this.legacy !== null ? 'adopt' : 'restore', preview)
+    })
+  }
+
+  connect(binding: DirectoryBinding): Promise<DirectoryInspection> {
+    return this.run(async () => {
+      if (this.mode === 'demo') throw new Error('Die Demo verwendet keine Backup-Ordner.')
+      this.checkCurrent()
+      if (!this.envelope) throw new Error('Zuerst den lokalen Bestand speichern oder eine vorhandene Sicherung wiederherstellen.')
+      const result = await checkDirectory(binding, this.envelope)
+      this.binding = binding
+      return result
+    })
+  }
+
+  disconnect(): void { this.binding = null }
+
+  backup(): Promise<void> {
+    return this.run(async () => {
+      if (this.mode === 'demo') throw new Error('Die Demo verwendet keine Backup-Ordner.')
+      this.checkCurrent()
+      if (!this.envelope || this.recovery) throw new Error('Datei-Backup setzt erfolgreiches lokales Speichern voraus.')
+      if (!this.binding) throw new Error('Kein geprüfter Backup-Ordner verbunden.')
+      await appendBackup(this.binding, this.envelope, this.checkCurrent)
+    })
+  }
+
+  export(): string {
+    return this.envelope ? JSON.stringify(this.envelope, null, 2) : serializeBackup(this.current)
+  }
+}
+
+export function serializeBackup(state: AppState): string {
   validateBackupState(state)
-  const raw = localStorage.getItem(STORAGE_KEY)
-  if (raw) {
-    // Package 02 has no safe overwrite path for corrupt, older or newer data.
-    // A recovery must keep these bytes; package 03 supplies the write service.
-    const inspected = inspectImport(raw)
-    if (!inspected.ok || inspected.value.report) throw new Error('Die vorhandenen Rohdaten haben kein unterstütztes Backup-Format für direktes Überschreiben. Bitte separat exportieren.')
-  }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-}
-
-async function persistLocalState(state: AppState, expectedUpdatedAt: string | null | undefined, forceOverwrite: boolean): Promise<PersistenceResult['local']> {
-  const write = (): PersistenceResult['local'] => {
-    try {
-      if (expectedUpdatedAt !== undefined && !forceOverwrite) {
-        const storedRaw = localStorage.getItem(STORAGE_KEY)
-        let storedUpdatedAt: string | null = null
-        if (storedRaw) {
-          try {
-            const inspected = inspectImport(storedRaw)
-            if (!inspected.ok || inspected.value.report) throw new Error('Geschützte Rohdaten')
-            storedUpdatedAt = inspected.value.state.updatedAt
-          } catch {
-            return { status: 'conflict', error: 'Die lokalen Daten wurden in einem anderen Tab geändert oder sind nicht mehr lesbar.' }
-          }
-        }
-        if (storedUpdatedAt !== expectedUpdatedAt) {
-          return { status: 'conflict', error: 'Die lokalen Daten wurden in einem anderen Tab geändert. Bitte lade den aktuellen Stand neu.' }
-        }
-      }
-      saveState(state)
-      return { status: 'saved' }
-    } catch (error) {
-      return { status: 'error', error: error instanceof Error ? error.message : 'Lokales Speichern ist fehlgeschlagen.' }
-    }
-  }
-  if (typeof navigator !== 'undefined' && navigator.locks) return navigator.locks.request(STATE_WRITE_LOCK, write)
-  return write()
-}
-
-export async function persistState(state: AppState, directoryHandle: FileSystemDirectoryHandle | null, includeFileBackup: boolean, expectedUpdatedAt?: string | null, forceLocalOverwrite = false): Promise<PersistenceResult> {
-  let local: PersistenceResult['local']
-  try {
-    local = await persistLocalState(state, expectedUpdatedAt, forceLocalOverwrite)
-  } catch (error) {
-    local = { status: 'error', error: error instanceof Error ? error.message : 'Lokales Speichern ist fehlgeschlagen.' }
-  }
-
-  let fileBackup: PersistenceResult['fileBackup'] = { status: 'skipped' }
-  if (local.status !== 'conflict' && includeFileBackup && directoryHandle) {
-    try {
-      await writeBackupToDirectory(directoryHandle, state)
-      fileBackup = { status: 'saved' }
-    } catch (error) {
-      fileBackup = { status: 'error', error: error instanceof Error ? error.message : 'Das Datei-Backup ist fehlgeschlagen.' }
-    }
-  }
-  return { local, fileBackup }
+  // A detached export is deliberately unidentified: it cannot prove lineage.
+  return JSON.stringify({ app: 'riffrechnung', exportedAt: new Date().toISOString(), schemaVersion: state.schemaVersion, data: state }, null, 2)
 }
 
 export function loadLastBackupAt(): string | null {
-  try {
-    const value = localStorage.getItem(LAST_BACKUP_AT_KEY)
-    return value && !Number.isNaN(Date.parse(value)) ? value : null
-  } catch {
-    return null
-  }
+  try { const value = localStorage.getItem(LAST_BACKUP_AT_KEY); return value && !Number.isNaN(Date.parse(value)) ? value : null } catch { return null }
 }
-
 export function recordBackupExport(at = new Date()): string {
   const value = at.toISOString()
   localStorage.setItem(LAST_BACKUP_AT_KEY, value)
   return value
 }
 
-export function serializeBackup(state: AppState): string {
-  validateBackupState(state)
-  return JSON.stringify({
-    app: 'riffrechnung',
-    exportedAt: new Date().toISOString(),
-    schemaVersion: state.schemaVersion,
-    data: state,
-  }, null, 2)
-}
-
-function openHandleDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1)
-    request.onupgradeneeded = () => request.result.createObjectStore('handles')
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
-  })
-}
-
-export async function storeDirectoryHandle(handle: FileSystemDirectoryHandle): Promise<void> {
-  const db = await openHandleDb()
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction('handles', 'readwrite')
-    tx.objectStore('handles').put(handle, HANDLE_KEY)
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-  db.close()
-}
-
-export async function readDirectoryHandle(): Promise<FileSystemDirectoryHandle | null> {
-  try {
-    const db = await openHandleDb()
-    const value = await new Promise<FileSystemDirectoryHandle | null>((resolve, reject) => {
-      const tx = db.transaction('handles', 'readonly')
-      const request = tx.objectStore('handles').get(HANDLE_KEY)
-      request.onsuccess = () => resolve(request.result ?? null)
-      request.onerror = () => reject(request.error)
-    })
-    db.close()
-    return value
-  } catch (error) {
-    throw new Error(`Gespeicherter Backup-Ordner konnte nicht geprüft werden: ${error instanceof Error ? error.message : 'IndexedDB nicht verfügbar.'}`)
-  }
-}
-
-export async function clearDirectoryHandle(): Promise<void> {
-  const db = await openHandleDb()
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction('handles', 'readwrite')
-    tx.objectStore('handles').delete(HANDLE_KEY)
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-  })
-  db.close()
-}
-
-export async function ensureWritePermission(handle: FileSystemDirectoryHandle, request = false): Promise<boolean> {
-  const options = { mode: 'readwrite' as const }
-  if (await handle.queryPermission?.(options) === 'granted') return true
-  if (request && await handle.requestPermission?.(options) === 'granted') return true
-  return false
-}
-
-export async function inspectBackupDirectory(handle: FileSystemDirectoryHandle): Promise<string> {
-  let fileHandle: FileSystemFileHandle
-  try {
-    fileHandle = await handle.getFileHandle('riffrechnung-backup.json', { create: false })
-  } catch (error) {
-    if (error instanceof DOMException && error.name === 'NotFoundError') return `Keine Backup-Datei vorhanden. ${DIRECTORY_BACKUP_BLOCKED}`
-    throw error
-  }
-  const raw = await (await fileHandle.getFile()).text()
-  try {
-    const backup = parseBackup(raw)
-    return `Vorhandene Sicherung geprüft: ${backup.students.length} Kinder, ${backup.invoices.length} Rechnungen. Die Datei bleibt unverändert. ${DIRECTORY_BACKUP_BLOCKED}`
-  } catch (error) {
-    return `Vorhandene Datei bleibt unverändert: ${error instanceof Error ? error.message : 'Format nicht lesbar.'} ${DIRECTORY_BACKUP_BLOCKED}`
-  }
-}
-
-// Fail closed for EVERY caller until package 03 provides revision checks and safe writes.
-export async function writeBackupToDirectory(handle: FileSystemDirectoryHandle, state: AppState): Promise<void> {
-  void handle
-  void state
-  throw new Error(DIRECTORY_BACKUP_BLOCKED)
-}
+export { inspectBackupDirectory as inspectDirectory }
