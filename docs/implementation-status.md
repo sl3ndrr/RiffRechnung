@@ -16,7 +16,7 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 | Paket | Umfang | R-/F-/N-Zuordnung | Stand |
 | --- | --- | --- | --- |
 | 00 | Ausgangsbasis, CI, esbuild | R23, R25, N01 | Implementiert und in CI geprüft; administrative Abnahme offen |
-| 01 | Gefährliche Abläufe vorläufig absichern | R01–R05, R10, R22 (Sofortschutz) | Implementiert; Ergebnis-CI und reale Browserabnahmen noch offen |
+| 01 | Gefährliche Abläufe vorläufig absichern | R01–R05, R10, R22 (Sofortschutz) | Sofortschutz implementiert und CI-geprüft; reale Browserabnahmen offen |
 | 02 | Fachbefehle, Validatoren, reparierbare Formate | R01, R04, R15, R24 | Laut Analyse offen |
 | 03 | Speicherung, Backups, isolierte Demo | R05, R08, R22, N06 | Laut Analyse offen |
 | 04 | Originalbelege und Korrekturen | R03, R09, R10, F03, N09 | Laut Analyse offen |
@@ -74,8 +74,11 @@ Produktregeln und offene fachliche Entscheidungen: [product-decisions.md](produc
   Alle 44 Dateien blobverifiziert, keine `AGENTS.md`. Dessen
   [CI 34025170731](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34025170731)
   ist erfolgreich; keine erneute lokale Baseline-Ausführung möglich.
-- **Ergebnisstand:** Branch `codex/paket-01-sofortschutz`; Paket-01-Commit/PR und
-  abschließender CI-Nachweis werden nach dem Prüflauf ergänzt. Kein Merge/Deployment.
+- **Ergebnisstand:** [PR #20](https://github.com/sl3ndrr/RiffRechnung/pull/20),
+  Branch `codex/paket-01-sofortschutz`, gegen PR-19-Branch. Implementierung
+  `1f30b4848d17efc36be4f7483f896f3fec33ee77`, mit korrigierter Test-Typisierung
+  `e491d440d9baa6ec251570da65bc0eb3187fa399`. Danach nur Nachweisdokumentation;
+  abschließender Ergebnis-Commit und zugehörige CI im PR. Kein Merge/Deployment.
 - **Aktuell bestätigte Befunde:** R01/R02 (ungeprüfte Kopien aller Positionen),
   R03/R10 (Snapshot-Verlust/Empfängerabweichungen), R04 (ungeprüfte Standardpreise),
   R05 (direkte Datei-Schreibwege), R22 (ungeprüfter Austausch durch Demo).
@@ -95,7 +98,13 @@ Produktregeln und offene fachliche Entscheidungen: [product-decisions.md](produc
   IBAN. Erlaubte Übergänge werden serialisiert, importiert und mit Storage-Mocks
   neu geladen; wiederholter Import darf keine weiteren Inhaltsänderungen bewirken.
   Betroffene Quelltextmuster-Tests werden fachlich ersetzt; vorhandene CSV-, Geld-,
-  Altformat- und Rohdatenschutztests bleiben. Ausführung noch offen.
+  Altformat- und Rohdatenschutztests bleiben. **56/56 Tests bestanden**, keine
+  übersprungenen Tests; bisherige Prüfabsichten erhalten, geänderte Produktregeln
+  fachlich ersetzt. Lint, Typecheck einschließlich Tests und Build erfolgreich
+  unter Ubuntu 24.04.4, Node 22.23.2/npm 10.9.8 im
+  [Lauf 34039578186](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34039578186)
+  für `e491d440…`. Erster CI-Lauf: ebenfalls 56/56 Tests, danach TS2339 in der neuen
+  Test-Hilfsfunktion; korrigiert, keine Baseline-Regression und kein abgeschwächter Test.
 - **Migration:** keine; Schema 2 und bisherige Altformat-Unterstützung unverändert.
   Keine Reparatur negativer Preise, doppelter Alt-IDs, ausgestellter Beträge oder
   Snapshots. Beschädigte/neue unbekannte Formate bleiben geschützt; Rohdatenexport
@@ -109,9 +118,20 @@ Produktregeln und offene fachliche Entscheidungen: [product-decisions.md](produc
 - **Offene Nachweise:** Lokale Laufzeit Node 24.19.0/npm 11.9.0 statt Node 22.
   Node-22-Abruf und `npm ci` liefern E403; Lint/Tests/Typecheck/Build vom Werkzeug
   vor Prozessstart abgebrochen. Node-24-Syntaxprüfung der neuen TS-Dateien und
-  `git diff --check` erfolgreich, kein Ersatz für die CI-Schranken. Keine echten
-  Browser-, Dateiberechtigungs- oder Mehrtabprüfungen; kein Druck-/Banking-Scan.
+  `git diff --check` erfolgreich; reguläre CI-Schranken erfolgreich wie oben.
+  Keine echten Browser-, Dateiberechtigungs- oder Mehrtabprüfungen; kein Druck-/Banking-Scan.
   Verzögertes lokales Speichern und historische Darstellungs-Fallbacks bleiben
   Aufgaben der Pakete 03/04/07. Administrative Pflichtchecks aus Paket 00 bleiben offen.
+
+| Abnahmekriterium Paket 01 | Ergebnis |
+| --- | --- |
+| Kein fremdes Kind / keine vervielfachte Forderung über Aufteilung | Bestanden in Funktionsprüfungen für 2/3 Familien; Einzel-/Geschwistergegenproben bestanden |
+| Preise, historisches Zurücksetzen und Empfängeränderung erzeugen keine unlesbaren Daten | Bestanden einschließlich unveränderter Originale, Statuspflege, Import und simuliertem Reload |
+| Leerer Browser / vorhandenes Backup und veralteter Tab / manuelles Backup | Bestanden mit Datei-/Storage-Mocks: keine Dateierzeugung, kein Schreibstream und unveränderte Bytes |
+| Demo verändert keine begonnenen Echtdaten | Bestanden für Teil-Einstellungen, Daten, ausstehende Eingabe und Ordnersperren mit synthetischen Beständen |
+| Gezielte Regressionen und dokumentierte Sperren/Folgepakete | Bestanden; 56/56 Gesamttests und alle CI-Schranken |
+| Echte Browserbedienung, Dateirechte und parallele Tabs | Nicht geprüft; Mocks belegen diese Abnahme nicht |
+
+Weitere Ausführungsdetails: [quality-gates.md](quality-gates.md).
 
 Nächstes vorgesehenes Paket: **02**, nur nach gesondertem Auftrag; nicht begonnen.

@@ -137,3 +137,42 @@ Diagnoseworkflows aus dem Nachweisbranch werden in den Ergebnis-PR übernommen.
 - Browser-Verbindung verfügbar und leerer Testkontext geprüft; kein lokaler
   App-Build verfügbar. Keine echte Fokus-, Dateiberechtigungs-, Druck- oder
   Banking-App-Prüfung. Server-Rendering und Storage-Mocks zählen dafür nicht.
+
+## Paket 01 – konkrete Prüfnachweise
+
+Basis: `d627d1333fc94f6a9628c3f9d6a1ca17128244fd` auf
+`codex/paket-00-quality-gates` (PR #19 noch offen); ursprüngliches `main` weiterhin
+`ba7857fd9180fa392c42a0235643e478e5077ee5`. Ergebnis:
+[PR #20](https://github.com/sl3ndrr/RiffRechnung/pull/20),
+`codex/paket-01-sofortschutz`. Abhängigkeiten, Lockfile, Node-Vorgabe, Typecheck-
+Konfiguration und wiederverwendbarer Prüfworkflow unverändert aus Paket 00.
+
+| Commit / Lauf | Befehle und Umgebung | Ergebnis |
+| --- | --- | --- |
+| Basis `d627d133…`, [34025170731](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34025170731) | Vorhandener Paket-00-PR-Prüflauf unter Node 22, Status erneut ausgelesen | Erfolgreich; keine neue lokale Baseline ausgeführt |
+| Implementierung `1f30b4848d17efc36be4f7483f896f3fec33ee77`, [34039460362](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34039460362) | Ubuntu 24.04, Node 22.23.2/npm 10.9.8; `npm ci`, `npm run lint`, `npm test`, `npm run typecheck` | Installation/Lint/56 Tests erfolgreich, 0 übersprungen; TS2339 in `tests/safety.test.ts` (bereits eingegrenzte Union). Build wegen Typecheck-Fehler nicht ausgeführt. Neuer Test-Typfehler, keine Baseline-Regression. |
+| Korrektur `e491d440d9baa6ec251570da65bc0eb3187fa399`, [34039578186](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34039578186) | Ubuntu 24.04.4, Node 22.23.2/npm 10.9.8; `npm ci`, `npm run lint`, `npm test`, `npm run typecheck`, `npm run build` | Alle fünf Schranken erfolgreich; 56 Tests, 56 bestanden, 0 fehlgeschlagen, 0 übersprungen. |
+| Lokale Umgebung | Node 24.19.0/npm 11.9.0; `npm view node@22 version --json --fetch-retries=0 --fetch-timeout=15000`; `npm ci --fetch-retries=0 --fetch-timeout=15000 --cache /workspace/scratch/9b3a8b1dfebe/npm-cache` | Je Exit 1 / E403: Node-Registry bzw. `yocto-queue-0.1.0.tgz`; keine erfolgreiche Installation, kein lokales Node 22 |
+| Lokale Schranken | `npm run lint`, `npm test`, `npm run typecheck`, `npm run build` | Werkzeugabbruch vor Prozessstart: `network approval was cancelled before a decision was returned`; keine Testergebnisse oder Prozess-Exitcodes |
+| Lokale begrenzte Prüfung | `node --check` für neue TS-Module/Testdatei; `git diff --check` | Exit 0 unter Node 24; reine Syntax-/Diffprüfung, kein Ersatz für CI oder Browser |
+
+Im erfolgreichen Prüflauf entspricht `head_sha` dem Commit `e491d440…`.
+Ausgecheckt wurde der temporäre PR-Merge-Commit
+`b42936065b53edcb20a06d8ff4991c6b296376f6`; dessen Tree
+`dd2245943bcef96a4af9138e54d30122a81ca86b` stimmt per API-Abgleich mit dem
+Ergebnis-Tree überein. Der Job hatte ausschließlich Contents/Metadata-Leserechte.
+Kein Pages-Artefakt angefordert, kein Deployment. Die anschließende reine
+Nachweisdokumentation löst einen weiteren vollständigen Prüflauf aus; endgültiger
+Commit und Lauf werden im PR und Abschluss genannt.
+
+Die elf zusätzlichen Funktionsregressionen und fachlich ersetzten bisherigen
+Tests prüfen gesperrte und erlaubte Zustandsübergänge, Geld/Preise, Referenzen,
+Nummernreservierungen und Schreibkonflikte einschließlich serialisiertem Import
+und simuliertem Reload. Die vorhandenen Normalisierungen bleiben unverändert;
+ein zweiter Import prüft unveränderten Inhalt bei bestehender `updatedAt`-Semantik.
+Keine Migration, keine gelöschten oder übersprungenen Tests zur Statuskosmetik.
+Dateihandles/Storage sind synthetische Mocks, die unter anderem null Datei-
+Erzeugungen und null Schreibstreams nachweisen. Sie belegen keine echten
+Dateiberechtigungen oder parallelen Browser-Tabs. Reale Browser-, Fokus-, Druck-
+und Banking-App-Abnahmen bleiben offen. Pflichtstatuscheck aus Paket 00 weiterhin
+administrativ offen. Nächstes Paket: 02, nicht begonnen.
