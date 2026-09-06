@@ -15,7 +15,7 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 
 | Paket | Umfang | R-/F-/N-Zuordnung | Stand |
 | --- | --- | --- | --- |
-| 00 | Ausgangsbasis, CI, esbuild | R23, R25, N01 | Implementiert; CI-Abnahme läuft, siehe unten |
+| 00 | Ausgangsbasis, CI, esbuild | R23, R25, N01 | Implementiert und in CI geprüft; administrative Abnahme offen |
 | 01 | Gefährliche Abläufe vorläufig absichern | R01–R05, R10, R22 (Sofortschutz) | Laut Analyse offen |
 | 02 | Fachbefehle, Validatoren, reparierbare Formate | R01, R04, R15, R24 | Laut Analyse offen |
 | 03 | Speicherung, Backups, isolierte Demo | R05, R08, R22, N06 | Laut Analyse offen |
@@ -39,11 +39,15 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 - **Ausgangsbefunde bestätigt:** R23 (nur Build vor Deployment, kein PR-Prüflauf,
   veränderliche Action-Tags, globale Pages-/OIDC-Rechte), R25 (direktes esbuild
   0.24.2 im betroffenen Advisory-Bereich), N01 (README-Installation mit `npm install`).
-- **Ergebnisstand:** Arbeitsbranch `codex/paket-00-quality-gates`; gemeinsamer
+- **Ergebnisstand:** [PR #19](https://github.com/sl3ndrr/RiffRechnung/pull/19),
+  Branch `codex/paket-00-quality-gates`, Implementierungscommit
+  `f4e42e7a339431ce385d488c19920d6793a4e54f` (anschließend nur Nachweisdokumentation;
+  aktueller Ergebnis-Commit und zugehörige CI im PR). Gemeinsamer
   PR-/Pages-Prüfworkflow mit Node 22, `npm ci`, Lint, Tests, Typecheck inklusive
   Tests und Build. Deployment hängt vom erfolgreichen Prüflauf desselben Stands
   ab; Pages-/OIDC-Rechte ausschließlich im Deployment-Job. README nutzt `npm ci`.
   Direkte esbuild-Version 0.25.12, mit npm regeneriertes und gezielt verglichenes Lockfile.
+  R24 bleibt fachlich offen; lediglich dessen fehlende Testdatei-Typprüfung ist mit erledigt.
 - **Geprüfte Invarianten:** Baseline und esbuild-Testlauf: jeweils 45/45 Tests,
   keine übersprungenen/gelöschten/abgeschwächten Tests; vorhandene Prüfungen zu
   Geld, Referenzen, Import/Reload, Nummernreservierung, CSV und beschädigten
@@ -51,10 +55,13 @@ gewählten Erweiterung wird Paket 12 wiederholt.
   Pakete. Produktionsquelltext und Datenformat bleiben unverändert.
 - **Migration:** keine; Schema 2, gespeicherte Rechnungen, Snapshots und Rohdaten
   werden durch Paket 00 nicht verändert. Ein Git-Revert betrifft nur Werkzeug-/CI-Konfiguration und Dokumentation.
-- **Nachweise/offene Abnahmen:** [Qualitätsschranken](quality-gates.md). Lokale
-  Installation blockiert; GitHub-CI verfügbar. Abschließende PR-CI und negativer
-  Veröffentlichungstest stehen bei diesem Zwischenstand noch aus. Verpflichtender
-  Branch-Statuscheck fehlt; klassischer Branch-Protection-Endpunkt nicht lesbar.
+- **Nachweise/offene Abnahmen:** [Qualitätsschranken](quality-gates.md). PR-CI
+  erfolgreich. Kontrollierter Testfehler verhindert Build, Pages-Artefakt und
+  abhängigen Veröffentlichungs-Prüfjob; nach Entfernen des Fehlers sind diese
+  Voraussetzungen erfolgreich. Testdatei-Typfehler wird mit TS2322 erkannt und
+  nach Entfernen wieder fehlerfrei geprüft. R23 technisch behoben, administrative
+  Pflichtchecks noch offen; R25/N01 behoben. Lokale Installation bleibt blockiert.
+  Verpflichtender Branch-Statuscheck fehlt; klassischer Schutzendpunkt nicht lesbar.
   Keine echte Fokus-, Dateiberechtigungs-, Druck- oder Banking-App-Abnahme.
 
 Produktregeln und offene fachliche Entscheidungen: [product-decisions.md](product-decisions.md).

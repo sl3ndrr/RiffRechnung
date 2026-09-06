@@ -75,18 +75,51 @@ danach 0 Funde; daraus folgt keine allgemeine Sicherheitsfreigabe.
 | --- | --- | --- |
 | Unveränderte Baseline `ba7857f…`, [Lauf 34024505339](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34024505339), Job `baseline` | Ubuntu 24.04, Node 22.23.2, npm 10.9.8; `npm ci`, `npm run lint`, `npm test`, `npm run build` | Erfolgreich; 45 Tests, 45 bestanden, 0 fehlgeschlagen/übersprungen. |
 | Baseline plus npm-esbuild-Update, gleicher Lauf, Job `lockfile` | Dieselbe Umgebung, obiger Regenerationsbefehl, dann dieselben vier Schranken | Erfolgreich; 45/45 Tests, Testbundle und Build funktionieren. Kein Ergebnis-Commit-Prüflauf. |
+| Implementierung `f4e42e7a339431ce385d488c19920d6793a4e54f`, [PR-Lauf 34024860696](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34024860696) | Ubuntu 24.04, Node 22.23.2 / npm 10.9.8; `npm ci`, `npm run lint`, `npm test`, `npm run typecheck`, `npm run build` | Alle erfolgreich; 45/45 Tests, keine übersprungen. PR-Artefaktupload planmäßig ausgelassen. Token-Log: ausschließlich Contents/Metadata read. |
+| Absichtlicher Fehler `d74ac8047e08dd30b40a39c73c90b1caae76a503`, [Lauf 34024886264](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34024886264) | Derselbe wiederverwendbare Prüfworkflow, Node 22.23.2 / npm 10.9.8, `upload-pages-artifact: true` | `npm test`: 45 bestanden, genau 1 absichtlich fehlgeschlagen, 0 übersprungen; nachfolgender Build, Artefaktupload und `publish-probe` übersprungen. Erwarteter Fehler, keine Baseline-Regression. |
+| Testdatei-Typfehler, gleicher Negativlauf, Job `typecheck-probe` | Temporäre `tests/quality.typecheck-probe.ts` mit `number = 'intentional type error'`; `npm run typecheck`, Datei entfernen, erneut `npm run typecheck` | Erst TS2322 an genau dieser Testdatei; danach Exit 0. Zusätzlich `git diff --exit-code -- package.json package-lock.json` erfolgreich. |
+| Fehler entfernt, `cb4e6ea5bee69907243a21a5a5dff2b899997c08`, [Lauf 34024972042](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34024972042) | Derselbe Prüfworkflow und dieselbe Umgebung; ursprüngliche Testdatei wiederhergestellt | Alle fünf Schranken, Pages-Artefaktupload und `publish-probe` erfolgreich. Kein Deployment ausgeführt. |
 | Lokaler Ausgangsstand | Node 24.19.0 / npm 11.9.0; `npm view node@22 version --json --fetch-retries=0 --fetch-timeout=20000`; `npm ci --fetch-retries=0 --fetch-timeout=20000 --cache /workspace/scratch/2bd0130b90ec/npm-cache` | Beide Exit 1 / HTTP 403 durch Netzwerkbeschränkung; kein lokales Node 22 und keine erfolgreiche Installation. |
 | Lokale Lint-/Test-/Build-Versuche | `npm run lint`, `npm test`, `npm run build`, zusätzlich offline versucht | Werkzeugabbruch vor Prozessstart: `network approval was cancelled before a decision was returned`; keine Prozess-Exitcodes/Testergebnisse. |
 
 Der isolierte Baseline-Workflow liegt ausschließlich auf `codex/paket-00-ci-evidence`,
 Workflow-Commit `6922fd9095d23225e741a960d5136bbc4867fc5c`; beide Jobs checken ausdrücklich
-den oben genannten Ausgangscommit aus und besitzen nur Lesezugriff. Ergebnis-PR-CI,
-Typecheck-Negativkontrolle und Veröffentlichungsschranke werden vor Abschluss ergänzt.
+den oben genannten Ausgangscommit aus und besitzen nur Lesezugriff.
+
+Der PR-Lauf ist über `head_sha` dem Implementierungscommit zugeordnet und checkt
+GitHubs temporären Merge-Commit `b0fa5e63127c8849fd1bbe9b1c4364c6bddfc43a` aus.
+Dessen Tree `2e241c6572fca72cfba1976c34c601af2c7d717a` stimmt mit dem
+Implementierungscommit überein (GitHub-API-Abgleich).
+Abschließende reine Nachweisdokumentation löst erneut PR-CI aus; deren konkreter
+Ergebnis-Commit und Lauf stehen in [PR #19](https://github.com/sl3ndrr/RiffRechnung/pull/19).
+
+Der kontrollierte Negativ-/Positivnachweis bleibt auf dem isolierten Nachweisbranch.
+`publish-probe` verwendet wie das tatsächliche Deployment `needs: quality`, hat
+keine Schreibrechte und veröffentlicht nichts. Damit wird die CI-Abhängigkeit
+ohne Produktionsveröffentlichung geprüft. Insbesondere war beim Negativlauf der
+Artefaktupload angefordert; er wurde wegen des Testfehlers blockiert, nicht wegen
+eines PR-/Branch-Filters. Der absichtliche Test und der Typfehler sind entfernt;
+`tests/logic.test.ts` entspricht wieder exakt dem Ausgangsstand. Die eigentlichen
+Deployment-Actions und Environment-Regeln bleiben bis zum separaten Deployment-Auftrag ungeprüft.
+
+Der unveränderte Prüfworkflow hat in PR, Negativ- und Positivnachweis den Git-Blob
+`ffb49693cf76e524572f9a752199f2e3828d1744`. Das positive Pages-Artefakt ist dem
+Commit `cb4e6ea5bee69907243a21a5a5dff2b899997c08` zugeordnet; keine Tests oder
+Diagnoseworkflows aus dem Nachweisbranch werden in den Ergebnis-PR übernommen.
+
+| Abnahme | Status |
+| --- | --- |
+| PR: Node 22, npm ci, Lint, Tests, Typen einschließlich Tests, Build | Bestanden; PR-Lauf oben, abschließender Dokumentationsstand im PR |
+| Absichtlicher Testfehler verhindert Veröffentlichungsvoraussetzungen | Bestanden: gleicher Prüfworkflow, Artefakt und abhängiger Probejob blockiert, positiver Gegenlauf erfolgreich |
+| PR-Jobs ohne Deployment-Rechte/-Secrets | Bestanden: Workflow und tatsächliches Token-Log geprüft |
+| Korrigiertes esbuild, reproduzierbares npm-Lockfile, Testbundle und Build | Bestanden |
+| Pflichtstatuscheck administrativ eingerichtet | Nicht umgesetzt; separat einzurichten |
+| Lokale Node-22-Ausführung, tatsächliches Pages-Deployment, reale Browser-Fachabnahmen | Nicht geprüft; lokale Installation blockiert, Deployment separat beauftragen |
 
 ## Rechte und administrative Abnahme
 
 - GitHub-Plugin: Repository-/Datei-/Commit-Lesen, Branch-Erstellung, Tree/Commit/
-  Ref-Schreiben und CI-Läufe/Jobschritte/Logs erfolgreich ausgeführt. Terminal-
+  Ref-Schreiben, PR-Erstellung und CI-Läufe/Jobschritte/Logs erfolgreich ausgeführt. Terminal-
   `git ls-remote https://github.com/sl3ndrr/RiffRechnung.git HEAD refs/heads/main`
   scheitert mit Exit 128 / HTTP 403. Es wird keine Beschränkung umgangen.
 - Rulesets lesbar: [21096773](https://github.com/sl3ndrr/RiffRechnung/rules/21096773)
