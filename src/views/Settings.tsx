@@ -24,9 +24,11 @@ interface SettingsProps {
   onDisconnectFolder: () => void
   onBackupNow: () => void
   onReset: () => void
+  onPrevious: () => void
+  onArchive: () => void
 }
 
-export function Settings({ state, folderSupported, folderConnected, folderName, onSave, onDirty, onRegisterFlush, onExport, onImport, onConnectFolder, onDisconnectFolder, onBackupNow, onReset }: SettingsProps) {
+export function Settings({ state, folderSupported, folderConnected, folderName, onSave, onDirty, onRegisterFlush, onExport, onImport, onConnectFolder, onDisconnectFolder, onBackupNow, onReset, onPrevious, onArchive }: SettingsProps) {
   const [form, setForm] = useState<SettingsType>(state.settings)
   const [rateInputs, setRateInputs] = useState({ privateRate: String(state.settings.privateRate), duoRate: String(state.settings.duoRate) })
   const [paymentTermInput, setPaymentTermInput] = useState(String(state.settings.paymentTermDays))
@@ -130,10 +132,11 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
           </section>
 
           <section id="backup" className="surface settings-section settings-section--backup">
-            <div className="settings-section__heading"><span><FolderSync aria-hidden="true" /></span><div><h2>Backup & Import</h2><p>JSON-Export bleibt verfügbar. Der Austausch eines Bestands mit ausgestellten Belegen oder reservierten Nummern ist vorläufig gesperrt.</p></div></div>
+            <div className="settings-section__heading"><span><FolderSync aria-hidden="true" /></span><div><h2>Backup & Import</h2><p>JSON-Export bleibt verfügbar. Eine Wiederherstellung erhält bekannte Originalbelege und Nummernreservierungen.</p></div></div>
+            <div className="button-row"><button className="button button--tonal" onClick={onPrevious}>Vorherigen lokalen Stand prüfen</button><button className="button button--tonal" onClick={onArchive}>Wiederherstellungsarchiv exportieren</button></div>
             <div className="backup-grid">
               <article><span className="backup-icon"><Download aria-hidden="true" /></span><h3>Manuelles Backup</h3><p>Alle Familien, Rechnungen, Einstellungen und der Änderungsverlauf in einer Datei.</p><button className="button button--tonal" onClick={onExport}><Download aria-hidden="true" /> JSON exportieren</button></article>
-              <article><span className="backup-icon"><Upload aria-hidden="true" /></span><h3>Backup wiederherstellen</h3><p>Ersetzt nach Bestätigung nur Bestände ohne ausgestellte Belege und reservierte Nummern.</p><label className="button button--tonal file-button"><Upload aria-hidden="true" /> JSON importieren<input type="file" accept="application/json,.json" onChange={(event) => { const file = event.target.files?.[0]; if (file) onImport(file); event.target.value = '' }} /></label></article>
+              <article><span className="backup-icon"><Upload aria-hidden="true" /></span><h3>Backup wiederherstellen</h3><p>Führt eine geprüfte Sicherung nach Bestätigung als neuen Stand ein. Bekannte Originale bleiben geschützt.</p><label className="button button--tonal file-button"><Upload aria-hidden="true" /> JSON importieren<input type="file" accept="application/json,.json" onChange={(event) => { const file = event.target.files?.[0]; if (file) onImport(file); event.target.value = '' }} /></label></article>
               <article className={folderConnected ? 'is-connected' : ''}><span className="backup-icon">{folderConnected ? <FolderSync aria-hidden="true" /> : <CloudOff aria-hidden="true" />}</span><h3>Backup-Ordner</h3><p>{!folderSupported ? 'Dieser Browser unterstützt die Ordnerauswahl nicht.' : folderConnected ? `Verbunden: ${folderName}.` : 'Vor dem Verbinden werden vorhandene Sicherungen gelesen. Schreiben erhält frühere Versionen.'}</p>{folderSupported && (folderConnected ? <div className="button-row"><button className="button button--tonal" onClick={onBackupNow}>Jetzt sichern</button><button className="button button--text" onClick={onDisconnectFolder}>Trennen</button></div> : <button className="button button--tonal" onClick={onConnectFolder}><FolderSync aria-hidden="true" /> Ordner wählen</button>)}</article>
             </div>
             <p className="field-hint" role="status">Neue versionierte Sicherungen erhalten bisherige Dateien. Bei Konflikten, fehlenden Berechtigungen oder fehlenden Browserfunktionen bleibt das Datei-Backup ausstehend; JSON-Export ist weiterhin möglich.</p>

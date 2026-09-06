@@ -136,12 +136,12 @@ export class StorageSession {
     const raw = JSON.stringify(envelope)
     this.checkCurrent()
     if (preview) {
-      const archive = JSON.stringify({ version: 1, at: envelope.savedAt, previousRaw: this.token, legacyRaw: this.legacy, sourceRaw: preview.rawData, report: preview.report })
+      const archive = JSON.stringify({ version: 1, at: envelope.savedAt, previousRaw: this.token, legacyRaw: this.legacy, sourceRaw: preview.rawData, report: preview.report, storageMigration: { algorithm: 'riffrechnung-storage-v4', version: 1, fromStorageVersion: preview.envelope?.storageVersion ?? null, toStorageVersion: 4, datasetId: envelope.datasetId, identity: base ? 'existing-identity' : 'explicit-new-assignment', revision: envelope.revision }, reservations: { before: preview.state.counters, after: next.counters, voidedNumbersBefore: preview.state.voidedInvoiceNumbers, voidedNumbersAfter: next.voidedInvoiceNumbers } })
       this.storage.setItem(`${STORAGE_KEY}-recovery-${envelope.commitId}`, archive)
     }
     // Each individual setItem is atomic. A failed prerequisite aborts the write;
     // the current copy is never removed, including Quota/Security failures.
-    if (this.token !== null) this.storage.setItem(PREVIOUS_STORAGE_KEY, this.token)
+    if (this.envelope && this.token !== null) this.storage.setItem(PREVIOUS_STORAGE_KEY, this.token)
     if (this.storage.getItem(LEGACY_GUARD_KEY) === null) this.storage.setItem(LEGACY_GUARD_KEY, JSON.stringify(this.legacy))
     this.storage.setItem(STORAGE_KEY, raw)
     this.token = raw
@@ -200,6 +200,22 @@ export class StorageSession {
       if (!this.binding) throw new Error('Kein geprüfter Backup-Ordner verbunden.')
       await appendBackup(this.binding, this.envelope, this.checkCurrent)
     })
+  }
+
+  previousRaw(): string | null {
+    if (this.mode === 'demo') return null
+    return this.storage?.getItem(PREVIOUS_STORAGE_KEY) ?? null
+  }
+
+  exportRecoveryArchive(): string {
+    if (this.mode === 'demo') return JSON.stringify({ version: 1, mode: 'demo', recoveries: [] })
+    if (!this.storage) throw new Error('Lokaler Speicher nicht verfügbar.')
+    const recoveries: unknown[] = []
+    for (let index = 0; index < this.storage.length; index++) {
+      const key = this.storage.key(index)
+      if (key?.startsWith(`${STORAGE_KEY}-recovery-`)) recoveries.push({ key, raw: this.storage.getItem(key) })
+    }
+    return JSON.stringify({ version: 1, previousRaw: this.previousRaw(), recoveries }, null, 2)
   }
 
   export(): string {

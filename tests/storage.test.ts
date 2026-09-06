@@ -346,3 +346,32 @@ test('P03: IndexedDB-Öffnungsfehler und Transaktionsabbruch/-fehler, auch nach 
   assert.equal(await readDirectoryHandle(db.factory), null)
   assert.equal(db.calls.closed, 1)
 })
+
+
+test('P03: Wiederherstellungsfehler erhält auch eine ältere gültige lokale Kopie', async () => {
+  const { storage, session } = context()
+  await session.change(title('Gültiger Vorgänger'))
+  await session.change(title('Später beschädigt'))
+  const previous = storage.getItem(PREVIOUS_STORAGE_KEY)
+  storage.setItem(STORAGE_KEY, '{beschädigt')
+  const recovery = new StorageSession({ storage, lock: sharedLock() })
+  assert.equal(recovery.previousRaw(), previous)
+  storage.fail = STORAGE_KEY
+  await assert.rejects(recovery.restore(serializeBackup(emptyState())), /Speicherplatz/)
+  assert.equal(storage.getItem(PREVIOUS_STORAGE_KEY), previous)
+  assert.equal(storage.getItem(STORAGE_KEY), '{beschädigt')
+  storage.fail = null
+  await recovery.restore(previous!)
+  assert.equal(recovery.state.settings.issuer.name, 'Gültiger Vorgänger')
+  const archive = JSON.parse(recovery.exportRecoveryArchive())
+  expectArchive(archive)
+})
+
+function expectArchive(archive: { previousRaw: string; recoveries: Array<{ raw: string }> }) {
+  assert.ok(archive.previousRaw)
+  assert.ok(archive.recoveries.length)
+  const report = JSON.parse(archive.recoveries.at(-1)!.raw)
+  assert.equal(report.previousRaw, '{beschädigt')
+  assert.equal(report.storageMigration.version, 1)
+  assert.equal(report.storageMigration.toStorageVersion, 4)
+}
