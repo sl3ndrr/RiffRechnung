@@ -1,3 +1,4 @@
+import { FINALIZED_INVOICE_BLOCKED, isFinalizedInvoice } from '../lib/safety'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowDown, ArrowUp, ArrowUpDown, CalendarDays, ChevronDown, Copy, Edit3, FilePlus2, Mail, MoreVertical, Printer, RotateCcw, Search, Send, Trash2 } from 'lucide-react'
@@ -188,10 +189,10 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
             visibility: menuPosition ? 'visible' : 'hidden',
           }}
         >
-          <button type="button" role="menuitem" onClick={() => chooseMenuAction('edit', menuInvoice)}><Edit3 aria-hidden="true" /> Bearbeiten</button>
+          <button type="button" role="menuitem" disabled={isFinalizedInvoice(menuInvoice)} title={isFinalizedInvoice(menuInvoice) ? FINALIZED_INVOICE_BLOCKED : undefined} onClick={() => chooseMenuAction('edit', menuInvoice)}><Edit3 aria-hidden="true" /> Bearbeiten</button>
           <button type="button" role="menuitem" onClick={() => chooseMenuAction('pdf', menuInvoice)}><Printer aria-hidden="true" /> {menuInvoice.status === 'draft' ? 'Vorschau' : 'PDF generieren'}</button>
           <button type="button" role="menuitem" onClick={() => chooseMenuAction('duplicate', menuInvoice)}><Copy aria-hidden="true" /> Duplizieren</button>
-          <button className="is-danger" type="button" role="menuitem" onClick={() => chooseMenuAction('delete', menuInvoice)}><Trash2 aria-hidden="true" /> Löschen</button>
+          <button className="is-danger" type="button" role="menuitem" disabled={isFinalizedInvoice(menuInvoice)} title={isFinalizedInvoice(menuInvoice) ? FINALIZED_INVOICE_BLOCKED : undefined} onClick={() => chooseMenuAction('delete', menuInvoice)}><Trash2 aria-hidden="true" /> Löschen</button>
         </div>,
         document.body,
       )}
@@ -256,10 +257,12 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
         {invoice.status === 'draft' ? (
           <><button className="button button--primary" onClick={() => onSetStatus('sent')}><Send aria-hidden="true" /> Finalisieren</button><button className="button button--tonal" onClick={onPrint}><Printer aria-hidden="true" /> Vorschau</button><button className="button button--text" onClick={onEdit}><Edit3 aria-hidden="true" /> Bearbeiten</button></>
         ) : (
-          <><button className="button button--primary" onClick={onPrint}><Printer aria-hidden="true" /> PDF / Drucken</button><button className="button button--tonal" onClick={onEdit}><Edit3 aria-hidden="true" /> Rechnung bearbeiten</button></>
+          <><button className="button button--primary" onClick={onPrint}><Printer aria-hidden="true" /> PDF / Drucken</button><button className="button button--tonal" onClick={onEdit} disabled><Edit3 aria-hidden="true" /> Rechnung bearbeiten</button></>
         )}
-        {invoice.status !== 'draft' && <div className="status-editor"><label htmlFor={`invoice-status-${invoice.id}`}>Status</label><div><select id={`invoice-status-${invoice.id}`} value={status} onChange={(event) => onSetStatus(event.target.value as InvoiceStatus)}><option value="sent">Versendet / offen</option><option value="paid">Bezahlt</option><option value="overdue">Überfällig</option></select><ChevronDown aria-hidden="true" /></div><button className="button button--text status-editor__reopen" type="button" onClick={() => onSetStatus('draft')}><RotateCcw aria-hidden="true" /> Zurück in Entwurf</button></div>}
+        {invoice.status !== 'draft' && <div className="status-editor"><label htmlFor={`invoice-status-${invoice.id}`}>Status</label><div><select id={`invoice-status-${invoice.id}`} value={status} onChange={(event) => onSetStatus(event.target.value as InvoiceStatus)}><option value="sent">Versendet / offen</option><option value="paid">Bezahlt</option><option value="overdue">Überfällig</option></select><ChevronDown aria-hidden="true" /></div><button className="button button--text status-editor__reopen" type="button" onClick={() => onSetStatus('draft')} disabled><RotateCcw aria-hidden="true" /> Zurück in Entwurf</button></div>}
       </div>
+
+      {isFinalizedInvoice(invoice) && <p className="field-hint" role="status">{FINALIZED_INVOICE_BLOCKED}</p>}
 
       {canRemind && (
         <section className="reminder-panel">
@@ -275,7 +278,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
 
       <footer className="invoice-detail__footer">
         <button className="button button--text" onClick={onDuplicate}><Copy aria-hidden="true" /> Duplizieren</button>
-        <button className="button button--text button--danger-text" onClick={onDelete}><Trash2 aria-hidden="true" /> Löschen</button>
+        <button className="button button--text button--danger-text" onClick={onDelete} disabled={isFinalizedInvoice(invoice)}><Trash2 aria-hidden="true" /> Löschen</button>
       </footer>
     </aside>
   )

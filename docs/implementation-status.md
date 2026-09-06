@@ -1,6 +1,6 @@
 # Umsetzungsstatus
 
-Stand: 2026-09-06, ausschließlich Paket 00. Analyse und Zielbranch `main` wurden
+Stand: 2026-09-06, Pakete 00/01. Paket 01 baut auf dem noch offenen PR #19 auf. Analyse und Zielbranch `main` wurden
 auf `ba7857fd9180fa392c42a0235643e478e5077ee5` abgeglichen (Tree
 `c00c371e0c8052bccaabc1208e6fd796a35c293e`). Keine `AGENTS.md` oder bisherigen
 Status-/Entscheidungsdateien im vollständig gelesenen Repository-Tree vorhanden.
@@ -16,7 +16,7 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 | Paket | Umfang | R-/F-/N-Zuordnung | Stand |
 | --- | --- | --- | --- |
 | 00 | Ausgangsbasis, CI, esbuild | R23, R25, N01 | Implementiert und in CI geprüft; administrative Abnahme offen |
-| 01 | Gefährliche Abläufe vorläufig absichern | R01–R05, R10, R22 (Sofortschutz) | Laut Analyse offen |
+| 01 | Gefährliche Abläufe vorläufig absichern | R01–R05, R10, R22 (Sofortschutz) | Implementiert; Ergebnis-CI und reale Browserabnahmen noch offen |
 | 02 | Fachbefehle, Validatoren, reparierbare Formate | R01, R04, R15, R24 | Laut Analyse offen |
 | 03 | Speicherung, Backups, isolierte Demo | R05, R08, R22, N06 | Laut Analyse offen |
 | 04 | Originalbelege und Korrekturen | R03, R09, R10, F03, N09 | Laut Analyse offen |
@@ -65,5 +65,53 @@ gewählten Erweiterung wird Paket 12 wiederholt.
   Keine echte Fokus-, Dateiberechtigungs-, Druck- oder Banking-App-Abnahme.
 
 Produktregeln und offene fachliche Entscheidungen: [product-decisions.md](product-decisions.md).
-Nächstes vorgesehenes Paket: **01**, erst nach gesondertem Auftrag auf festgelegtem
-Vorgängerstand; noch nicht begonnen.
+## Paket 01
+
+- **Ausgangsstand:** `main` weiterhin
+  `ba7857fd9180fa392c42a0235643e478e5077ee5`. Arbeits-/PR-Basis ist der aktuelle
+  Paket-00-Branch `codex/paket-00-quality-gates`, Commit
+  `d627d1333fc94f6a9628c3f9d6a1ca17128244fd` (PR #19 noch offen).
+  Alle 44 Dateien blobverifiziert, keine `AGENTS.md`. Dessen
+  [CI 34025170731](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34025170731)
+  ist erfolgreich; keine erneute lokale Baseline-Ausführung möglich.
+- **Ergebnisstand:** Branch `codex/paket-01-sofortschutz`; Paket-01-Commit/PR und
+  abschließender CI-Nachweis werden nach dem Prüflauf ergänzt. Kein Merge/Deployment.
+- **Aktuell bestätigte Befunde:** R01/R02 (ungeprüfte Kopien aller Positionen),
+  R03/R10 (Snapshot-Verlust/Empfängerabweichungen), R04 (ungeprüfte Standardpreise),
+  R05 (direkte Datei-Schreibwege), R22 (ungeprüfter Austausch durch Demo).
+  Behoben sind deren gefährliche Zugänge durch Sofortschutz; vollständige fachliche
+  Lösungen bleiben in den Folgepaketen offen. Keine F-/N-Erweiterung implementiert.
+- **Änderungen:** Testbare Funktionen für Speichern/Finalisieren/Status, Preis-
+  Übernahme und Sperren aus `App.tsx` herausgezogen. Keine automatische Aufteilung;
+  gemeinsame Rechnung nur bei durchgehender Empfänger-Kind-Zuordnung. Lokale rohe
+  Preiseingaben, letzter gültiger Wert bleibt. Originalschutz auch bei Löschung,
+  Bestandsaustausch und Zurücksetzen; Statuspflege separat. Bestehende Struktur-
+  validierung vor Übernahme verhindert neue unlesbare Referenzen. Ordnerzugriffe
+  prüfen nur lesend, alle Datei-Schreibwege stoppen. Demo prüft auch Teil-Einrichtung,
+  ausstehende Einstellungen und Ordnerabruf. Deutsche IBAN bei neuer Verwendung.
+- **Invarianten/Tests:** Gezielte Funktionsregressionen für 2/3 Familien, eindeutige
+  Einzel-/Geschwisterrechnungen, Preise, Referenzen/Positions-IDs, Snapshots,
+  Statuswechsel, reservierte/getrennte Nummern, Datei-Konflikte, Demo und deutsche
+  IBAN. Erlaubte Übergänge werden serialisiert, importiert und mit Storage-Mocks
+  neu geladen; wiederholter Import darf keine weiteren Inhaltsänderungen bewirken.
+  Betroffene Quelltextmuster-Tests werden fachlich ersetzt; vorhandene CSV-, Geld-,
+  Altformat- und Rohdatenschutztests bleiben. Ausführung noch offen.
+- **Migration:** keine; Schema 2 und bisherige Altformat-Unterstützung unverändert.
+  Keine Reparatur negativer Preise, doppelter Alt-IDs, ausgestellter Beträge oder
+  Snapshots. Beschädigte/neue unbekannte Formate bleiben geschützt; Rohdatenexport
+  und separater JSON-Export bleiben verfügbar. Kein automatisches Überschreiben
+  vorhandener Sicherungen. Ein Revert hebt die Sperren wieder auf, ohne Daten zu migrieren.
+- **Vorläufige Sperren/Folgepakete:** Aufteilung → 06 (Alt-ID-Reparatur → 02);
+  Originalbearbeitung/Snapshot-Korrektur/Zurücksetzen/Löschen und Bestandsaustausch
+  mit ausgestellten Belegen/reservierten Nummern → 04, Import-Speicherdienst → 03;
+  alle Ordner-Schreibwege und Demo bei begonnenem Echtbestand → 03;
+  vollständige Preis-/Fachvalidierung → 02/05, Rechnungsprofil/EPC → 07.
+- **Offene Nachweise:** Lokale Laufzeit Node 24.19.0/npm 11.9.0 statt Node 22.
+  Node-22-Abruf und `npm ci` liefern E403; Lint/Tests/Typecheck/Build vom Werkzeug
+  vor Prozessstart abgebrochen. Node-24-Syntaxprüfung der neuen TS-Dateien und
+  `git diff --check` erfolgreich, kein Ersatz für die CI-Schranken. Keine echten
+  Browser-, Dateiberechtigungs- oder Mehrtabprüfungen; kein Druck-/Banking-Scan.
+  Verzögertes lokales Speichern und historische Darstellungs-Fallbacks bleiben
+  Aufgaben der Pakete 03/04/07. Administrative Pflichtchecks aus Paket 00 bleiben offen.
+
+Nächstes vorgesehenes Paket: **02**, nur nach gesondertem Auftrag; nicht begonnen.

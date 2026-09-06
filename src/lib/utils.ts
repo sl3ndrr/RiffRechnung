@@ -1,3 +1,4 @@
+import { assertInvoiceEditable, SPLIT_INVOICE_BLOCKED } from './safety'
 import type { AppState, Guardian, Invoice, InvoiceItem, InvoiceStatus, LessonType, Settings, Student } from '../types'
 
 export const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
@@ -19,10 +20,11 @@ export function limitFooterText(value: string): string {
   return value.slice(0, MAX_FOOTER_TEXT_LENGTH)
 }
 
-type InvoiceFinalizationCandidate = Pick<Invoice, 'guardianIds' | 'studentIds' | 'invoiceDate' | 'dueDate' | 'items' | 'legalText'>
+type InvoiceFinalizationCandidate = Pick<Invoice, 'guardianIds' | 'studentIds' | 'invoiceDate' | 'dueDate' | 'items' | 'legalText'> & Partial<Pick<Invoice, 'recipientStrategy'>>
 
 export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 'students'>, invoice: InvoiceFinalizationCandidate): string[] {
   const errors: string[] = []
+  if (invoice.recipientStrategy === 'separate' && invoice.guardianIds.length > 1) errors.push(SPLIT_INVOICE_BLOCKED)
   const guardianIds = new Set(state.guardians.map((guardian) => guardian.id))
   const studentIds = new Set(state.students.map((student) => student.id))
   const selectedStudentIds = new Set(invoice.studentIds)
@@ -34,8 +36,8 @@ export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 's
   else if (invoice.studentIds.some((id) => !studentIds.has(id))) errors.push('Alle ausgewählten Kinder müssen in den aktuellen Stammdaten vorhanden sein.')
 
   const linkedGuardianIds = new Set(selectedStudents.flatMap((student) => student.guardianIds))
-  if (invoice.guardianIds.length && invoice.guardianIds.some((id) => guardianIds.has(id) && !linkedGuardianIds.has(id))) {
-    errors.push('Alle empfangenden Personen müssen einem ausgewählten Kind zugeordnet sein.')
+  if (invoice.guardianIds.length && invoice.guardianIds.some((id) => guardianIds.has(id) && (!linkedGuardianIds.has(id) || selectedStudents.some((student) => !student.guardianIds.includes(id))))) {
+    errors.push('Alle empfangenden Personen müssen jedem ausgewählten Kind zugeordnet sein; familienfremde Kinddaten dürfen nicht weitergegeben werden.')
   }
   if (!invoice.invoiceDate || !invoice.dueDate) errors.push('Rechnungs- und Fälligkeitsdatum angeben.')
   if (!billingPeriodFromItems(invoice.items, invoice.invoiceDate)) errors.push('Leistungszeitraum über die Positionsdaten angeben.')
@@ -260,33 +262,9 @@ export function studentName(invoice: Invoice, students: Student[]): string {
   return names.join(', ') || 'Ohne Kind'
 }
 
-export function reopenInvoiceAsDraft(state: AppState, invoiceId: string, at = new Date().toISOString()): AppState {
-  const target = state.invoices.find((invoice) => invoice.id === invoiceId)
-  if (!target || target.status === 'draft') return state
-  const reopened: Invoice = {
-    ...target,
-    number: null,
-    sequence: null,
-    status: 'draft',
-    snapshot: undefined,
-    paidAt: undefined,
-    sentAt: undefined,
-    updatedAt: at,
-  }
-  return {
-    ...state,
-    invoices: state.invoices.map((invoice) => invoice.id === invoiceId ? reopened : invoice),
-    voidedInvoiceNumbers: target.number ? [{
-      number: target.number,
-      sequence: target.sequence,
-      year: target.year,
-      invoiceDate: target.invoiceDate,
-      deletedAt: at,
-      reason: 'reopened',
-      amount: invoiceTotal(target),
-      recipient: guardianName(target, state.guardians),
-    }, ...state.voidedInvoiceNumbers] : state.voidedInvoiceNumbers,
-  }
+export function reopenInvoiceAsDraft(state: AppState, invoiceId: string): AppState {
+  assertInvoiceEditable(state.invoices.find((invoice) => invoice.id === invoiceId))
+  return state
 }
 
 export function sortPeople<T extends { name: string; createdAt: string }>(entries: T[], mode: PeopleSortMode): T[] {
@@ -472,8 +450,15 @@ export function isValidIban(input: string): boolean {
   return remainder === 1
 }
 
+export function germanIbanError(input: string): string | null {
+  const iban = cleanIban(input)
+  if (iban && !iban.startsWith('DE')) return 'Es werden nur deutsche IBANs unterstützt.'
+  if (!/^DE\d{20}$/.test(iban) || !isValidIban(iban)) return 'Bitte eine gültige deutsche IBAN mit 22 Zeichen und korrekter Prüfsumme eingeben.'
+  return null
+}
+
 export function isInvoiceSetupComplete(settings: Pick<Settings, 'issuer' | 'iban'>): boolean {
-  return Boolean(settings.issuer.name.trim()) && isValidIban(settings.iban)
+  return Boolean(settings.issuer.name.trim()) && germanIbanError(settings.iban) === null
 }
 
 function sanitizeEpc(value: string, maxLength: number): string {

@@ -7,10 +7,11 @@ interface DashboardProps {
   onNavigate: (page: PageKey) => void
   onNewInvoice: () => void
   onLoadDemo: () => void
+  demoBlockedReason: string | null
   onOpenInvoice: (id: string) => void
 }
 
-export function Dashboard({ state, onNavigate, onNewInvoice, onLoadDemo, onOpenInvoice }: DashboardProps) {
+export function Dashboard({ state, onNavigate, onNewInvoice, onLoadDemo, demoBlockedReason, onOpenInvoice }: DashboardProps) {
   const issuerReady = isInvoiceSetupComplete(state.settings)
   const completedSetupSteps = Number(issuerReady) + Number(state.students.length > 0)
   const finalized = state.invoices.filter((invoice) => invoice.number)
@@ -39,11 +40,12 @@ export function Dashboard({ state, onNavigate, onNewInvoice, onLoadDemo, onOpenI
               <strong>{completedSetupSteps} von 2 Schritten abgeschlossen</strong>
               <progress max={2} value={completedSetupSteps} aria-label={`Einrichtung: ${completedSetupSteps} von 2 Schritten abgeschlossen`} />
             </div>
-            <button className="text-link onboarding-demo-link" type="button" onClick={onLoadDemo}>
+            <button className="text-link onboarding-demo-link" type="button" onClick={onLoadDemo} disabled={Boolean(demoBlockedReason)} aria-describedby={demoBlockedReason ? 'demo-blocked' : undefined}>
               <Sparkles aria-hidden="true" /> Lieber erst mit Beispieldaten testen? <ArrowRight aria-hidden="true" />
             </button>
           </div>
         </header>
+        {demoBlockedReason && <p id="demo-blocked" className="field-hint" role="status">{demoBlockedReason}</p>}
         <section className="onboarding-grid" aria-label="Erste Schritte">
           <button className="onboarding-card onboarding-card--primary" onClick={() => onNavigate('settings')}>
             <span className="onboarding-card__step">01</span>
@@ -59,7 +61,7 @@ export function Dashboard({ state, onNavigate, onNewInvoice, onLoadDemo, onOpenI
             <p>Erziehungsberechtigte erfassen und ein oder mehrere Kinder zuordnen.</p>
             <span className="text-link">Familie erfassen <ArrowRight aria-hidden="true" /></span>
           </button>
-          <button className="onboarding-card onboarding-card--soft" onClick={onLoadDemo}>
+          <button className="onboarding-card onboarding-card--soft" onClick={onLoadDemo} disabled={Boolean(demoBlockedReason)} aria-describedby={demoBlockedReason ? 'demo-blocked' : undefined}>
             <span className="onboarding-card__step"><Sparkles aria-hidden="true" /></span>
             <ReceiptText aria-hidden="true" />
             <h2>Mit Beispieldaten starten</h2>

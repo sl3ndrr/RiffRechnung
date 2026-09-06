@@ -1,13 +1,13 @@
 # Produktentscheidungen
 
-Stand: Paket 00, 2026-09-06. Quelle: beauftragter Umsetzungsplan zur Analyse von
+Stand: Pakete 00/01, 2026-09-06. Quelle: beauftragter Umsetzungsplan zur Analyse von
 `ba7857fd9180fa392c42a0235643e478e5077ee5`. Diese Regeln sind verbindliche Ziele;
 ihre technische Umsetzung wird pro Paket im [Umsetzungsstatus](implementation-status.md) belegt.
 
 | Thema | Entscheidung | Umsetzung / offene Entscheidung |
 | --- | --- | --- |
 | Architektur | Statische React-/TypeScript-App, lokale Datenhaltung, deutsche Oberfläche; kein zusätzliches Backend. | In allen Paketen erhalten. |
-| IBAN | Ausschließlich deutsche IBANs für neue/geänderte Kontoeinstellungen und neue Finalisierungen. Keine Ausweitung auf weitere SEPA-Länder. | Paket 07; der Ausgangscode akzeptiert noch weitere SEPA-Länder. Paket 00 ändert keine Fachlogik. |
+| IBAN | Ausschließlich deutsche IBANs für neue/geänderte Kontoeinstellungen und neue Finalisierungen. Keine Ausweitung auf weitere SEPA-Länder. | Sofortschutz in Paket 01 für Kontoeinstellungen und neue Finalisierungen; vollständiges Profil und EPC-Konsistenz in Paket 07. |
 | Historische Kontodaten | Alte Belege originalgetreu lesen; fremde IBANs weder löschen noch umschreiben noch durch aktuelle Kontodaten ersetzen. Neue Verwendung darf eine Korrektur verlangen. | Pakete 04/07. |
 | Getrennte Rechnungen | Jede Leistung pro Aufteilung insgesamt genau einmal berechnen; Empfänger erhalten nur zugeordnete Kinder/Positionen. Keine angenommene 50/50-Aufteilung. | Konservative Regel aus dem Plan übernommen, Paket 06. |
 | Rechnungskopien | Weitere Ausgabe desselben Belegs erzeugt weder neue Forderung noch zweiten Umsatz. Getrennte Forderungen brauchen getrennte Leistungen oder ausdrücklich bestätigte Anteile. | Pakete 04/06/08. |
@@ -25,3 +25,37 @@ Prüfungen verwenden das mitgelieferte npm auf `ubuntu-24.04`. Die Node-24-Laufz
 der GitHub Actions ist unabhängig von der Node-22-Laufzeit der Projektbefehle.
 PRs prüfen GitHubs Merge-Stand; Pages prüft und veröffentlicht den auslösenden
 `main`-Commit und dessen Artefakt im selben Workflow-Lauf.
+
+## Vorläufige Regeln für Paket 01
+
+- **Aufteilung (R01/R02):** Mehrere getrennte Empfängerrechnungen sind bei Anlage,
+  Entwurfsspeicherung und Finalisierung gesperrt. Eine einzelne gemeinsame
+  Rechnung verlangt die Zuordnung jedes Empfängers zu jedem ausgewählten Kind.
+  Die Sperre ersetzt keine Anteilsberechnung; endgültige Aufteilung in Paket 06.
+- **Preise (R04):** Leere, negative, unvollständige und nicht endliche Preise bleiben
+  Formulareingaben; der letzte gültige Zahlenwert bleibt erhalten. Punkt und Komma
+  sind als Dezimaltrenner zulässig, keine Exponentialschreibweise im Formular.
+  Null bleibt zulässig; bestehende Dezimalpräzision wird nicht gerundet (Paket 05).
+- **Originale (R03/R10, Vorbereitung F03):** Inhaltliches Bearbeiten, Snapshot-
+  Korrektur, Zurücksetzen und Löschen finalisierter Belege sind bis Paket 04
+  gesperrt. Ein vollständiger Bestandsaustausch durch Import oder Zurücksetzen ist
+  bei ausgestellten Belegen oder reservierten Nummern ebenfalls gesperrt. Zahlungs-
+  und Versandstatus bleiben erlaubt. Referenzfehler werden vor Übernahme abgewiesen.
+- **Dateien (R05):** Bis Paket 03 sind ALLE Ordner-Schreibwege gesperrt, auch bei
+  leerem Ziel, gleicher Datei oder erneuter Berechtigung. Die jetzigen Zeitstempel-
+  und Tabsperren reichen für einen sicheren Datei-Austausch nicht aus. Verbinden
+  prüft die bekannte Backup-Datei nur lesend; JSON-Export bleibt separat verfügbar.
+- **Demo (R22):** Bis Paket 03 nur bei unverändertem Leerbestand und nach geklärtem
+  Ordnerzugriff ohne verbundenen Ordner. Jede Einstellungsabweichung (auch Theme),
+  Historie, Zähler oder reservierte Nummer sperrt den Einstieg. Bereits angefasste,
+  noch ausstehende Einstellungen sperren zusätzlich innerhalb des laufenden Tabs.
+  Ein fehlgeschlagener Ordnerabruf gilt nicht als Nachweis, dass kein Ordner besteht.
+- **Konten:** Eine leere IBAN ist unvollständige Einrichtung, kein finalisierbares
+  Konto. Jede neue/geänderte nichtleere Kontoverbindung verlangt eine deutsche
+  IBAN. Unveränderte ausländische Alt-Kontodaten bleiben bei sachfremden Änderungen
+  erhalten; neue Finalisierung verlangt ihre Korrektur. Historische Snapshots und
+  die bisherige EPC-Leseprüfung bleiben erhalten (vollständige Lösung Paket 07).
+
+Paket 01 ändert kein Datenformat und erfindet keine Originalhistorie. Vorhandene
+Normalisierung und Import-Zeitstempel bleiben unverändert; Migrationen folgen erst
+in Paket 02, revisionssichere Speicherung in Paket 03.

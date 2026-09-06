@@ -1,3 +1,4 @@
+import './safety.test'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -11,6 +12,9 @@ import { createDemoState, defaultSettings, emptyState } from '../src/lib/default
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, runInvoiceMenuAction } from '../src/lib/invoiceMenu'
 import { loadLastBackupAt, loadState, parseBackup, persistState, recordBackupExport, saveState, serializeBackup } from '../src/lib/storage'
 import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoiceFinalizationErrors, invoicePdfTitle, invoiceTotal, invoicesToCsv, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, reopenInvoiceAsDraft, SEPA_IBAN_LENGTH_BY_COUNTRY, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
+import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
+import { assertOriginalsPreserved } from '../src/lib/safety'
+import { applyStandardRateInput, updateSettings } from '../src/lib/settings'
 import { APP_VERSION } from '../src/version'
 
 const student = (id: string, name: string, billingCode: string): Student => ({
@@ -136,7 +140,7 @@ test('gelöschte finalisierte Rechnungsnummern bleiben reserviert', () => {
   assert.equal(nextInvoiceAllocation(state, '2026-08-21', ['student-a']).number, '2026-a-0002')
 })
 
-test('zurückgesetzte Rechnungen werden echte Entwürfe und verbrauchte Nummern bleiben reserviert', () => {
+test('historisches Zurücksetzen ist gesperrt und verbrauchte Nummern bleiben reserviert', () => {
   const state = emptyState()
   state.students = [student('student-a', 'Anna', 'a')]
   state.counters = { '2026:a': 2 }
@@ -155,23 +159,16 @@ test('zurückgesetzte Rechnungen werden echte Entwürfe und verbrauchte Nummern 
       legalText: defaultSettings.defaultLegalText,
     },
   })]
-  const reopened = reopenInvoiceAsDraft(state, 'invoice-test', '2026-08-20T12:00:00.000Z')
-  const draft = reopened.invoices[0]
-  assert.equal(draft?.status, 'draft')
-  assert.equal(draft?.number, null)
-  assert.equal(draft?.sequence, null)
-  assert.equal(draft?.snapshot, undefined)
-  assert.equal(draft?.paidAt, undefined)
-  assert.equal(draft?.sentAt, undefined)
-  assert.equal(reopened.voidedInvoiceNumbers[0]?.number, '2026-a-0001')
-  assert.equal(reopened.voidedInvoiceNumbers[0]?.reason, 'reopened')
-  assert.equal(nextInvoiceAllocation(reopened, '2026-08-21', ['student-a']).number, '2026-a-0002')
-  assert.equal(reopenInvoiceAsDraft(reopened, 'invoice-test'), reopened)
-  assert.match(readFileSync(new URL('../src/views/Invoices.tsx', import.meta.url), 'utf8'), /Zurück in Entwurf/)
-  assert.match(readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8'), /In Entwurf zurücksetzen/)
+  const original = structuredClone(state)
+  assert.throws(() => reopenInvoiceAsDraft(state, 'invoice-test'), /Finalisierte Belege/)
+  assert.deepEqual(state, original)
+  assert.equal(nextInvoiceAllocation(state, '2026-08-21', ['student-a']).number, '2026-a-0002')
+  const draftState = { ...state, invoices: [invoice({ status: 'draft', number: null, sequence: null })] }
+  assert.equal(reopenInvoiceAsDraft(draftState, 'invoice-test'), draftState)
+
 })
 
-test('nur IBANs aus der vorgegebenen SEPA-Länderliste werden akzeptiert', () => {
+test('historische EPC-Kontodaten behalten die bisherige IBAN-Prüfung', () => {
   assert.deepEqual(Object.keys(SEPA_IBAN_LENGTH_BY_COUNTRY).sort(), [
     'AD', 'AT', 'BE', 'BG', 'CH', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI',
     'FR', 'GB', 'GR', 'HR', 'HU', 'IE', 'IS', 'IT', 'LI', 'LT', 'LU', 'LV',
@@ -217,6 +214,7 @@ test('Onboarding priorisiert die Einrichtung und hält den Demo-Zugang sichtbar'
     onNavigate: () => undefined,
     onNewInvoice: () => undefined,
     onLoadDemo: () => undefined,
+    demoBlockedReason: null,
     onOpenInvoice: () => undefined,
   }))
 
@@ -580,16 +578,15 @@ test('vollständiges Backup lässt sich wiederherstellen', () => {
   assert.equal(restored.audit[0]?.snapshotCorrection?.newValue.accountHolder, 'Neuer Kontoinhaber')
 })
 
-test('finalisierte Snapshots bleiben ohne bestätigten Korrekturmodus unverändert', () => {
-  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
-  const editorSource = readFileSync(new URL('../src/views/InvoiceEditor.tsx', import.meta.url), 'utf8')
-
-  assert.match(appSource, /snapshot: snapshotCorrectionConfirmed \? freshSnapshot : previousSnapshot \?\? freshSnapshot/)
-  assert.match(appSource, /title: 'Snapshot-Korrektur bestätigen'/)
-  assert.match(appSource, /oldValue: oldSnapshot \? structuredClone\(oldSnapshot\) : null/)
-  assert.match(appSource, /newValue: structuredClone\(newSnapshot\)/)
-  assert.match(editorSource, /Snapshot-Korrektur aktivieren/)
-  assert.match(editorSource, /finalized && snapshotCorrection/)
+test('finalisierte Inhalte und Snapshots bleiben auch bei angeforderter Korrektur unverändert', () => {
+  const state = validImportState()
+  const original = structuredClone(state)
+  const draft = { ...state.invoices[0], guardianIds: ['guardian-other'] }
+  assert.throws(() => saveInvoiceDraft(state, draft, false), /Finalisierte Belege/)
+  const changed = structuredClone(state)
+  changed.invoices[0].freeText = 'Nachträglicher Inhalt'
+  assert.throws(() => assertOriginalsPreserved(state, changed), /Finalisierte Belege/)
+  assert.deepEqual(state, original)
 })
 
 test('Backup-Import lehnt ungültige Feldtypen und Fachwerte ab', () => {
@@ -747,9 +744,13 @@ test('Entwürfe lassen sich aus der Detailansicht nur mit vollständigen aktuell
   assert.match(invoiceFinalizationErrors(state, { ...draft, items: [] }).join(' '), /Position/)
   assert.match(invoiceFinalizationErrors(state, { ...draft, items: [{ ...draft.items[0], description: '' }] }).join(' '), /vollständig/)
 
-  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
-  assert.match(appSource, /invoiceFinalizationErrors\(state, invoice\)/)
-  assert.match(appSource, /Vorläufige konservative Fachregel/)
+  state.settings.iban = 'DE02120300000000202051'
+  state.invoices = [draft]
+  const original = structuredClone(state)
+  assert.throws(() => changeInvoiceStatus({ ...state, guardians: [] }, draft.id, 'sent'), /Stammdaten/)
+  assert.deepEqual(state, original)
+  assert.equal(changeInvoiceStatus(state, draft.id, 'sent').invoices[0].number, '2026-a-0001')
+
 })
 
 test('Editor-Finalisierung wird vor Nummern- und Snapshot-Vergabe zentral validiert', () => {
@@ -786,23 +787,19 @@ test('Editor-Finalisierung wird vor Nummern- und Snapshot-Vergabe zentral validi
     assert.match(invoiceFinalizationErrors({ guardians, students: state.students }, draft).join(' '), expected, name)
   })
 
-  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
-  const saveInvoiceSource = appSource.slice(appSource.indexOf('  const saveInvoice'), appSource.indexOf('  const applyInvoiceStatus'))
-  const guardIndex = saveInvoiceSource.indexOf('const errors = invoiceFinalizationErrors(state, base)')
-  const recipientGroupsIndex = saveInvoiceSource.indexOf('const recipientGroups')
-  const allocationIndex = saveInvoiceSource.indexOf('nextInvoiceAllocation')
-  assert.ok(guardIndex >= 0)
-  assert.ok(guardIndex < recipientGroupsIndex)
-  assert.ok(guardIndex < allocationIndex)
-  assert.match(saveInvoiceSource.slice(guardIndex, recipientGroupsIndex), /toast\(`Finalisieren nicht möglich: \$\{errors\.join\(' '\)\}`, 'error'\)[\s\S]*return/)
+  state.settings.iban = 'DE02120300000000202051'
+  const original = structuredClone(state)
+  scenarios.forEach(({ name, draft, expected, guardians = state.guardians }) => {
+    assert.throws(() => saveInvoiceDraft({ ...state, guardians }, draft, true), expected, name)
+  })
+  assert.deepEqual(state, original)
+  const finalized = saveInvoiceDraft(state, validDraft, true)
+  assert.equal(finalized.invoices.at(-1)?.number, '2026-a-0002')
+  assert.equal(finalized.invoices.at(-1)?.snapshot?.guardians[0].id, 'guardian-a')
 
-  const editorSource = readFileSync(new URL('../src/views/InvoiceEditor.tsx', import.meta.url), 'utf8')
-  const submitSource = editorSource.slice(editorSource.indexOf('  const submit'), editorSource.indexOf('\n\n  return ('))
-  assert.match(submitSource, /invoiceFinalizationErrors\(\{ guardians, students \}, form\)/)
-  assert.doesNotMatch(submitSource, /nextErrors\.push/)
 })
 
-test('lokales Speichern und Datei-Backup werden unabhängig voneinander ausgeführt', async () => {
+test('lokales Speichern bleibt unabhängig vom vorläufig gesperrten Datei-Backup', async () => {
   const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
   let writtenBackup = ''
   const failingStorage = {
@@ -828,8 +825,9 @@ test('lokales Speichern und Datei-Backup werden unabhängig voneinander ausgefü
     const result = await persistState(emptyState(), directoryHandle, true)
     assert.equal(result.local.status, 'error')
     assert.match(result.local.error ?? '', /Speicherplatz erschöpft/)
-    assert.equal(result.fileBackup.status, 'saved')
-    assert.match(writtenBackup, /"app": "riffrechnung"/)
+    assert.equal(result.fileBackup.status, 'error')
+    assert.match(result.fileBackup.error ?? '', /schreibgeschützt/)
+    assert.equal(writtenBackup, '')
 
     let localSaved = false
     Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { setItem: () => { localSaved = true } } as unknown as Storage })
@@ -841,7 +839,7 @@ test('lokales Speichern und Datei-Backup werden unabhängig voneinander ausgefü
     assert.equal(reverseResult.local.status, 'saved')
     assert.equal(localSaved, true)
     assert.equal(reverseResult.fileBackup.status, 'error')
-    assert.match(reverseResult.fileBackup.error ?? '', /Backup-Datei gesperrt/)
+    assert.match(reverseResult.fileBackup.error ?? '', /schreibgeschützt/)
   } finally {
     if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage)
     else Reflect.deleteProperty(globalThis, 'localStorage')
@@ -898,12 +896,19 @@ test('veraltete Tabs überschreiben keinen zwischenzeitlich gespeicherten Zustan
   assert.match(appSource, /window\.location\.reload\(\)/)
 })
 
-test('Einstellungen werden gebündelt automatisch gespeichert', () => {
-  const source = readFileSync(new URL('../src/views/Settings.tsx', import.meta.url), 'utf8')
-  assert.match(source, /SETTINGS_AUTOSAVE_DELAY_MS = 600/)
-  assert.match(source, /window\.setTimeout\(\(\) => persist\(form\), SETTINGS_AUTOSAVE_DELAY_MS\)/)
-  assert.match(source, /Die IBAN ist ungültig oder gehört nicht zum unterstützten SEPA-Zahlungsraum/)
-  assert.doesNotMatch(source, /if \(!isValidIban\([^)]*\)\) return/)
+test('ungültige Preise bleiben lokal und überschreiben den letzten gültigen Einstellungswert nicht', () => {
+  withMockLocalStorage(() => {
+    const state = emptyState()
+    const valid = applyStandardRateInput(state.settings, 'privateRate', '34,50')
+    assert.equal(valid.privateRate, 34.5)
+    const incomplete = applyStandardRateInput(valid, 'privateRate', '')
+    assert.equal(incomplete, valid)
+    state.settings = updateSettings(state.settings, incomplete)
+    saveState(state)
+    assert.equal(loadReadyState().settings.privateRate, 34.5)
+    assert.equal(parseBackup(serializeBackup(state)).settings.privateRate, 34.5)
+    assert.throws(() => updateSettings(state.settings, { ...state.settings, duoRate: -1 }), /gültige Preis/)
+  })
 })
 
 test('Modal-Formulare verknüpfen ihre Footer-Buttons mit dem nativen Submit', () => {

@@ -1,3 +1,4 @@
+import { DIRECTORY_BACKUP_BLOCKED } from './safety'
 import type { AppState, Invoice, InvoiceItem, Student } from '../types'
 import { emptyState } from './defaults'
 import { ensureStudentCodePattern, invoiceStudentCode, studentCodeForIndex, studentCodeIndex } from './utils'
@@ -165,7 +166,7 @@ function validateSettings(value: unknown): void {
   backupBoolean(settings.reducedMotion, 'settings.reducedMotion')
 }
 
-function validateBackupState(value: unknown): void {
+export function validateBackupState(value: unknown): void {
   const data = backupObject(value, 'data')
   if (data.schemaVersion !== 2) throw new Error('Die Datei hat kein unterstütztes Backup-Format.')
 
@@ -445,7 +446,6 @@ export async function persistState(state: AppState, directoryHandle: FileSystemD
   let fileBackup: PersistenceResult['fileBackup'] = { status: 'skipped' }
   if (local.status !== 'conflict' && includeFileBackup && directoryHandle) {
     try {
-      if (!await ensureWritePermission(directoryHandle)) throw new Error('Die Schreibberechtigung für den Backup-Ordner fehlt.')
       await writeBackupToDirectory(directoryHandle, state)
       fileBackup = { status: 'saved' }
     } catch (error) {
@@ -535,8 +535,8 @@ export async function readDirectoryHandle(): Promise<FileSystemDirectoryHandle |
     })
     db.close()
     return value
-  } catch {
-    return null
+  } catch (error) {
+    throw new Error(`Gespeicherter Backup-Ordner konnte nicht geprüft werden: ${error instanceof Error ? error.message : 'IndexedDB nicht verfügbar.'}`)
   }
 }
 
@@ -558,9 +558,26 @@ export async function ensureWritePermission(handle: FileSystemDirectoryHandle, r
   return false
 }
 
+export async function inspectBackupDirectory(handle: FileSystemDirectoryHandle): Promise<string> {
+  let fileHandle: FileSystemFileHandle
+  try {
+    fileHandle = await handle.getFileHandle('riffrechnung-backup.json', { create: false })
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'NotFoundError') return `Keine Backup-Datei vorhanden. ${DIRECTORY_BACKUP_BLOCKED}`
+    throw error
+  }
+  const raw = await (await fileHandle.getFile()).text()
+  try {
+    const backup = parseBackup(raw)
+    return `Vorhandene Sicherung geprüft: ${backup.students.length} Kinder, ${backup.invoices.length} Rechnungen. Die Datei bleibt unverändert. ${DIRECTORY_BACKUP_BLOCKED}`
+  } catch (error) {
+    return `Vorhandene Datei bleibt unverändert: ${error instanceof Error ? error.message : 'Format nicht lesbar.'} ${DIRECTORY_BACKUP_BLOCKED}`
+  }
+}
+
+// Fail closed for EVERY caller until package 03 provides revision checks and safe writes.
 export async function writeBackupToDirectory(handle: FileSystemDirectoryHandle, state: AppState): Promise<void> {
-  const fileHandle = await handle.getFileHandle('riffrechnung-backup.json', { create: true })
-  const writable = await fileHandle.createWritable()
-  await writable.write(serializeBackup(state))
-  await writable.close()
+  void handle
+  void state
+  throw new Error(DIRECTORY_BACKUP_BLOCKED)
 }
