@@ -17,7 +17,7 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 | --- | --- | --- | --- |
 | 00 | Ausgangsbasis, CI, esbuild | R23, R25, N01 | Implementiert und in CI geprüft; administrative Abnahme offen |
 | 01 | Gefährliche Abläufe vorläufig absichern | R01–R05, R10, R22 (Sofortschutz) | Sofortschutz implementiert und CI-geprüft; reale Browserabnahmen offen |
-| 02 | Fachbefehle, Validatoren, reparierbare Formate | R01, R04, R15, R24 | Implementiert; Ergebnis-CI und Abnahmematrix werden unten nachgeführt |
+| 02 | Fachbefehle, Validatoren, reparierbare Formate | R01, R04, R15; Grundlage R24 | Implementiert und CI-geprüft; reale Browser-/Mailprogrammabnahmen offen |
 | 03 | Speicherung, Backups, isolierte Demo | R05, R08, R22, N06 | Laut Analyse offen |
 | 04 | Originalbelege und Korrekturen | R03, R09, R10, F03, N09 | Laut Analyse offen |
 | 05 | Exaktes Geld und Kalenderdaten | R06, R12 | Laut Analyse offen |
@@ -141,7 +141,10 @@ Weitere Ausführungsdetails: [quality-gates.md](quality-gates.md).
   PR #20, `codex/paket-01-sofortschutz` auf
   `aa775b842aec2ef3b27dc6e3697de7e6eb850b12`. Vollständiger Tree und 48 Dateien
   blobverifiziert; keine `AGENTS.md`. Arbeitsbranch:
-  `codex/paket-02-fachbefehle-migration`. Ergebnis-Commit/CI werden im PR belegt.
+  `codex/paket-02-fachbefehle-migration`. [PR #21](https://github.com/sl3ndrr/RiffRechnung/pull/21)
+  richtet sich gegen den Paket-01-Branch. Implementierung: `2db8a974ef0a5ab2ec5c66a1081fb073da58a5db`;
+  geprüfter Ergebnisstand: `02e11cb0732539a7fef7079267e7b829b6c22137`.
+  Danach nur Nachweisdokumentation; abschließender Commit und zugehörige CI im PR.
 - **Befunde:** R01 bestätigt für Altbestände, normale Kopien hatten bereits neue
   IDs, aber filterten fehlende Referenzen; R04/R24 bestätigt für ungleiche
   Formular-/Befehls-/Importregeln und weitere inline Fachoperationen; R15 bestätigt
@@ -169,11 +172,33 @@ Weitere Ausführungsdetails: [quality-gates.md](quality-gates.md).
   E403. Lint/Test/Typecheck/Build werden vom Werkzeug vor Prozessstart wegen der
   Netzwerkfreigabe abgebrochen; kein lokaler regulärer Testlauf behauptet. Die
   bestehenden CI-Schranken verwenden unverändert Node 22 einschließlich Testtypen.
-  Ergebnis-CI wird noch ausgeführt. Keine neue Abhängigkeit.
+  [CI 34055811688](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34055811688)
+  für `02e11cb…`: Ubuntu 24.04.4, Node 22.23.2/npm 10.9.8; `npm ci`, Lint,
+  **74/74 Tests**, Typecheck einschließlich Tests und Build erfolgreich.
+  Erster Lauf: 68/74; drei Erwartungen an frühere Fehlertexte, ein nun ungültiges
+  E-Mail-Testdatum, unvollständige Storage-Mocks und ein SSR-Portal ohne DOM.
+  Konkrete Fehlerverträge/Mocks und der tatsächlich verwendete Dialoginhalt wurden
+  korrigiert/geprüft; keine Baseline-Regression, keine gelöschten oder übersprungenen
+  Tests. Aufteilung, Rohdaten- und Originalschutz bleiben erhalten. Keine neue Abhängigkeit.
 - **Offene Abnahmen:** Echte Browserbedienung und Dateiberechtigungen, Fokus,
   parallele Tabs, Druck, Banking-Scans und konkrete Mailprogramme nicht geprüft.
   SSR-/Storage-Mocks gelten nur als Funktionsnachweis. Administrative Pflichtchecks
   aus 00 sowie vorläufige Sperren aus 01 bleiben den jeweiligen Folgepaketen zugeordnet.
+
+| Abnahmekriterium Paket 02 | Ergebnis |
+| --- | --- |
+| Neue/kopierte Positionen: gültige, global eindeutige IDs | Bestanden, einschließlich Generatorfehlern und Kollisionen |
+| 2/3 alte Empfängerkopien verlustfrei reparierbar | Bestanden für Entwürfe und finalisierte Belege; Beträge, Nummern, Texte, Snapshots unverändert |
+| Zweite Migration/Import/Reload ohne weitere Anpassung | Bestanden; deterministische Alt-ID-Reparatur und unverändertes Format 3 |
+| Ungültige Preise/Mengen/Leerwerte/NaN/Infinity, Dezimalgrenzen, Referenzfehler | Bestanden; Fehler bleiben außerhalb dauerhafter Zustände |
+| Mailboxen mit ?, &, #, CR/LF, Listen und Sonderzeichen | Bestanden; nur subject/body als URI-Parameter; historische Fehler sichtbar |
+| Extrahierte Befehle mit Ausgangs-/Ergebniszustand, Export–Import/Reload | Bestanden; gemeinsamer strenger Validator und 74 Gesamttests |
+| Kein Überschreiben beschädigter, älterer oder neuerer Rohdaten | Bestanden mit Storage-Mocks, auch bei erzwungenem Schreibversuch; Originalbytes/Report exportierbar |
+| Browser-/Dateirechte-/Mehrtab-/Mailprogrammabnahme | Nicht geprüft; Mocks/SSR ersetzen diese Abnahme nicht |
+
+R01/R04/R15 sind im Paketumfang behoben; Aufteilungsintegration R01 bleibt in 06.
+R24 ist für die extrahierten Befehle umgesetzt; weitere Befehle folgen in ihren
+Paketen. Details und Prüfcommit-Zuordnung: [quality-gates.md](quality-gates.md).
 
 Nächstes vorgesehenes Paket: **03 – verlässliche Speicherung, sichere Backups,
 isolierter Demomodus**, nur nach gesondertem Auftrag; nicht begonnen.

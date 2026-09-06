@@ -176,3 +176,49 @@ Erzeugungen und null Schreibstreams nachweisen. Sie belegen keine echten
 Dateiberechtigungen oder parallelen Browser-Tabs. Reale Browser-, Fokus-, Druck-
 und Banking-App-Abnahmen bleiben offen. Pflichtstatuscheck aus Paket 00 weiterhin
 administrativ offen. Nächstes Paket: 02, nicht begonnen.
+
+
+## Paket 02 – Fachbefehle, Validatoren und reparierbare Formate
+
+Basis: PR #20 / `aa775b842aec2ef3b27dc6e3697de7e6eb850b12`; `main` weiterhin
+`ba7857fd9180fa392c42a0235643e478e5077ee5`. Branch
+`codex/paket-02-fachbefehle-migration`, [PR #21](https://github.com/sl3ndrr/RiffRechnung/pull/21).
+GitHub-Branch-, Tree-, Commit-, Ref- und PR-Schreiben tatsächlich ausgeführt.
+Ausgangs- und Ergebnis-Trees stimmen mit dem lokalen Git-Tree überein.
+Keine neue Abhängigkeit; bestehende Node-22-CI und Testdatei-Typprüfung unverändert.
+
+| Commit / Lauf | Befehle und Umgebung | Ergebnis |
+| --- | --- | --- |
+| `2db8a974ef0a5ab2ec5c66a1081fb073da58a5db`, [34055649338](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34055649338) | Ubuntu 24.04.4, Node 22.23.2, npm 10.9.8; `npm ci`, `npm run lint`, `npm test` | Installation/Lint erfolgreich; 68/74 Tests, 6 fehlgeschlagen, 0 übersprungen. Typecheck/Build wegen Testschranke nicht gestartet. |
+| `02e11cb0732539a7fef7079267e7b829b6c22137`, [34055811688](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34055811688) | Gleiche Umgebung; `npm ci`, `npm run lint`, `npm test`, `npm run typecheck`, `npm run build` | Alle erfolgreich; **74/74 Tests**, 0 fehlgeschlagen/übersprungen. Kein Pages-Artefakt/Deployment im PR. |
+| Lokale Versuche in dieser Sitzung | Node 24.19.0/npm 11.9.0; `git ls-remote https://github.com/sl3ndrr/RiffRechnung.git HEAD refs/heads/main`; `npm view node@22 version --json --fetch-retries=0 --fetch-timeout=20000`; `npm ci --fetch-retries=0 --fetch-timeout=20000 --cache /workspace/scratch/b09ca8b15928/npm-cache` | Git-Remote Exit 128/HTTP 403; Node-22-Abruf und Installation Exit 1/E403. |
+| Lokale Schranken | `npm run lint`, `npm test`, `npm run typecheck`, `npm run build` | Werkzeugabbruch vor Prozessstart: `network approval was cancelled before a decision was returned`. Keine regulären lokalen Ergebnisse. |
+| Lokale Ergänzungen | Node-24-`--experimental-strip-types --check` für 15 TS-Dateien, `git diff --check`, Git-Blob-/Tree-Abgleich | Erfolgreich; Syntax/Diff/Dateiidentität, kein Ersatz für Node-22-CI. |
+
+Der erfolgreiche PR-Lauf ist über `head_sha` dem Ergebniscommit zugeordnet und
+checkt GitHubs temporären Merge-Commit `65a5aae6c380a4c91b510e3a7f8ce774ca95c0d1`
+aus. Dessen Tree `e581405f97262056f9c9fcaca7be02f091c58369` stimmt laut GitHub-API
+mit dem Implementierungs- und lokalen Git-Tree überein.
+
+Die sechs Fehler des ersten Laufs sind Änderungen in diesem Paket zugeordnet:
+drei Erwartungen auf bisherige Meldungen (jetzt konkrete Validierungsfehler),
+eine bislang im Demo-Test zugelassene unvollständige E-Mail, ein Storage-Mock ohne
+`getItem` und der neue SSR-Test eines Portals ohne DOM. Der zweite Stand erhält
+sämtliche Prüfabsichten, prüft konkrete Fehlerpfade sowie den tatsächlich im Dialog
+verwendeten Inhalt und ergänzt gültige/ungültige E-Mail-Gegenproben. Kein Test wurde
+zum Erzwingen eines grünen Status gelöscht, übersprungen oder abgeschwächt.
+Die Vorgänger-CI war grün; keine vorbestehenden Testfehler festgestellt.
+
+18 neue Tests prüfen echte Befehlszustände, Preise/Mengen, Referenzen und IDs,
+2/3 Empfängerkopien als Entwurf/finalisiert, Rohdaten/Migration/Idempotenz,
+Nummernreservierung und Mailbox-/URI-Grenzen. Rechnungsstart- und Mengen-Quelltext-
+musterprüfungen wurden durch Verhalten ersetzt. Migration verändert keine Beträge,
+Nummern oder vorhandenen Snapshots. Vollständiger Originaltext im Bericht und
+Dateibytes im Importkontext bleiben erhalten. Bestehende ältere/beschädigte/neue
+unbekannte lokale Daten sind auch gegen erzwungene Schreibversuche geschützt.
+
+Nachfolgende reine Nachweisdokumentation löst erneut denselben PR-Prüflauf aus;
+abschließender Ergebnis-Commit und Lauf stehen in PR #21. Echte Browserbedienung,
+Dateiberechtigungen, parallele Tabs, Fokus, Druck, Banking-Scans und Mailprogramme
+wurden nicht geprüft. Storage-/Datei-Mocks und SSR sind kein Nachweis dafür.
+Sichere Übernahme migrierter Daten folgt in Paket 03, das nicht begonnen wurde.
