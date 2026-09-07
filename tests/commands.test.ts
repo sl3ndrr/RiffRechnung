@@ -184,6 +184,18 @@ for (const count of [2, 3]) for (const finalized of [false, true]) test(`P02: ${
   const recoverySession = new StorageSession({ lock: sharedLock() })
   await assert.rejects(recoverySession.change(() => preview.state), /Rohdaten/)
   assert.equal(entries.get(STORAGE_KEY), raw)
+  // Package 03: confirmed repair now traverses the production write service.
+  assert.deepEqual(await recoverySession.restore(raw), preview.state)
+  const archive = JSON.parse(JSON.parse(recoverySession.exportRecoveryArchive()).recoveries[0].raw)
+  assert.equal(archive.previousRaw, raw)
+  assert.equal(archive.sourceRaw, raw)
+  assert.deepEqual(archive.report, preview.report)
+  const reloaded = new StorageSession({ lock: sharedLock() })
+  assert.deepEqual(reloaded.state, preview.state)
+  assert.equal(requireSuccess(inspectImport(reloaded.export())).report, null)
+  await reloaded.restore(raw)
+  assert.deepEqual(reloaded.state, preview.state, 'erneute bestätigte Übernahme repariert keine weiteren IDs')
+  assert.equal(reloaded.revision?.revision, 2)
   // Only the synthetic destination is cleared, modeling an empty browser profile.
   entries.clear()
   const destination = new StorageSession({ lock: sharedLock() })

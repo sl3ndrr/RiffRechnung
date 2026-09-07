@@ -7,3 +7,4 @@ coverage
 .test-dist
 test-results
 playwright-report
+public/legacy

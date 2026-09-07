@@ -375,3 +375,29 @@ function expectArchive(archive: { previousRaw: string; recoveries: Array<{ raw: 
   assert.equal(report.storageMigration.version, 1)
   assert.equal(report.storageMigration.toStorageVersion, 4)
 }
+
+test('P03: Security beim Schreiben bestätigt nichts und lässt Wiederholung zu', async () => {
+  const { storage, session } = context()
+  await session.change(title('Bestätigt'))
+  const before = storage.getItem(STORAGE_KEY)
+  storage.fail = 'security-write'
+  await assert.rejects(session.change(title('Noch nicht gespeichert')), { name: 'SecurityError' })
+  assert.equal(storage.getItem(STORAGE_KEY), before)
+  assert.equal(session.state.settings.issuer.name, 'Bestätigt')
+  storage.fail = null
+  await session.change(title('Noch nicht gespeichert'))
+  assert.equal(new StorageSession({ storage, lock: sharedLock() }).state.settings.issuer.name, 'Noch nicht gespeichert')
+})
+
+test('P03: synchroner IndexedDB-Fehler und blockiertes Öffnen schließen verspätete Verbindungen', async () => {
+  const factory = { open() { throw new DOMException('Gesperrt', 'SecurityError') } } as unknown as IDBFactory
+  await assert.rejects(openHandleDb(factory), { name: 'SecurityError' })
+  const request = {} as IDBOpenDBRequest
+  let closed = 0
+  const blocked = openHandleDb({ open: () => request } as unknown as IDBFactory)
+  request.onblocked!.call(request, new Event('blocked') as IDBVersionChangeEvent)
+  await assert.rejects(blocked, /blockiert/)
+  Object.defineProperty(request, 'result', { value: { close: () => { closed++ } } })
+  request.onsuccess!.call(request, new Event('success'))
+  assert.equal(closed, 1)
+})
