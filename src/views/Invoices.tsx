@@ -1,4 +1,4 @@
-import { DocumentHistory, type DocumentHistoryActions } from '../components/DocumentHistory'
+import { DocumentHistory, HistoricalSnapshotEvidence, type DocumentHistoryActions } from '../components/DocumentHistory'
 import { activeInvoices, isActiveClaim, openCents, selectedInvoices } from '../lib/documents'
 import { commandResult } from '../lib/result'
 import { FINALIZED_INVOICE_BLOCKED, isFinalizedInvoice } from '../lib/safety'
@@ -184,6 +184,7 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
           )}
         </div>
       )}
+      <HistoricalSnapshotEvidence state={state} />
       {menu && menuInvoice && createPortal(
         <div
           className="invoice-kebab-menu"

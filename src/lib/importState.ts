@@ -181,6 +181,7 @@ export function inspectImport(rawData: string): CommandResult<ImportPreview> {
       state = captureLegacyDocuments(legacy)
       report.changes.push({ path: 'schemaVersion', before: version, after: 4, reason: 'Vollständige älteste verfügbare Belegstände und getrennte Verwaltung sichern; frühere Inhalte bleiben unbekannt' })
       for (const document of state.documentVersions) report.changes.push({ path: `documentVersions.${document.id}`, before: null, after: document, reason: 'Jetzt verfügbarer historischer Inhalt, alte Ausgabebeträge und Snapshot-/Registerbelege; keine Wiederherstellung verlorener Originale' })
+      if (state.historicalSnapshotCorrections.length) report.changes.push({ path: 'historicalSnapshotCorrections', before: null, after: state.historicalSnapshotCorrections, reason: 'Vorhandene Snapshot-Differenzen unabhängig von der begrenzten Aktivitätsliste bewahren; auch ohne vollständigen Beleg' })
       validateBackupState(state)
     }
     return { rawData, state, report, envelope, warnings: [...historicalEmailWarnings(state), ...state.documentVersions.flatMap((version) => version.conflicts.map((conflict) => `${version.content.number}: ${conflict.message}`))] }
@@ -202,11 +203,11 @@ export function serializeMigrationReport(preview: ImportPreview): string {
   return JSON.stringify({ app: 'riffrechnung-recovery', version: 1, originalUtf8: preview.rawData, report: preview.report, warnings: preview.warnings }, null, 2)
 }
 
-export type LegacyState = Omit<AppState, 'schemaVersion' | 'documentVersions' | 'invoiceAdministration' | 'payments'> & { schemaVersion: 3 }
+export type LegacyState = Omit<AppState, 'schemaVersion' | 'documentVersions' | 'invoiceAdministration' | 'payments' | 'historicalSnapshotCorrections'> & { schemaVersion: 3 }
 
 /** Deterministic capture: sourceUpdatedAt is a source timestamp, not a guessed issuance date. */
 export function captureLegacyDocuments(legacy: LegacyState): AppState {
-  const state: AppState = { ...structuredClone(legacy), schemaVersion: 4, documentVersions: [], invoiceAdministration: [], payments: [] }
+  const state: AppState = { ...structuredClone(legacy), schemaVersion: 4, documentVersions: [], invoiceAdministration: [], payments: [], historicalSnapshotCorrections: structuredClone(legacy.audit.filter((event) => event.snapshotCorrection)) }
   state.invoices.forEach((invoice, index) => {
     if (invoice.status === 'draft') return
     const version = captureDocument(state, invoice, `version-v4-${index}`, true)

@@ -34,7 +34,9 @@ export function loadState(storage: Storage = localStorage): StateLoadResult {
     raw = storage.getItem(STORAGE_KEY)
     if (raw !== null) {
       const inspected = inspectImport(raw)
-      if (!inspected.ok || !inspected.value.envelope || inspected.value.report) throw new Error(inspected.ok ? 'Der Speicherumschlag fehlt. Bitte Übernahme ausdrücklich bestätigen.' : inspected.errors.map((error) => error.message).join(' '))
+      if (!inspected.ok) throw new Error(inspected.errors.map((error) => error.message).join(' '))
+      if (inspected.value.report) throw new Error('Das ältere Datenformat benötigt einen kontrollierten Umstieg. Bitte Altformat und Reparatur prüfen und die Übernahme ausdrücklich bestätigen.')
+      if (!inspected.value.envelope) throw new Error('Der Speicherumschlag fehlt. Bitte Übernahme ausdrücklich bestätigen.')
       return { status: 'ready', state: inspected.value.state, envelope: inspected.value.envelope, rawData: raw }
     }
     raw = storage.getItem(LEGACY_STORAGE_KEY)

@@ -26,6 +26,9 @@ function originalContent(invoice: Invoice): string {
 }
 
 export function assertOriginalsPreserved(current: AppState, next: AppState): void {
+  for (const evidence of current.historicalSnapshotCorrections) {
+    if (!next.historicalSnapshotCorrections.some((entry) => entry.id === evidence.id && canonical(entry) === canonical(evidence))) throw new Error('Historische Snapshot-Differenzen müssen unverändert erhalten bleiben.')
+  }
   for (const original of current.invoices.filter(isFinalizedInvoice)) {
     const candidate = next.invoices.find((invoice) => invoice.id === original.id)
     if (!candidate || candidate.status === 'draft' || originalContent(candidate) !== originalContent(original)) {

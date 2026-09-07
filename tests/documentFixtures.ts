@@ -19,7 +19,7 @@ export function documentDraft(): InvoiceDraft {
 /** Explicit legacy fixture construction. Never normalize test results with this helper. */
 export function legacyFixture(state: AppState): LegacyState {
   const copy = structuredClone(state)
-  for (const key of ['documentVersions', 'invoiceAdministration', 'payments']) Reflect.deleteProperty(copy, key)
+  for (const key of ['documentVersions', 'invoiceAdministration', 'payments', 'historicalSnapshotCorrections']) Reflect.deleteProperty(copy, key)
   for (const invoice of copy.invoices) for (const key of ['versionId', 'correction', 'issuedAmounts', 'claimState', 'archived']) Reflect.deleteProperty(invoice, key)
   return { ...copy, schemaVersion: 3 }
 

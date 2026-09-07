@@ -158,7 +158,7 @@ function validateState(value: unknown, schema: 2 | 3 | 4, localItemIds: boolean)
   const legacy = schema === 2
   const versioned = schema === 4
   const data = backupObject(value, 'data')
-  knownKeys(data, 'data', 'schemaVersion guardians students invoices voidedInvoiceNumbers settings counters nextStudentCodeIndex audit updatedAt' + (versioned ? ' documentVersions invoiceAdministration payments' : ''))
+  knownKeys(data, 'data', 'schemaVersion guardians students invoices voidedInvoiceNumbers settings counters nextStudentCodeIndex audit updatedAt' + (versioned ? ' documentVersions invoiceAdministration payments historicalSnapshotCorrections' : ''))
   if (data.schemaVersion !== schema) throw new Error('Die Datei hat kein unterstütztes Backup-Format.')
 
   const guardianIds = new Set<string>()
@@ -317,24 +317,33 @@ function validateState(value: unknown, schema: 2 | 3 | 4, localItemIds: boolean)
   Object.entries(counters).forEach(([key, counter]) => backupInteger(counter, `counters.${key}`, 1))
   if (!legacy || data.nextStudentCodeIndex !== undefined) backupInteger(data.nextStudentCodeIndex, 'nextStudentCodeIndex', 0)
   const auditIds = new Set<string>()
-  backupArray(data.audit, 'audit').forEach((entry, index) => {
-    const path = `audit[${index}]`
-    const event = backupObject(entry, path)
-    knownKeys(event, path, 'id at label entityType entityId snapshotCorrection')
-    registerId(event.id, `${path}.id`, auditIds)
-    backupTimestamp(event.at, `${path}.at`)
-    backupString(event.label, `${path}.label`, true)
-    backupEnum(event.entityType, `${path}.entityType`, AUDIT_ENTITY_TYPES)
-    if (event.entityId !== undefined) backupString(event.entityId, `${path}.entityId`, true)
-    if (event.snapshotCorrection !== undefined) {
-      const correction = backupObject(event.snapshotCorrection, `${path}.snapshotCorrection`)
-      knownKeys(correction, `${path}.snapshotCorrection`, 'oldValue newValue')
-      if (correction.oldValue !== null) validateInvoiceSnapshot(correction.oldValue, `${path}.snapshotCorrection.oldValue`)
-      validateInvoiceSnapshot(correction.newValue, `${path}.snapshotCorrection.newValue`)
-    }
-  })
+  backupArray(data.audit, 'audit').forEach((entry, index) => validateActivity(entry, `audit[${index}]`, auditIds))
+  if (versioned) {
+    const evidenceIds = new Set<string>()
+    backupArray(data.historicalSnapshotCorrections, 'historicalSnapshotCorrections').forEach((entry, index) => {
+      const path = `historicalSnapshotCorrections[${index}]`
+      validateActivity(entry, path, evidenceIds)
+      if (backupObject(entry, path).snapshotCorrection === undefined) invalidBackup(path, 'benötigt die vorhandene Snapshot-Differenz')
+    })
+  }
   backupTimestamp(data.updatedAt, 'updatedAt')
   if (versioned) validateDocuments(data as unknown as AppState)
+}
+
+function validateActivity(entry: unknown, path: string, ids: Set<string>): void {
+  const event = backupObject(entry, path)
+  knownKeys(event, path, 'id at label entityType entityId snapshotCorrection')
+  registerId(event.id, `${path}.id`, ids)
+  backupTimestamp(event.at, `${path}.at`)
+  backupString(event.label, `${path}.label`, true)
+  backupEnum(event.entityType, `${path}.entityType`, AUDIT_ENTITY_TYPES)
+  if (event.entityId !== undefined) backupString(event.entityId, `${path}.entityId`, true)
+  if (event.snapshotCorrection !== undefined) {
+    const correction = backupObject(event.snapshotCorrection, `${path}.snapshotCorrection`)
+    knownKeys(correction, `${path}.snapshotCorrection`, 'oldValue newValue')
+    if (correction.oldValue !== null) validateInvoiceSnapshot(correction.oldValue, `${path}.snapshotCorrection.oldValue`)
+    validateInvoiceSnapshot(correction.newValue, `${path}.snapshotCorrection.newValue`)
+  }
 }
 
 function validateEmail(value: unknown, path: string, historical = false): void {

@@ -45,7 +45,7 @@ export function captureDocument(state: AppState, invoice: Invoice, id: string, h
     outputPeriod: billingPeriodFromItems(invoice.items, invoice.invoiceDate),
     outputLegalText: historical ? invoice.legalText || invoice.snapshot?.legalText || state.settings.defaultLegalText : invoice.legalText,
     amounts: { itemCents, totalCents, legacyCalculatedTotalCents, source: registerEntries.length ? 'number-register' : 'legacy-output', calculation: 'legacy-v1' },
-    conflicts: [], snapshotHistory: structuredClone(state.audit.filter((event) => event.entityId === invoice.id && event.snapshotCorrection)),
+    conflicts: [], snapshotHistory: structuredClone(state.historicalSnapshotCorrections.filter((event) => event.entityType === 'invoice' && event.entityId === invoice.id && event.snapshotCorrection)),
     registerEntries: structuredClone(registerEntries),
   }
   const conflict = (path: string, message: string, ...values: unknown[]) => version.conflicts.push({ path, message, values: values.map((value) => JSON.stringify(value)) })

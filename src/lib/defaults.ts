@@ -27,7 +27,7 @@ export const defaultSettings: Settings = {
 export function emptyState(): AppState {
   return {
     schemaVersion: 4,
-    documentVersions: [], invoiceAdministration: [], payments: [],
+    documentVersions: [], invoiceAdministration: [], payments: [], historicalSnapshotCorrections: [],
     guardians: [],
     students: [],
     invoices: [],

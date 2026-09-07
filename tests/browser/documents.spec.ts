@@ -106,7 +106,7 @@ test('P04 Browser: Zahlungen manuell zuordnen, archivieren und vollständiges Ba
   await dialog.getByRole('button', { name: 'Finalisieren', exact: true }).click()
   await expect(dialog).not.toBeVisible()
   const replacement = (await stateOf(page)).documentVersions[1]
-  await page.getByLabel('Zahlung zuordnen', { exact: true }).selectOption(replacement.id)
+  await page.getByRole('combobox', { name: 'Zahlung zuordnen', exact: true }).selectOption(replacement.id)
   await page.getByLabel('Zuordnungsgrund', { exact: true }).fill('Erfasste Zahlung auf den korrigierten Beleg übertragen')
   await page.getByRole('button', { name: 'Zuordnung speichern', exact: true }).click()
   await expect.poll(async () => (await stateOf(page)).payments[0].allocations.at(-1)?.versionId).toBe(replacement.id)
@@ -150,6 +150,7 @@ test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unverändert
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(raw)
   await page.getByRole('button', { name: 'Wiederherstellung vorbereiten', exact: true }).click()
   await page.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
+  await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
   await page.reload()
   const state = await stateOf(page)
   expect(state.schemaVersion).toBe(4)

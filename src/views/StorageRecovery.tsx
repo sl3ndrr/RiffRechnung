@@ -17,7 +17,7 @@ export function StorageRecovery({ recovery, onExport, onImport, onReview, onPrev
         <span className="recovery-card__icon"><AlertTriangle aria-hidden="true" /></span>
         <p className="eyebrow">Lokaler Wiederherstellungsmodus</p>
         <h1 id="recovery-title">Lokale Daten benötigen Wiederherstellung</h1>
-        <p>RiffRechnung hat beschädigte oder unvollständige lokale Daten erkannt. Das automatische Speichern ist pausiert, damit die vorhandenen Rohdaten nicht überschrieben werden.</p>
+        <p>Die lokalen Daten benötigen eine Formatumstellung oder sind beschädigt beziehungsweise unvollständig. Das automatische Speichern ist pausiert, damit die vorhandenen Rohdaten nicht überschrieben werden.</p>
         <div className="recovery-error"><strong>Technischer Hinweis</strong><code>{recovery.error}</code></div>
         <div className="recovery-actions">
           <button className="button button--tonal" type="button" onClick={onPrevious}>Vorherigen lokalen Stand prüfen</button>

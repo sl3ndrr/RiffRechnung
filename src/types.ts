@@ -201,6 +201,7 @@ export interface AppState {
   documentVersions: DocumentVersion[]
   invoiceAdministration: InvoiceAdministration[]
   payments: InvoicePayment[]
+  historicalSnapshotCorrections: AuditEvent[]
   voidedInvoiceNumbers: VoidedInvoiceNumber[]
   settings: Settings
   counters: Record<string, number>

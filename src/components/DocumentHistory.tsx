@@ -56,6 +56,16 @@ function DifferenceTable({ title, before, after }: { title: string; before: unkn
   return <details><summary>{title}</summary><div className="table-scroll"><table><thead><tr><th>Feld</th><th>Vorher</th><th>Nachher</th></tr></thead><tbody>{differences.map((difference) => <tr key={difference.path}><td>{difference.path}</td><td>{difference.before}</td><td>{difference.after}</td></tr>)}</tbody></table></div>{!differences.length && <p>Keine Inhaltsabweichung.</p>}</details>
 }
 
+export function HistoricalSnapshotEvidence({ state }: { state: AppState }) {
+  const evidence = state.historicalSnapshotCorrections.filter((event) => !state.documentVersions.some((version) => version.snapshotHistory.some((copy) => copy.id === event.id)))
+  if (!evidence.length) return null
+  return <section className="surface document-history" aria-label="Historische Snapshot-Differenzen ohne vollständigen Beleg">
+    <h2>Historische Snapshot-Differenzen</h2>
+    <p>Diese Angaben stammen aus der vorhandenen Aktivitätsliste. Ein vollständiger früherer Beleg ist dazu nicht verfügbar und wurde nicht rekonstruiert. Die Angaben bleiben unabhängig von späteren Aktivitäten erhalten.</p>
+    {evidence.map((event) => <DifferenceTable key={event.id} title={`${event.label} · ${event.at} · damalige Beleg-ID: ${event.entityId ?? 'unbekannt'}`} before={event.snapshotCorrection?.oldValue} after={event.snapshotCorrection?.newValue} />)}
+  </section>
+}
+
 function PaymentAllocation({ state, paymentId, versionIds, onAllocatePayment }: Pick<DocumentHistoryActions, 'onAllocatePayment'> & { state: AppState; paymentId: string; versionIds: string[] }) {
   const payment = state.payments.find((entry) => entry.id === paymentId)!
   const current = payment.allocations.at(-1)?.versionId ?? ''
