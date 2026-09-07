@@ -26,10 +26,10 @@ Die Daten liegen in `localStorage`; nur die optionale Referenz auf einen freigeg
 
 ## Lokal starten
 
-Voraussetzung: Node.js 22 oder neuer.
+Voraussetzung: Node.js 22 gemäß `.nvmrc` (mit dem zugehörigen npm).
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -38,15 +38,19 @@ Produktionsprüfung:
 ```bash
 npm run lint
 npm test
+npm run typecheck
 npm run build
 npm run preview
 ```
 
 ## Auf GitHub Pages veröffentlichen
 
-1. Dieses Verzeichnis in ein GitHub-Repository übernehmen und auf den Branch `main` pushen.
+1. Änderungen als Pull Request gegen `main` prüfen lassen und erst nach Freigabe übernehmen.
 2. Im Repository unter **Settings → Pages → Build and deployment** als Quelle **GitHub Actions** wählen.
-3. Der Workflow `.github/workflows/deploy.yml` installiert, baut und veröffentlicht die App bei jedem Push auf `main`.
+3. `.github/workflows/quality.yml` prüft Pull Requests mit Node 22, `npm ci`, Lint, Tests, Typecheck einschließlich Testdateien und Build.
+4. `.github/workflows/deploy.yml` verwendet bei Push auf `main` dieselben Prüfungen. Erst nach deren Erfolg wird das in demselben Lauf erzeugte Artefakt veröffentlicht. Manuelle Läufe anderer Branches veröffentlichen nichts.
+
+Die verpflichtenden Statuschecks müssen zusätzlich in den Branch-Regeln eingerichtet werden; eine Workflow-Datei erzwingt sie nicht. Nachweise, geprüfte Action-Versionen und offene administrative Einstellungen stehen in [docs/quality-gates.md](docs/quality-gates.md); Paketfolge und Produktregeln in [docs/implementation-status.md](docs/implementation-status.md) und [docs/product-decisions.md](docs/product-decisions.md).
 
 Vite verwendet für den Produktions-Build relative Asset-Pfade. Dadurch funktioniert die App sowohl unter `username.github.io/repository/` als auch mit einer eigenen Domain, ohne den Repository-Namen im Code einzutragen.
 
