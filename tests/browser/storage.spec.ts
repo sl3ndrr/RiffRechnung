@@ -67,7 +67,14 @@ test('echter Browser: beschädigte Rohdaten exportieren, Backup bestätigen, per
   expect(archives[0].previousRaw).toBe(corrupt)
 })
 
-test('echter Browser: isolierte Demo mit realem OPFS-Handle und IndexedDB erhält Echtbestand und Dateien', async ({ page }) => {
+test('echter Browser: isolierte Demo mit realem OPFS-Handle und IndexedDB erhält Echtbestand und Dateien', async ({ playwright }, testInfo) => {
+  // Chromium 153 crashes when deserializing OPFS handles in an incognito context.
+  // The isolated probe in CI 34086399032 reproduces this without application code.
+  // A persistent synthetic profile also allows a full browser restart below.
+  const profile = testInfo.outputPath('synthetic-profile')
+  let context = await playwright.chromium.launchPersistentContext(profile, { channel: 'chromium', headless: true, baseURL: 'http://127.0.0.1:4173' })
+  let page = await context.newPage()
+  try {
   await page.goto('/')
   // Synthetic OPFS fixture: real file/IndexedDB APIs, no native picker or OS permission UI proof.
   await page.evaluate(async () => {
@@ -98,8 +105,16 @@ test('echter Browser: isolierte Demo mit realem OPFS-Handle und IndexedDB erhäl
   await page.getByRole('button', { name: 'Demo verlassen', exact: true }).click()
   expect(await stored(page)).toBe(before)
   expect(await readFiles()).toEqual(filesBefore)
+  await context.close()
+  context = await playwright.chromium.launchPersistentContext(profile, { channel: 'chromium', headless: true, baseURL: 'http://127.0.0.1:4173' })
+  page = await context.newPage()
+  await page.goto('/')
+  await expect(page.locator('.backup-indicator')).toContainText('paket-03-synthetisch')
+  expect(await stored(page)).toBe(before)
+  expect(await readFiles()).toEqual(filesBefore)
   await settings(page)
   await expect(page.getByLabel('Name / Geschäftsbezeichnung', { exact: true })).toHaveValue('Echter synthetischer Bestand')
+  } finally { await context.close() }
 })
 
 test('Fehler-Injektion im echten Browser: Picker-Abbruch verändert keine Daten', async ({ page }) => {
@@ -120,4 +135,24 @@ test('mobil: wesentlicher Speicherstatus bleibt bei 390 Pixeln sichtbar', async 
   const box = await page.locator('.topbar__storage-status').boundingBox()
   expect(box).not.toBeNull()
   expect(box!.x + box!.width).toBeLessThanOrEqual(390)
+})
+
+
+test('zwei echte Tabs: zeitgleich gestartete Einstellungen erzeugen nur einen gültigen Folgestand', async ({ page, context }) => {
+  await page.goto('/')
+  await settings(page)
+  await page.getByLabel('Name / Geschäftsbezeichnung', { exact: true }).fill('Gemeinsame Basis')
+  await expect(page.locator('.save-indicator')).toContainText('Lokal gespeichert')
+  const second = await context.newPage()
+  await second.goto('/')
+  await settings(second)
+  await Promise.all([
+    page.getByLabel('Name / Geschäftsbezeichnung', { exact: true }).fill('Parallel A'),
+    second.getByLabel('Name / Geschäftsbezeichnung', { exact: true }).fill('Parallel B'),
+  ])
+  await expect.poll(async () => (await page.locator('.external-update').count()) + (await second.locator('.external-update').count())).toBeGreaterThan(0)
+  const envelope = JSON.parse((await stored(page))!)
+  expect(['Parallel A', 'Parallel B']).toContain(envelope.data.settings.issuer.name)
+  expect(envelope.revision).toBe(2)
+  expect(await stored(second)).toBe(await stored(page))
 })

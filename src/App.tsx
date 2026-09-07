@@ -73,6 +73,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const [settingsEpoch, setSettingsEpoch] = useState(0)
   const [settingsDirty, setSettingsDirty] = useState(false)
   const pendingWrites = useRef(0)
+  const pendingBackups = useRef(0)
   const settingsFlush = useRef<(() => Promise<boolean>) | null>(null)
   const [page, setPage] = useState<PageKey>('dashboard')
   const [mobileNav, setMobileNav] = useState(false)
@@ -105,12 +106,15 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
 
   const runBackup = useCallback(async () => {
     if (mode === 'demo' || !session.directory) return
+    pendingBackups.current++
     setFileBackupStatus('saving')
     setFileBackupError(null)
     try {
       await session.backup()
-      setFileBackupStatus('saved')
+      pendingBackups.current--
+      setFileBackupStatus(pendingBackups.current ? 'saving' : 'saved')
     } catch (error) {
+      pendingBackups.current--
       setFileBackupStatus(error instanceof StorageConflict ? 'conflict' : 'error')
       setFileBackupError(error instanceof Error ? error.message : 'Datei-Backup fehlgeschlagen.')
     }
@@ -152,6 +156,11 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       if (event.key !== STORAGE_KEY && event.key !== LEGACY_STORAGE_KEY && event.key !== null) return
       try { session.checkCurrent() } catch { setExternalChangeDetected(true) }
     }
+    try { session.checkCurrent() } catch (error) {
+      setExternalChangeDetected(true)
+      setLocalSaveError(error instanceof Error ? error.message : 'Speicher muss geprüft werden.')
+    }
+    if (!navigator.locks) setLocalSaveError('Dieser Browser hat keine Web Locks. Speichern bleibt gesperrt; JSON-Export ist möglich.')
     window.addEventListener('storage', handleStorage)
     return () => window.removeEventListener('storage', handleStorage)
   }, [mode, session])
@@ -392,7 +401,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     } catch (error) { toast(error instanceof Error ? error.message : 'Die Backup-Datei konnte nicht gelesen werden.', 'error') }
   }
 
-  const applyRestore = async (preview: ImportPreview): Promise<boolean> => {
+  const applyRestore = async (preview: ImportPreview, backup = true): Promise<boolean> => {
     setSaveStateLabel('saving')
     try {
       const restored = await session.restore(preview.rawData)
@@ -406,7 +415,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       setSelectedInvoiceId(null)
       setPage('dashboard')
       toast(`Wiederherstellung lokal gespeichert, Revision ${session.revision?.revision ?? 'Demo'}. Der vorherige Stand und die Eingangsdaten bleiben gesichert.`, 'success')
-      void runBackup()
+      if (backup) void runBackup()
       return true
     } catch (error) {
       setSaveStateLabel('error')
@@ -442,11 +451,12 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
 
   const acceptFolder = async (restore?: ImportPreview) => {
     if (!folderReview || mode === 'demo') return
+    const previousBinding = session.directory
     try {
       // Permission prompt remains tied to this explicit user action. Cancel/deny
       // leaves both the local state and all files untouched.
       if (!await ensureWritePermission(folderReview.handle, true)) throw new Error('Keine Schreibberechtigung. Der bisherige Bestand bleibt erhalten.')
-      if (restore && !await applyRestore(restore)) return
+      if (restore && !await applyRestore(restore, false)) return
       if (!session.revision) {
         const current = await session.change((value) => value)
         setState(current)
@@ -463,7 +473,12 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       setFolderReview(null)
       await runBackup()
     } catch (error) {
-      session.disconnect()
+      if (session.directory !== previousBinding) {
+        session.disconnect()
+        if (previousBinding) {
+          try { await session.connect(previousBinding) } catch { /* Existing configuration stays in IndexedDB for explicit review. */ }
+        }
+      }
       setFileBackupStatus(error instanceof StorageConflict ? 'conflict' : 'error')
       setFileBackupError(error instanceof Error ? error.message : 'Verbindung fehlgeschlagen.')
       toast(error instanceof Error ? error.message : 'Verbindung fehlgeschlagen.', 'error')
@@ -575,7 +590,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         <header className="topbar">
           <button className="icon-button mobile-only" onClick={() => setMobileNav(true)} aria-label="Navigation öffnen"><Menu aria-hidden="true" /></button>
           <button className="topbar-search" onClick={async () => { await setCurrentPage('invoices'); requestAnimationFrame(() => document.querySelector<HTMLInputElement>('#invoice-search')?.focus()) }}><Search aria-hidden="true" /><span>Rechnungen durchsuchen</span></button>
-          <div className="topbar__end"><div className="topbar__storage-status" role="status" aria-live="polite"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : saveStateLabel === 'error' ? 'is-error' : ''}`}><i />{mode === 'demo' ? 'Demo – nur in dieser Sitzung' : externalChangeDetected ? 'Speicherkonflikt' : settingsDirty || saveStateLabel === 'saving' ? 'Ungespeicherte Änderungen …' : saveStateLabel === 'error' ? 'Lokal nicht gespeichert' : `Lokal gespeichert ${savedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`}</span><span className={`backup-indicator ${fileBackupStatus === 'error' || fileBackupStatus === 'conflict' ? 'is-error' : ''}`}>{fileBackupLabel}</span></div><button className="icon-button" onClick={toggleTheme} aria-label={themeToggleLabel} title={themeToggleLabel}><ThemeToggleIcon aria-hidden="true" /></button><button className="button button--primary topbar-new" onClick={openNewInvoice}><FilePlus2 aria-hidden="true" /><span>Neue Rechnung</span></button></div>
+          <div className="topbar__end"><div className="topbar__storage-status" role="status" aria-live="polite"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : saveStateLabel === 'error' ? 'is-error' : ''}`}><i />{mode === 'demo' ? 'Demo – nur in dieser Sitzung' : externalChangeDetected ? 'Speicherkonflikt' : settingsDirty || saveStateLabel === 'saving' ? 'Ungespeicherte Änderungen …' : saveStateLabel === 'error' ? 'Lokal nicht gespeichert' : !session.revision ? 'Noch nichts lokal gespeichert' : `Lokal gespeichert ${savedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`}</span><span className={`backup-indicator ${fileBackupStatus === 'error' || fileBackupStatus === 'conflict' ? 'is-error' : ''}`}>{fileBackupLabel}</span></div><button className="icon-button" onClick={toggleTheme} aria-label={themeToggleLabel} title={themeToggleLabel}><ThemeToggleIcon aria-hidden="true" /></button><button className="button button--primary topbar-new" onClick={openNewInvoice}><FilePlus2 aria-hidden="true" /><span>Neue Rechnung</span></button></div>
         </header>
 
         {externalChangeDetected && <section className="external-update" role="alert"><div><strong>Änderungen in einem anderen Tab erkannt</strong><p>Dieser Tab zeigt nicht mehr den aktuellen Datenstand. Lade neu, bevor du weiterarbeitest.</p></div><button className="button button--tonal" type="button" onClick={() => window.location.reload()}>Aktuellen Stand neu laden</button></section>}
