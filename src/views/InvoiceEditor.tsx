@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Calendar, CircleDollarSign, FileCheck2, Minus, Plus, Save, Send, Trash2 } from 'lucide-react'
 import type { Guardian, InvoiceDraft, LessonType, Settings, Student } from '../types'
+import { FINALIZED_INVOICE_BLOCKED, SPLIT_INVOICE_BLOCKED } from '../lib/safety'
 import { Modal } from '../components/Modal'
 import { applyLessonType, billingPeriodFromItems, calculateDueDate, createLessonItem, euro, invoiceFinalizationErrors, isFooterTextWithinLimit, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH } from '../lib/utils'
 
@@ -21,17 +22,15 @@ interface InvoiceEditorProps {
   finalized: boolean
   invoiceNumber?: string | null
   onClose: () => void
-  onSave: (draft: InvoiceDraft, finalize: boolean, snapshotCorrection: boolean) => void
+  onSave: (draft: InvoiceDraft, finalize: boolean) => void
 }
 
 export function InvoiceEditor({ open, draft, guardians, students, settings, editing, finalized, invoiceNumber, onClose, onSave }: InvoiceEditorProps) {
   const [form, setForm] = useState<InvoiceDraft>(draft)
   const [errors, setErrors] = useState<string[]>([])
-  const [snapshotCorrection, setSnapshotCorrection] = useState(false)
 
   useEffect(() => {
     setForm(structuredClone(draft))
-    setSnapshotCorrection(false)
   }, [draft, open])
 
   const linkedGuardianIds = useMemo(() => new Set(form.studentIds.flatMap((id) => students.find((student) => student.id === id)?.guardianIds ?? [])), [form.studentIds, students])
@@ -103,11 +102,11 @@ export function InvoiceEditor({ open, draft, guardians, students, settings, edit
   }
 
   const submit = (finalize: boolean) => {
-    const nextErrors = invoiceFinalizationErrors({ guardians, students }, form)
+    const nextErrors = finalized ? [FINALIZED_INVOICE_BLOCKED] : invoiceFinalizationErrors({ guardians, students }, form)
     setErrors(nextErrors)
     if (!nextErrors.length) {
       const normalized = { ...form, period: calculatedPeriod, legalText: limitFooterText(form.legalText) }
-      onSave(finalized ? { ...normalized, recipientStrategy: 'joint' } : normalized, finalize, finalized && snapshotCorrection)
+      onSave(normalized, finalize)
     }
   }
 
@@ -123,7 +122,7 @@ export function InvoiceEditor({ open, draft, guardians, students, settings, edit
           <div className="modal-total"><span>Gesamt</span><strong>{euro.format(total)}</strong></div>
           <button className="button button--text" type="button" onClick={onClose}>Abbrechen</button>
           {finalized ? (
-            <button className="button button--primary" type="submit" form={INVOICE_EDITOR_FORM_ID}><Save aria-hidden="true" /> Änderungen speichern</button>
+            <button className="button button--primary" type="submit" form={INVOICE_EDITOR_FORM_ID} disabled><Save aria-hidden="true" /> Änderungen speichern</button>
           ) : (
             <><button className="button button--tonal" type="submit" form={INVOICE_EDITOR_FORM_ID}>Als Entwurf speichern</button><button className="button button--primary" type="button" onClick={() => submit(true)}><Send aria-hidden="true" /> Finalisieren</button></>
           )}
@@ -131,15 +130,14 @@ export function InvoiceEditor({ open, draft, guardians, students, settings, edit
       }
     >
       <form className="invoice-form" id={INVOICE_EDITOR_FORM_ID} onSubmit={(event) => { event.preventDefault(); submit(false) }}>
-        {finalized && <div className="revision-banner"><FileCheck2 aria-hidden="true" /><div><strong>Finalisierte Rechnung</strong><p>Die Rechnungsnummer bleibt erhalten. Änderungen werden im lokalen Verlauf protokolliert und die Druckansicht wird aktualisiert.</p></div></div>}
-        {finalized && <label className="switch-row"><span><strong>Snapshot-Korrektur aktivieren</strong><small>Aktuelle Empfänger-, Absender- und Kontodaten erst nach zusätzlicher Bestätigung in die Rechnung übernehmen.</small></span><input type="checkbox" checked={snapshotCorrection} onChange={(event) => setSnapshotCorrection(event.target.checked)} /><i /></label>}
+        {finalized && <div className="revision-banner"><FileCheck2 aria-hidden="true" /><div><strong>Finalisierte Rechnung</strong><p>{FINALIZED_INVOICE_BLOCKED}</p></div></div>}
         {errors.length > 0 && <div className="form-errors" role="alert"><strong>Bitte noch prüfen:</strong><ul>{errors.map((error) => <li key={error}>{error}</li>)}</ul></div>}
 
         <section className="form-section">
           <div className="form-section__heading"><span>1</span><div><h3>Für wen?</h3><p>Kinder und Rechnungsempfänger auswählen.</p></div></div>
           <fieldset className="chip-fieldset" disabled={finalized}><legend>Kind(er)</legend><div className="choice-chips">{students.filter((student) => student.active || form.studentIds.includes(student.id)).map((student) => <label className={form.studentIds.includes(student.id) ? 'choice-chip is-selected' : 'choice-chip'} key={student.id}><input type="checkbox" checked={form.studentIds.includes(student.id)} onChange={() => selectStudent(student)} /><span className="avatar">{student.name.slice(0, 1)}</span>{student.name}</label>)}</div>{!students.length && <p className="field-hint field-hint--warning">Lege zuerst unter „Familien“ ein Kind an.</p>}{finalized && <p className="field-hint">Die Kindzuordnung bleibt gesperrt, weil sie Bestandteil des Rechnungsnummernkreises ist.</p>}</fieldset>
           <fieldset className="chip-fieldset"><legend>Empfänger</legend><div className="choice-chips">{eligibleGuardians.map((guardian) => <label className={form.guardianIds.includes(guardian.id) ? 'choice-chip is-selected' : 'choice-chip'} key={guardian.id}><input type="checkbox" checked={form.guardianIds.includes(guardian.id)} onChange={() => setForm((current) => ({ ...current, guardianIds: current.guardianIds.includes(guardian.id) ? current.guardianIds.filter((id) => id !== guardian.id) : [...current.guardianIds, guardian.id] }))} /><span className="avatar avatar--warm">{guardian.name.slice(0, 1)}</span>{guardian.name}</label>)}</div></fieldset>
-          {form.guardianIds.length > 1 && (finalized ? <p className="field-hint">Die vorhandene Rechnungsnummer bleibt eine gemeinsame Rechnung für die ausgewählten Empfänger:innen.</p> : <fieldset className="segmented-field"><legend>Bei mehreren Empfänger:innen</legend><div className="segmented-control"><label className={form.recipientStrategy === 'joint' ? 'is-selected' : ''}><input type="radio" name="recipient-strategy" checked={form.recipientStrategy === 'joint'} onChange={() => setForm({ ...form, recipientStrategy: 'joint' })} />Eine gemeinsame Rechnung</label><label className={form.recipientStrategy === 'separate' ? 'is-selected' : ''}><input type="radio" name="recipient-strategy" checked={form.recipientStrategy === 'separate'} onChange={() => setForm({ ...form, recipientStrategy: 'separate' })} />Je Person eine Rechnung</label></div><p className="field-hint">Bei getrennten Rechnungen entstehen eigenständige Entwürfe bzw. fortlaufende Nummern.</p></fieldset>)}
+          {form.guardianIds.length > 1 && (finalized ? <p className="field-hint">Die vorhandene Rechnungsnummer bleibt eine gemeinsame Rechnung für die ausgewählten Empfänger:innen.</p> : <fieldset className="segmented-field"><legend>Bei mehreren Empfänger:innen</legend><div className="segmented-control"><label className={form.recipientStrategy === 'joint' ? 'is-selected' : ''}><input type="radio" name="recipient-strategy" checked={form.recipientStrategy === 'joint'} onChange={() => setForm({ ...form, recipientStrategy: 'joint' })} />Eine gemeinsame Rechnung</label><label className={form.recipientStrategy === 'separate' ? 'is-selected' : ''}><input type="radio" name="recipient-strategy" disabled checked={form.recipientStrategy === 'separate'} onChange={() => setForm({ ...form, recipientStrategy: 'separate' })} />Je Person eine Rechnung</label></div><p className="field-hint">{SPLIT_INVOICE_BLOCKED}</p></fieldset>)}
         </section>
 
         <section className="form-section">
