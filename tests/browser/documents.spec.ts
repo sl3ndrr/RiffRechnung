@@ -145,6 +145,7 @@ test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unverändert
   await page.evaluate(({ key, raw }) => localStorage.setItem(key, raw), { key: STORAGE_KEY, raw })
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Lokale Daten benötigen Wiederherstellung' })).toBeVisible()
+  await page.getByRole('button', { name: 'Altformat und Reparatur prüfen', exact: true }).click()
   await expect(page.getByText(/Zuordnung und Snapshot-Empfänger widersprechen/)).toBeVisible()
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(raw)
   await page.getByRole('button', { name: 'Wiederherstellung vorbereiten', exact: true }).click()

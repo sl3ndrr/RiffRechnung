@@ -1,7 +1,7 @@
 import type { AppState, DocumentContent, DocumentVersion, Invoice, InvoiceDraft, InvoiceSnapshot } from '../types'
 import { canonical } from './envelope'
 import { copyItemsWithFreshIds, freshId } from './identities'
-import { billingPeriodFromItems, invoiceTotal, itemTotal, uid } from './utils'
+import { billingPeriodFromItems, guardianName, invoiceTotal, itemTotal, uid } from './utils'
 import { validateBackupState } from './validation'
 
 export function documentContent(invoice: Invoice): DocumentContent {
@@ -54,7 +54,10 @@ export function captureDocument(state: AppState, invoice: Invoice, id: string, h
   if (canonical(invoice.studentIds) !== canonical(snapshot.students.map((student) => student.id))) conflict('studentIds', 'Zuordnung und Snapshot-Kinder widersprechen sich.', invoice.studentIds, snapshot.students)
   if (invoice.snapshot && invoice.legalText !== invoice.snapshot.legalText) conflict('legalText', 'Rechnung und Snapshot enthalten verschiedene Rechtstexte.', invoice.legalText, invoice.snapshot.legalText)
   if (totalCents !== legacyCalculatedTotalCents) conflict('amounts', 'Historischer Registerbetrag und bisherige Rechnungsausgabe weichen ab. Beide Beträge bleiben erhalten; Registerbetrag hat Vorrang.', totalCents, legacyCalculatedTotalCents)
+  if (historical && invoice.period !== version.outputPeriod) conflict('period', 'Gespeicherter Zeitraum und bisherige Druckausgabe weichen ab. Beide Angaben bleiben erhalten.', invoice.period, version.outputPeriod)
   for (const entry of registerEntries) {
+    const recipient = guardianName({ ...invoice, snapshot }, [])
+    if (entry.recipient !== recipient) conflict('numberRegister.recipient', 'Registerempfänger und ausgegebener Snapshot-Empfänger widersprechen sich.', entry.recipient, recipient)
     if (entry.invoiceDate !== invoice.invoiceDate || entry.sequence !== invoice.sequence || entry.year !== invoice.year) conflict('numberRegister', 'Nummernregister und Rechnung widersprechen sich.', entry, { invoiceDate: invoice.invoiceDate, sequence: invoice.sequence, year: invoice.year })
   }
   return version

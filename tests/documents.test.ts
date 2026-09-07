@@ -251,3 +251,29 @@ test('P04: zwei schreibende Sitzungen verlieren keine Belegversion oder Zahlung'
   await assert.rejects(stale.change((state) => changeInvoiceStatus(state, state.invoices[0].id, 'paid', at)), /anderen Tab/)
   assert.equal(storage.getItem(STORAGE_KEY), before)
 })
+
+
+test('P04: nach Migration ohne früheren Snapshot dürfen Stammdaten gelöscht werden; Ausgabe bleibt erhalten', async () => {
+  const legacy = legacyFixture(issued())
+  delete legacy.invoices[0].snapshot
+  let state = parseBackup(JSON.stringify(legacy))
+  const original = state.invoices[0]
+  const output = printContent(state, original)
+  state = requireSuccess(deleteStudentState(state, 's-a'))
+  state = requireSuccess(deleteGuardianState(state, 'g-a'))
+  state = await persistReload(state)
+  assert.equal(printContent(state, original), output)
+  assert.equal(state.documentVersions[0].content.snapshot, undefined, 'fehlender damaliger Snapshot wird nicht erfunden')
+  assert.ok(state.documentVersions[0].conflicts.some((conflict) => conflict.path === 'snapshot'))
+  assert.equal(state.documentVersions[0].outputSnapshot.guardians[0].name, 'Empfaenger A')
+})
+
+test('P04: Vollzahlung, Zuordnung und Nummernregister werden bei Import gemeinsam geprüft', () => {
+  const initial = issued()
+  const state = changeInvoiceStatus(initial, initial.invoices[0].id, 'paid', at)
+  const withoutPayment = { ...state, payments: [] }
+  assert.throws(() => validateBackupState(withoutPayment), /Zahlungszuordnung/)
+  const duplicate = structuredClone(state)
+  duplicate.voidedInvoiceNumbers.push({ number: state.invoices[0].number!, sequence: 1, year: 2026, invoiceDate: '2026-09-01', deletedAt: at, amount: 7.57, recipient: 'Empfaenger A' })
+  assert.throws(() => validateBackupState(duplicate), /doppelt/)
+})

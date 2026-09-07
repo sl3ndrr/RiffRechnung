@@ -239,9 +239,13 @@ function validateState(value: unknown, schema: 2 | 3 | 4, localItemIds: boolean)
     }
     const parent = correction && backupArray(data.documentVersions, 'documentVersions').map((entry) => backupObject(entry, 'documentVersions')).find((entry) => entry.id === correction.replacesId)
     if (correction && !parent) invalidBackup(`${path}.correction.replacesId`, 'verweist auf eine unbekannte Belegversion')
-    const parentContent = parent ? backupObject(parent.content, 'documentVersions.content') : undefined
-    const historicalGuardians = status === 'draft' && parentContent ? backupIdArray(parentContent.guardianIds, 'documentVersions.content.guardianIds') : []
-    const historicalStudents = status === 'draft' && parentContent ? backupIdArray(parentContent.studentIds, 'documentVersions.content.studentIds') : []
+    const savedVersion = versioned && status !== 'draft' ? backupArray(data.documentVersions, 'documentVersions').map((entry) => backupObject(entry, 'documentVersions')).find((entry) => entry.id === invoice.versionId) : undefined
+    const referenceVersion = status === 'draft' ? parent : savedVersion
+    const parentContent = referenceVersion ? backupObject(referenceVersion.content, 'documentVersions.content') : undefined
+    // Complete sealed documents own their references; live master data may be deleted.
+    // Correction drafts may retain only references actually present in their parent.
+    const historicalGuardians = parentContent ? backupIdArray(parentContent.guardianIds, 'documentVersions.content.guardianIds') : []
+    const historicalStudents = parentContent ? backupIdArray(parentContent.studentIds, 'documentVersions.content.studentIds') : []
     invoiceGuardianIds.forEach((id, referenceIndex) => {
       if (!guardianIds.has(id) && !snapshotReferences?.guardianIds.has(id) && !historicalGuardians.includes(id)) {
         invalidBackup(`${path}.guardianIds[${referenceIndex}]`, 'verweist auf eine unbekannte Person')
@@ -467,4 +471,11 @@ function validateDocuments(state: AppState): void {
       if (allocation.versionId !== null && !state.documentVersions.some((version) => version.id === allocation.versionId && version.originalId === source.originalId)) invalidBackup(`${p}.versionId`, 'muss innerhalb derselben Korrekturbeziehung liegen')
     })
   })
+  for (const version of state.documentVersions) {
+    const invoice = state.invoices.find((entry) => entry.versionId === version.id)!
+    const assigned = state.payments.filter((payment) => payment.allocations.at(-1)?.versionId === version.id).reduce((sum, payment) => sum + payment.amountCents, 0)
+    if (!Number.isSafeInteger(assigned)) invalidBackup('payments', 'überschreitet den sicheren Gesamtbetrag')
+    if (version.amounts.totalCents > 0 && (invoice.status === 'paid') !== (assigned >= version.amounts.totalCents)) invalidBackup('payments', 'Zahlungszuordnung und Vollzahlungsstatus widersprechen sich')
+  }
+
 }

@@ -1,4 +1,5 @@
 import { legacyFixture } from './documentFixtures'
+import { validateLegacyV3Structure } from '../src/lib/validation'
 import { captureLegacyDocuments } from '../src/lib/importState'
 import { seedState, sharedLock, fakeDirectory } from './storageHarness'
 import { ValidationError } from '../src/lib/result'
@@ -174,7 +175,8 @@ test('P01: verdeckte Empfängerabweichungen und Verlust ungesicherter historisch
   delete historicalSource.invoices[0].snapshot
   const historical = captureLegacyDocuments(historicalSource)
   validateBackupState(historical)
-  assert.throws(() => validateBackupState({ ...historical, guardians: [], students: [] }), /unbekannte Person|unbekanntes Kind/)
+  assert.doesNotThrow(() => validateBackupState({ ...historical, guardians: [], students: [] }), 'P04: gesicherte Version besitzt ihren eigenen historischen Referenzbereich')
+  assert.throws(() => validateLegacyV3Structure({ ...historicalSource, guardians: [], students: [] }), /unbekannte Person|unbekanntes Kind/, 'Ungesicherte Alt-Referenzen bleiben geschützt')
 })
 
 test('P01: reservierte Nummern bleiben nach abgewiesenem Austausch und Reload belegt', async () => withStorage(() => {
