@@ -15,7 +15,7 @@ Eine vollständig clientseitige Web-App für Rechnungen rund um Gitarrenunterric
 - clientseitig erzeugter EPC-GiroCode (EPC069-12 / Version 002) für SEPA-Überweisungen
 - Dashboard, Volltextsuche, Filter, sortierbare Rechnungslisten, Zahlungserinnerung per `mailto:`, Duplizieren wiederkehrender Rechnungen und CSV-Jahresübersicht
 - System-/Light-/Dark-Mode, responsive Desktop-/Tablet-/Smartphone-Oberfläche und reduzierte Bewegung
-- automatisch gebündeltes Speichern aller Einstellungen
+- bestätigtes lokales Speichern gültiger Einstellungen, auch beim sofortigen Ansichtswechsel
 - JSON-Export/-Import sowie optionales automatisches Backup in einen lokalen Ordner
 
 ## Tech-Stack
@@ -40,6 +40,8 @@ npm run lint
 npm test
 npm run typecheck
 npm run build
+npx playwright install --with-deps chromium
+npm run test:browser
 npm run preview
 ```
 
@@ -47,7 +49,7 @@ npm run preview
 
 1. Änderungen als Pull Request gegen `main` prüfen lassen und erst nach Freigabe übernehmen.
 2. Im Repository unter **Settings → Pages → Build and deployment** als Quelle **GitHub Actions** wählen.
-3. `.github/workflows/quality.yml` prüft Pull Requests mit Node 22, `npm ci`, Lint, Tests, Typecheck einschließlich Testdateien und Build.
+3. `.github/workflows/quality.yml` prüft Pull Requests mit Node 22, `npm ci`, Lint, Tests, Typecheck einschließlich Testdateien, Build und echte Chromium-Abläufe.
 4. `.github/workflows/deploy.yml` verwendet bei Push auf `main` dieselben Prüfungen. Erst nach deren Erfolg wird das in demselben Lauf erzeugte Artefakt veröffentlicht. Manuelle Läufe anderer Branches veröffentlichen nichts.
 
 Die verpflichtenden Statuschecks müssen zusätzlich in den Branch-Regeln eingerichtet werden; eine Workflow-Datei erzwingt sie nicht. Nachweise, geprüfte Action-Versionen und offene administrative Einstellungen stehen in [docs/quality-gates.md](docs/quality-gates.md); Paketfolge und Produktregeln in [docs/implementation-status.md](docs/implementation-status.md) und [docs/product-decisions.md](docs/product-decisions.md).
@@ -62,11 +64,35 @@ Der GiroCode füllt Empfänger, IBAN, Betrag und Rechnungsnummer in unterstützt
 
 ## Backup und Restore
 
-Unter **Einstellungen → Backup & Import** gibt es immer einen vollständigen JSON-Export und -Import. Vor einem Import wird der Inhalt validiert und das vollständige Ersetzen des lokalen Stands bestätigt.
+Unter **Einstellungen → Backup & Import** sind JSON-Export, Wiederherstellung,
+vorheriger lokaler Stand und Wiederherstellungsarchiv erreichbar. Der Export
+enthält den zuletzt bestätigten Stand. Eine Wiederherstellung wird nach Vorschau
+bestätigt, bewahrt Originaldaten/Berichte und wird als neue Revision gespeichert.
+Bekannte ausgestellte Belege und reservierte Nummern bleiben geschützt.
 
-Optional kann die App über die **File System Access API** einen lokalen Ordner auswählen. Nach der einmaligen Freigabe schreibt sie dort bei Änderungen die Datei `riffrechnung-backup.json`; „Backup jetzt“ stößt dies zusätzlich manuell an. Diese API ist derzeit vor allem in Chromium-Browsern wie Chrome und Edge verfügbar. Firefox und Safari unterstützen die Ordnerauswahl nicht vollständig – dort bleibt der normale JSON-Download.
+**Ordner wählen** liest zuerst vorhandene Sicherungen und zeigt Bestand und
+Konflikte. Ein leerer Browser ersetzt keine bestehende Sicherung. Altbackups ohne
+Bestands-ID brauchen eine ausdrückliche Zuordnung durch Wiederherstellung.
+**Jetzt sichern** und automatische Sicherung verwenden denselben Schreibdienst.
+Jeder neue Stand erhält eine neue Datei `riffrechnung-v4-<Revision>-<ID>.json`;
+die bisherigen gültigen Dateien bleiben erhalten. Keine automatische Bereinigung.
 
-Das ist **keine Google-Drive-, Dropbox- oder sonstige Cloud-Integration**. Wenn der gewählte Ordner zufällig von einer Desktop-App synchronisiert wird, lädt ausschließlich diese installierte Software die Datei später hoch. Die Web-App kennt den Cloud-Dienst nicht und kommuniziert nicht mit dessen Servern.
+Die Anzeige unterscheidet ungespeicherte Änderungen, lokalen Schreibabschluss,
+ausstehendes Datei-Backup, Konflikt und Fehler – auch mobil. Gültige Einstellungen
+werden beim Ansichtswechsel übernommen. Asynchrones Datei-Backup benötigt den
+offenen Tab; sein Abschluss wird nicht beim Schließen versprochen. Bei entzogenem
+Zugriff **Jetzt sichern** zur erneuten Freigabe verwenden oder JSON exportieren.
+
+Ordnerzugriff benötigt File System Access samt vollständiger Ordner- und
+Berechtigungsprüfung. Fehlt eine benötigte Dateifunktion, bleibt der JSON-Export.
+Ohne Web Locks ist auch lokales Schreiben gesperrt. Locks koordinieren Tabs im
+selben Browserprofil, keine weiteren Geräte oder Synchronisationsprogramme.
+Widersprüchliche Dateien bleiben erhalten und sperren den Ordner; dann Sicherungen
+prüfen und einen anderen Zielort wählen. Eine Cloud-Anbindung enthält die App nicht.
+
+Die **Demo** läuft ausschließlich im Arbeitsspeicher einer eigenen Sitzung.
+Einstieg/Ausstieg erhalten den realen Bestand, seine Ordnerverbindung und Dateien.
+Demo-Änderungen gehen beim Verlassen verloren.
 
 ## Datenschutz und Grenzen
 
@@ -85,18 +111,32 @@ Das ist **keine Google-Drive-, Dropbox- oder sonstige Cloud-Integration**. Wenn 
 
 ### Datenprüfung und Altformat-Reparatur (Paket 02)
 
-Neue Bestände verwenden Format 3. Entwürfe können unvollständig sein; ungültige
+Das Datenschema bleibt Format 3; die Speicherung verwendet einen versionierten
+Umschlag (Speicherprotokoll 4). Entwürfe können unvollständig sein; ungültige
 Preise, Mengen, IDs oder Referenzen werden nicht gespeichert. Nur deutsche IBANs
 sind für neue/geänderte Kontoeinstellungen und neue Finalisierungen zugelassen.
 
 Beim Import und im Wiederherstellungsmodus lässt sich Format 2 prüfen. Bekannte
 Empfängerkopien mit doppelten Positions-IDs erhalten eine Reparaturvorschau,
-separate Exporte und einen Bericht mit Originaldaten. Sichere Übernahme im
-bestehenden Browserprofil folgt in Paket 03; vorhandene Rohdaten und Ordnerbackups
-werden nicht überschrieben. Für eine Prüfung kann der Format-3-Export in einem
-leeren Browserprofil importiert werden. Originaldatei und Bericht unabhängig
-aufbewahren; alter Anwendungscode benötigt die unveränderte Originaldatei in
-einem getrennten Profil. Andere Schäden werden nicht automatisch korrigiert.
+separate Exporte und einen Bericht mit Originaldaten. Die bestätigte Übernahme
+verwendet denselben abgesicherten Schreibdienst wie normale Änderungen.
+
+Beim Umstieg **alle alten Tabs schließen**, Original exportieren und die Vorschau
+bestätigen. Neue Schlüssel und eine neue Handle-Datenbank trennen den Bestand von
+alten Anwendungsversionen. Der alte Rohtext bleibt unverändert. Ändert ein alter
+Tab ihn später, erscheint ein Konflikt; beide Stände separat exportieren und in
+einem getrennten aktuellen Profil prüfen. Unbekannte neuere Formate bleiben
+schreibgeschützt. Für alten Anwendungscode nur die Originaldatei in einem eigenen
+Profil verwenden. Andere Schäden werden nicht automatisch korrigiert.
 
 Die unterstützte E-Mail-Regel und die genauen Format-/Reparaturgrenzen stehen in
 [Produktentscheidungen](docs/product-decisions.md#paket-02--speicherbare-zustände-und-reparaturen).
+
+
+Die Browserprüfung nutzt ausschließlich synthetische Daten. Sie baut zusätzlich
+den historischen Commit `ba7857fd9180fa392c42a0235643e478e5077ee5` als temporäre
+Testseite unter derselben Origin, um einen wirklich geöffneten alten Tab zu prüfen.
+`npm run test:browser` benötigt dafür Git, tar und bei fehlendem Commit lesenden
+GitHub-Zugriff. Die Testseite wird anschließend entfernt und nicht ausgeliefert.
+Dateihandles werden in einem isolierten dauerhaften Chromium-Profil mit echtem
+OPFS/IndexedDB geprüft; native Ordnerdialoge und OS-Rechte bleiben separate Abnahmen.

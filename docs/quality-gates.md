@@ -9,7 +9,7 @@ Workflow eingebunden. Ohne Pfadfilter prüft er `npm ci`, `npm run lint`, `npm t
 `npm run typecheck` und `npm run build` auf `ubuntu-24.04` mit `.nvmrc` (Node 22).
 `tsconfig.tests.json` übernimmt die strikten App-Einstellungen einschließlich
 DOM-Deklarationen und ergänzt Node-Typen; `tsc -b` erfasst App, Vite-Konfiguration
-und Tests. Die 45 vorhandenen Tests bleiben unverändert.
+und Tests. Paket 00 begann mit 45 Tests; aktuelle Ergebnisse stehen unten pro Paket.
 
 `deploy.yml` ruft denselben Workflow ausschließlich für `main` auf. Das Pages-
 Artefakt entsteht erst nach allen erfolgreichen Prüfungen und wird im selben
@@ -222,3 +222,104 @@ abschließender Ergebnis-Commit und Lauf stehen in PR #21. Echte Browserbedienun
 Dateiberechtigungen, parallele Tabs, Fokus, Druck, Banking-Scans und Mailprogramme
 wurden nicht geprüft. Storage-/Datei-Mocks und SSR sind kein Nachweis dafür.
 Sichere Übernahme migrierter Daten folgt in Paket 03, das nicht begonnen wurde.
+
+
+## Paket 03 – Speicher- und Browsernachweise
+
+Basis: `3433c9c0fbab8f57ee66ce669a856a2d82fb43e9` (PR #21);
+`main` weiterhin `ba7857fd9180fa392c42a0235643e478e5077ee5`.
+Branch `codex/paket-03-sichere-speicherung`, [PR #22](https://github.com/sl3ndrr/RiffRechnung/pull/22).
+GitHub-Schreiben (Branch, Tree, Commit, Ref, PR) tatsächlich erfolgreich;
+kein Merge, kein Deployment. Die Basis-CI 34056037557 war grün; keine
+vorbestehenden fehlschlagenden Tests festgestellt.
+
+Die bisherigen Schranken bleiben erhalten. Hinzu kommen `npx playwright install
+--with-deps chromium` und `npm run test:browser` im selben Quality-Job. TypeScript
+prüft auch die neuen Unit-/Browserdateien und die Playwright-Konfiguration.
+PR-/Deployment-Rechte unverändert; das bestehende `needs: quality` erfasst auch
+Browserfehler. Testseiten entstehen erst nach dem Produktionsbuild und werden
+anschließend entfernt; das Pages-Artefakt enthält weiterhin ausschließlich `dist`.
+
+Einzige neue direkte Abhängigkeit: **@playwright/test 1.63.0**, exakt fixiert.
+[Offizielles Release](https://github.com/microsoft/playwright/releases/tag/v1.63.0).
+Lockfile im isolierten Node-22-Job mit npm erzeugt, danach `npm ci` erfolgreich:
+[34058813383](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34058813383),
+Commit `816036a983077ecd5ef27077a6f64290524928d5` auf
+`codex/paket-03-ci-evidence`. Der semantische Lockfile-Abgleich betrifft nur Root,
+@playwright/test, playwright und playwright-core; keine manuell erfundenen
+Integritätswerte oder sonstigen Abhängigkeitsupdates.
+
+Alle folgenden PR-Läufe: Ubuntu **24.04.4**, Node **22.23.2**, npm **10.9.8**.
+
+| Commit / Lauf | Ergebnis |
+| --- | --- |
+| `a2d90f2a5ba2d451c340935263576ec47752ad87`, [34059061238](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34059061238) | npm ci/Lint/98 Tests bestanden; Typecheck findet einen veralteten persist(next)-Aufruf nach Schnittstellenänderung. Build/Browser deshalb nicht gestartet. |
+| `9d60dc58810088cc521f20016bd470a43bf4dd8a`, [34059234439](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34059234439) | Alle bisherigen Schranken bestanden, 98/98 Tests; 5/6 Browserprüfungen. Chromium beendet sich beim OPFS-/IndexedDB-Reload. |
+| `e7580dfbfc5c3c4338725485325c7a271c0ee16b`, [34059398043](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34059398043) | 99/99 Tests und bisherige Schranken bestanden; gleicher Absturz auch mit vollständigem Chromium statt Headless Shell, 5/6 Browserprüfungen. |
+| `742e5007db03680e42d1bf3731769e4b93104bb8`, [34086565760](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34086565760) | Alle Schranken; 99/99 Fachtests, 7/7 echte Browserprüfungen einschließlich dauerhaftem Datei-Testprofil und Browserneustart. |
+| `257464e89e5841bf5fe317770ce115507e644d17`, [34086906084](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34086906084) | 101/101 Fachtests und bisherige Schranken bestanden; 7/8 Browserprüfungen. Neue Legacy-Testadresse /legacy/ traf den Vite-Fallback statt der historischen HTML-Datei. |
+| `c034f63af72aeaeec0bbf8ef10bd2c8f274c0c58`, [34087140552](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34087140552) | **npm ci, npm run lint, npm test (101/101), npm run typecheck, npm run build, Browserinstallation und npm run test:browser (8/8) erfolgreich.** Keine übersprungenen Tests. |
+
+Der erfolgreiche Lauf hat `head_sha = c034f63…`; Checkout ist GitHubs temporärer
+Merge-Commit `537e12e06a5db5a8ffe5315782f52e2eecadbab7`. Dessen Tree
+`c5219beb000f573e21abbeb2144eb91acd5ae9e5` wurde per API mit dem Ergebnis-Tree
+verglichen und ist identisch. Nachfolgend ausschließlich Dokumentation;
+abschließender Commit und erneut zugehörige CI werden im PR/Abschluss ausgewiesen.
+
+**Fehlerzuordnung:** Alle Änderungen/Testfehler stammen aus Paket 03. Der
+veraltete Settings-Aufruf wurde korrigiert. Der Browserabsturz wurde unabhängig von
+der App mit einer minimalen HTML-Seite, nativem OPFS und IndexedDB reproduziert:
+[34086399032](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34086399032),
+Commit `1f3ad85e9fc8067eec7411698ecadd64d62d86e5`, nur auf dem Nachweisbranch.
+Dasselbe Chromium **153.0.8010.12**: privater Kontext scheitert beim Handle-Lesen,
+dauerhaftes synthetisches Profil besteht. Der Gegenlauf benutzt deshalb ein
+[isoliertes dauerhaftes Profil](https://playwright.dev/docs/api/class-browsertype#browser-type-launch-persistent-context)
+und prüft zusätzlich vollständiges Schließen/Neustarten. Kein behaupteter Fix des
+Chromium-Fehlers; private Profile sind keine freigegebene dauerhafte Dateiablage.
+Der Legacy-Test öffnet nun explizit `/legacy/index.html` und prüft die alte
+Oberfläche sowie ihren tatsächlichen Schreibabschluss. Kein Test wurde gelöscht,
+übersprungen, mit Wiederholungen kaschiert oder in seiner Prüfabsicht abgeschwächt.
+
+**Abdeckung:** 27 zusätzliche Speichertests und fachlich ersetzte betroffene alte
+Quelltext-/Sperrtests. Geprüft werden volle Inhaltskonflikte trotz gleicher ID/
+Revision/Zeit, Warteschlange/Locks, fremde und extern eintreffende Zweige,
+vorhandenes Backup bei leerem Browser, ausdrückliche anonyme Zuordnung,
+createWritable/write/close-Fehler mit Wiederholung, Quota-/Security-Fehler,
+fehlende Funktionen, granted/prompt/denied, veraltete Handles sowie
+IndexedDB-Öffnungsfehler/Blockierung/Abbruch auch nach erfolgreicher Anfrage.
+Reparaturtests prüfen jetzt die bestätigte Übernahme über den produktiven Dienst,
+Originaltext und Migrationsbericht, alte Revisionen, Reservierungen, Export/Import
+und erneutes Laden ohne weitere Reparaturen. Geld-/Original-/Referenz-/CSV-
+Regressionen bleiben erhalten; Zahlenrechnung selbst unverändert.
+
+**Echter Browser, getrennt von Fehler-Injektion:** Acht Playwright-Abläufe unter
+Chromium 153.0.8010.12; sieben ohne ersetzte Browser-APIs, ein injizierter
+Picker-Abbruch. Zwei normale echte Tabs verwenden native Web Locks; zusätzlich
+läuft die reale historische App aus `ba7857f…` gleichzeitig unter derselben Origin.
+Bestätigte Einstellungen überstehen Ansichtswechsel und erneutes Öffnen. Recovery
+lädt die Rohdatei tatsächlich herunter und vergleicht sie bytegenau, bestätigt
+Import, persistiert und lädt tatsächlich neu. Demo/OPFS/IndexedDB sowie Dateien und
+Konfiguration werden vor/nach Demo und vollständigem Browserneustart verglichen.
+OPFS ist browserinterner Speicher und **kein** Nachweis für native Ordnerwahl,
+OS-Dateirechte oder Synchronisationssoftware. Die mobile Prüfung misst Sichtbarkeit
+bei 390 Pixeln; keine zusätzliche Fokus-/Druck-/Banking-Abnahme behauptet.
+
+**Lokale Ausführung:** Node 24.19.0/npm 11.9.0 statt Node 22. `git ls-remote`
+Exit 128/HTTP 403; `npm view node@22 version --json --fetch-retries=0
+--fetch-timeout=15000` und `npm ci --fetch-retries=0 --fetch-timeout=15000
+--cache /workspace/scratch/2c6811aefcaf/npm-cache` Exit 1/E403.
+`npm run lint`, `npm test`, `npm run typecheck`, `npm run build` wurden vom Werkzeug
+vor Prozessstart abgebrochen: `network approval was cancelled before a decision
+was returned`. Kein regulärer lokaler Node-22-Nachweis. Ergänzende Node-24-
+Transpilation mit `stripTypeScriptTypes` und `node --test` ergab zunächst 23/24 neue
+Speichertests; eine zu groß geschriebene Fehlertext-Erwartung wurde korrigiert und
+anschließend in den regulären Node-22-Läufen geprüft. `git diff --check` erfolgreich.
+
+**Noch native Abnahme erforderlich, ausschließlich mit synthetischen Daten:**
+Ordner mit bestehender Sicherung wählen, Abbruch/granted/prompt/denied und späteren
+Rechteentzug auf den Zielbetriebssystemen bedienen; gespeichertes OS-Handle nach
+Neustart prüfen. Externe Konfliktkopie über ein echtes Synchronisationsprogramm
+bzw. zweites Gerät erzeugen und unveränderte Dateien/sichtbare Sperre bestätigen.
+Für diese Punkte liegen automatisierte Fehler-Injektionen, aber keine native
+Abnahme vor. Keine geräteübergreifende atomare Synchronisation zugesagt.
+Administrative Pflichtchecks aus Paket 00 bleiben separat offen.

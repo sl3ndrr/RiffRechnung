@@ -1,6 +1,6 @@
 # Produktentscheidungen
 
-Stand: Pakete 00–02, 2026-09-06. Quelle: beauftragter Umsetzungsplan zur Analyse von
+Stand: Pakete 00–03, 2026-09-07. Quelle: beauftragter Umsetzungsplan zur Analyse von
 `ba7857fd9180fa392c42a0235643e478e5077ee5`. Diese Regeln sind verbindliche Ziele;
 ihre technische Umsetzung wird pro Paket im [Umsetzungsstatus](implementation-status.md) belegt.
 
@@ -27,6 +27,8 @@ PRs prüfen GitHubs Merge-Stand; Pages prüft und veröffentlicht den auslösend
 `main`-Commit und dessen Artefakt im selben Workflow-Lauf.
 
 ## Vorläufige Regeln für Paket 01
+
+Datei-/Demo-Sperren und die pauschale Importsperre sind durch die Regeln aus Paket 03 ersetzt. Original- und Aufteilungsschutz gelten weiter.
 
 - **Aufteilung (R01/R02):** Mehrere getrennte Empfängerrechnungen sind bei Anlage,
   Entwurfsspeicherung und Finalisierung gesperrt. Eine einzelne gemeinsame
@@ -123,3 +125,60 @@ in Paket 02, revisionssichere Speicherung in Paket 03.
   Historische Snapshot-Adressen bleiben originalgetreu und werden als Warnungen
   ausgewiesen; ungültige Empfänger sperren den E-Mail-Link. Ein vorhandener Snapshot
   mit leerer Adresse fällt nicht auf heutige Kontaktdaten zurück. Kein Versand erfolgt.
+
+
+## Paket 03 – Speichervertrag und kontrollierter Umstieg
+
+- **Ein führender Bestand pro Ordner:** Alle JSON-Dateien im gewählten, dafür
+  vorgesehenen Ordner werden geprüft, einschließlich Synchronisationskopien.
+  Abweichende Inhalte/Bestände oder unbekannte Formate sperren weitere Datei-Writes.
+  Kein automatischer Merge, keine Auswahl des Gewinners nach Datum oder Revision.
+  Gültige Sicherungen lassen sich ausdrücklich lokal wiederherstellen; ein weiter
+  widersprüchlicher Ordner bleibt gesperrt und erfordert einen anderen Zielort.
+- **Identität/Revision:** Speicherprotokoll 4 enthält Datenschema 3, Bestands-ID,
+  zufällige Commit-ID, monoton steigende Revision, Operation und SHA-256-Verweise
+  auf kanonische Vorgängerinhalte. Das erkennt Inhaltsabweichungen; es ist keine
+  Signatur oder Behauptung fälschungssicherer Herkunft. Gleiche Nummer/Dateizeit
+  genügen nie. Eine anonyme Altdatei erhält erst bei bestätigter Übernahme eine neue
+  Identität bzw. ausdrückliche Zuordnung; ihre Quell-ID bleibt unbekannt (`null`).
+- **Wiederherstellung:** Jeder bestätigte Restore ist ein neuer Stand mit
+  `max(lokale Revision, Quellrevision) + 1` und protokollierter Quelle. Ein gültiger
+  lokaler Bestand behält seine ID; ein leeres Profil kann die bekannte Quell-ID
+  übernehmen. Bekannte Originalinhalte müssen erhalten bleiben. Zähler, reservierte
+  Nummern und Kinderkennzeichen werden nicht zurückgesetzt. Die pauschale
+  Importsperre aus 01 wird durch diese konkrete Original-/Reservierungsprüfung
+  ersetzt; ein historischer Beleg darf weiterhin weder verschwinden noch verändert
+  werden. Unbekannte Historie wird nicht ergänzt.
+- **Erfolg/Fallback:** „Lokal gespeichert“ folgt erst auf erfolgreiches setItem.
+  Datei-Backup ist ein separater ausstehender/erfolgreicher/fehlerhafter Zustand und
+  wird nicht beim Tab-Schließen garantiert. Neue Versionsdateien statt Überschreiben;
+  mindestens die vorige gültige Datei sowie der vorige gültige lokale Stand bleiben.
+  Fehler erhalten die aktuelle lokale Kopie. Scheitert auch die Bereinigung eines
+  neuen Dateiversuchs, bleibt dieser sichtbar und sperrt den Ordner bis zur Prüfung.
+- **Sperrbereich:** Eine gemeinsame Web Lock und eine Warteschlange pro Sitzung
+  koordinieren alle Schreibanlässe im selben Origin/Browserprofil. Ohne Web Locks
+  bleibt die App schreibgeschützt, JSON-Export möglich. Ohne sichere Datei-/Rechte-
+  prüfung bleibt das Datei-Backup aus; vorhandene Dateien bleiben erhalten. Keine
+  Atomizitätszusage für Betriebssystem, Cloud-Synchronisation oder weitere Geräte.
+- **Altversionen:** Neuer Schlüssel `riffrechnung-state-v4`, Handle-Datenbank
+  `riffrechnung-handles-v4`; der bisherige Schlüssel `gitarrenrechnungen-state-v2`
+  und die alte Handle-Datenbank werden nicht beschrieben/automatisch weiterbenutzt.
+  Vor Umstieg alte Tabs schließen und Original exportieren. Der alte Rohtext wird
+  als Vergleichswert behalten. Schreibt eine alte App später weiter, werden beide
+  Bestände erhalten und neue Writes auch nach Reload gesperrt. Zur Auflösung beide
+  Stände exportieren, in einem getrennten aktuellen Profil prüfen und bewusst eine
+  Quelle übernehmen. Der neue Schlüssel wird alten Versionen nicht zurückkopiert.
+- **Archive/Rückweg:** Vor Übernahme wird ein Archiv mit unveränderten lokalen/
+  alten/importierten Rohtexten, Schema-Migrationsbericht und versioniertem
+  Speicher-Migrationsbericht geschrieben. Scheitert dies, erfolgt keine Übernahme.
+  Vorherige gültige lokale Version und Archive sind über die Oberfläche erreichbar.
+  Altformat 2→3 bleibt deterministisch; normales Laden und Importprüfung ändern
+  nichts. Rückkehr zu altem Code nur mit Originaldatei in einem separaten Profil;
+  kein Downgrade des neuen Bestands. Neuere unbekannte Formate bleiben gesperrt.
+- **Demo:** Eigenständige Sitzung ausschließlich im RAM. Einstieg/Ausstieg wartet
+  auf bereits beauftragte echte Writes, löst aber keine zusätzliche echte Sicherung
+  aus und löscht keine Konfiguration. Demo darf jederzeit verworfen werden; sie
+  liest/schreibt weder reale Storage-Schlüssel noch IndexedDB oder Dateihandles.
+- **Aufbewahrung:** Keine automatische Löschung alter Versionsdateien oder Archive
+  in Paket 03. Das braucht zusätzlichen Speicherplatz; Quota-Fehler sind sichtbar.
+  Komfortabler Vergleich/Archivverwaltung aus F01 gehört weiterhin zu Paket 13.

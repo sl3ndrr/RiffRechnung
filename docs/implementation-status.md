@@ -1,10 +1,8 @@
 # Umsetzungsstatus
 
-Stand: 2026-09-06, Pakete 00–02. Paket 01 baut auf dem noch offenen PR #19 auf. Analyse und Zielbranch `main` wurden
-auf `ba7857fd9180fa392c42a0235643e478e5077ee5` abgeglichen (Tree
-`c00c371e0c8052bccaabc1208e6fd796a35c293e`). Keine `AGENTS.md` oder bisherigen
-Status-/Entscheidungsdateien im vollständig gelesenen Repository-Tree vorhanden.
-Alle 39 Ausgangsdateien wurden anhand ihrer Git-Blob-SHAs verifiziert.
+Stand: 2026-09-07, Paket 03. Zielbranch `main` erneut geprüft:
+`ba7857fd9180fa392c42a0235643e478e5077ee5`. Die offenen PRs bauen aufeinander auf;
+kein Merge und kein Deployment. Keine `AGENTS.md` im vollständig geprüften Tree.
 
 ## Paketfolge
 
@@ -18,7 +16,7 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 | 00 | Ausgangsbasis, CI, esbuild | R23, R25, N01 | Implementiert und in CI geprüft; administrative Abnahme offen |
 | 01 | Gefährliche Abläufe vorläufig absichern | R01–R05, R10, R22 (Sofortschutz) | Sofortschutz implementiert und CI-geprüft; reale Browserabnahmen offen |
 | 02 | Fachbefehle, Validatoren, reparierbare Formate | R01, R04, R15; Grundlage R24 | Implementiert und CI-geprüft; reale Browser-/Mailprogrammabnahmen offen |
-| 03 | Speicherung, Backups, isolierte Demo | R05, R08, R22, N06 | Laut Analyse offen |
+| 03 | Speicherung, Backups, isolierte Demo | R05, R08, R22, N06; schrittweise R24 | Implementiert; CI-/Browsernachweise unten, native Dateirechte offen |
 | 04 | Originalbelege und Korrekturen | R03, R09, R10, F03, N09 | Laut Analyse offen |
 | 05 | Exaktes Geld und Kalenderdaten | R06, R12 | Laut Analyse offen |
 | 06 | Aufteilung nach Empfängern | R02; Integration R01 | Laut Analyse offen |
@@ -34,171 +32,78 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 | 16 | Passwortgeschützte portable Backups | F05 | Optional, laut Analyse offen |
 | 17 | Offline-Start und kontrollierte Updates | F06 | Optional, zuletzt; laut Analyse offen |
 
-## Paket 00
+## Bisherige Pakete
 
-- **Ausgangsbefunde bestätigt:** R23 (nur Build vor Deployment, kein PR-Prüflauf,
-  veränderliche Action-Tags, globale Pages-/OIDC-Rechte), R25 (direktes esbuild
-  0.24.2 im betroffenen Advisory-Bereich), N01 (README-Installation mit `npm install`).
-- **Ergebnisstand:** [PR #19](https://github.com/sl3ndrr/RiffRechnung/pull/19),
-  Branch `codex/paket-00-quality-gates`, Implementierungscommit
-  `f4e42e7a339431ce385d488c19920d6793a4e54f` (anschließend nur Nachweisdokumentation;
-  aktueller Ergebnis-Commit und zugehörige CI im PR). Gemeinsamer
-  PR-/Pages-Prüfworkflow mit Node 22, `npm ci`, Lint, Tests, Typecheck inklusive
-  Tests und Build. Deployment hängt vom erfolgreichen Prüflauf desselben Stands
-  ab; Pages-/OIDC-Rechte ausschließlich im Deployment-Job. README nutzt `npm ci`.
-  Direkte esbuild-Version 0.25.12, mit npm regeneriertes und gezielt verglichenes Lockfile.
-  R24 bleibt fachlich offen; lediglich dessen fehlende Testdatei-Typprüfung ist mit erledigt.
-- **Geprüfte Invarianten:** Baseline und esbuild-Testlauf: jeweils 45/45 Tests,
-  keine übersprungenen/gelöschten/abgeschwächten Tests; vorhandene Prüfungen zu
-  Geld, Referenzen, Import/Reload, Nummernreservierung, CSV und beschädigten
-  Rohdaten laufen mit. Das ist keine vollständige fachliche Freigabe der offenen
-  Pakete. Produktionsquelltext und Datenformat bleiben unverändert.
-- **Migration:** keine; Schema 2, gespeicherte Rechnungen, Snapshots und Rohdaten
-  werden durch Paket 00 nicht verändert. Ein Git-Revert betrifft nur Werkzeug-/CI-Konfiguration und Dokumentation.
-- **Nachweise/offene Abnahmen:** [Qualitätsschranken](quality-gates.md). PR-CI
-  erfolgreich. Kontrollierter Testfehler verhindert Build, Pages-Artefakt und
-  abhängigen Veröffentlichungs-Prüfjob; nach Entfernen des Fehlers sind diese
-  Voraussetzungen erfolgreich. Testdatei-Typfehler wird mit TS2322 erkannt und
-  nach Entfernen wieder fehlerfrei geprüft. R23 technisch behoben, administrative
-  Pflichtchecks noch offen; R25/N01 behoben. Lokale Installation bleibt blockiert.
-  Verpflichtender Branch-Statuscheck fehlt; klassischer Schutzendpunkt nicht lesbar.
-  Keine echte Fokus-, Dateiberechtigungs-, Druck- oder Banking-App-Abnahme.
+| Paket | Ergebnis / Abhängigkeit | Nachweis |
+| --- | --- | --- |
+| 00 | PR #19: gemeinsame Node-22-CI, Testtypen, esbuild; R23/R25/N01 | 45/45 Tests; Pflichtstatuscheck administrativ offen |
+| 01 | PR #20: vorläufiger Original-, Aufteilungs-, Datei- und Demoschutz | 56/56 Tests; in 03 werden nur Datei-/Demo-Sperren fachlich ersetzt |
+| 02 | PR #21, `3433c9c0fbab8f57ee66ce669a856a2d82fb43e9`: Fachbefehle, Format 3, ID-Reparatur, Mailboxen; R01/R04/R15, Grundlage R24 | 74/74 Tests; [CI 34056037557](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34056037557) |
 
-Produktregeln und offene fachliche Entscheidungen: [product-decisions.md](product-decisions.md).
-## Paket 01
+Historische Einzelbefunde und CI-Fehlerzuordnung: [quality-gates.md](quality-gates.md).
+Produktregeln: [product-decisions.md](product-decisions.md).
 
-- **Ausgangsstand:** `main` weiterhin
-  `ba7857fd9180fa392c42a0235643e478e5077ee5`. Arbeits-/PR-Basis ist der aktuelle
-  Paket-00-Branch `codex/paket-00-quality-gates`, Commit
-  `d627d1333fc94f6a9628c3f9d6a1ca17128244fd` (PR #19 noch offen).
-  Alle 44 Dateien blobverifiziert, keine `AGENTS.md`. Dessen
-  [CI 34025170731](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34025170731)
-  ist erfolgreich; keine erneute lokale Baseline-Ausführung möglich.
-- **Ergebnisstand:** [PR #20](https://github.com/sl3ndrr/RiffRechnung/pull/20),
-  Branch `codex/paket-01-sofortschutz`, gegen PR-19-Branch. Implementierung
-  `1f30b4848d17efc36be4f7483f896f3fec33ee77`, mit korrigierter Test-Typisierung
-  `e491d440d9baa6ec251570da65bc0eb3187fa399`. Danach nur Nachweisdokumentation;
-  abschließender Ergebnis-Commit und zugehörige CI im PR. Kein Merge/Deployment.
-- **Aktuell bestätigte Befunde:** R01/R02 (ungeprüfte Kopien aller Positionen),
-  R03/R10 (Snapshot-Verlust/Empfängerabweichungen), R04 (ungeprüfte Standardpreise),
-  R05 (direkte Datei-Schreibwege), R22 (ungeprüfter Austausch durch Demo).
-  Behoben sind deren gefährliche Zugänge durch Sofortschutz; vollständige fachliche
-  Lösungen bleiben in den Folgepaketen offen. Keine F-/N-Erweiterung implementiert.
-- **Änderungen:** Testbare Funktionen für Speichern/Finalisieren/Status, Preis-
-  Übernahme und Sperren aus `App.tsx` herausgezogen. Keine automatische Aufteilung;
-  gemeinsame Rechnung nur bei durchgehender Empfänger-Kind-Zuordnung. Lokale rohe
-  Preiseingaben, letzter gültiger Wert bleibt. Originalschutz auch bei Löschung,
-  Bestandsaustausch und Zurücksetzen; Statuspflege separat. Bestehende Struktur-
-  validierung vor Übernahme verhindert neue unlesbare Referenzen. Ordnerzugriffe
-  prüfen nur lesend, alle Datei-Schreibwege stoppen. Demo prüft auch Teil-Einrichtung,
-  ausstehende Einstellungen und Ordnerabruf. Deutsche IBAN bei neuer Verwendung.
-- **Invarianten/Tests:** Gezielte Funktionsregressionen für 2/3 Familien, eindeutige
-  Einzel-/Geschwisterrechnungen, Preise, Referenzen/Positions-IDs, Snapshots,
-  Statuswechsel, reservierte/getrennte Nummern, Datei-Konflikte, Demo und deutsche
-  IBAN. Erlaubte Übergänge werden serialisiert, importiert und mit Storage-Mocks
-  neu geladen; wiederholter Import darf keine weiteren Inhaltsänderungen bewirken.
-  Betroffene Quelltextmuster-Tests werden fachlich ersetzt; vorhandene CSV-, Geld-,
-  Altformat- und Rohdatenschutztests bleiben. **56/56 Tests bestanden**, keine
-  übersprungenen Tests; bisherige Prüfabsichten erhalten, geänderte Produktregeln
-  fachlich ersetzt. Lint, Typecheck einschließlich Tests und Build erfolgreich
-  unter Ubuntu 24.04.4, Node 22.23.2/npm 10.9.8 im
-  [Lauf 34039578186](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34039578186)
-  für `e491d440…`. Erster CI-Lauf: ebenfalls 56/56 Tests, danach TS2339 in der neuen
-  Test-Hilfsfunktion; korrigiert, keine Baseline-Regression und kein abgeschwächter Test.
-- **Migration:** keine; Schema 2 und bisherige Altformat-Unterstützung unverändert.
-  Keine Reparatur negativer Preise, doppelter Alt-IDs, ausgestellter Beträge oder
-  Snapshots. Beschädigte/neue unbekannte Formate bleiben geschützt; Rohdatenexport
-  und separater JSON-Export bleiben verfügbar. Kein automatisches Überschreiben
-  vorhandener Sicherungen. Ein Revert hebt die Sperren wieder auf, ohne Daten zu migrieren.
-- **Vorläufige Sperren/Folgepakete:** Aufteilung → 06 (Alt-ID-Reparatur → 02);
-  Originalbearbeitung/Snapshot-Korrektur/Zurücksetzen/Löschen und Bestandsaustausch
-  mit ausgestellten Belegen/reservierten Nummern → 04, Import-Speicherdienst → 03;
-  alle Ordner-Schreibwege und Demo bei begonnenem Echtbestand → 03;
-  vollständige Preis-/Fachvalidierung → 02/05, Rechnungsprofil/EPC → 07.
-- **Offene Nachweise:** Lokale Laufzeit Node 24.19.0/npm 11.9.0 statt Node 22.
-  Node-22-Abruf und `npm ci` liefern E403; Lint/Tests/Typecheck/Build vom Werkzeug
-  vor Prozessstart abgebrochen. Node-24-Syntaxprüfung der neuen TS-Dateien und
-  `git diff --check` erfolgreich; reguläre CI-Schranken erfolgreich wie oben.
-  Keine echten Browser-, Dateiberechtigungs- oder Mehrtabprüfungen; kein Druck-/Banking-Scan.
-  Verzögertes lokales Speichern und historische Darstellungs-Fallbacks bleiben
-  Aufgaben der Pakete 03/04/07. Administrative Pflichtchecks aus Paket 00 bleiben offen.
+## Paket 03 – Speicherung, Backups und isolierte Demo
 
-| Abnahmekriterium Paket 01 | Ergebnis |
+- **Ausgangsstand:** Arbeits-/PR-Basis ist PR #21, Branch
+  `codex/paket-02-fachbefehle-migration`, vollständige SHA
+  `3433c9c0fbab8f57ee66ce669a856a2d82fb43e9`. Alle 57 Basisdateien anhand ihrer
+  Git-Blobs geprüft; Tree `bbc24026bf854fcc742e0f7f05d6476157d1e50d` lokal identisch.
+  R05/R08/R22/N06 am aktuellen Code bestätigt: mehrere Speicherwege, verzögerte
+  Bestätigung/Einstellungen und vorläufig gesperrte Datei-/Demoabläufe.
+- **Ergebnis:** Branch `codex/paket-03-sichere-speicherung`,
+  [PR #22](https://github.com/sl3ndrr/RiffRechnung/pull/22) gegen den Paket-02-Branch.
+  Implementierung und Ergänzungen bis `c034f63af72aeaeec0bbf8ef10bd2c8f274c0c58`;
+  abschließender Dokumentationscommit und zugehöriger Prüflauf stehen im PR.
+  R05/R08/R22/N06 im Paketumfang implementiert; R24 für Speicherung weitergeführt.
+  Keine F-Erweiterung und kein weiteres Paket begonnen.
+- **Änderungen:** Ein Schreibdienst mit Tab-Warteschlange und echten Web Locks;
+  vollständiger Inhaltsvergleich, Bestands-ID, Revision und Vorgänger-Fingerprints.
+  Verbindung liest zuerst alle JSON-Dateien; ausdrückliche Zuordnung anonymer
+  Altbackups. Datei-Backups werden ausschließlich als neue Dateien geschrieben,
+  erfolgreich geschlossen und zurückgelesen. Vorherige gültige Dateien bleiben.
+  Konflikte und Berechtigungs-/Speicherfehler bleiben sichtbar, auch mobil.
+  Gültige Einstellungen werden beim Ansichtswechsel bestätigt lokal gespeichert.
+  Demo arbeitet ausschließlich im Arbeitsspeicher ohne reale Schlüssel/Handles.
+- **Invarianten:** DE-IBAN-Regeln, historische Beträge/Snapshots, Referenzen,
+  CSV-Formelabwehr, getrennte Nummernkreise und reservierte Nummern erhalten.
+  Wiederherstellung bewahrt bekannte Originale/Reservierungen und erhöht die
+  Revision über aktuellen und importierten Stand. Kein Gewinner allein aufgrund
+  von Revision, Dateiname oder Datum; kein stilles Zusammenführen externer Zweige.
+- **Migration:** Speicherprotokoll 4 um Datenschema 3, eigener localStorage-Schlüssel
+  und neue Handle-Datenbank. Altformat 2 wird mit dem bestehenden Algorithmus nach 3
+  migriert, Format 3 übernommen; beide erst nach Vorschau/Bestätigung. Alte Schlüssel,
+  Originaltext, Eingangsdatei und Berichte bleiben erhalten. Archiv und vorheriger
+  lokaler Stand sind exportierbar/prüfbar. Weitere Lesevorgänge ändern nichts;
+  erneute Bestätigung erzeugt eine neue Revision, aber keine weitere Reparatur.
+  Unbekannte neuere Formate bleiben schreibgeschützt. Kein automatisches Downgrade.
+
+| Abnahme Paket 03 | Ergebnis / Nachweisart |
 | --- | --- |
-| Kein fremdes Kind / keine vervielfachte Forderung über Aufteilung | Bestanden in Funktionsprüfungen für 2/3 Familien; Einzel-/Geschwistergegenproben bestanden |
-| Preise, historisches Zurücksetzen und Empfängeränderung erzeugen keine unlesbaren Daten | Bestanden einschließlich unveränderter Originale, Statuspflege, Import und simuliertem Reload |
-| Leerer Browser / vorhandenes Backup und veralteter Tab / manuelles Backup | Bestanden mit Datei-/Storage-Mocks: keine Dateierzeugung, kein Schreibstream und unveränderte Bytes |
-| Demo verändert keine begonnenen Echtdaten | Bestanden für Teil-Einstellungen, Daten, ausstehende Eingabe und Ordnersperren mit synthetischen Beständen |
-| Gezielte Regressionen und dokumentierte Sperren/Folgepakete | Bestanden; 56/56 Gesamttests und alle CI-Schranken |
-| Echte Browserbedienung, Dateirechte und parallele Tabs | Nicht geprüft; Mocks belegen diese Abnahme nicht |
+| Leerer Browser mit bestehendem Backup; fremder Bestand; gleicher Zähler mit anderem Inhalt | Bestanden in Funktionsprüfungen mit synthetischen Storage-/Datei-Adaptern |
+| Manuelle und automatische Sicherung gleichzeitig; Fehler bei createWritable/write/close; Wiederholung | Bestanden mit Fehler-Injektion; reale OPFS-Sicherung zusätzlich im Browser |
+| Veralteter Tab und zwei zeitgleich schreibende Tabs | Bestanden mit zwei echten Chromium-Tabs und nativen Web Locks |
+| Einstellung ändern, sofort Ansicht wechseln, bestätigt speichern, schließen/öffnen | Bestanden im echten Chromium-Browser |
+| Beschädigte Rohdaten tatsächlich herunterladen; Backup bestätigen/persistieren/reload | Bestanden im echten Chromium-Browser; Originalbytes und Archiv geprüft |
+| Demo mit verbundenem Ordner: Echtbestand, Dateien und gespeichertes Handle unverändert | Bestanden mit echtem OPFS/IndexedDB und vollständigem Browserneustart im isolierten Profil |
+| Quota/Security, IndexedDB-Öffnung/Abbruch, veraltete Handles, granted/prompt/denied, fehlende Funktionen | Automatisierte Fehler-Injektion; native OS-Dialoge/Berechtigungen nicht geprüft |
+| Picker-Abbruch | Bestanden im Browser mit injiziertem AbortError; kein nativer Picker-Nachweis |
+| Bereits geöffnete historische Anwendung nach Umstieg | Bestanden mit dem echten historischen Build `ba7857f…` unter derselben Origin |
+| Migration/Reparatur, Geld, Referenzen, Reservierungen, Import und Reload | Vorhandene Regressionen erhalten; bestätigte Reparatur über den produktiven Schreibdienst ergänzt |
 
-Weitere Ausführungsdetails: [quality-gates.md](quality-gates.md).
+**Ausführungsstand:** [CI 34087140552](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34087140552)
+für `c034f63af72aeaeec0bbf8ef10bd2c8f274c0c58`: Ubuntu 24.04.4,
+Node 22.23.2/npm 10.9.8, Chromium 153.0.8010.12; alle Schranken, 101/101 Fachtests
+und 8/8 Browserprüfungen bestanden, keine übersprungenen Tests. Lokal Node 24.19.0/npm 11.9.0;
+Installation/Node-22-Abruf E403, reguläre Prüfbefehle vor Prozessstart blockiert.
 
-## Paket 02
+**Offen:** Native Ordnerwahl und Rechtevergabe/-entzug auf Zielbetriebssystemen,
+reale Synchronisationsprogramme/zweites Gerät sowie administrative Pflichtchecks.
+Keine Zusage geräteübergreifender Atomizität. Fehlende Web Locks sperren Schreiben;
+fehlende Dateifunktionen lassen lokalen Speicher und JSON-Export verfügbar.
+Versionsdateien/Archive werden nicht automatisch gelöscht und benötigen Speicherplatz.
+Der Chromium-Absturz bei OPFS-Handles im privaten Testprofil ist separat ohne App
+reproduziert; Datei-Abnahme verwendet ein dauerhaftes synthetisches Profil.
+Fokus, Druck und Banking-App-Scans gehören zu späteren Abnahmen.
 
-- **Ausgangsstand:** `main` unverändert
-  `ba7857fd9180fa392c42a0235643e478e5077ee5`; Arbeits-/PR-Basis ist der noch offene
-  PR #20, `codex/paket-01-sofortschutz` auf
-  `aa775b842aec2ef3b27dc6e3697de7e6eb850b12`. Vollständiger Tree und 48 Dateien
-  blobverifiziert; keine `AGENTS.md`. Arbeitsbranch:
-  `codex/paket-02-fachbefehle-migration`. [PR #21](https://github.com/sl3ndrr/RiffRechnung/pull/21)
-  richtet sich gegen den Paket-01-Branch. Implementierung: `2db8a974ef0a5ab2ec5c66a1081fb073da58a5db`;
-  geprüfter Ergebnisstand: `02e11cb0732539a7fef7079267e7b829b6c22137`.
-  Danach nur Nachweisdokumentation; abschließender Commit und zugehörige CI im PR.
-- **Befunde:** R01 bestätigt für Altbestände, normale Kopien hatten bereits neue
-  IDs, aber filterten fehlende Referenzen; R04/R24 bestätigt für ungleiche
-  Formular-/Befehls-/Importregeln und weitere inline Fachoperationen; R15 bestätigt
-  für ungeprüfte Empfänger in `mailto:`. Keine F-/N-Erweiterung beauftragt.
-- **Änderungen:** Erzeugen/Kopieren, Personen/Kinder, Einstellungen und Import
-  als Fachfunktionen mit Ergebniszuständen/strukturierten Fehlern. Gemeinsame
-  Struktur-/Werteprüfung ohne Speicherzugriff, getrennte Entwurfs-/Finalisierungs-
-  anforderungen, rohe Zahlenfelder, globale aktive Positions-IDs. Sichere Mailbox-
-  prüfung/-Kodierung; historische fehlerhafte Adressen bleiben sichtbar erhalten.
-- **Migration:** Format 3; explizite Migration 2→3 mit Algorithmusversion 1,
-  Herkunftsprüfung des bekannten Empfängerkopierfehlers, vollständiger Nachprüfung,
-  deterministischen ID-Zuordnungen und Bericht samt Originaltext. UTF-8-Dateibytes
-  bleiben separat exportierbar. Beschädigte/neue unbekannte Daten bleiben gesperrt.
-  Keine automatische Übernahme reparierter Daten und keine Ordnerschreibwege;
-  abgesicherte Übernahme folgt in 03. Separate Exporte erlauben Prüfung und Import
-  in einem leeren Browserprofil; Originalexport ist der Rückweg für alten Code.
-- **Invarianten/Prüfung:** Neue Regressionen für 2/3 Empfängerkopien als Entwurf und
-  finalisiert, Beträge/Nummern/Snapshots, idempotente Migration, fehlende Referenzen,
-  ungültige Zahlen/Dezimalgrenzen, globale IDs, Mailbox-Grenzfälle, reservierte
-  Nummern, historische Adressen und erzwungene Schreibversuche auf Rohdaten.
-  Extrahierte Befehle werden durch Export–Import und Storage-Reload geprüft.
-  Betroffene Quelltexttests für Rechnungsstart/Mengen werden durch Verhalten ersetzt;
-  übrige Schutz-, CSV-, Geld-, Referenz- und Konfliktprüfungen bleiben erhalten.
-- **Ausführungsgrenze:** Lokal Node 24.19.0/npm 11.9.0; Node-22-Abruf und `npm ci`
-  E403. Lint/Test/Typecheck/Build werden vom Werkzeug vor Prozessstart wegen der
-  Netzwerkfreigabe abgebrochen; kein lokaler regulärer Testlauf behauptet. Die
-  bestehenden CI-Schranken verwenden unverändert Node 22 einschließlich Testtypen.
-  [CI 34055811688](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34055811688)
-  für `02e11cb…`: Ubuntu 24.04.4, Node 22.23.2/npm 10.9.8; `npm ci`, Lint,
-  **74/74 Tests**, Typecheck einschließlich Tests und Build erfolgreich.
-  Erster Lauf: 68/74; drei Erwartungen an frühere Fehlertexte, ein nun ungültiges
-  E-Mail-Testdatum, unvollständige Storage-Mocks und ein SSR-Portal ohne DOM.
-  Konkrete Fehlerverträge/Mocks und der tatsächlich verwendete Dialoginhalt wurden
-  korrigiert/geprüft; keine Baseline-Regression, keine gelöschten oder übersprungenen
-  Tests. Aufteilung, Rohdaten- und Originalschutz bleiben erhalten. Keine neue Abhängigkeit.
-- **Offene Abnahmen:** Echte Browserbedienung und Dateiberechtigungen, Fokus,
-  parallele Tabs, Druck, Banking-Scans und konkrete Mailprogramme nicht geprüft.
-  SSR-/Storage-Mocks gelten nur als Funktionsnachweis. Administrative Pflichtchecks
-  aus 00 sowie vorläufige Sperren aus 01 bleiben den jeweiligen Folgepaketen zugeordnet.
-
-| Abnahmekriterium Paket 02 | Ergebnis |
-| --- | --- |
-| Neue/kopierte Positionen: gültige, global eindeutige IDs | Bestanden, einschließlich Generatorfehlern und Kollisionen |
-| 2/3 alte Empfängerkopien verlustfrei reparierbar | Bestanden für Entwürfe und finalisierte Belege; Beträge, Nummern, Texte, Snapshots unverändert |
-| Zweite Migration/Import/Reload ohne weitere Anpassung | Bestanden; deterministische Alt-ID-Reparatur und unverändertes Format 3 |
-| Ungültige Preise/Mengen/Leerwerte/NaN/Infinity, Dezimalgrenzen, Referenzfehler | Bestanden; Fehler bleiben außerhalb dauerhafter Zustände |
-| Mailboxen mit ?, &, #, CR/LF, Listen und Sonderzeichen | Bestanden; nur subject/body als URI-Parameter; historische Fehler sichtbar |
-| Extrahierte Befehle mit Ausgangs-/Ergebniszustand, Export–Import/Reload | Bestanden; gemeinsamer strenger Validator und 74 Gesamttests |
-| Kein Überschreiben beschädigter, älterer oder neuerer Rohdaten | Bestanden mit Storage-Mocks, auch bei erzwungenem Schreibversuch; Originalbytes/Report exportierbar |
-| Browser-/Dateirechte-/Mehrtab-/Mailprogrammabnahme | Nicht geprüft; Mocks/SSR ersetzen diese Abnahme nicht |
-
-R01/R04/R15 sind im Paketumfang behoben; Aufteilungsintegration R01 bleibt in 06.
-R24 ist für die extrahierten Befehle umgesetzt; weitere Befehle folgen in ihren
-Paketen. Details und Prüfcommit-Zuordnung: [quality-gates.md](quality-gates.md).
-
-Nächstes vorgesehenes Paket: **03 – verlässliche Speicherung, sichere Backups,
-isolierter Demomodus**, nur nach gesondertem Auftrag; nicht begonnen.
+Nächstes vorgesehenes Paket: **04 – Originalbelege und Korrekturen**, nicht begonnen.
