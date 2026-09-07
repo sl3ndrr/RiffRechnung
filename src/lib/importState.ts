@@ -181,6 +181,9 @@ export function inspectImport(rawData: string): CommandResult<ImportPreview> {
       state = captureLegacyDocuments(legacy)
       report.changes.push({ path: 'schemaVersion', before: version, after: 4, reason: 'Vollständige älteste verfügbare Belegstände und getrennte Verwaltung sichern; frühere Inhalte bleiben unbekannt' })
       for (const document of state.documentVersions) report.changes.push({ path: `documentVersions.${document.id}`, before: null, after: document, reason: 'Jetzt verfügbarer historischer Inhalt, alte Ausgabebeträge und Snapshot-/Registerbelege; keine Wiederherstellung verlorener Originale' })
+      for (const invoice of state.invoices.filter((entry) => entry.versionId)) report.changes.push({ path: `invoices.${invoice.id}.versionId`, before: null, after: invoice.versionId, reason: 'Verweis auf den gesicherten vollständigen Belegstand' })
+      report.changes.push({ path: 'invoiceAdministration', before: null, after: state.invoiceAdministration, reason: 'Vorhandenen Verwaltungsstatus übernehmen; frühere Ereignisse bleiben unbekannt' })
+      report.changes.push({ path: 'payments', before: null, after: state.payments, reason: 'Vorhandenen Vollzahlungsstatus oder gespeicherten Zahlungshinweis einmalig übernehmen; fehlende Zahlungstage bleiben unbekannt' })
       if (state.historicalSnapshotCorrections.length) report.changes.push({ path: 'historicalSnapshotCorrections', before: null, after: state.historicalSnapshotCorrections, reason: 'Vorhandene Snapshot-Differenzen unabhängig von der begrenzten Aktivitätsliste bewahren; auch ohne vollständigen Beleg' })
       validateBackupState(state)
     }

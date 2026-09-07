@@ -661,13 +661,8 @@ test('finalisierte Historie darf gelöschte Stammdaten über den Snapshot refere
 })
 
 test('ältere Backups erhalten stabile Kinderkennzeichen in Speicherreihenfolge', () => {
-  const legacy = JSON.parse(serializeBackup(emptyState()))
-  legacy.app = 'gitarrenrechnungen'
-  legacy.schemaVersion = 2
-  legacy.data.schemaVersion = 2
-  delete legacy.data.documentVersions
-  delete legacy.data.invoiceAdministration
-  delete legacy.data.payments
+  const state = legacyFixture(emptyState())
+  const legacy = JSON.parse(JSON.stringify({ app: 'gitarrenrechnungen', exportedAt: state.updatedAt, schemaVersion: 2, data: { ...state, schemaVersion: 2 } }))
   legacy.data.students = [student('student-a', 'Anna', ''), student('student-b', 'Ben', '')]
   legacy.data.settings.numberPattern = '{YYYY}-{NNNN}'
   delete legacy.data.nextStudentCodeIndex

@@ -137,10 +137,12 @@ test('P04 Browser: Zahlungen manuell zuordnen, archivieren und vollständiges Ba
   } finally { await destination.close() }
 })
 
-test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unveränderten Eingangsbytes', async ({ page }) => {
+test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unveränderten Eingangsbytes', async ({ page }, testInfo) => {
   await page.goto('/')
   const legacy = legacyFixture(saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt))
   legacy.invoices[0].guardianIds = ['g-b']
+  Object.assign(legacy.invoices[0].snapshot!, { accountHolder: '', iban: '', bic: '', bankName: '' })
+  Object.assign(legacy.settings, { accountHolder: 'HEUTIGES KONTO', bic: 'MARKDEF1100', bankName: 'HEUTIGE BANK' })
   const raw = JSON.stringify({ app: 'riffrechnung', storageVersion: 4, schemaVersion: 3, datasetId: 'legacy-dataset', commitId: 'legacy-commit', revision: 8, savedAt: documentAt, operation: 'edit', ancestors: [], source: null, data: legacy }, null, 2)
   await page.evaluate(({ key, raw }) => localStorage.setItem(key, raw), { key: STORAGE_KEY, raw })
   await page.reload()
@@ -158,6 +160,18 @@ test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unverändert
   await invoices(page)
   await page.getByRole('button', { name: '2026-a-0001', exact: true }).click()
   await expect(page.getByText('Historische Abweichungen', { exact: true })).toBeVisible()
+  await page.getByText('Gesicherte Ausgabeangaben', { exact: true }).click()
+  await expect(page.locator('.document-history dd').filter({ hasText: /^Leer$/ })).toHaveCount(4)
+  await expect(page.locator('.invoice-detail__header')).toContainText('Empfaenger A')
+  const reminder = decodeURIComponent((await page.getByRole('link', { name: 'E-Mail öffnen', exact: true }).getAttribute('href'))!)
+  expect(reminder).toContain('mailto:a@example.org')
+  expect(reminder).toContain('Empfaenger A')
+  expect(reminder).not.toContain('Empfaenger B')
+  const printed = await pdfText(page, state, state.invoices[0].id)
+  expect(printed.text).toContain('Empfaenger A')
+  expect(printed.text).not.toMatch(/Empfaenger B|HEUTIGES KONTO|HEUTIGE BANK|MARKDEF1100|DE02/)
+  expect(state.documentVersions[0].outputSnapshot.iban).toBe('')
+  await testInfo.attach('historische-leere-kontofelder.pdf', { body: printed.pdf, contentType: 'application/pdf' })
   const archives = await page.evaluate(() => Object.keys(localStorage).filter((key) => key.includes('-recovery-')).map((key) => JSON.parse(localStorage.getItem(key)!)))
   expect(archives[0].sourceRaw).toBe(raw)
   expect(archives[0].previousRaw).toBe(raw)
