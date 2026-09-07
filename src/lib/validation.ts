@@ -413,7 +413,7 @@ function validateDocuments(state: AppState): void {
       if (!parent || !ids.has(parent.id) || parent.id === id || parent.originalId !== v.originalId || replaced.has(parent.id)) invalidBackup(path, 'enthält eine ungültige, zyklische oder mehrfache Korrekturbeziehung')
       replaced.add(parent.id)
       if (v.cancelsId !== null && total !== 0) invalidBackup(`${path}.amounts`, 'muss bei einer Stornierung null sein')
-      if (invoice.correction?.replacesId !== parentId || invoice.correction.reason !== v.reason) invalidBackup(path, 'widerspricht dem Korrekturverweis der Rechnung')
+      if (!invoice.correction || invoice.correction.replacesId !== parentId || invoice.correction.reason !== v.reason) invalidBackup(path, 'widerspricht dem Korrekturverweis der Rechnung')
     } else if (v.originalId !== id || invoice.correction !== undefined) invalidBackup(`${path}.originalId`, 'muss den Originalbeleg bezeichnen')
     if (v.provenance === 'issued' && (canonical(v.outputSnapshot) !== canonical(invoice.snapshot) || canonical([...refs.guardianIds]) !== canonical(invoice.guardianIds) || canonical([...refs.studentIds]) !== canonical(invoice.studentIds) || v.outputLegalText !== invoice.legalText)) invalidBackup(`${path}.outputSnapshot`, 'muss bei neu ausgestellten Belegen mit Inhalt und Zuordnung übereinstimmen')
   })
