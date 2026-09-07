@@ -869,3 +869,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 }
 
 .demo-banner { grid-column: 1 / -1; position: sticky; top: 0; z-index: 60; padding: 10px 18px; background: var(--primary-container); color: var(--on-surface); text-align: center; }
+
+.document-history { display: grid; gap: 1rem; margin: 1.5rem 0; }
+.document-history h3, .document-history p { margin: 0; }
+.document-history ol { padding-left: 1.4rem; }
+.document-history pre, .document-history td { white-space: pre-wrap; overflow-wrap: anywhere; }
+.document-history pre { max-height: 16rem; overflow: auto; font-size: .8rem; }
+.document-history table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.document-history th, .document-history td { padding: .5rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--outline-variant); }
+.payment-allocation { display: grid; gap: .7rem; padding: 1rem 0; border-top: 1px solid var(--outline-variant); }

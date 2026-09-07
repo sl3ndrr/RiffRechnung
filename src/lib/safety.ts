@@ -1,7 +1,7 @@
 import type { AppState, Invoice } from '../types'
 
 export const SPLIT_INVOICE_BLOCKED = 'Getrennte Rechnungen sind vorübergehend gesperrt: Die bisherige Aufteilung könnte fremde Kinddaten weitergeben und Leistungen mehrfach berechnen. Eine gemeinsame Rechnung ist nur mit Empfängern möglich, die allen ausgewählten Kindern zugeordnet sind.'
-export const FINALIZED_INVOICE_BLOCKED = 'Finalisierte Belege können vorübergehend weder inhaltlich geändert, zurückgesetzt noch gelöscht werden, solange keine vollständige Originalversion gesichert wird. Zahlungs- und Versandstatus bleiben änderbar.'
+export const FINALIZED_INVOICE_BLOCKED = 'Finalisierte Belege bleiben unverändert erhalten. Inhaltliche Änderungen benötigen einen verknüpften Korrekturentwurf mit Grund. Zahlungs- und Versanddaten werden getrennt verwaltet.'
 
 export function isFinalizedInvoice(invoice: Invoice): boolean {
   return invoice.status !== 'draft' || invoice.number !== null || invoice.snapshot !== undefined
@@ -32,6 +32,20 @@ export function assertOriginalsPreserved(current: AppState, next: AppState): voi
       throw new Error(FINALIZED_INVOICE_BLOCKED)
     }
   }
+  for (const version of current.documentVersions) {
+    if (!next.documentVersions.some((candidate) => candidate.id === version.id && canonical(candidate) === canonical(version))) throw new Error('Vollständige Belegversionen dürfen weder geändert noch entfernt werden.')
+  }
+  for (const payment of current.payments) {
+    const candidate = next.payments.find((entry) => entry.id === payment.id)
+    if (!candidate || canonical({ ...candidate, allocations: payment.allocations }) !== canonical(payment)
+      || canonical(candidate.allocations.slice(0, payment.allocations.length)) !== canonical(payment.allocations)) throw new Error('Zahlungen und bisherige Zuordnungen müssen unverändert erhalten bleiben.')
+  }
+  for (const admin of current.invoiceAdministration) {
+    const candidate = next.invoiceAdministration.find((entry) => entry.versionId === admin.versionId)
+    if (!candidate || canonical(candidate.events.slice(0, admin.events.length)) !== canonical(admin.events)
+      || canonical(candidate.resolutions.slice(0, admin.resolutions.length)) !== canonical(admin.resolutions)) throw new Error('Verwaltungs- und Klärungshistorie muss erhalten bleiben.')
+  }
+
 }
 
 export function assertReplacementAllowed(state: AppState): void {

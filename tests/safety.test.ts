@@ -141,7 +141,7 @@ test('P01: historische Belege ohne Stammdaten bleiben samt Betrag, Snapshot und 
   const original = structuredClone(state)
   const invoice = state.invoices[0]
   assert.throws(() => reopenInvoiceAsDraft(state, invoice.id), /Finalisierte Belege/)
-  assert.throws(() => changeInvoiceStatus(state, invoice.id, 'draft'), /Finalisierte Belege/)
+  assert.throws(() => changeInvoiceStatus(state, invoice.id, 'draft'), /Korrekturentwurf/)
   for (const patch of [{ guardianIds: [] }, { items: [] }, { freeText: 'Geändert' }, { invoiceDate: '2026-09-01' }]) {
     assert.throws(() => saveInvoiceDraft(state, { ...invoice, ...patch }, false), /Finalisierte Belege/)
     const altered = { ...state, invoices: [{ ...invoice, ...patch }] }

@@ -1,3 +1,5 @@
+import { deleteGuardianState, deleteStudentState, recordActivity } from './lib/commands'
+import { allocatePayment, archiveInvoice, createCorrectionDraft, resolveDocumentConflicts, selectInvoice } from './lib/documents'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BarChart3, BookUser, Download, FilePlus2, LayoutDashboard, Menu, MessageSquareText, Moon, Palette, ReceiptText, Search, Settings as SettingsIcon, Sun, Upload, UserRound, X } from 'lucide-react'
 import type { AppState, AuditEvent, Guardian, Invoice, InvoiceDraft, InvoiceStatus, PageKey, Settings as SettingsType, Student, ToastMessage } from './types'
@@ -129,7 +131,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         const next = producer(current)
         assertOriginalsPreserved(current, next)
         const at = new Date().toISOString()
-        return { ...next, updatedAt: at, audit: [{ id: uid('event'), at, label, entityType, entityId }, ...next.audit].slice(0, 200) }
+        return recordActivity(next, { id: uid('event'), at, label, entityType, entityId })
       })
       stateRef.current = committed
       setState(committed)
@@ -227,6 +229,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       invoiceNumber: invoice.number,
       draft: {
         id: invoice.id,
+        correction: invoice.correction,
         invoiceDate: invoice.invoiceDate,
         dueDate: invoice.dueDate,
         period: invoice.period,
@@ -255,6 +258,18 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     toast(finalize ? 'Rechnung finalisiert.' : 'Entwurf gespeichert.', 'success')
   }
 
+  const startCorrection = async (invoice: Invoice, reason: string) => {
+    let draftId: string | undefined
+    if (await commit((current) => {
+      const next = createCorrectionDraft(current, invoice.id, reason)
+      draftId = next.invoices.at(-1)?.id
+      return next
+    }, 'Korrekturentwurf angelegt', 'invoice', invoice.id)) {
+      const draft = stateRef.current.invoices.find((entry) => entry.id === draftId)
+      if (draft) { setSelectedInvoiceId(draft.id); editInvoice(draft) }
+    }
+  }
+
   const setInvoiceStatus = async (invoice: Invoice, status: InvoiceStatus) => {
     if (await commit((current) => changeInvoiceStatus(current, invoice.id, status), `Rechnungsstatus auf ${statusLabel[status]} gesetzt`, 'invoice', invoice.id)) {
       toast('Status aktualisiert.', 'success')
@@ -268,7 +283,11 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   }
 
   const requestDeleteInvoice = (invoice: Invoice) => {
-    if (isFinalizedInvoice(invoice)) return toast(FINALIZED_INVOICE_BLOCKED, 'error')
+    if (isFinalizedInvoice(invoice)) {
+      const archived = stateRef.current.invoiceAdministration.find((entry) => entry.versionId === invoice.versionId)?.archived ?? false
+      void commit((current) => archiveInvoice(current, invoice.id, !archived), archived ? 'Beleg aus Archiv geholt' : 'Beleg archiviert', 'invoice', invoice.id)
+      return
+    }
     setConfirmation({
       title: 'Entwurf löschen?',
       message: 'Der Entwurf und seine Positionen werden dauerhaft aus diesem Browser entfernt. Es wurde noch keine Rechnungsnummer verbraucht.',
@@ -300,32 +319,23 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     message: 'Die Person wird aus Stammdaten, Zuordnungen und offenen Entwürfen entfernt. Finalisierte Rechnungen behalten ihren eingefrorenen Empfängerstand.',
     label: 'Kontakt löschen', danger: true,
     action: async () => {
-      if (!await commit((current) => ({
-        ...current,
-        guardians: current.guardians.filter((item) => item.id !== guardian.id),
-        students: current.students.map((student) => ({ ...student, guardianIds: student.guardianIds.filter((id) => id !== guardian.id) })),
-        invoices: current.invoices.map((invoice) => invoice.status === 'draft' ? { ...invoice, guardianIds: invoice.guardianIds.filter((id) => id !== guardian.id) } : invoice),
-      }), 'Elternteil gelöscht', 'person', guardian.id)) return
+      if (!await commit((current) => requireSuccess(deleteGuardianState(current, guardian.id)), 'Elternteil gelöscht', 'person', guardian.id)) return
       toast('Kontakt gelöscht.', 'success')
     },
   })
 
   const deleteStudent = (student: Student) => setConfirmation({
     title: `${student.name} löschen?`,
-    message: 'Das Kind und zugehörige Positionen in offenen Entwürfen werden entfernt. Finalisierte Rechnungen bleiben unverändert nachvollziehbar.',
+    message: 'Das Kind und zugehörige Positionen in normalen Entwürfen werden entfernt. Originalbelege und Korrekturentwürfe bleiben erhalten; dort ist gegebenenfalls eine Neuzuordnung nötig.',
     label: 'Kind löschen', danger: true,
     action: async () => {
-      if (!await commit((current) => ({
-        ...current,
-        students: current.students.filter((item) => item.id !== student.id),
-        invoices: current.invoices.map((invoice) => invoice.status === 'draft' ? { ...invoice, studentIds: invoice.studentIds.filter((id) => id !== student.id), items: invoice.items.filter((item) => item.studentId !== student.id) } : invoice),
-      }), 'Kind gelöscht', 'person', student.id)) return
+      if (!await commit((current) => requireSuccess(deleteStudentState(current, student.id)), 'Kind gelöscht', 'person', student.id)) return
       toast('Kind gelöscht.', 'success')
     },
   })
 
   const print = (invoice: Invoice) => {
-    const request = { id: uid('print'), invoice }
+    const request = { id: uid('print'), invoice: selectInvoice(stateRef.current, stateRef.current.invoices.find((entry) => entry.id === invoice.id) ?? invoice) }
     printRequestRef.current = request
     setPrintRequest(request)
   }
@@ -598,7 +608,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
 
         <main id="main-content" tabIndex={-1}>
           {page === 'dashboard' && <Dashboard state={state} onNavigate={setCurrentPage} onNewInvoice={openNewInvoice} onLoadDemo={loadDemo} demoBlockedReason={mode === 'demo' ? 'Du bist bereits in der isolierten Demo.' : null} onOpenInvoice={openInvoice} />}
-          {page === 'invoices' && <Invoices state={state} selectedId={selectedInvoiceId} onSelect={setSelectedInvoiceId} onNew={openNewInvoice} onEdit={editInvoice} onDuplicate={duplicateInvoice} onDelete={requestDeleteInvoice} onSetStatus={setInvoiceStatus} onPrint={print} onToast={toast} />}
+          {page === 'invoices' && <Invoices state={state} selectedId={selectedInvoiceId} onSelect={setSelectedInvoiceId} onNew={openNewInvoice} onEdit={editInvoice} onDuplicate={duplicateInvoice} onDelete={requestDeleteInvoice} onSetStatus={setInvoiceStatus} onCorrection={startCorrection} onAllocatePayment={(paymentId, versionId, reason) => { void commit((current) => allocatePayment(current, paymentId, versionId, reason), 'Zahlung manuell zugeordnet', 'invoice') }} onResolveConflicts={(versionId, reason) => { void commit((current) => resolveDocumentConflicts(current, versionId, reason), 'Historische Abweichung geklärt', 'invoice') }} onPrint={print} onToast={toast} />}
           {page === 'people' && <People state={state} onSaveGuardian={saveGuardian} onSaveStudent={saveStudent} onDeleteGuardian={deleteGuardian} onDeleteStudent={deleteStudent} />}
           {page === 'reports' && <Reports state={state} />}
           {page === 'about' && <About />}

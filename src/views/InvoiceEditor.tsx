@@ -1,3 +1,4 @@
+import { correctionErrors, reassignCorrectionStudent } from '../lib/documents'
 import { applyItemNumberInput, itemNumberInput, adjustQuantity as adjustedQuantity, MIN_QUANTITY, MAX_QUANTITY, QUANTITY_INCREMENT } from '../lib/values'
 import { invoiceDraftErrors } from '../lib/invoiceActions'
 import { useEffect, useMemo, useState } from 'react'
@@ -42,11 +43,11 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
   const selectStudent = (student: Student) => {
     setForm((current) => {
       const isSelected = current.studentIds.includes(student.id)
-      const studentIds = isSelected ? current.studentIds.filter((id) => id !== student.id) : [...current.studentIds, student.id]
+      const studentIds = isSelected ? current.studentIds.filter((id) => id !== student.id || Boolean(current.correction && current.items.some((item) => item.studentId === id))) : [...current.studentIds, student.id]
       const guardianIds = isSelected
         ? current.guardianIds.filter((id) => studentIds.some((studentId) => students.find((item) => item.id === studentId)?.guardianIds.includes(id)))
         : [...new Set([...current.guardianIds, ...student.guardianIds])]
-      const items = isSelected
+      const items = isSelected && !current.correction
         ? current.items.filter((item) => item.studentId !== student.id)
         : current.items.length ? current.items : [createLessonItem(student.id, current.invoiceDate, settings)]
       return { ...current, studentIds, guardianIds, items, period: billingPeriodFromItems(items, current.invoiceDate) }
@@ -108,6 +109,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
     const nextErrors = finalized ? [FINALIZED_INVOICE_BLOCKED] : invoiceDraftErrors(state, form)
     if (invalidNumbers) nextErrors.push('Bitte die Preise und Mengen vervollständigen. Ungültige Zwischenwerte werden nicht gespeichert.')
     if (finalize) {
+      nextErrors.push(...correctionErrors(state, form))
       nextErrors.push(...invoiceFinalizationErrors({ guardians, students }, form))
       const ibanError = germanIbanError(settings.iban)
       if (ibanError) nextErrors.push(ibanError)
@@ -123,7 +125,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
     <Modal
       open={open}
       onClose={onClose}
-      title={finalized ? `Rechnung ${invoiceNumber ?? ''} bearbeiten` : editing ? 'Entwurf bearbeiten' : 'Neue Rechnung'}
+      title={finalized ? `Rechnung ${invoiceNumber ?? ''} bearbeiten` : form.correction ? 'Korrekturentwurf bearbeiten' : editing ? 'Entwurf bearbeiten' : 'Neue Rechnung'}
       eyebrow="Rechnungseditor"
       size="large"
       footer={
@@ -133,7 +135,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
           {finalized ? (
             <button className="button button--primary" type="submit" form={INVOICE_EDITOR_FORM_ID} disabled><Save aria-hidden="true" /> Änderungen speichern</button>
           ) : (
-            <><button className="button button--tonal" type="submit" form={INVOICE_EDITOR_FORM_ID}>Als Entwurf speichern</button><button className="button button--primary" type="button" onClick={() => submit(true)}><Send aria-hidden="true" /> Finalisieren</button></>
+            <><button className="button button--tonal" type="submit" form={INVOICE_EDITOR_FORM_ID}>Als Entwurf speichern</button><button className="button button--primary" type="button" disabled={Boolean(form.correction && ([...correctionErrors(state, form), ...invoiceFinalizationErrors(state, form)].length))} onClick={() => submit(true)}><Send aria-hidden="true" /> Finalisieren</button></>
           )}
         </>
       }
@@ -142,6 +144,12 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
         {finalized && <div className="revision-banner"><FileCheck2 aria-hidden="true" /><div><strong>Finalisierte Rechnung</strong><p>{FINALIZED_INVOICE_BLOCKED}</p></div></div>}
         {errors.length > 0 && <div className="form-errors" role="alert"><strong>Bitte noch prüfen:</strong><ul>{errors.map((error) => <li key={error}>{error}</li>)}</ul></div>}
 
+        {form.correction && <section className="form-section" aria-label="Korrektur und Neuzuordnung">
+          <p>Originalbeleg und reservierte Nummer bleiben erhalten. Jede Position wird übernommen. Finalisierung erst nach gültiger Zuordnung.</p>
+          <label className="field"><span>Korrekturgrund</span><textarea value={form.correction.reason} onChange={(event) => setForm({ ...form, correction: { ...form.correction!, reason: event.target.value } })} /></label>
+          {form.studentIds.map((id) => <label className="field" key={id}><span>Kind neu zuordnen: {students.find((student) => student.id === id)?.name ?? `Gelöschtes Kind (${id})`}</span><select value={id} onChange={(event) => setForm((current) => reassignCorrectionStudent(current, id, event.target.value))}>{!students.some((student) => student.id === id) && <option value={id}>Zuordnung erforderlich</option>}{students.map((student) => <option key={student.id} value={student.id}>{student.name}</option>)}</select></label>)}
+          {form.guardianIds.filter((id) => !guardians.some((guardian) => guardian.id === id)).map((id) => <label className="field" key={id}><span>Gelöschte empfangende Person ({id}) ersetzen</span><select value={id} onChange={(event) => setForm((current) => ({ ...current, guardianIds: [...new Set(current.guardianIds.map((old) => old === id ? event.target.value : old))] }))}><option value={id}>Zuordnung erforderlich</option>{guardians.map((guardian) => <option key={guardian.id} value={guardian.id}>{guardian.name}</option>)}</select></label>)}
+        </section>}
         <section className="form-section">
           <div className="form-section__heading"><span>1</span><div><h3>Für wen?</h3><p>Kinder und Rechnungsempfänger auswählen.</p></div></div>
           <fieldset className="chip-fieldset" disabled={finalized}><legend>Kind(er)</legend><div className="choice-chips">{students.filter((student) => student.active || form.studentIds.includes(student.id)).map((student) => <label className={form.studentIds.includes(student.id) ? 'choice-chip is-selected' : 'choice-chip'} key={student.id}><input type="checkbox" checked={form.studentIds.includes(student.id)} onChange={() => selectStudent(student)} /><span className="avatar">{student.name.slice(0, 1)}</span>{student.name}</label>)}</div>{!students.length && <p className="field-hint field-hint--warning">Lege zuerst unter „Familien“ ein Kind an.</p>}{finalized && <p className="field-hint">Die Kindzuordnung bleibt gesperrt, weil sie Bestandteil des Rechnungsnummernkreises ist.</p>}</fieldset>

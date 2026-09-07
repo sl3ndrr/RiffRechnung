@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import QRCode from 'qrcode'
 import type { Guardian, Invoice, Settings, Student } from '../types'
-import { billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, euro, footerTextForPrint, formatDateLong, formatIban, groupItemsByStudent, invoiceTotal, isValidIban, itemTotal, number, parseDate } from '../lib/utils'
+import { billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, euro, footerTextForPrint, formatDateLong, formatIban, groupItemsByStudent, invoiceTotal, isValidIban, outputItemTotal, number, parseDate } from '../lib/utils'
 
 interface InvoicePrintProps {
   invoice: Invoice | null
@@ -23,9 +23,9 @@ interface GeneratedQrCode {
 export function InvoicePrint({ invoice, guardians, students, settings, requestId, onPrintReady, onPrintError }: InvoicePrintProps) {
   const [qrCode, setQrCode] = useState<GeneratedQrCode | null>(null)
   const total = invoice ? invoiceTotal(invoice) : 0
-  const period = invoice ? billingPeriodFromItems(invoice.items, invoice.invoiceDate) : ''
+  const period = invoice ? invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate) : ''
   const source = invoice?.snapshot
-  const footerText = invoice ? footerTextForPrint(invoice.legalText || source?.legalText || settings.defaultLegalText) : ''
+  const footerText = invoice ? footerTextForPrint(invoice.versionId || source ? invoice.legalText : invoice.legalText || settings.defaultLegalText) : ''
   const pageStyle = invoice ? buildInvoicePrintPageStyle(footerText, invoice.number) : ''
   const issuer = source?.issuer ?? settings.issuer
   const account = {
@@ -36,7 +36,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
   }
   const recipientList = useMemo(() => {
     if (!invoice) return []
-    if (source?.guardians.length) return source.guardians
+    if (source) return source.guardians
     return invoice.guardianIds.flatMap((id) => {
       const guardian = guardians.find((item) => item.id === id)
       return guardian ? [{ id: guardian.id, name: guardian.name, email: guardian.email, ...guardian.address }] : []
@@ -44,7 +44,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
   }, [guardians, invoice, source])
   const studentList = useMemo(() => {
     if (!invoice) return []
-    if (source?.students.length) return source.students
+    if (source) return source.students
     return invoice.studentIds.flatMap((id) => {
       const student = students.find((item) => item.id === id)
       return student ? [{ id: student.id, name: student.name }] : []
@@ -161,7 +161,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
           </thead>
           <tbody>
             {groups.map((group) => (
-              <PrintGroup key={group.key} label={group.label} items={group.items} showSubtotal={groups.length > 1} />
+              <PrintGroup invoice={invoice} key={group.key} label={group.label} items={group.items} showSubtotal={groups.length > 1} />
             ))}
             <tr className="invoice-total-row">
               <td colSpan={2}>Summe</td>
@@ -205,8 +205,8 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
   )
 }
 
-function PrintGroup({ label, items, showSubtotal }: { label: string; items: Invoice['items']; showSubtotal: boolean }) {
-  const subtotal = items.reduce((sum, item) => sum + itemTotal(item), 0)
+function PrintGroup({ invoice, label, items, showSubtotal }: { invoice: Invoice; label: string; items: Invoice['items']; showSubtotal: boolean }) {
+  const subtotal = items.reduce((sum, item) => sum + outputItemTotal(invoice, item), 0)
   return (
     <>
       <tr className="invoice-group-heading"><td colSpan={5}><strong>{label}</strong><span /></td></tr>
@@ -216,7 +216,7 @@ function PrintGroup({ label, items, showSubtotal }: { label: string; items: Invo
           <td>{item.description}</td>
           <td>{number.format(item.quantity)} {item.unit === 'Std.' ? '' : item.unit}</td>
           <td>{euro.format(item.unitPrice)}</td>
-          <td>{euro.format(itemTotal(item))}</td>
+          <td>{euro.format(outputItemTotal(invoice, item))}</td>
         </tr>
       ))}
       {showSubtotal && (

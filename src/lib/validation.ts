@@ -1,3 +1,5 @@
+import { canonical } from './envelope'
+import { documentContent } from './documents'
 import type { AppState } from '../types'
 import { validId, validPrice, validQuantity } from './values'
 import { mailboxError } from './mailbox'
@@ -152,10 +154,12 @@ function validateSettings(value: unknown): void {
   backupBoolean(settings.reducedMotion, 'settings.reducedMotion')
 }
 
-function validateState(value: unknown, legacy: boolean, localItemIds: boolean): void {
+function validateState(value: unknown, schema: 2 | 3 | 4, localItemIds: boolean): void {
+  const legacy = schema === 2
+  const versioned = schema === 4
   const data = backupObject(value, 'data')
-  knownKeys(data, 'data', 'schemaVersion guardians students invoices voidedInvoiceNumbers settings counters nextStudentCodeIndex audit updatedAt')
-  if (data.schemaVersion !== (legacy ? 2 : 3)) throw new Error('Die Datei hat kein unterstütztes Backup-Format.')
+  knownKeys(data, 'data', 'schemaVersion guardians students invoices voidedInvoiceNumbers settings counters nextStudentCodeIndex audit updatedAt' + (versioned ? ' documentVersions invoiceAdministration payments' : ''))
+  if (data.schemaVersion !== schema) throw new Error('Die Datei hat kein unterstütztes Backup-Format.')
 
   const guardianIds = new Set<string>()
   backupArray(data.guardians, 'guardians').forEach((entry, index) => {
@@ -203,7 +207,7 @@ function validateState(value: unknown, legacy: boolean, localItemIds: boolean): 
   backupArray(data.invoices, 'invoices').forEach((entry, index) => {
     const path = `invoices[${index}]`
     const invoice = backupObject(entry, path)
-    knownKeys(invoice, path, 'id number sequence year invoiceDate dueDate period status guardianIds studentIds recipientStrategy items introText freeText legalText snapshot paidAt sentAt createdAt updatedAt')
+    knownKeys(invoice, path, 'id number sequence year invoiceDate dueDate period status guardianIds studentIds recipientStrategy items introText freeText legalText snapshot paidAt sentAt createdAt updatedAt' + (versioned ? ' versionId correction' : ''))
     registerId(invoice.id, `${path}.id`, invoiceIds)
     const number = invoice.number === null ? null : backupString(invoice.number, `${path}.number`, true)
     if (number !== null) {
@@ -227,13 +231,24 @@ function validateState(value: unknown, legacy: boolean, localItemIds: boolean): 
     backupEnum(invoice.recipientStrategy, `${path}.recipientStrategy`, RECIPIENT_STRATEGIES)
     if (status === 'draft' && invoice.snapshot !== undefined) invalidBackup(`${path}.snapshot`, 'ist für Entwürfe nicht zulässig')
     const snapshotReferences = invoice.snapshot === undefined ? undefined : validateInvoiceSnapshot(invoice.snapshot, `${path}.snapshot`)
+    const correction = invoice.correction === undefined ? undefined : backupObject(invoice.correction, `${path}.correction`)
+    if (correction) {
+      knownKeys(correction, `${path}.correction`, 'replacesId reason')
+      backupString(correction.reason, `${path}.correction.reason`, true)
+      backupString(correction.replacesId, `${path}.correction.replacesId`, true)
+    }
+    const parent = correction && backupArray(data.documentVersions, 'documentVersions').map((entry) => backupObject(entry, 'documentVersions')).find((entry) => entry.id === correction.replacesId)
+    if (correction && !parent) invalidBackup(`${path}.correction.replacesId`, 'verweist auf eine unbekannte Belegversion')
+    const parentContent = parent ? backupObject(parent.content, 'documentVersions.content') : undefined
+    const historicalGuardians = status === 'draft' && parentContent ? backupIdArray(parentContent.guardianIds, 'documentVersions.content.guardianIds') : []
+    const historicalStudents = status === 'draft' && parentContent ? backupIdArray(parentContent.studentIds, 'documentVersions.content.studentIds') : []
     invoiceGuardianIds.forEach((id, referenceIndex) => {
-      if (!guardianIds.has(id) && !snapshotReferences?.guardianIds.has(id)) {
+      if (!guardianIds.has(id) && !snapshotReferences?.guardianIds.has(id) && !historicalGuardians.includes(id)) {
         invalidBackup(`${path}.guardianIds[${referenceIndex}]`, 'verweist auf eine unbekannte Person')
       }
     })
     invoiceStudentIds.forEach((id, referenceIndex) => {
-      if (!studentIds.has(id) && !snapshotReferences?.studentIds.has(id)) {
+      if (!studentIds.has(id) && !snapshotReferences?.studentIds.has(id) && !historicalStudents.includes(id)) {
         invalidBackup(`${path}.studentIds[${referenceIndex}]`, 'verweist auf ein unbekanntes Kind')
       }
     })
@@ -247,7 +262,7 @@ function validateState(value: unknown, legacy: boolean, localItemIds: boolean): 
       knownKeys(item, itemPath, 'id studentId serviceDate lessonType description quantity unit unitPrice')
       registerId(item.id, `${itemPath}.id`, invoiceItemIds)
       const studentId = backupString(item.studentId, `${itemPath}.studentId`, true)
-      if (!studentIds.has(studentId) && !snapshotReferences?.studentIds.has(studentId)) invalidBackup(`${itemPath}.studentId`, 'verweist auf ein unbekanntes Kind')
+      if (!studentIds.has(studentId) && !snapshotReferences?.studentIds.has(studentId) && !historicalStudents.includes(studentId)) invalidBackup(`${itemPath}.studentId`, 'verweist auf ein unbekanntes Kind')
       if (!invoiceStudentIdSet.has(studentId)) invalidBackup(`${itemPath}.studentId`, 'ist der Rechnung nicht zugeordnet')
       backupCalendarDate(item.serviceDate, `${itemPath}.serviceDate`)
       if (!legacy || item.lessonType !== undefined) backupEnum(item.lessonType, `${itemPath}.lessonType`, LESSON_TYPES)
@@ -269,13 +284,19 @@ function validateState(value: unknown, legacy: boolean, localItemIds: boolean): 
     backupTimestamp(invoice.updatedAt, `${path}.updatedAt`)
   })
 
+  const registerNumbers = new Set<string>()
   if (!legacy || data.voidedInvoiceNumbers !== undefined) {
     backupArray(data.voidedInvoiceNumbers, 'voidedInvoiceNumbers').forEach((entry, index) => {
       const path = `voidedInvoiceNumbers[${index}]`
       const invoice = backupObject(entry, path)
       knownKeys(invoice, path, 'number sequence year invoiceDate deletedAt reason amount recipient')
       const number = backupString(invoice.number, `${path}.number`, true)
-      if (numbers.has(number)) invalidBackup(`${path}.number`, 'ist doppelt; doppelte Rechnungsnummern sind nicht zulässig')
+      if (registerNumbers.has(number)) invalidBackup(`${path}.number`, 'ist doppelt')
+      registerNumbers.add(number)
+      if (numbers.has(number) && versioned && !backupArray(data.documentVersions, 'documentVersions').some((entry) => {
+        const version = backupObject(entry, 'documentVersions')
+        return version.provenance === 'oldest-available' && backupArray(version.registerEntries, 'documentVersions.registerEntries').some((record) => canonical(record) === canonical(invoice))
+      })) invalidBackup(`${path}.number`, 'ist doppelt; doppelte Rechnungsnummern sind nicht zulässig')
       numbers.add(number)
       if (invoice.sequence !== null) backupInteger(invoice.sequence, `${path}.sequence`, 1)
       backupInteger(invoice.year, `${path}.year`, 1)
@@ -309,6 +330,7 @@ function validateState(value: unknown, legacy: boolean, localItemIds: boolean): 
     }
   })
   backupTimestamp(data.updatedAt, 'updatedAt')
+  if (versioned) validateDocuments(data as unknown as AppState)
 }
 
 function validateEmail(value: unknown, path: string, historical = false): void {
@@ -318,16 +340,131 @@ function validateEmail(value: unknown, path: string, historical = false): void {
 }
 
 export function validateBackupState(value: unknown): asserts value is AppState {
-  validateState(value, false, false)
+  validateState(value, 4, false)
 }
 
 // Never used by the ordinary validator. Must be followed by lineage checks,
 // deterministic repair and COMPLETE current-format validation before use.
 export function validateLegacyV2Structure(value: unknown): void {
-  validateState(value, true, true)
+  validateState(value, 2, true)
 }
 
 export function knownKeys(value: Record<string, unknown>, path: string, keys: string): void {
   const allowed = new Set(keys.split(' '))
   for (const key of Object.keys(value)) if (!allowed.has(key)) invalidBackup(`${path}.${key}`, 'ist in diesem Format nicht unterstützt')
+}
+
+export function validateLegacyV3Structure(value: unknown): void {
+  validateState(value, 3, false)
+}
+
+function validateDocuments(state: AppState): void {
+  const ids = new Set<string>()
+  const replaced = new Set<string>()
+  backupArray(state.documentVersions, 'documentVersions').forEach((entry, index) => {
+    const path = `documentVersions[${index}]`
+    const v = backupObject(entry, path)
+    knownKeys(v, path, 'id invoiceId originalId replacesId cancelsId reason provenance sourceUpdatedAt content outputSnapshot outputPeriod outputLegalText amounts conflicts snapshotHistory registerEntries')
+    const id = registerId(v.id, `${path}.id`, ids)
+    backupString(v.invoiceId, `${path}.invoiceId`, true)
+    backupString(v.originalId, `${path}.originalId`, true)
+    backupEnum(v.provenance, `${path}.provenance`, ['issued', 'oldest-available'])
+    backupTimestamp(v.sourceUpdatedAt, `${path}.sourceUpdatedAt`)
+    backupString(v.reason, `${path}.reason`, v.replacesId !== null || v.cancelsId !== null)
+    const invoice = state.invoices.find((candidate) => candidate.id === v.invoiceId)
+    if (!invoice || invoice.status === 'draft' || invoice.versionId !== id || canonical(documentContent(invoice)) !== canonical(v.content)) invalidBackup(`${path}.content`, 'muss dem unveränderten vollständigen Beleginhalt entsprechen')
+    const refs = validateInvoiceSnapshot(v.outputSnapshot, `${path}.outputSnapshot`)
+    backupString(v.outputPeriod, `${path}.outputPeriod`)
+    backupString(v.outputLegalText, `${path}.outputLegalText`)
+    const amounts = backupObject(v.amounts, `${path}.amounts`)
+    knownKeys(amounts, `${path}.amounts`, 'itemCents totalCents legacyCalculatedTotalCents source calculation')
+    const itemCents = backupArray(amounts.itemCents, `${path}.amounts.itemCents`).map((amount, i) => backupInteger(amount, `${path}.amounts.itemCents[${i}]`, 0))
+    const total = backupInteger(amounts.totalCents, `${path}.amounts.totalCents`, 0)
+    const calculated = backupInteger(amounts.legacyCalculatedTotalCents, `${path}.amounts.legacyCalculatedTotalCents`, 0)
+    if (itemCents.length !== invoice.items.length || itemCents.reduce((sum, amount) => sum + amount, 0) !== calculated) invalidBackup(`${path}.amounts`, 'muss vollständige, konsistente gesicherte Positionsbeträge enthalten')
+    backupEnum(amounts.source, `${path}.amounts.source`, ['legacy-output', 'number-register'])
+    backupEnum(amounts.calculation, `${path}.amounts.calculation`, ['legacy-v1'])
+    const registers = backupArray(v.registerEntries, `${path}.registerEntries`)
+    if (registers.length > 1 || registers.some((record) => !state.voidedInvoiceNumbers.some((known) => canonical(known) === canonical(record) && known.number === invoice.number))) invalidBackup(`${path}.registerEntries`, 'muss den unveränderten zugehörigen Registereintrag enthalten')
+    if (amounts.source === 'legacy-output' ? total !== calculated : !registers.length || total !== Math.round(state.voidedInvoiceNumbers.find((record) => record.number === invoice.number)!.amount * 100)) invalidBackup(`${path}.amounts.totalCents`, 'widerspricht der angegebenen historischen Betragsquelle')
+    backupArray(v.conflicts, `${path}.conflicts`).forEach((value, i) => {
+      const p = `${path}.conflicts[${i}]`; const conflict = backupObject(value, p)
+      knownKeys(conflict, p, 'path message values')
+      backupString(conflict.path, `${p}.path`, true); backupString(conflict.message, `${p}.message`, true)
+      backupArray(conflict.values, `${p}.values`).forEach((value) => backupString(value, `${p}.values`))
+    })
+    // Snapshot-only evidence is never represented as a recovered complete invoice.
+    const historyIds = new Set<string>()
+    backupArray(v.snapshotHistory, `${path}.snapshotHistory`).forEach((value, i) => {
+      const p = `${path}.snapshotHistory[${i}]`; const event = backupObject(value, p)
+      knownKeys(event, p, 'id at label entityType entityId snapshotCorrection')
+      registerId(event.id, `${p}.id`, historyIds); backupTimestamp(event.at, `${p}.at`)
+      backupString(event.label, `${p}.label`, true)
+      if (event.entityId !== invoice.id || event.entityType !== 'invoice') invalidBackup(p, 'muss zu diesem Beleg gehören')
+      const correction = backupObject(event.snapshotCorrection, `${p}.snapshotCorrection`)
+      knownKeys(correction, `${p}.snapshotCorrection`, 'oldValue newValue')
+      if (correction.oldValue !== null) validateInvoiceSnapshot(correction.oldValue, `${p}.snapshotCorrection.oldValue`)
+      validateInvoiceSnapshot(correction.newValue, `${p}.snapshotCorrection.newValue`)
+    })
+    if (v.replacesId !== null && v.cancelsId !== null) invalidBackup(path, 'darf nicht gleichzeitig ersetzen und stornieren')
+    const parentId = v.replacesId ?? v.cancelsId
+    if (parentId !== null) {
+      const parent = state.documentVersions.find((candidate) => candidate.id === parentId)
+      if (!parent || !ids.has(parent.id) || parent.id === id || parent.originalId !== v.originalId || replaced.has(parent.id)) invalidBackup(path, 'enthält eine ungültige, zyklische oder mehrfache Korrekturbeziehung')
+      replaced.add(parent.id)
+      if (v.cancelsId !== null && total !== 0) invalidBackup(`${path}.amounts`, 'muss bei einer Stornierung null sein')
+      if (invoice.correction?.replacesId !== parentId || invoice.correction.reason !== v.reason) invalidBackup(path, 'widerspricht dem Korrekturverweis der Rechnung')
+    } else if (v.originalId !== id || invoice.correction !== undefined) invalidBackup(`${path}.originalId`, 'muss den Originalbeleg bezeichnen')
+    if (v.provenance === 'issued' && (canonical(v.outputSnapshot) !== canonical(invoice.snapshot) || canonical([...refs.guardianIds]) !== canonical(invoice.guardianIds) || canonical([...refs.studentIds]) !== canonical(invoice.studentIds) || v.outputLegalText !== invoice.legalText)) invalidBackup(`${path}.outputSnapshot`, 'muss bei neu ausgestellten Belegen mit Inhalt und Zuordnung übereinstimmen')
+  })
+  const draftParents = new Set<string>()
+  for (const invoice of state.invoices) {
+    if (invoice.status === 'draft') {
+      if (invoice.versionId !== undefined) invalidBackup('invoices.versionId', 'ist bei Entwürfen nicht zulässig')
+      if (invoice.correction) {
+        if (draftParents.has(invoice.correction.replacesId)) invalidBackup('invoices.correction', 'darf nur einen Korrekturentwurf pro Beleg enthalten')
+        draftParents.add(invoice.correction.replacesId)
+      }
+    } else if (!ids.has(invoice.versionId ?? '')) invalidBackup('invoices.versionId', 'benötigt eine vollständige Belegversion')
+  }
+  const adminIds = new Set<string>()
+  backupArray(state.invoiceAdministration, 'invoiceAdministration').forEach((entry, index) => {
+    const path = `invoiceAdministration[${index}]`; const admin = backupObject(entry, path)
+    knownKeys(admin, path, 'versionId archived events resolutions')
+    const id = registerId(admin.versionId, `${path}.versionId`, adminIds)
+    if (!ids.has(id)) invalidBackup(path, 'verweist auf eine unbekannte Belegversion')
+    backupBoolean(admin.archived, `${path}.archived`)
+    const events = backupArray(admin.events, `${path}.events`)
+    if (!events.length) invalidBackup(`${path}.events`, 'benötigt einen Verwaltungsstand')
+    events.forEach((entry, i) => {
+      const p = `${path}.events[${i}]`; const event = backupObject(entry, p)
+      knownKeys(event, p, 'at status kind reason'); backupTimestamp(event.at, `${p}.at`)
+      backupEnum(event.status, `${p}.status`, ['sent', 'overdue', 'paid']); backupEnum(event.kind, `${p}.kind`, ['imported', 'status']); backupString(event.reason, `${p}.reason`, true)
+    })
+    if (backupObject(events.at(-1), path).status !== state.invoices.find((invoice) => invoice.versionId === id)?.status) invalidBackup(path, 'widerspricht dem aktuellen Verwaltungsstatus')
+    backupArray(admin.resolutions, `${path}.resolutions`).forEach((entry, i) => {
+      const p = `${path}.resolutions[${i}]`; const resolution = backupObject(entry, p)
+      knownKeys(resolution, p, 'at reason'); backupTimestamp(resolution.at, `${p}.at`); backupString(resolution.reason, `${p}.reason`, true)
+    })
+  })
+  if (adminIds.size !== ids.size) invalidBackup('invoiceAdministration', 'muss jede Belegversion verwalten')
+  const paymentIds = new Set<string>()
+  backupArray(state.payments, 'payments').forEach((entry, index) => {
+    const path = `payments[${index}]`; const payment = backupObject(entry, path)
+    knownKeys(payment, path, 'id sourceVersionId amountCents paidAt recordedAt provenance allocations')
+    registerId(payment.id, `${path}.id`, paymentIds)
+    const source = state.documentVersions.find((version) => version.id === payment.sourceVersionId)
+    if (!source) invalidBackup(`${path}.sourceVersionId`, 'verweist auf einen unbekannten Ursprungsbeleg')
+    backupInteger(payment.amountCents, `${path}.amountCents`, 0)
+    if (payment.paidAt !== null) backupTimestamp(payment.paidAt, `${path}.paidAt`)
+    backupTimestamp(payment.recordedAt, `${path}.recordedAt`)
+    backupEnum(payment.provenance, `${path}.provenance`, ['recorded', 'legacy-status'])
+    const allocations = backupArray(payment.allocations, `${path}.allocations`)
+    if (!allocations.length) invalidBackup(`${path}.allocations`, 'benötigt eine nachvollziehbare Zuordnung')
+    allocations.forEach((entry, i) => {
+      const p = `${path}.allocations[${i}]`; const allocation = backupObject(entry, p)
+      knownKeys(allocation, p, 'versionId at reason'); backupTimestamp(allocation.at, `${p}.at`); backupString(allocation.reason, `${p}.reason`, true)
+      if (allocation.versionId !== null && !state.documentVersions.some((version) => version.id === allocation.versionId && version.originalId === source.originalId)) invalidBackup(`${p}.versionId`, 'muss innerhalb derselben Korrekturbeziehung liegen')
+    })
+  })
 }

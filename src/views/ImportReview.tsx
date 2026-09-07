@@ -30,19 +30,19 @@ export function ImportReviewContent({ review, onApply }: { review: ImportReviewD
         {preview && <>
           <p>Geprüft: {preview.state.students.length} Kinder und {preview.state.invoices.length} Rechnungen.</p>
           {preview.report && <>
-            <p>Altformat 2 → Format 3: {preview.report.idMappings.length} Positions-IDs werden ersetzt. Beträge, Belegnummern, Texte und vorhandene Snapshots bleiben erhalten.</p>
+            <p>Altformat {preview.report.fromSchema} → Format 4: {preview.report.idMappings.length} Positions-IDs werden ersetzt. Beträge, Belegnummern, Texte und vorhandene Snapshots bleiben erhalten.</p>
             <table><thead><tr><th>Rechnung / Position</th><th>Alte ID</th><th>Neue ID</th></tr></thead><tbody>{preview.report.idMappings.map((mapping) => <tr key={`${mapping.invoiceId}-${mapping.itemIndex}`}><td>{mapping.invoiceId} / {mapping.itemIndex + 1}</td><td>{mapping.oldId}</td><td>{mapping.newId}</td></tr>)}</tbody></table>
-            <details><summary>Alle {preview.report.changes.length} Formatänderungen</summary><ul>{preview.report.changes.map((change) => <li key={change.path}>{change.path}: {change.reason}</li>)}</ul></details>
+            <details><summary>Alle {preview.report.changes.length} Formatänderungen</summary><ul>{preview.report.changes.map((change, index) => <li key={`${change.path}-${index}`}>{change.path}: {change.reason}</li>)}</ul></details>
             <p>Die Reparatur bestätigt keine korrekte Aufteilung der Leistungen. Prüfe die alten Empfängerrechnungen fachlich; dieses Paket ändert keine Forderung.</p>
           </>}
-          {preview.warnings.length > 0 && <div className="form-errors" role="alert"><strong>Historische E-Mail-Adressen prüfen</strong><ul>{preview.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div>}
+          {preview.warnings.length > 0 && <div className="form-errors" role="alert"><strong>Historische Angaben prüfen</strong><ul>{preview.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div>}
           {!onApply && <p>Die lokalen Eingangsbytes bleiben geschützt. Du kannst den geprüften Bestand separat exportieren und in einem leeren Browserprofil importieren. Unbekannte neuere lokale Formate bleiben schreibgeschützt.</p>}
         </>}
         <div className="button-row">
           <button className="button button--tonal" onClick={() => downloadBytes('riffrechnung-originaldaten.bin', review.bytes)}>Unveränderte Originaldatei exportieren</button>
           {preview && <>
             <button className="button button--tonal" onClick={() => downloadText('riffrechnung-migrationsbericht.json', serializeMigrationReport(preview))}>Bericht mit Originaldaten exportieren</button>
-            <button className="button button--tonal" onClick={() => downloadText('riffrechnung-gepruefter-bestand-v3.json', serializeBackup(preview.state))}>Geprüften Bestand separat exportieren</button>
+            <button className="button button--tonal" onClick={() => downloadText('riffrechnung-gepruefter-bestand-v4.json', serializeBackup(preview.state))}>Geprüften Bestand separat exportieren</button>
             {onApply && <button className="button button--primary" onClick={() => onApply(preview)}>Wiederherstellung vorbereiten</button>}
           </>}
         </div>
