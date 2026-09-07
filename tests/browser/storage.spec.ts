@@ -158,8 +158,9 @@ test('zwei echte Tabs: zeitgleich gestartete Einstellungen erzeugen nur einen g�
 })
 
 test('tatsächlich geöffnete Altversion: kontrollierter Umstieg schützt den neuen Schlüssel auch nach Reload', async ({ page, context }) => {
-  await page.goto('/legacy/')
+  await page.goto('/legacy/index.html')
   await settings(page)
+  await expect(page.getByRole('button', { name: 'Automatisch gespeichert', exact: true })).toBeVisible()
   await page.getByLabel('Name / Geschäftsbezeichnung', { exact: true }).fill('Historischer synthetischer Bestand')
   await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '{}').settings?.issuer?.name, LEGACY_STORAGE_KEY)).toBe('Historischer synthetischer Bestand')
   const original = await page.evaluate((key) => localStorage.getItem(key), LEGACY_STORAGE_KEY)
