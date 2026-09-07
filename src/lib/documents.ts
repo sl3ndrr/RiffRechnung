@@ -123,7 +123,7 @@ export function createCorrectionDraft(state: AppState, invoiceId: string, reason
     items: copyItemsWithFreshIds(parent.content.items, new Set(state.invoices.flatMap((entry) => entry.items.map((item) => item.id))), uid),
     correction: { replacesId: parent.id, reason: reason.trim() }, createdAt: at, updatedAt: at,
   }
-  const next = { ...state, invoices: [...state.invoices, draft] }
+  const next = { ...state, invoices: [...state.invoices, persistentInvoice(draft)] }
   validateBackupState(next)
   return next
 }
@@ -154,7 +154,7 @@ export function syncPaymentStatus(state: AppState, versionId: string, at: string
   const status = paid ? 'paid' as const : 'sent' as const
   return {
     ...state,
-    invoices: state.invoices.map((invoice) => invoice.versionId === versionId ? { ...invoice, status, paidAt: paid ? payment?.paidAt ?? undefined : undefined, updatedAt: at } : invoice),
+    invoices: state.invoices.map((invoice) => invoice.versionId === versionId ? persistentInvoice({ ...invoice, status, paidAt: paid ? payment?.paidAt ?? undefined : undefined, updatedAt: at }) : invoice),
     invoiceAdministration: state.invoiceAdministration.map((admin) => admin.versionId === versionId ? { ...admin, events: [...admin.events, { at, kind: 'status', status, reason }] } : admin),
   }
 }
@@ -186,3 +186,10 @@ export function snapshotDifferences(before: unknown, after: unknown, path = ''):
   return [{ path, before: JSON.stringify(before) ?? 'Nicht vorhanden', after: JSON.stringify(after) ?? 'Nicht vorhanden' }]
 }
 
+
+/** Optional fields use absence in both memory and JSON, never explicit undefined. */
+export function persistentInvoice(invoice: Invoice): Invoice {
+  const result = { ...invoice }
+  for (const [key, value] of Object.entries(result)) if (value === undefined) Reflect.deleteProperty(result, key)
+  return result
+}

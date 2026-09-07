@@ -699,7 +699,7 @@ test('ältere Rechnungspositionen erhalten einen Typ ohne Preis- oder Titelände
       unitPrice: 17,
     }],
   })]
-  const legacy = JSON.parse(serializeBackup(state))
+  const legacy = { app: 'riffrechnung', exportedAt: state.updatedAt, schemaVersion: 2, data: JSON.parse(JSON.stringify(legacyFixture(state))) }
   legacy.schemaVersion = 2
   legacy.data.schemaVersion = 2
   delete legacy.data.documentVersions

@@ -183,6 +183,8 @@ test('P04: bezahlte Korrekturen zählen genau einmal; Zahlungen werden nur manue
   assert.equal(openCents(state, replacement), 757)
   assert.throws(() => changeInvoiceStatus(state, replacement.id, 'paid', at), /zuordnen/)
   const before = state
+  const another = createCorrectionDraft(state, replacement.id, 'Weitere Korrektur', at)
+  assert.throws(() => changeInvoiceStatus(another, another.invoices.at(-1)!.id, 'paid', at), /manuell zugeordnet/)
   state = allocatePayment(state, originalPayment.id, replacement.versionId!, 'Zahlung gehört zur ersetzenden Rechnung', at)
   assertOriginalsPreserved(before, state)
   assert.equal(allocatedCents(state, first.versionId!), 0)

@@ -1,4 +1,4 @@
-import { allocatedCents, captureDocument, correctionErrors, snapshotFor } from './documents'
+import { allocatedCents, captureDocument, correctionErrors, snapshotFor, persistentInvoice } from './documents'
 import { validId } from './values'
 import { freshId } from './identities'
 import { commandResult } from './result'
@@ -12,6 +12,7 @@ function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatu
   const ibanError = germanIbanError(state.settings.iban)
   if (ibanError) errors.push(ibanError)
   if (errors.length) throw new Error(`Finalisieren nicht möglich: ${errors.join(' ')}`)
+  if (status === 'paid' && invoice.correction && state.payments.some((payment) => state.documentVersions.find((entry) => entry.id === payment.sourceVersionId)?.originalId === state.documentVersions.find((entry) => entry.id === invoice.correction?.replacesId)?.originalId)) throw new Error('Vorhandene Zahlungen müssen nach der Korrektur manuell zugeordnet werden; eine neue Vollzahlung wird nicht erzeugt.')
   const allocation = nextInvoiceAllocation(state, invoice.invoiceDate, invoice.studentIds)
   const finalized: Invoice = {
     ...invoice, number: allocation.number, sequence: allocation.sequence, status,
@@ -47,7 +48,7 @@ export function saveInvoiceDraft(state: AppState, draft: InvoiceDraft, finalize:
     year: parseDate(draft.invoiceDate).getFullYear(), period: billingPeriodFromItems(draft.items, draft.invoiceDate),
     status: 'draft', recipientStrategy: 'joint', createdAt: existing?.createdAt ?? at, updatedAt: at,
   }
-  let next = { ...state, invoices: [...state.invoices.filter((invoice) => invoice.id !== saved.id), saved] }
+  let next = { ...state, invoices: [...state.invoices.filter((invoice) => invoice.id !== saved.id), persistentInvoice(saved)] }
   validateBackupState(next)
   if (finalize) next = finalizeInvoice(next, saved, 'sent', at)
   validateBackupState(next)
@@ -78,7 +79,7 @@ export function changeInvoiceStatus(state: AppState, invoiceId: string, status: 
     }
     next = {
       ...state, payments,
-      invoices: state.invoices.map((entry) => entry.id === invoiceId ? { ...entry, status, paidAt: status === 'paid' ? payments.find((payment) => payment.allocations.at(-1)?.versionId === versionId)?.paidAt ?? undefined : undefined, sentAt: entry.sentAt ?? at, updatedAt: at } : entry),
+      invoices: state.invoices.map((entry) => entry.id === invoiceId ? persistentInvoice({ ...entry, status, paidAt: status === 'paid' ? payments.find((payment) => payment.allocations.at(-1)?.versionId === versionId)?.paidAt ?? undefined : undefined, sentAt: entry.sentAt ?? at, updatedAt: at }) : entry),
       invoiceAdministration: state.invoiceAdministration.map((admin) => admin.versionId === versionId ? { ...admin, events: [...admin.events, { at, status, kind: 'status', reason: 'Verwaltungsstatus ausdrücklich geändert.' }] } : admin),
     }
   }

@@ -52,7 +52,7 @@ export function validateEnvelope(value: unknown, allowLegacy = false): asserts v
   }
   if (e.source !== null && (!e.source || !keys(e.source, 'datasetId revision fingerprint') || !hash(e.source.fingerprint)
     || (e.source.datasetId !== null && !id(e.source.datasetId)) || (e.source.revision !== null && !revision(e.source.revision)))) throw new Error('Ungültige Wiederherstellungsquelle.')
-  if (e.schemaVersion !== e.data.schemaVersion) throw new Error('Backup-Umschlag und Daten haben unterschiedliche Formatversionen.')
+  if (e.schemaVersion !== (e.data as { schemaVersion: number }).schemaVersion) throw new Error('Backup-Umschlag und Daten haben unterschiedliche Formatversionen.')
   if (e.schemaVersion === 3) validateLegacyV3Structure(e.data)
   else validateBackupState(e.data)
 }
