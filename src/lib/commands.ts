@@ -1,7 +1,8 @@
 import { localToday, shiftCalendarMonths } from './calendar'
-import type { AppState, Guardian, InvoiceDraft, Settings, Student } from '../types'
+import type { AppState, Guardian, InvoiceDraft, InvoiceItemAllocation, Settings, Student } from '../types'
 import { createEmptyInvoiceDraft } from './defaults'
 import { saveInvoiceDraft } from './invoiceActions'
+import { splitInvoiceDraft } from './invoiceSplit'
 import { copyItemsWithFreshIds } from './identities'
 import { commandResult, type CommandResult } from './result'
 import { validateBackupState } from './validation'
@@ -83,6 +84,10 @@ export function saveInvoiceState(state: AppState, draft: InvoiceDraft, finalize:
   return commandResult(() => saveInvoiceDraft(state, draft, finalize, at))
 }
 
+export function splitInvoiceState(state: AppState, draft: InvoiceDraft, allocations: InvoiceItemAllocation[], finalize: boolean, at?: string): CommandResult<{ state: AppState; invoiceIds: string[] }> {
+  return commandResult(() => splitInvoiceDraft(state, draft, allocations, finalize, at))
+}
+
 export function deleteGuardianState(state: AppState, id: string): CommandResult<AppState> {
   return commandResult(() => {
     validateBackupState(state)
@@ -111,4 +116,3 @@ export function deleteStudentState(state: AppState, id: string): CommandResult<A
 export function recordActivity(state: AppState, event: AppState['audit'][number]): AppState {
   return { ...state, updatedAt: event.at, audit: [event, ...state.audit].slice(0, 200) }
 }
-

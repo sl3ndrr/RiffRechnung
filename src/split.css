@@ -1,0 +1,8 @@
+.split-assignment { display: grid; gap: var(--space-4); }
+.split-assignment__item, .split-preview, .split-preview article { border: 1px solid var(--outline-variant); border-radius: var(--radius-md); background: var(--surface-container-low); padding: var(--space-4); }
+.split-assignment__item > header, .split-preview article > header, .split-preview__total { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); }
+.split-assignment__item header div, .split-preview article header div { display: grid; gap: var(--space-1); }
+.split-assignment__parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-3); margin-top: var(--space-3); }
+.split-preview { display: grid; gap: var(--space-3); border-color: var(--primary); }
+.split-preview article ul { margin: var(--space-3) 0 0; padding-left: 1.2rem; }
+.split-preview__total { border-top: 1px solid var(--outline-variant); padding-top: var(--space-3); font-size: 1.05rem; }

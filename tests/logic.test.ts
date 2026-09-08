@@ -1,4 +1,5 @@
 import './money-calendar.test'
+import './invoice-split.test'
 import { legacyFixture } from './documentFixtures'
 import { captureLegacyDocuments } from '../src/lib/importState'
 import { seedState, sharedLock, fakeDirectory } from './storageHarness'
@@ -911,4 +912,3 @@ test('sichtbare App-Version entspricht dem neuesten Changelog-Eintrag', () => {
 test('nicht unterstütztes Backup wird abgelehnt', () => {
   assert.throws(() => parseBackup('{"schemaVersion":99}'), /unterstütztes Backup-Format/)
 })
-

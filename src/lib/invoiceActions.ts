@@ -5,11 +5,11 @@ import { validId } from './values'
 import { freshId } from './identities'
 import { commandResult } from './result'
 import type { AppState, Invoice, InvoiceDraft, InvoiceStatus } from '../types'
-import { assertInvoiceEditable, assertOriginalsPreserved, SPLIT_INVOICE_BLOCKED } from './safety'
+import { assertInvoiceEditable, assertOriginalsPreserved } from './safety'
 import { validateBackupState } from './validation'
 import { billingPeriodFromItems, germanIbanError, invoiceFinalizationErrors, nextInvoiceAllocation, parseDate, uid } from './utils'
 
-function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatus, at: string): AppState {
+function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatus, at: string, createId: (prefix: string) => string): AppState {
   const errors = [...invoiceFinalizationErrors(state, invoice), ...correctionErrors(state, invoice)]
   const ibanError = germanIbanError(state.settings.iban)
   if (ibanError) errors.push(ibanError)
@@ -22,7 +22,7 @@ function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatu
     snapshot: snapshotFor(state, invoice), sentAt: at, updatedAt: at,
     ...(status === 'paid' ? { paidAt: localToday(new Date(at)) } : {}),
   }
-  const version = captureDocument(state, finalized, freshId('version', new Set(state.documentVersions.map((entry) => entry.id)), uid), false)
+  const version = captureDocument(state, finalized, freshId('version', new Set(state.documentVersions.map((entry) => entry.id)), createId), false)
   finalized.versionId = version.id
   return {
     ...state,
@@ -31,13 +31,13 @@ function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatu
     documentVersions: [...state.documentVersions, version],
     invoiceAdministration: [...state.invoiceAdministration, { versionId: version.id, archived: false, events: [{ at, status: status as Exclude<InvoiceStatus, 'draft'>, kind: 'status', reason: 'Beleg finalisiert.' }], resolutions: [] }],
     payments: status === 'paid' ? [...state.payments, {
-      id: freshId('payment', new Set(state.payments.map((entry) => entry.id)), uid), sourceVersionId: version.id, amountCents: version.amounts.totalCents,
+      id: freshId('payment', new Set(state.payments.map((entry) => entry.id)), createId), sourceVersionId: version.id, amountCents: version.amounts.totalCents,
       paidAt: localToday(new Date(at)), recordedAt: at, provenance: 'recorded', allocations: [{ versionId: version.id, at, reason: 'Bei Finalisierung als vollständig bezahlt erfasst.' }],
     }] : state.payments,
   }
 }
 
-export function saveInvoiceDraft(state: AppState, draft: InvoiceDraft, finalize: boolean, at = new Date().toISOString()): AppState {
+export function saveInvoiceDraft(state: AppState, draft: InvoiceDraft, finalize: boolean, at = new Date().toISOString(), createId: (prefix: string) => string = uid): AppState {
   validateBackupState(state)
   if (draft.id !== undefined && !validId(draft.id)) throw new Error('Der Entwurf hat eine ungültige ID.')
   const existing = draft.id ? state.invoices.find((invoice) => invoice.id === draft.id) : undefined
@@ -47,13 +47,13 @@ export function saveInvoiceDraft(state: AppState, draft: InvoiceDraft, finalize:
   const errors = [...moneyErrors(draft), ...(finalize ? invoiceFinalizationErrors(state, draft) : draftAudienceErrors(state, draft))]
   if (errors.length) throw new Error(errors.join(' '))
   const saved: Invoice = {
-    ...structuredClone(draft), id: existing?.id ?? freshId('invoice', new Set(state.invoices.map((invoice) => invoice.id)), uid), number: null, sequence: null,
+    ...structuredClone(draft), id: existing?.id ?? freshId('invoice', new Set(state.invoices.map((invoice) => invoice.id)), createId), number: null, sequence: null,
     year: parseDate(draft.invoiceDate).getFullYear(), period: billingPeriodFromItems(draft.items, draft.invoiceDate),
-    status: 'draft', calculation: 'decimal-v1', recipientStrategy: 'joint', createdAt: existing?.createdAt ?? at, updatedAt: at,
+    status: 'draft', calculation: 'decimal-v1', createdAt: existing?.createdAt ?? at, updatedAt: at,
   }
   let next = { ...state, invoices: [...state.invoices.filter((invoice) => invoice.id !== saved.id), persistentInvoice(saved)] }
   validateBackupState(next)
-  if (finalize) next = finalizeInvoice(next, saved, 'sent', at)
+  if (finalize) next = finalizeInvoice(next, saved, 'sent', at, createId)
   validateBackupState(next)
   return next
 }
@@ -64,7 +64,7 @@ export function changeInvoiceStatus(state: AppState, invoiceId: string, status: 
   if (!invoice) throw new Error('Die Rechnung ist nicht mehr vorhanden. Bitte neu laden.')
   if (status === 'draft') throw new Error('Bitte einen Korrekturentwurf mit Korrekturgrund anlegen. Der Originalbeleg bleibt erhalten.')
   let next: AppState
-  if (invoice.status === 'draft') next = finalizeInvoice(state, invoice, status, at)
+  if (invoice.status === 'draft') next = finalizeInvoice(state, invoice, status, at, uid)
   else {
     if (invoice.status === status) return state
     const versionId = invoice.versionId!
@@ -92,7 +92,7 @@ export function changeInvoiceStatus(state: AppState, invoiceId: string, status: 
 }
 
 function draftAudienceErrors(state: AppState, draft: InvoiceDraft): string[] {
-  if (draft.recipientStrategy === 'separate' && draft.guardianIds.length > 1) return [SPLIT_INVOICE_BLOCKED]
+  if (draft.recipientStrategy === 'separate' && draft.guardianIds.length > 1) return ['Die gemeinsame Aufteilung muss zuerst mit vollständiger Positionszuordnung geprüft werden.']
   if (draft.studentIds.length && draft.guardianIds.some((id) => draft.studentIds.some((studentId) => {
     if (draft.correction && !state.guardians.some((guardian) => guardian.id === id)) return false
     const student = state.students.find((entry) => entry.id === studentId)
@@ -105,4 +105,3 @@ export function invoiceDraftErrors(state: AppState, draft: InvoiceDraft): string
   const result = commandResult(() => saveInvoiceDraft(state, draft, false))
   return result.ok ? [] : result.errors.map((error) => error.message)
 }
-

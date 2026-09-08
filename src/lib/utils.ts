@@ -2,7 +2,7 @@ import { addCalendarDays, localToday } from './calendar'
 import { decimalInputText, invoiceTotalCents, itemTotalCents, moneyErrors } from './money'
 import { buildMailto } from './mailbox'
 import { validId, validPrice, validQuantity } from './values'
-import { assertInvoiceEditable, SPLIT_INVOICE_BLOCKED } from './safety'
+import { assertInvoiceEditable } from './safety'
 import type { AppState, Guardian, Invoice, InvoiceItem, InvoiceStatus, LessonType, Settings, Student } from '../types'
 
 export const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
@@ -28,7 +28,7 @@ type InvoiceFinalizationCandidate = Pick<Invoice, 'guardianIds' | 'studentIds' |
 
 export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 'students'>, invoice: InvoiceFinalizationCandidate): string[] {
   const errors: string[] = [...moneyErrors(invoice)]
-  if (invoice.recipientStrategy === 'separate' && invoice.guardianIds.length > 1) errors.push(SPLIT_INVOICE_BLOCKED)
+  if (invoice.recipientStrategy === 'separate' && invoice.guardianIds.length > 1) errors.push('Die gemeinsame Aufteilung muss zuerst mit vollständiger Positionszuordnung geprüft werden.')
   const guardianIds = new Set(state.guardians.map((guardian) => guardian.id))
   const studentIds = new Set(state.students.map((student) => student.id))
   const selectedStudentIds = new Set(invoice.studentIds)
