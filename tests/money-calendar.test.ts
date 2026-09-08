@@ -74,6 +74,8 @@ test('P05: Grenzen/Überläufe liefern Fehler; JSON und Eingaben verlieren keine
 function v4Fixture() {
   const current = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
   const captured = captureLegacyDocuments(legacyFixture(current))
+  Reflect.deleteProperty(captured.settings, 'invoiceProfile')
+  Reflect.deleteProperty(captured.settings, 'taxIdentifier')
   return { ...captured, schemaVersion: 4 }
 }
 

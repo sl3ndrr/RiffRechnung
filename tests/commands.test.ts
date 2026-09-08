@@ -354,9 +354,10 @@ test('P02: fehlerhafte importierte Mailboxen sind sichtbar, historische Werte bl
   const historical = saveInvoiceDraft(state, draft(state), true, at)
   historical.invoices[0].snapshot!.guardians[0].email = 'bad@example.org?bcc=x@example.org'
   historical.invoices[0].snapshot!.iban = 'FR1420041010050500013M02606'
-  const preview = requireSuccess(inspectImport(JSON.stringify(legacyFixture(historical))))
+  const legacyHistorical = legacyFixture(historical)
+  const preview = requireSuccess(inspectImport(JSON.stringify(legacyHistorical)))
   assert.equal(preview.warnings.length, 1)
-  assert.deepEqual(preview.state.invoices[0].snapshot, historical.invoices[0].snapshot)
+  assert.deepEqual(preview.state.invoices[0].snapshot, legacyHistorical.invoices[0].snapshot)
   assert.throws(() => mailtoUrl(preview.state.invoices[0], state.guardians, state.students), /ungültige Empfängeradresse/)
   const emptySnapshot = structuredClone(historical.invoices[0])
   emptySnapshot.snapshot!.guardians[0].email = ''

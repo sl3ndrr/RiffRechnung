@@ -80,7 +80,7 @@ test('P04: Betrag, Datum, Texte und Empfaenger dürfen keine ausgestellte Versio
 test('P04: Empfaenger A/B und leere historische Kontofelder sind für alle Ausgaben identisch', async () => {
   const raw = legacyFixture(issued())
   raw.invoices[0].guardianIds = ['g-b']
-  Object.assign(raw.invoices[0].snapshot!, { accountHolder: '', iban: '', bic: '', bankName: '' })
+  Object.assign(raw.invoices[0].snapshot!, { accountHolder: 'HISTORISCHES KONTO', iban: 'DE02120300000000202051', bic: '', bankName: '' })
   raw.settings.bic = 'MARKDEF1100'; raw.settings.accountHolder = 'HEUTIGES KONTO'; raw.settings.defaultLegalText = 'HEUTIGER RECHTSTEXT'
   let state = requireSuccess(inspectImport(JSON.stringify(raw))).state
   const version = state.documentVersions[0]
@@ -94,7 +94,7 @@ test('P04: Empfaenger A/B und leere historische Kontofelder sind für alle Ausga
   const markup = printContent(state, state.invoices[0])
   assert.match(markup, /Empfaenger A/); assert.doesNotMatch(markup, /HEUTIGES KONTO|MARKDEF1100/)
   const epc = buildEpcPayload(invoice, state.settings, invoiceTotal(invoice)).split('\n')
-  assert.equal(epc[4], ''); assert.equal(epc[5], ''); assert.equal(epc[6], '')
+  assert.equal(epc[4], ''); assert.equal(epc[5], 'HISTORISCHES KONTO'); assert.equal(epc[6], 'DE02120300000000202051')
   state = createCorrectionDraft(state, invoice.id, 'Empfaenger B bestätigen', at)
   assert.throws(() => changeInvoiceStatus(state, state.invoices.at(-1)!.id, 'sent', at), /Abweichungen/)
   state = resolveDocumentConflicts(state, version.id, 'Snapshot zeigt A. Neue Rechnung ausdrücklich an B; keine Änderung des alten Snapshots.', at)
