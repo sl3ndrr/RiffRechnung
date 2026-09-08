@@ -108,7 +108,16 @@ function validImportState() {
     guardianIds: ['guardian-a'],
     items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-a')],
   }))
-  return captureLegacyDocuments(legacyFixture(state))
+  const current = captureLegacyDocuments(legacyFixture(state))
+  current.settings = {
+    ...current.settings,
+    issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', email: 'studio@example.de', phone: '' },
+    accountHolder: 'Synthetisches Studio',
+    iban: 'DE02120300000000202051',
+    invoiceProfile: 'small-business',
+    taxIdentifier: { kind: 'tax-number', value: '12/345/67890' },
+  }
+  return current
 }
 
 function corruptBackup(mutate: (data: Record<string, unknown>) => void): string {
@@ -184,8 +193,10 @@ test('historisches Zurücksetzen ist gesperrt und verbrauchte Nummern bleiben re
 test('Entwürfe dürfen vor der Einrichtung starten; vollständige Einrichtung verlangt gültige IBAN', () => {
   const settings = structuredClone(defaultSettings)
   assert.equal(isInvoiceSetupComplete(settings), false)
-  settings.issuer.name = '  Gitarrenstudio Beispiel  '
+  settings.issuer = { ...settings.issuer, name: '  Gitarrenstudio Beispiel  ', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }
   settings.accountHolder = 'Gitarrenstudio Beispiel'
+  settings.invoiceProfile = 'small-business'
+  settings.taxIdentifier = { kind: 'tax-number', value: '12/345/67890' }
   settings.iban = 'DE02 1203 0000 0000 2020 52'
   assert.equal(isInvoiceSetupComplete(settings), false)
   settings.iban = 'DE02 1203 0000 0000 2020 51'
@@ -217,9 +228,11 @@ test('Onboarding priorisiert die Einrichtung und hält den Demo-Zugang sichtbar'
   assert.match(emptyMarkup, /Mit Beispieldaten starten/)
 
   const issuerReady = emptyState()
-  issuerReady.settings.issuer.name = 'Gitarrenstudio Beispiel'
+  issuerReady.settings.issuer = { ...issuerReady.settings.issuer, name: 'Gitarrenstudio Beispiel', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }
   issuerReady.settings.accountHolder = 'Gitarrenstudio Beispiel'
   issuerReady.settings.iban = 'DE02 1203 0000 0000 2020 51'
+  issuerReady.settings.invoiceProfile = 'small-business'
+  issuerReady.settings.taxIdentifier = { kind: 'tax-number', value: '12/345/67890' }
   assert.match(renderDashboard(issuerReady), /1 von 2 Schritten abgeschlossen/)
 
   const familyReady = emptyState()

@@ -16,7 +16,7 @@ const student = (id: string, name: string, billingCode: string, guardianIds: str
 function familyState(): AppState {
   const state = emptyState()
   state.updatedAt = at
-  state.settings = { ...state.settings, issuer: { name: 'Testunterricht', street: 'Musikweg 1', postalCode: '50667', city: 'Köln', email: 'rechnung@example.de', phone: '' }, accountHolder: 'Testunterricht', iban: 'DE89370400440532013000' }
+  state.settings = { ...state.settings, issuer: { name: 'Testunterricht', street: 'Musikweg 1', postalCode: '50667', city: 'Köln', email: 'rechnung@example.de', phone: '' }, accountHolder: 'Testunterricht', iban: 'DE89370400440532013000', invoiceProfile: 'small-business', taxIdentifier: { kind: 'tax-number', value: '12/345/67890' } }
   state.guardians = [guardian('g-a', 'Familie A'), guardian('g-b', 'Familie B'), guardian('g-c', 'Zweiter Haushalt A')]
   state.students = [
     student('s-a1', 'Kind A Eins', 'a', ['g-a', 'g-c']),

@@ -225,7 +225,7 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6, localItemIds: 
   backupArray(data.invoices, 'invoices').forEach((entry, index) => {
     const path = `invoices[${index}]`
     const invoice = backupObject(entry, path)
-    knownKeys(invoice, path, 'id number sequence year invoiceDate dueDate period status guardianIds studentIds recipientStrategy items introText freeText legalText snapshot paidAt sentAt createdAt updatedAt' + (versioned ? ' versionId correction' : '') + (schema === 5 ? ' calculation' : ''))
+    knownKeys(invoice, path, 'id number sequence year invoiceDate dueDate period status guardianIds studentIds recipientStrategy items introText freeText legalText snapshot paidAt sentAt createdAt updatedAt' + (versioned ? ' versionId correction' : '') + (schema >= 5 ? ' calculation' : ''))
     registerId(invoice.id, `${path}.id`, invoiceIds)
     const number = invoice.number === null ? null : backupString(invoice.number, `${path}.number`, true)
     if (number !== null) {
@@ -303,7 +303,7 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6, localItemIds: 
     backupString(invoice.introText, `${path}.introText`)
     backupString(invoice.freeText, `${path}.freeText`)
     backupString(invoice.legalText, `${path}.legalText`)
-    if (invoice.paidAt !== undefined) validatePaymentDay(invoice.paidAt, `${path}.paidAt`, schema === 5)
+    if (invoice.paidAt !== undefined) validatePaymentDay(invoice.paidAt, `${path}.paidAt`, schema >= 5)
     if (invoice.status === 'draft' && invoice.calculation === 'decimal-v1') {
       const errors = moneyErrors(invoice as unknown as AppState['invoices'][number])
       if (errors.length) invalidBackup(path, errors.join(' '))
