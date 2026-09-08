@@ -1,5 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { InvoicePrint } from '../src/components/InvoicePrint'
 import { emptyState } from '../src/lib/defaults'
 import { invoiceProfileErrors, invoiceSetupErrors, SMALL_BUSINESS_TAX_NOTICE, taxDataForInvoice } from '../src/lib/invoiceProfile'
 import { invoiceFinalizationErrors } from '../src/lib/utils'
@@ -29,4 +32,19 @@ test('Profilwahl und zulässige Steuerkennungsarten bleiben ausdrücklich getren
     const issued = saveInvoiceDraft(state, draft(), true, at)
     assert.deepEqual(issued.invoices[0].snapshot?.taxIdentifier, taxIdentifier)
   }
+})
+
+test('Druck verwendet ausschließlich das eingefrorene Kleinunternehmerprofil', () => {
+  const state = completeState()
+  const issued = saveInvoiceDraft(state, draft(), true, at)
+  issued.settings.taxIdentifier = { kind: 'vat-id', value: 'DE999999999' }
+  const markup = renderToStaticMarkup(createElement(InvoicePrint, {
+    invoice: issued.invoices[0],
+    guardians: issued.guardians,
+    students: issued.students,
+    settings: issued.settings,
+  }))
+  assert.match(markup, /Steuernummer:<\/strong> 12\/345\/67890/)
+  assert.match(markup, /Steuerbefreiung für Kleinunternehmer/)
+  assert.doesNotMatch(markup, /DE999999999/)
 })
