@@ -1,3 +1,4 @@
+import { mailboxError, MAILBOX_ERROR } from '../lib/mailbox'
 import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, Mail, MapPin, Pencil, Plus, Search, Trash2, UserRound, Users } from 'lucide-react'
 import type { AppState, Guardian, Student } from '../types'
@@ -10,8 +11,8 @@ const STUDENT_FORM_ID = 'student-entry-form'
 
 interface PeopleProps {
   state: AppState
-  onSaveGuardian: (guardian: Guardian) => void
-  onSaveStudent: (student: Student) => void
+  onSaveGuardian: (guardian: Guardian) => Promise<boolean>
+  onSaveStudent: (student: Student) => Promise<boolean>
   onDeleteGuardian: (guardian: Guardian) => void
   onDeleteStudent: (student: Student) => void
 }
@@ -45,18 +46,18 @@ export function People({ state, onSaveGuardian, onSaveStudent, onDeleteGuardian,
   const closeGuardianForm = () => { setGuardianForm(null); setError('') }
   const closeStudentForm = () => { setStudentForm(null); setError('') }
 
-  const saveGuardian = () => {
+  const saveGuardian = async () => {
     if (!guardianForm?.name.trim()) return setError('Bitte einen Namen eintragen.')
-    if (guardianForm.email && !/^\S+@\S+\.\S+$/.test(guardianForm.email)) return setError('Bitte die E-Mail-Adresse prüfen.')
-    onSaveGuardian({ ...guardianForm, updatedAt: new Date().toISOString() })
+    if (mailboxError(guardianForm.email)) return setError(MAILBOX_ERROR)
+    if (!await onSaveGuardian({ ...guardianForm, updatedAt: new Date().toISOString() })) return
     setGuardianForm(null)
     setError('')
   }
 
-  const saveStudent = () => {
+  const saveStudent = async () => {
     if (!studentForm?.name.trim()) return setError('Bitte den Namen des Kindes eintragen.')
     if (!studentForm.guardianIds.length) return setError('Bitte mindestens eine erziehungsberechtigte Person zuordnen.')
-    onSaveStudent({ ...studentForm, updatedAt: new Date().toISOString() })
+    if (!await onSaveStudent({ ...studentForm, updatedAt: new Date().toISOString() })) return
     setStudentForm(null)
     setError('')
   }
@@ -118,7 +119,7 @@ export function People({ state, onSaveGuardian, onSaveStudent, onDeleteGuardian,
       <Modal open={Boolean(guardianForm)} onClose={closeGuardianForm} title={state.guardians.some((item) => item.id === guardianForm?.id) ? 'Elternteil bearbeiten' : 'Elternteil anlegen'} eyebrow="Erziehungsberechtigte Person" footer={<><button className="button button--text" type="button" onClick={closeGuardianForm}>Abbrechen</button><button className="button button--primary" type="submit" form={GUARDIAN_FORM_ID}>Speichern</button></>}>
         {guardianForm && <form className="form-stack" id={GUARDIAN_FORM_ID} onSubmit={(event) => { event.preventDefault(); saveGuardian() }}>
           {error && <p className="inline-error" role="alert">{error}</p>}
-          <div className="form-grid form-grid--2"><label className="field field--full"><span>Name *</span><input autoFocus value={guardianForm.name} onChange={(event) => setGuardianForm({ ...guardianForm, name: event.target.value })} placeholder="Vor- und Nachname" /></label><label className="field"><span>E-Mail</span><input type="email" value={guardianForm.email} onChange={(event) => setGuardianForm({ ...guardianForm, email: event.target.value })} /></label><label className="field"><span>Telefon</span><input type="tel" value={guardianForm.phone} onChange={(event) => setGuardianForm({ ...guardianForm, phone: event.target.value })} /></label><label className="field field--full"><span>Straße & Hausnummer</span><input value={guardianForm.address.street} onChange={(event) => setGuardianForm({ ...guardianForm, address: { ...guardianForm.address, street: event.target.value } })} /></label><label className="field"><span>PLZ</span><input inputMode="numeric" value={guardianForm.address.postalCode} onChange={(event) => setGuardianForm({ ...guardianForm, address: { ...guardianForm.address, postalCode: event.target.value } })} /></label><label className="field"><span>Ort</span><input value={guardianForm.address.city} onChange={(event) => setGuardianForm({ ...guardianForm, address: { ...guardianForm.address, city: event.target.value } })} /></label><label className="field field--full"><span>IBAN / Zahlungsinfo (optional)</span><input value={guardianForm.iban} onChange={(event) => setGuardianForm({ ...guardianForm, iban: event.target.value })} placeholder="Nur falls für interne Zuordnung benötigt" /></label><label className="field field--full"><span>Interne Notiz</span><textarea rows={2} value={guardianForm.paymentNote} onChange={(event) => setGuardianForm({ ...guardianForm, paymentNote: event.target.value })} /></label></div>
+          <div className="form-grid form-grid--2"><label className="field field--full"><span>Name *</span><input autoFocus value={guardianForm.name} onChange={(event) => setGuardianForm({ ...guardianForm, name: event.target.value })} placeholder="Vor- und Nachname" /></label><label className="field"><span>E-Mail</span><input type="text" inputMode="email" aria-invalid={Boolean(mailboxError(guardianForm.email))} value={guardianForm.email} onChange={(event) => setGuardianForm({ ...guardianForm, email: event.target.value })} /></label><label className="field"><span>Telefon</span><input type="tel" value={guardianForm.phone} onChange={(event) => setGuardianForm({ ...guardianForm, phone: event.target.value })} /></label><label className="field field--full"><span>Straße & Hausnummer</span><input value={guardianForm.address.street} onChange={(event) => setGuardianForm({ ...guardianForm, address: { ...guardianForm.address, street: event.target.value } })} /></label><label className="field"><span>PLZ</span><input inputMode="numeric" value={guardianForm.address.postalCode} onChange={(event) => setGuardianForm({ ...guardianForm, address: { ...guardianForm.address, postalCode: event.target.value } })} /></label><label className="field"><span>Ort</span><input value={guardianForm.address.city} onChange={(event) => setGuardianForm({ ...guardianForm, address: { ...guardianForm.address, city: event.target.value } })} /></label><label className="field field--full"><span>IBAN / Zahlungsinfo (optional)</span><input value={guardianForm.iban} onChange={(event) => setGuardianForm({ ...guardianForm, iban: event.target.value })} placeholder="Nur falls für interne Zuordnung benötigt" /></label><label className="field field--full"><span>Interne Notiz</span><textarea rows={2} value={guardianForm.paymentNote} onChange={(event) => setGuardianForm({ ...guardianForm, paymentNote: event.target.value })} /></label></div>
         </form>}
       </Modal>
 

@@ -93,6 +93,65 @@ export interface Invoice {
   sentAt?: string
   createdAt: string
   updatedAt: string
+  versionId?: string
+  correction?: { replacesId: string; reason: string }
+  /** Output projection only; never accepted in persisted invoices. */
+  issuedAmounts?: DocumentAmounts
+  claimState?: 'active' | 'replaced'
+  archived?: boolean
+}
+
+export interface DocumentAmounts {
+  itemCents: number[]
+  totalCents: number
+  legacyCalculatedTotalCents: number
+  source: 'legacy-output' | 'number-register'
+  calculation: 'legacy-v1'
+}
+
+export type DocumentContent = Omit<Invoice, 'status' | 'paidAt' | 'sentAt' | 'updatedAt' | 'versionId' | 'correction' | 'issuedAmounts' | 'claimState' | 'archived'>
+
+export interface DocumentConflict {
+  path: string
+  message: string
+  values: string[]
+}
+
+/** Permanent complete records, independent of the bounded activity feed. */
+export interface DocumentVersion {
+  id: string
+  invoiceId: string
+  originalId: string
+  replacesId: string | null
+  cancelsId: string | null
+  reason: string
+  provenance: 'issued' | 'oldest-available'
+  sourceUpdatedAt: string
+  content: DocumentContent
+  outputSnapshot: InvoiceSnapshot
+  outputPeriod: string
+  outputLegalText: string
+  amounts: DocumentAmounts
+  conflicts: DocumentConflict[]
+  snapshotHistory: AuditEvent[]
+  registerEntries: VoidedInvoiceNumber[]
+}
+
+export interface InvoiceAdministration {
+  versionId: string
+  archived: boolean
+  events: { at: string; status: Exclude<InvoiceStatus, 'draft'>; kind: 'imported' | 'status'; reason: string }[]
+  resolutions: { at: string; reason: string }[]
+}
+
+export interface InvoicePayment {
+  id: string
+  sourceVersionId: string
+  amountCents: number
+  paidAt: string | null
+  recordedAt: string
+  provenance: 'recorded' | 'legacy-status'
+  allocations: { versionId: string | null; at: string; reason: string }[]
 }
 
 export interface Settings {
@@ -135,10 +194,14 @@ export interface VoidedInvoiceNumber {
 }
 
 export interface AppState {
-  schemaVersion: 2
+  schemaVersion: 4
   guardians: Guardian[]
   students: Student[]
   invoices: Invoice[]
+  documentVersions: DocumentVersion[]
+  invoiceAdministration: InvoiceAdministration[]
+  payments: InvoicePayment[]
+  historicalSnapshotCorrections: AuditEvent[]
   voidedInvoiceNumbers: VoidedInvoiceNumber[]
   settings: Settings
   counters: Record<string, number>
@@ -155,6 +218,7 @@ export interface ToastMessage {
 
 export interface InvoiceDraft {
   id?: string
+  correction?: { replacesId: string; reason: string }
   invoiceDate: string
   dueDate: string
   period: string

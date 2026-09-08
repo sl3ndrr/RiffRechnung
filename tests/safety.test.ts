@@ -1,11 +1,16 @@
+import { legacyFixture } from './documentFixtures'
+import { validateLegacyV3Structure } from '../src/lib/validation'
+import { captureLegacyDocuments } from '../src/lib/importState'
+import { seedState, sharedLock, fakeDirectory } from './storageHarness'
+import { ValidationError } from '../src/lib/result'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import type { AppState, Invoice, InvoiceDraft } from '../src/types'
 import { emptyState } from '../src/lib/defaults'
 import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
-import { assertOriginalsPreserved, assertReplacementAllowed, demoBlockedReason, loadDemoState } from '../src/lib/safety'
+import { assertOriginalsPreserved, assertReplacementAllowed } from '../src/lib/safety'
 import { applyStandardRateInput, parseStandardRate, updateSettings } from '../src/lib/settings'
-import { inspectBackupDirectory, loadState, parseBackup, persistState, saveState, serializeBackup, STORAGE_KEY, validateBackupState, writeBackupToDirectory } from '../src/lib/storage'
+import { inspectBackupDirectory, StorageSession, loadState, parseBackup, serializeBackup, STORAGE_KEY, validateBackupState } from '../src/lib/storage'
 import { createLessonItem, germanIbanError, invoiceTotal, nextInvoiceAllocation, reopenInvoiceAsDraft } from '../src/lib/utils'
 
 const at = '2026-08-20T12:00:00.000Z'
@@ -49,9 +54,9 @@ function roundTrip(state: AppState): AppState {
   validateBackupState(state)
   const imported = parseBackup(serializeBackup(state))
   const again = parseBackup(serializeBackup(imported))
-  // The existing importer refreshes updatedAt; package 01 adds no migration.
-  assert.deepEqual({ ...again, updatedAt: imported.updatedAt }, imported)
-  saveState(imported)
+  // Current-format reads preserve the complete state, including updatedAt.
+  assert.deepEqual(again, imported)
+  seedState(imported)
   const loaded = loadState()
   if (loaded.status !== 'ready') assert.fail(`Unerwarteter Recovery-Zustand: ${loaded.error}`)
   assert.deepEqual(loaded.state, imported)
@@ -105,7 +110,7 @@ test('P01: fehlende Referenzen und doppelte Positions-IDs werden vor Übernahme 
   const state = families()
   const saved = saveInvoiceDraft(state, draftFor(state), false, at)
   assert.throws(() => saveInvoiceDraft(saved, draftFor(state), false, at), /id ist doppelt/)
-  assert.throws(() => saveInvoiceDraft(saved, { ...draftFor(state), studentIds: ['missing'] }, false, at), /Stammdaten/)
+  assert.throws(() => saveInvoiceDraft(saved, { ...draftFor(state), studentIds: ['missing'] }, false, at), (error: unknown) => error instanceof ValidationError && error.code === 'INVALID_STATE' && error.path === 'invoices[1].studentIds[0]')
   assert.throws(() => saveInvoiceDraft(saved, { ...draftFor(state), id: 'missing' }, false, at), /nicht mehr vorhanden/)
   assert.equal(saved.invoices.length, 1)
   assert.deepEqual(saved.counters, {})
@@ -139,7 +144,7 @@ test('P01: historische Belege ohne Stammdaten bleiben samt Betrag, Snapshot und 
   const original = structuredClone(state)
   const invoice = state.invoices[0]
   assert.throws(() => reopenInvoiceAsDraft(state, invoice.id), /Finalisierte Belege/)
-  assert.throws(() => changeInvoiceStatus(state, invoice.id, 'draft'), /Finalisierte Belege/)
+  assert.throws(() => changeInvoiceStatus(state, invoice.id, 'draft'), /Korrekturentwurf/)
   for (const patch of [{ guardianIds: [] }, { items: [] }, { freeText: 'Geändert' }, { invoiceDate: '2026-09-01' }]) {
     assert.throws(() => saveInvoiceDraft(state, { ...invoice, ...patch }, false), /Finalisierte Belege/)
     const altered = { ...state, invoices: [{ ...invoice, ...patch }] }
@@ -166,10 +171,12 @@ test('P01: verdeckte Empfängerabweichungen und Verlust ungesicherter historisch
   assert.throws(() => assertOriginalsPreserved(finalized, changed), /Finalisierte Belege/)
   changed.invoices[0].snapshot!.guardians = [{ ...changed.guardians[1].address, id: 'g1', name: 'Andere Familie', email: '' }]
   assert.throws(() => assertOriginalsPreserved(finalized, changed), /Finalisierte Belege/)
-  const historical = structuredClone(finalized)
-  delete historical.invoices[0].snapshot
+  const historicalSource = legacyFixture(finalized)
+  delete historicalSource.invoices[0].snapshot
+  const historical = captureLegacyDocuments(historicalSource)
   validateBackupState(historical)
-  assert.throws(() => validateBackupState({ ...historical, guardians: [], students: [] }), /unbekannte Person|unbekanntes Kind/)
+  assert.doesNotThrow(() => validateBackupState({ ...historical, guardians: [], students: [] }), 'P04: gesicherte Version besitzt ihren eigenen historischen Referenzbereich')
+  assert.throws(() => validateLegacyV3Structure({ ...historicalSource, guardians: [], students: [] }), /unbekannte Person|unbekanntes Kind/, 'Ungesicherte Alt-Referenzen bleiben geschützt')
 })
 
 test('P01: reservierte Nummern bleiben nach abgewiesenem Austausch und Reload belegt', async () => withStorage(() => {
@@ -180,90 +187,49 @@ test('P01: reservierte Nummern bleiben nach abgewiesenem Austausch und Reload be
   assert.doesNotThrow(() => assertReplacementAllowed(emptyState()))
 }))
 
-function directoryFile(raw: string) {
-  const calls = { reads: 0, creates: 0, writable: 0, writes: 0, closes: 0 }
-  const file = { raw }
-  const handle = {
-    name: 'Synthetisches Backup',
-    getFileHandle: async (_name: string, options?: { create?: boolean }) => {
-      if (options?.create) calls.creates++
-      return {
-        getFile: async () => { calls.reads++; return { text: async () => file.raw } },
-        createWritable: async () => { calls.writable++; return {
-          write: async (value: string) => { calls.writes++; file.raw = value }, close: async () => { calls.closes++ },
-        } },
-      }
-    },
-  } as unknown as FileSystemDirectoryHandle
-  return { handle, calls, file }
-}
-
-test('P01: leerer Browser prüft vorhandene, beschädigte und neuere Ordnerbackups ausschließlich lesend', async () => {
-  const existing = serializeBackup(families())
-  for (const raw of [existing, '{beschädigt', JSON.stringify({ schemaVersion: 99 })]) {
-    const { handle, calls, file } = directoryFile(raw)
-    assert.match(await inspectBackupDirectory(handle), /unverändert/)
-    await assert.rejects(() => writeBackupToDirectory(handle, emptyState()), /schreibgeschützt/)
-    assert.equal(file.raw, raw)
-    assert.deepEqual(calls, { reads: 1, creates: 0, writable: 0, writes: 0, closes: 0 })
+test('P03 ersetzt P01: leerer Browser liest vorhandene/beschädigte/neue Sicherungen und schreibt nicht', async () => {
+  for (const raw of [serializeBackup(families()), '{beschädigt', JSON.stringify({ schemaVersion: 99 })]) {
+    const directory = fakeDirectory({ 'riffrechnung-backup.json': raw })
+    const inspected = await inspectBackupDirectory(directory.handle)
+    assert.equal(inspected.entries[0].raw, raw)
+    assert.equal(directory.controls.writes, 0)
+    assert.equal(directory.files.get('riffrechnung-backup.json'), raw)
   }
-  const missing = { getFileHandle: async () => { throw new DOMException('Fehlt', 'NotFoundError') } } as unknown as FileSystemDirectoryHandle
-  assert.match(await inspectBackupDirectory(missing), /Keine Backup-Datei/)
-  const denied = { getFileHandle: async () => { throw new DOMException('Keine Berechtigung', 'NotAllowedError') } } as unknown as FileSystemDirectoryHandle
-  await assert.rejects(() => inspectBackupDirectory(denied), /Keine Berechtigung/)
+  assert.equal((await inspectBackupDirectory(fakeDirectory().handle)).entries.length, 0)
+  const denied = fakeDirectory({ 'backup.json': serializeBackup(emptyState()) })
+  denied.controls.fail = 'stale'
+  await assert.rejects(inspectBackupDirectory(denied.handle), /veraltet/)
 })
 
-test('P01: veralteter Tab und parallele manuelle/automatische Backups ändern keine Sicherung', async () => withStorage(async () => {
-  const current = families(1)
-  current.updatedAt = at
-  saveState(current)
-  const stale = emptyState()
-  stale.updatedAt = '2026-08-19T12:00:00.000Z'
-  const raw = serializeBackup(current)
-  const { handle, calls, file } = directoryFile(raw)
-  const localRaw = localStorage.getItem(STORAGE_KEY)
-  const results = await Promise.all([
-    persistState(stale, handle, true, stale.updatedAt),
-    assert.rejects(() => writeBackupToDirectory(handle, stale), /schreibgeschützt/),
-    assert.rejects(() => writeBackupToDirectory(handle, current), /schreibgeschützt/),
-  ])
-  assert.equal(results[0].local.status, 'conflict')
-  assert.equal(results[0].fileBackup.status, 'skipped')
-  assert.equal(localStorage.getItem(STORAGE_KEY), localRaw)
-  assert.equal(file.raw, raw)
-  assert.deepEqual(calls, { reads: 0, creates: 0, writable: 0, writes: 0, closes: 0 })
-  assert.equal(parseBackup(serializeBackup(stale)).invoices.length, 0)
+test('P03 ersetzt P01: veralteter Tab darf auch manuelles und automatisches Backup nicht schreiben', async () => withStorage(async () => {
+  seedState(families(1))
+  const lock = sharedLock()
+  const current = new StorageSession({ lock })
+  const stale = new StorageSession({ lock })
+  const directory = fakeDirectory()
+  const binding = { handle: directory.handle, datasetId: current.revision!.datasetId, legacyFiles: [] }
+  await current.connect(binding)
+  await stale.connect(binding)
+  await current.backup()
+  await current.change((state) => ({ ...state, settings: { ...state.settings, accountHolder: 'Neu' } }))
+  const before = [...directory.files]
+  await Promise.all([assert.rejects(stale.backup(), /anderen Tab/), assert.rejects(stale.backup(), /anderen Tab/)])
+  assert.deepEqual([...directory.files], before)
 }))
 
-test('P01: Demo respektiert jede begonnene Einstellung, Nutzerdaten und ungeprüfte/verbundene Ordner', async () => withStorage(() => {
-  const states = [families(), { ...emptyState(), audit: [{ id: 'event', at, label: 'Begonnen', entityType: 'settings' as const }] }]
-  for (const [key, value] of Object.entries(emptyState().settings)) {
-    if (key === 'issuer') continue
-    const state = emptyState()
-    const changed = typeof value === 'boolean' ? !value : typeof value === 'number' ? value + 1 : key === 'theme' ? 'dark' : key === 'numberPattern' ? 'ANF-{YYYY}-{K}-{NNNN}' : 'Angefangen'
-    Object.assign(state.settings, { [key]: changed })
-    states.push(state)
+test('P03 ersetzt P01: Demo erhält jede begonnene Einstellung, Nutzerdaten und Ordnerkonfiguration', async () => withStorage(async () => {
+  for (const initial of [emptyState(), families(), { ...emptyState(), settings: { ...emptyState().settings, issuer: { ...emptyState().settings.issuer, name: 'Begonnen' } } }]) {
+    seedState(initial)
+    const before = localStorage.getItem(STORAGE_KEY)
+    const directory = fakeDirectory({ 'bestehend.json': serializeBackup(initial) })
+    const demo = new StorageSession({ mode: 'demo', storage: { getItem: () => { throw new Error('Demo greift auf realen Speicher zu') } } as unknown as Storage, lock: async () => { throw new Error('Demo greift auf reale Sperre zu') } })
+    await demo.change((state) => ({ ...state, settings: { ...state.settings, issuer: { ...state.settings.issuer, name: 'Demo verändert' } } }))
+    await assert.rejects(demo.connect({ handle: directory.handle, datasetId: 'demo', legacyFiles: [] }), /keine Backup-Ordner/)
+    await assert.rejects(demo.backup(), /keine Backup-Ordner/)
+    assert.equal(localStorage.getItem(STORAGE_KEY), before)
+    assert.equal(directory.controls.writes, 0)
+    assert.deepEqual(new StorageSession({ lock: sharedLock() }).state, initial)
   }
-  for (const key of Object.keys(emptyState().settings.issuer)) {
-    const state = emptyState()
-    Object.assign(state.settings.issuer, { [key]: 'Begonnen' })
-    states.push(state)
-  }
-  for (const state of states) {
-    const original = structuredClone(state)
-    assert.ok(demoBlockedReason(state, true, false))
-    assert.throws(() => loadDemoState(state, true, false), /gesperrt/)
-    assert.deepEqual(roundTrip(state).settings, original.settings)
-    assert.deepEqual(state, original)
-  }
-  for (const [checked, connected, touched] of [[false, false, false], [true, true, false], [true, false, true]]) {
-    assert.throws(() => loadDemoState(emptyState(), checked, connected, touched), /gesperrt/)
-  }
-  const empty = emptyState()
-  assert.equal(demoBlockedReason(empty, true, false), null)
-  const demo = loadDemoState(empty, true, false)
-  assert.ok(demo.invoices.length > 0)
-  assert.deepEqual(empty.invoices, [])
 }))
 
 test('P01: nur deutsche Konten für Änderungen und Finalisierung; fremde historische Snapshots bleiben original', async () => withStorage(() => {
@@ -275,7 +241,7 @@ test('P01: nur deutsche Konten für Änderungen und Finalisierung; fremde histor
   let historical = saveInvoiceDraft(state, draftFor(state), true, at)
   historical.settings.iban = 'GB29NWBK60161331926819'
   historical.invoices[0].snapshot!.iban = 'GB29NWBK60161331926819'
-  historical = roundTrip(historical)
+  historical = roundTrip(captureLegacyDocuments(legacyFixture(historical)))
   assert.throws(() => updateSettings(historical.settings, { ...historical.settings, accountHolder: 'Neuer Name' }), /nur deutsche/)
   assert.equal(updateSettings(historical.settings, { ...historical.settings, theme: 'dark' }).iban, historical.settings.iban)
   assert.throws(() => saveInvoiceDraft(historical, { ...draftFor(state), items: [createLessonItem('s0', '2026-08-12', state.settings, 'new-item')] }, true), /nur deutsche/)

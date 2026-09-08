@@ -1,3 +1,4 @@
+import { captureLegacyDocuments } from './importState'
 import type { AppState, Guardian, Invoice, InvoiceDraft, InvoiceItem, LessonType, Settings, Student } from '../types'
 
 export const defaultSettings: Settings = {
@@ -25,7 +26,8 @@ export const defaultSettings: Settings = {
 
 export function emptyState(): AppState {
   return {
-    schemaVersion: 2,
+    schemaVersion: 4,
+    documentVersions: [], invoiceAdministration: [], payments: [], historicalSnapshotCorrections: [],
     guardians: [],
     students: [],
     invoices: [],
@@ -257,8 +259,8 @@ export function createDemoState(referenceDate = new Date()): AppState {
   }
   families.forEach((family, index) => invoices.push(createInvoice(family, currentYear, currentMonth, index < 2 ? 'sent' : 'draft')))
 
-  return {
-    schemaVersion: 2,
+  return captureLegacyDocuments({
+    schemaVersion: 3,
     guardians,
     students,
     invoices,
@@ -268,5 +270,5 @@ export function createDemoState(referenceDate = new Date()): AppState {
     nextStudentCodeIndex: students.length,
     audit: [{ id: 'event-demo-data-loaded', at: now, label: 'Vollständige Beispieldaten ab Januar 2025 angelegt', entityType: 'system' }],
     updatedAt: now,
-  }
+  })
 }

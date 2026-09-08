@@ -1,4 +1,13 @@
+import { legacyFixture } from './documentFixtures'
+import { captureLegacyDocuments } from '../src/lib/importState'
+import { seedState, sharedLock, fakeDirectory } from './storageHarness'
+import { prepareNewInvoice, saveInvoiceState } from '../src/lib/commands'
+import { requireSuccess, ValidationError } from '../src/lib/result'
+import { adjustQuantity, parseQuantityInput } from '../src/lib/values'
 import './safety.test'
+import './commands.test'
+import './storage.test'
+import './documents.test'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -10,7 +19,7 @@ import { InvoicePrint } from '../src/components/InvoicePrint'
 import { Dashboard } from '../src/views/Dashboard'
 import { createDemoState, defaultSettings, emptyState } from '../src/lib/defaults'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, runInvoiceMenuAction } from '../src/lib/invoiceMenu'
-import { loadLastBackupAt, loadState, parseBackup, persistState, recordBackupExport, saveState, serializeBackup } from '../src/lib/storage'
+import { loadLastBackupAt, StorageSession, loadState, parseBackup, recordBackupExport, serializeBackup } from '../src/lib/storage'
 import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoiceFinalizationErrors, invoicePdfTitle, invoiceTotal, invoicesToCsv, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, reopenInvoiceAsDraft, SEPA_IBAN_LENGTH_BY_COUNTRY, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
 import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { assertOriginalsPreserved } from '../src/lib/safety'
@@ -95,7 +104,7 @@ function validImportState() {
     guardianIds: ['guardian-a'],
     items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-a')],
   }))
-  return state
+  return captureLegacyDocuments(legacyFixture(state))
 }
 
 function corruptBackup(mutate: (data: Record<string, unknown>) => void): string {
@@ -189,7 +198,7 @@ test('historische EPC-Kontodaten behalten die bisherige IBAN-Prüfung', () => {
   assert.equal(isValidIban('GI75 NWBK 0000 0000 7099 453'), false)
 })
 
-test('Rechnungsstart verlangt Absendernamen und eine gültige IBAN', () => {
+test('Entwürfe dürfen vor der Einrichtung starten; vollständige Einrichtung verlangt gültige IBAN', () => {
   const settings = structuredClone(defaultSettings)
   assert.equal(isInvoiceSetupComplete(settings), false)
   settings.issuer.name = '  Gitarrenstudio Beispiel  '
@@ -198,14 +207,13 @@ test('Rechnungsstart verlangt Absendernamen und eine gültige IBAN', () => {
   settings.iban = 'DE02 1203 0000 0000 2020 51'
   assert.equal(isInvoiceSetupComplete(settings), true)
 
-  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
-  const invoiceGuard = appSource.slice(appSource.indexOf('const openNewInvoice'), appSource.indexOf('const editInvoice'))
-  assert.ok(invoiceGuard.indexOf('isInvoiceSetupComplete') < invoiceGuard.indexOf('!state.students.length'))
-  assert.match(invoiceGuard, /setPage\('settings'\)/)
-  assert.match(invoiceGuard, /setPage\('people'\)/)
+  const initial = emptyState()
+  const draft = requireSuccess(prepareNewInvoice(initial))
+  const saved = requireSuccess(saveInvoiceState(initial, draft, false))
+  assert.equal(saved.invoices.length, 1)
+  assert.equal(saved.invoices[0].number, null)
+  assert.throws(() => changeInvoiceStatus(saved, saved.invoices[0].id, 'sent'), /Finalisieren nicht möglich/)
 
-  const invoiceSource = readFileSync(new URL('../src/views/Invoices.tsx', import.meta.url), 'utf8')
-  assert.equal(invoiceSource.match(/onClick=\{onNew\}/g)?.length, 2)
 })
 
 test('Onboarding priorisiert die Einrichtung und hält den Demo-Zugang sichtbar', () => {
@@ -535,7 +543,7 @@ test('Demo-Daten bilden Familien, Unterricht und Rechnungen seit Januar 2025 vol
   const numbers = demo.invoices.flatMap((entry) => entry.number ? [entry.number] : [])
   assert.equal(new Set(numbers).size, numbers.length)
   withMockLocalStorage(() => {
-    saveState(demo)
+    seedState(demo)
     const restored = loadReadyState()
     assert.equal(restored.guardians.length, 10)
     assert.equal(restored.students.length, 10)
@@ -571,7 +579,7 @@ test('vollständiges Backup lässt sich wiederherstellen', () => {
     },
   })
   const restored = parseBackup(serializeBackup(state))
-  assert.equal(restored.schemaVersion, 2)
+  assert.equal(restored.schemaVersion, 4)
   assert.equal(restored.settings.issuer.name, 'Test Unterricht')
   assert.equal(restored.students[0]?.billingCode, 'a')
   assert.equal(restored.voidedInvoiceNumbers[0]?.number, '2026-a-0004')
@@ -647,14 +655,14 @@ test('finalisierte Historie darf gelöschte Stammdaten über den Snapshot refere
   state.guardians = []
   state.students = []
 
-  const restored = parseBackup(serializeBackup(state))
+  const restored = parseBackup(JSON.stringify(legacyFixture(state)))
   assert.deepEqual(restored.invoices[0]?.guardianIds, ['guardian-a'])
   assert.deepEqual(restored.invoices[0]?.studentIds, ['student-a'])
 })
 
 test('ältere Backups erhalten stabile Kinderkennzeichen in Speicherreihenfolge', () => {
-  const legacy = JSON.parse(serializeBackup(emptyState()))
-  legacy.app = 'gitarrenrechnungen'
+  const state = legacyFixture(emptyState())
+  const legacy = JSON.parse(JSON.stringify({ app: 'gitarrenrechnungen', exportedAt: state.updatedAt, schemaVersion: 2, data: { ...state, schemaVersion: 2 } }))
   legacy.data.students = [student('student-a', 'Anna', ''), student('student-b', 'Ben', '')]
   legacy.data.settings.numberPattern = '{YYYY}-{NNNN}'
   delete legacy.data.nextStudentCodeIndex
@@ -669,7 +677,7 @@ test('ältere Kombinationszähler werden auf segmentierte Schlüssel migriert', 
   state.students = [student('student-a', 'Anna', 'a'), student('student-b', 'Ben', 'b'), student('student-ab', 'Zora', 'ab')]
   state.invoices = [invoice({ studentIds: ['student-a', 'student-b'], number: '2026-ab-0003', sequence: 3 })]
   state.counters = { '2026:ab': 4 }
-  const restored = parseBackup(serializeBackup(state))
+  const restored = parseBackup(JSON.stringify({ ...legacyFixture(state), schemaVersion: 2 }))
   assert.equal(restored.counters['2026:a+b'], 4)
   assert.equal(restored.counters['2026:ab'], 4)
 })
@@ -686,7 +694,12 @@ test('ältere Rechnungspositionen erhalten einen Typ ohne Preis- oder Titelände
       unitPrice: 17,
     }],
   })]
-  const legacy = JSON.parse(serializeBackup(state))
+  const legacy = { app: 'riffrechnung', exportedAt: state.updatedAt, schemaVersion: 2, data: JSON.parse(JSON.stringify(legacyFixture(state))) }
+  legacy.schemaVersion = 2
+  legacy.data.schemaVersion = 2
+  delete legacy.data.documentVersions
+  delete legacy.data.invoiceAdministration
+  delete legacy.data.payments
   delete legacy.data.invoices[0].items[0].lessonType
   const restoredItem = parseBackup(JSON.stringify(legacy)).invoices[0]?.items[0]
   assert.equal(restoredItem?.lessonType, 'duo')
@@ -698,7 +711,7 @@ test('manuelle Theme-Auswahl bleibt nach einem Reload erhalten', () => {
   withMockLocalStorage(() => {
     const state = emptyState()
     state.settings.theme = 'dark'
-    saveState(state)
+    seedState(state)
     assert.equal(loadReadyState().settings.theme, 'dark')
   })
 })
@@ -718,12 +731,9 @@ test('beschädigte lokale Daten bleiben für die Wiederherstellung unangetastet'
     assert.equal(localStorage.getItem(storageKey), rawData)
   }))
 
-  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
-  const recoverySource = readFileSync(new URL('../src/views/StorageRecovery.tsx', import.meta.url), 'utf8')
-  assert.match(appSource, /useEffect\(\(\) => \{\s+if \(recovery\) return[\s\S]*?persistState/)
-  assert.match(appSource, /<StorageRecovery/)
-  assert.match(recoverySource, /Beschädigte Rohdaten exportieren/)
-  assert.match(recoverySource, /JSON-Backup wiederherstellen/)
+  // Writable recovery is exercised through StorageSession (including rejected
+  // unconfirmed writes, raw export, confirmed restore and reload) in storage.test.
+
 })
 
 test('Entwürfe lassen sich aus der Detailansicht nur mit vollständigen aktuellen Daten finalisieren', () => {
@@ -746,8 +756,9 @@ test('Entwürfe lassen sich aus der Detailansicht nur mit vollständigen aktuell
 
   state.settings.iban = 'DE02120300000000202051'
   state.invoices = [draft]
+  state.documentVersions = []; state.invoiceAdministration = []; state.payments = []
   const original = structuredClone(state)
-  assert.throws(() => changeInvoiceStatus({ ...state, guardians: [] }, draft.id, 'sent'), /Stammdaten/)
+  assert.throws(() => changeInvoiceStatus({ ...state, guardians: [] }, draft.id, 'sent'), (error: unknown) => error instanceof ValidationError && error.path === 'students[0].guardianIds[0]')
   assert.deepEqual(state, original)
   assert.equal(changeInvoiceStatus(state, draft.id, 'sent').invoices[0].number, '2026-a-0001')
 
@@ -799,101 +810,34 @@ test('Editor-Finalisierung wird vor Nummern- und Snapshot-Vergabe zentral validi
 
 })
 
-test('lokales Speichern bleibt unabhängig vom vorläufig gesperrten Datei-Backup', async () => {
-  const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
-  let writtenBackup = ''
-  const failingStorage = {
-    setItem: () => {
-      const error = new Error('Speicherplatz erschöpft')
-      error.name = 'QuotaExceededError'
-      throw error
-    },
-  } as unknown as Storage
-  const directoryHandle = {
-    name: 'Sicherungen',
-    queryPermission: async () => 'granted',
-    getFileHandle: async () => ({
-      createWritable: async () => ({
-        write: async (content: unknown) => { writtenBackup = String(content) },
-        close: async () => undefined,
-      }),
-    }),
-  } as unknown as FileSystemDirectoryHandle
-  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: failingStorage })
-
-  try {
-    const result = await persistState(emptyState(), directoryHandle, true)
-    assert.equal(result.local.status, 'error')
-    assert.match(result.local.error ?? '', /Speicherplatz erschöpft/)
-    assert.equal(result.fileBackup.status, 'error')
-    assert.match(result.fileBackup.error ?? '', /schreibgeschützt/)
-    assert.equal(writtenBackup, '')
-
-    let localSaved = false
-    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { setItem: () => { localSaved = true } } as unknown as Storage })
-    const failingDirectoryHandle = {
-      queryPermission: async () => 'granted',
-      getFileHandle: async () => { throw new Error('Backup-Datei gesperrt') },
-    } as unknown as FileSystemDirectoryHandle
-    const reverseResult = await persistState(emptyState(), failingDirectoryHandle, true)
-    assert.equal(reverseResult.local.status, 'saved')
-    assert.equal(localSaved, true)
-    assert.equal(reverseResult.fileBackup.status, 'error')
-    assert.match(reverseResult.fileBackup.error ?? '', /schreibgeschützt/)
-  } finally {
-    if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage)
-    else Reflect.deleteProperty(globalThis, 'localStorage')
-  }
-
-  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
-  assert.match(appSource, /localSaveError/)
-  assert.match(appSource, /fileBackupError/)
-  assert.match(appSource, /Erneut versuchen/)
-  assert.match(appSource, /JSON-Backup exportieren/)
+test('lokales Speichern bleibt unabhängig vom Datei-Backup; Fehler erlauben keinen voreiligen Erfolg', async () => {
+  const { memoryStorage } = await import('./storageHarness')
+  const storage = memoryStorage()
+  const session = new StorageSession({ storage, lock: sharedLock() })
+  const directory = fakeDirectory()
+  storage.fail = 'write'
+  await assert.rejects(session.change(() => emptyState()), /Speicherplatz/)
+  await assert.rejects(session.backup(), /lokales Speichern/)
+  assert.equal(directory.controls.writes, 0)
+  storage.fail = null
+  await session.change(() => emptyState())
+  await session.connect({ handle: directory.handle, datasetId: session.revision!.datasetId, legacyFiles: [] })
+  directory.controls.fail = 'write'
+  await assert.rejects(session.backup(), /write fehlgeschlagen/)
+  assert.equal(loadState(storage).status, 'ready')
 })
 
 test('veraltete Tabs überschreiben keinen zwischenzeitlich gespeicherten Zustand', async () => {
-  const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
-  const entries = new Map<string, string>()
-  const localStorageMock: Storage = {
-    get length() { return entries.size },
-    clear: () => entries.clear(),
-    getItem: (key) => entries.get(key) ?? null,
-    key: (index) => [...entries.keys()][index] ?? null,
-    removeItem: (key) => entries.delete(key),
-    setItem: (key, value) => entries.set(key, value),
-  }
-  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: localStorageMock })
-
-  try {
-    const base = emptyState()
-    base.updatedAt = '2026-08-20T10:00:00.000Z'
-    saveState(base)
-    const firstTab = structuredClone(base)
-    firstTab.settings.issuer.name = 'Erster Tab'
-    firstTab.updatedAt = '2026-08-20T10:01:00.000Z'
-    const secondTab = structuredClone(base)
-    secondTab.settings.issuer.name = 'Zweiter Tab'
-    secondTab.updatedAt = '2026-08-20T10:02:00.000Z'
-
-    const firstResult = await persistState(firstTab, null, false, base.updatedAt)
-    const staleResult = await persistState(secondTab, null, false, base.updatedAt)
-    assert.equal(firstResult.local.status, 'saved')
-    assert.equal(staleResult.local.status, 'conflict')
-    assert.match(staleResult.local.error ?? '', /anderen Tab/)
-    const persisted = JSON.parse(localStorage.getItem('gitarrenrechnungen-state-v2') ?? '{}')
-    assert.equal(persisted.settings.issuer.name, 'Erster Tab')
-  } finally {
-    if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage)
-    else Reflect.deleteProperty(globalThis, 'localStorage')
-  }
-
-  const storageSource = readFileSync(new URL('../src/lib/storage.ts', import.meta.url), 'utf8')
-  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
-  assert.match(storageSource, /navigator\.locks\.request/)
-  assert.match(appSource, /new BroadcastChannel/)
-  assert.match(appSource, /addEventListener\('storage'/)
-  assert.match(appSource, /window\.location\.reload\(\)/)
+  const { memoryStorage } = await import('./storageHarness')
+  const storage = memoryStorage()
+  const lock = sharedLock()
+  seedState(emptyState(), storage)
+  const first = new StorageSession({ storage, lock })
+  const stale = new StorageSession({ storage, lock })
+  await first.change((state) => ({ ...state, settings: { ...state.settings, accountHolder: 'Erster Tab' } }))
+  await assert.rejects(stale.change((state) => ({ ...state, settings: { ...state.settings, accountHolder: 'Zweiter Tab' } })), /anderen Tab/)
+  const loaded = loadState(storage)
+  assert.equal(loaded.status === 'ready' && loaded.state.settings.accountHolder, 'Erster Tab')
 })
 
 test('ungültige Preise bleiben lokal und überschreiben den letzten gültigen Einstellungswert nicht', () => {
@@ -904,7 +848,7 @@ test('ungültige Preise bleiben lokal und überschreiben den letzten gültigen E
     const incomplete = applyStandardRateInput(valid, 'privateRate', '')
     assert.equal(incomplete, valid)
     state.settings = updateSettings(state.settings, incomplete)
-    saveState(state)
+    seedState(state)
     assert.equal(loadReadyState().settings.privateRate, 34.5)
     assert.equal(parseBackup(serializeBackup(state)).settings.privateRate, 34.5)
     assert.throws(() => updateSettings(state.settings, { ...state.settings, duoRate: -1 }), /gültige Preis/)
@@ -922,13 +866,14 @@ test('Modal-Formulare verknüpfen ihre Footer-Buttons mit dem nativen Submit', (
 })
 
 test('Mengenfeld akzeptiert Hundertstelwerte und bietet Viertelschritt-Steuerung', () => {
-  const source = readFileSync(new URL('../src/views/InvoiceEditor.tsx', import.meta.url), 'utf8')
-  assert.match(source, /const MIN_QUANTITY = 0\.01/)
-  assert.match(source, /const MAX_QUANTITY = 99\.99/)
-  assert.match(source, /const QUANTITY_INCREMENT = 0\.25/)
-  assert.match(source, /min=\{MIN_QUANTITY\} max=\{MAX_QUANTITY\} step="0\.01"/)
-  assert.match(source, /event\.key === 'ArrowUp' \|\| event\.key === 'ArrowDown'/)
-  assert.match(source, /className="quantity-stepper"/)
+  assert.equal(parseQuantityInput('0,01'), 0.01)
+  assert.equal(parseQuantityInput('99.99'), 99.99)
+  for (const raw of ['', '0', '-1', '100', '1.001', 'NaN', 'Infinity']) assert.equal(parseQuantityInput(raw), null)
+  assert.equal(adjustQuantity(.75, 1), 1)
+  assert.equal(adjustQuantity(.75, -1), .5)
+  assert.equal(adjustQuantity(.01, -1), .01)
+  assert.equal(adjustQuantity(99.99, 1), 99.99)
+
 })
 
 test('Kinderliste startet mit aktivem Aktiv-Filter', () => {

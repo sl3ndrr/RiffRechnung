@@ -1,9 +1,7 @@
 import type { AppState, Invoice } from '../types'
-import { createDemoState, defaultSettings } from './defaults'
 
 export const SPLIT_INVOICE_BLOCKED = 'Getrennte Rechnungen sind vorübergehend gesperrt: Die bisherige Aufteilung könnte fremde Kinddaten weitergeben und Leistungen mehrfach berechnen. Eine gemeinsame Rechnung ist nur mit Empfängern möglich, die allen ausgewählten Kindern zugeordnet sind.'
-export const FINALIZED_INVOICE_BLOCKED = 'Finalisierte Belege können vorübergehend weder inhaltlich geändert, zurückgesetzt noch gelöscht werden, solange keine vollständige Originalversion gesichert wird. Zahlungs- und Versandstatus bleiben änderbar.'
-export const DIRECTORY_BACKUP_BLOCKED = 'Ordnerbackups sind vorübergehend schreibgeschützt, weil Konflikte und der Erhalt der bisherigen Sicherung noch nicht zuverlässig abgesichert sind. Bitte ein separates JSON-Backup exportieren.'
+export const FINALIZED_INVOICE_BLOCKED = 'Finalisierte Belege bleiben unverändert erhalten. Inhaltliche Änderungen benötigen einen verknüpften Korrekturentwurf mit Grund. Zahlungs- und Versanddaten werden getrennt verwaltet.'
 
 export function isFinalizedInvoice(invoice: Invoice): boolean {
   return invoice.status !== 'draft' || invoice.number !== null || invoice.snapshot !== undefined
@@ -28,33 +26,33 @@ function originalContent(invoice: Invoice): string {
 }
 
 export function assertOriginalsPreserved(current: AppState, next: AppState): void {
+  for (const evidence of current.historicalSnapshotCorrections) {
+    if (!next.historicalSnapshotCorrections.some((entry) => entry.id === evidence.id && canonical(entry) === canonical(evidence))) throw new Error('Historische Snapshot-Differenzen müssen unverändert erhalten bleiben.')
+  }
   for (const original of current.invoices.filter(isFinalizedInvoice)) {
     const candidate = next.invoices.find((invoice) => invoice.id === original.id)
     if (!candidate || candidate.status === 'draft' || originalContent(candidate) !== originalContent(original)) {
       throw new Error(FINALIZED_INVOICE_BLOCKED)
     }
   }
+  for (const version of current.documentVersions) {
+    if (!next.documentVersions.some((candidate) => candidate.id === version.id && canonical(candidate) === canonical(version))) throw new Error('Vollständige Belegversionen dürfen weder geändert noch entfernt werden.')
+  }
+  for (const payment of current.payments) {
+    const candidate = next.payments.find((entry) => entry.id === payment.id)
+    if (!candidate || canonical({ ...candidate, allocations: payment.allocations }) !== canonical(payment)
+      || canonical(candidate.allocations.slice(0, payment.allocations.length)) !== canonical(payment.allocations)) throw new Error('Zahlungen und bisherige Zuordnungen müssen unverändert erhalten bleiben.')
+  }
+  for (const admin of current.invoiceAdministration) {
+    const candidate = next.invoiceAdministration.find((entry) => entry.versionId === admin.versionId)
+    if (!candidate || canonical(candidate.events.slice(0, admin.events.length)) !== canonical(admin.events)
+      || canonical(candidate.resolutions.slice(0, admin.resolutions.length)) !== canonical(admin.resolutions)) throw new Error('Verwaltungs- und Klärungshistorie muss erhalten bleiben.')
+  }
+
 }
 
 export function assertReplacementAllowed(state: AppState): void {
   if (state.invoices.some(isFinalizedInvoice) || state.voidedInvoiceNumbers.length) {
     throw new Error('Ein vollständiger Austausch oder das Zurücksetzen dieses Bestands ist vorübergehend gesperrt, um ausgestellte Belege und reservierte Nummern zu erhalten. Ein separater JSON-Export bleibt möglich.')
   }
-}
-
-export function demoBlockedReason(state: AppState, folderChecked: boolean, folderConnected: boolean, settingsTouched = false): string | null {
-  if (!folderChecked) return 'Beispieldaten sind gesperrt, solange ein gespeicherter Backup-Ordner nicht geprüft werden konnte.'
-  if (folderConnected) return 'Beispieldaten sind bei verbundenem Backup-Ordner bis zum isolierten Demomodus gesperrt.'
-  if (settingsTouched || state.guardians.length || state.students.length || state.invoices.length || state.voidedInvoiceNumbers.length
-    || state.audit.length || Object.keys(state.counters).length || state.nextStudentCodeIndex !== 0
-    || canonical(state.settings) !== canonical(defaultSettings)) {
-    return 'Beispieldaten sind bis zum isolierten Demomodus gesperrt: Es gibt bereits eigene Daten oder geänderte Einstellungen.'
-  }
-  return null
-}
-
-export function loadDemoState(state: AppState, folderChecked: boolean, folderConnected: boolean, settingsTouched = false): AppState {
-  const reason = demoBlockedReason(state, folderChecked, folderConnected, settingsTouched)
-  if (reason) throw new Error(reason)
-  return createDemoState()
 }
