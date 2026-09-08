@@ -480,3 +480,35 @@ npm 10.9.8, Python 3.12.3, Chromium 153.0.8010.12. Synthetisches Artefakt
 `browser-evidence` ID 10059733856, kein Pages-Artefakt und kein Deployment.
 Der abschließende reine Nachweis ergänzt die zweite identische PDF-Ausgabe samt
 unverändertem Storage und durchläuft dieselben Schranken erneut.
+
+
+## Paket 07 – CI und Fehlerzuordnung
+
+- [34248809788](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34248809788):
+  erster Zahlungsdatenstand; Lint fand zwei unbenutzte Kompatibilitätsimporte.
+- [34251066948](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34251066948):
+  Profilschritt; Lint fand einen leer gewordenen Block.
+- [34251683013](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34251683013):
+  Installation und Lint erfolgreich, 87/136 Fachtests; Schema 6 ließ das seit
+  Schema 5 gültige Berechnungskennzeichen nicht zu, und Alt-Fixtures waren für
+  neue Finalisierungen nicht vollständig.
+- [34252124684](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34252124684):
+  Installation und Lint erfolgreich, 132/136 Fachtests. Vier überholte
+  Erwartungen wurden fachlich ersetzt: echtes Schema-4-Fixture, getrennte
+  IBAN-Fehler, profilfreier Legacy-Snapshot und EPC-Fall mit nur leerer BIC.
+- [34252502949](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34252502949):
+  133/136 Fachtests; verblieben waren Profilvollständigkeit nach Migration,
+  präziser Längentext und eine neue Korrekturfinalisierung ohne Steuerkennung.
+- [34253445967](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34253445967):
+  135/136 Fachtests; Zukunftsformat-Test von Schema 6 auf 7 berichtigt.
+- [34253655564](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34253655564):
+  136/136 Fachtests, Typecheck und Build erfolgreich; 13/14 Browserprüfungen.
+  Die Paket-06-Browser-Fixture hatte noch keine Steuerkennung.
+- [34254617161](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34254617161):
+  Implementierungsstand `2b23a1b976471318f4b5b97ba53fef8efab661ca`;
+  `npm ci`, Lint, 138/138 Fachtests, Test-Typecheck, Build sowie 14/14
+  Chromium-/PDF-Prüfungen erfolgreich. Ubuntu 24.04, Node 22.23.2/npm 10.9.8,
+  Python 3.12.3, Chromium 153.0.8010.12; keine fehlgeschlagenen oder
+  übersprungenen Tests. Synthetisches Artefakt `browser-evidence`.
+
+Keine Tests wurden gelöscht, übersprungen oder abgeschwächt.

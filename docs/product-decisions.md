@@ -1,13 +1,13 @@
 # Produktentscheidungen
 
-Stand: Pakete 00–06, 2026-09-08. Quelle: beauftragter Umsetzungsplan zur Analyse von
+Stand: Pakete 00–07, 2026-09-08. Quelle: beauftragter Umsetzungsplan zur Analyse von
 `ba7857fd9180fa392c42a0235643e478e5077ee5`. Diese Regeln sind verbindliche Ziele;
 ihre technische Umsetzung wird pro Paket im [Umsetzungsstatus](implementation-status.md) belegt.
 
 | Thema | Entscheidung | Umsetzung / offene Entscheidung |
 | --- | --- | --- |
 | Architektur | Statische React-/TypeScript-App, lokale Datenhaltung, deutsche Oberfläche; kein zusätzliches Backend. | In allen Paketen erhalten. |
-| IBAN | Ausschließlich deutsche IBANs für neue/geänderte Kontoeinstellungen und neue Finalisierungen. Keine Ausweitung auf weitere SEPA-Länder. | Sofortschutz in Paket 01 für Kontoeinstellungen und neue Finalisierungen; vollständiges Profil und EPC-Konsistenz in Paket 07. |
+| IBAN | Ausschließlich deutsche IBANs für neue/geänderte Kontoeinstellungen und neue Finalisierungen. Keine Ausweitung auf weitere SEPA-Länder. | In Paket 07 zentral normalisiert und nach DE-Struktur, 22 Stellen und Modulo-97 geprüft; Nicht-DE erhält eine eigene Fehlermeldung. |
 | Historische Kontodaten | Alte Belege originalgetreu lesen; fremde oder leere Kontofelder weder löschen noch umschreiben noch durch aktuelle Kontodaten ersetzen. | In 04 erhalten; Profil-/EPC-Ausbau in 07. |
 | Getrennte Rechnungen | Jede Leistung pro Aufteilung insgesamt genau einmal berechnen; Empfänger erhalten nur zugeordnete Kinder/Positionen. Keine angenommene 50/50-Aufteilung. | In Paket 06 als expliziter, atomarer Zuordnungsübergang umgesetzt. |
 | Rechnungskopien | Weitere Ausgabe desselben Belegs erzeugt weder neue Forderung noch zweiten Umsatz. Getrennte Forderungen brauchen getrennte Leistungen oder ausdrücklich bestätigte Anteile. | Paket 06 legt nur Forderungsrechnungen an; wiederholte Ausgabe bleibt eine Aktion am selben Beleg. Berichtsprüfung folgt zusätzlich in 08. |
@@ -16,7 +16,7 @@ ihre technische Umsetzung wird pro Paket im [Umsetzungsstatus](implementation-st
 | Backup-Ordner | Ein Ordner gehört zu einem führenden Datenbestand. Abweichende Bestände erkennen; kein stilles Zusammenführen oder Überschreiben. | Konservative Regel übernommen, Paket 03. |
 | Zahlungen | Zunächst Vollzahlung mit tatsächlichem Zahlungstag. Fehlende historische Zahlungstage bleiben unbekannt. Teilzahlungen später separat. | Paket 08 (F02-MVP), optional Paket 14. |
 | Datenformate | Änderungen versionieren; Altformate definieren, unveränderte Eingangsdaten schützen, Migrationsbericht und Wiederherstellung vorsehen. Laden/Importieren muss idempotent sein. Unbekannte neuere Formate nicht überschreiben; ausgestellte Beträge/Snapshots nicht still ändern. | Pakete 02–05 und spätere Formatänderungen; Paket 00 ohne Migration. |
-| Steuerliches Profil | Keine steuerliche Einordnung aus dem Projektnamen oder dem voreingestellten Rechtstext ableiten. | Tatsächliche Konstellation in Paket 07 klären. |
+| Steuerliches Profil | Kleinunternehmer nach § 19 UStG für neue Rechnungen; keine automatische Kleinbetrags- oder andere Ausnahme. | Vom Nutzer ausdrücklich für Paket 07 gewählt. Profil, vollständige Anschriften und eine typisierte zulässige Steuerkennung sind vor Finalisierung erforderlich. |
 | Zielbrowser | README nennt Chromium ab 131 für Druck und Chromium für Ordnerzugriff. Das ist keine verifizierte Freigabeliste. Nur tatsächlich geprüfte Browser/Versionen freigeben. | Verbindliche Betrieb-/Druckmatrix in Paketen 09/12 festlegen. |
 | Freigabe | Jedes Paket separat beauftragen. PR/Commits sind Teil des Pakets; Merge und produktives Deployment brauchen einen separaten Auftrag. Nur synthetische Testdaten verwenden. | Paket 00 endet vor Merge/Deployment. |
 
@@ -315,3 +315,37 @@ in Paket 02, revisionssichere Speicherung in Paket 03.
   Übernommene historische `separate`-Belege mit ältestem verfügbarem Belegstand
   werden nur als ungeklärt markiert und können einzeln korrigiert werden; keine
   bestehende Forderung wird automatisch zusammengelegt oder umgeschrieben.
+
+
+## Paket 07 – Rechnungsprofil und Zahlungsdaten
+
+- Das Produkt unterstützt für neue Rechnungen ausschließlich das ausdrücklich
+  gewählte Kleinunternehmerprofil nach § 19 UStG. Die Rechnung enthält den
+  Steuerbefreiungshinweis. Andere Steuerprofile und die Kleinbetragsregel werden
+  nicht stillschweigend aktiviert.
+- Für die Identifikationsangabe stehen getrennte Typen bereit: Steuernummer,
+  Umsatzsteuer-Identifikationsnummer und Kleinunternehmer-Identifikationsnummer.
+  Die App prüft Auswahl, Vorhandensein und sichere Textgrenzen, bestätigt aber
+  weder Vergabe noch steuerliche Gültigkeit. Die persönliche Steuer-ID wird nicht
+  als austauschbare Rechnungsangabe angeboten.
+- Neue Finalisierungen verlangen vollständigen Namen und Anschrift von Aussteller
+  und jedem Empfänger. Entwürfe dürfen unvollständig gespeichert werden.
+  Finalisierte Belege verwenden ausschließlich ihren Snapshot; fehlende
+  historische Profilangaben werden nicht aus heutigen Einstellungen ergänzt.
+- Neue/geänderte Zahlungseinstellungen und neue Finalisierungen akzeptieren nur
+  deutsche Empfänger-IBANs. Schreibweise wird durch Entfernen von Leerzeichen und
+  Großschreibung normalisiert. DE-Länge/Struktur und Prüfsumme werden geprüft;
+  gültige Nicht-DE-IBANs werden ausdrücklich als nicht unterstützt abgelehnt.
+  Das ist keine Kontoinhaber- oder Erreichbarkeitsprüfung.
+- Für den unterstützten Fall eines deutschen Empfängerkontos ist die BIC im
+  EPC-QR optional; eine eingegebene BIC muss strukturell gültig sein. Daraus wird
+  keine Aussage über jeden möglichen Zahlerfall abgeleitet. Snapshot-BIC
+  „fehlend“ und „bewusst leer“ bleiben unterscheidbar und werden nie mit heutigen
+  Einstellungen aufgefüllt.
+
+Offizielle Grundlagen, geprüft am 08.09.2026:
+[§ 14 UStG](https://www.gesetze-im-internet.de/ustg_1980/__14.html),
+[§ 34a UStDV](https://www.gesetze-im-internet.de/ustdv_1980/__34a.html),
+[EPC Quick Response Code Guidelines v3.1](https://www.europeanpaymentscouncil.eu/sites/default/files/kb/file/2024-03/EPC069-12%20v3.1%20Quick%20Response%20Code%20-%20Guidelines%20to%20Enable%20the%20Data%20Capture%20for%20the%20Initiation%20of%20an%20SCT.pdf),
+[SWIFT IBAN Registry Release 102](https://www.swift.com/resource/iban-registry-pdf)
+und [Bundesbank-IBAN-Regeln](https://www.bundesbank.de/de/aufgaben/unbarer-zahlungsverkehr/serviceangebot/iban-regeln/iban-regeln-603042).

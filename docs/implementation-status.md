@@ -1,10 +1,10 @@
 # Umsetzungsstatus
 
-Stand: 2026-09-08, Paket 06. Zielbranch `main` zu Beginn vollständig geprüft:
-`5b960d4c9ad46251a967d719b5b2f0c07260d145`, Tree
-`0328211bf1003796ed731eb73bb691de65fa38e7`. Pakete 00–05 sind gemergt.
+Stand: 2026-09-08, Paket 07. Zielbranch `main` zu Beginn vollständig geprüft:
+`455b53d28149bfaea607b7ad0ca43851248ec60d`, Tree
+`6c5c42df674c4ab597e9e996371ac9462a72d9cf`. Pakete 00–06 sind gemergt.
 Keine `AGENTS.md` im vollständigen Repository-Tree. Arbeitsbranch:
-`codex/paket-06-empfaengerzuordnung`, [PR #27](https://github.com/sl3ndrr/RiffRechnung/pull/27).
+`codex/paket-07-rechnungsprofil-de-iban`, [PR #28](https://github.com/sl3ndrr/RiffRechnung/pull/28).
 Kein Merge oder Deployment in diesem Auftrag.
 
 ## Paketfolge
@@ -23,7 +23,7 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 | 04 | Originalbelege und Korrekturen | R03, R09, R10, F03, N09; schrittweise R24 | Implementiert; 116/116 Fachtests und 11/11 Browserprüfungen bestanden |
 | 05 | Exaktes Geld und Kalenderdaten | R06, R12; schrittweise R24 | Implementiert; 123/123 Fachtests und 13/13 Browserprüfungen bestanden |
 | 06 | Aufteilung nach Empfängern | R02; Integration R01; schrittweise R24 | Implementiert; vollständiger CI-Nachweis unten |
-| 07 | Rechnungsprofil, deutsche IBAN, Zahlungsdaten | R07, R13 angepasst, R14 | Laut Analyse offen |
+| 07 | Rechnungsprofil, deutsche IBAN, Zahlungsdaten | R07, R13 angepasst, R14 | Implementiert; vollständiger CI-Nachweis unten |
 | 08 | Zahlungstag und Berichte | R11, F02 (MVP) | Laut Analyse offen |
 | 09 | Druck und GiroCode | R16, R21, N03, N08 | Laut Analyse offen |
 | 10 | Tastatur, Dialoge, Navigation, Kontrast | R17–R20, N05, N07 | Laut Analyse offen |
@@ -162,7 +162,7 @@ Keine weiteren F-/N-Befunde als behoben beansprucht. Kein Merge/Deployment.
 Migrationsrückweg und neue Grenzen sind dokumentiert; Zahlungstagswahl/Jahreszuordnung
 bleiben Paket 08, Aufteilung bleibt bis Paket 06 gesperrt.
 
-Nächstes vorgesehenes Paket: **07 – Rechnungsprofil, deutsche IBAN und Zahlungsdaten**, nicht begonnen.
+Paket 07 ist im folgenden Abschnitt dokumentiert.
 
 ## Paket 06 – Empfängerbezogene Rechnungsaufteilung
 
@@ -213,3 +213,77 @@ R02 und die R01-Aufteilungsintegration sind im Paketumfang implementiert; R24 wi
 durch Fach-, Speicher- und echten Browser-/PDF-Ablauf fortgeführt. Keine weiteren
 R-/F-/N-Befunde werden als behoben beansprucht. Produktannahmen stehen in
 `product-decisions.md`.
+
+
+## Paket 07 – Kleinunternehmerprofil und deutsche Zahlungsdaten
+
+- **Ausgang und Befund:** Basis `main` ist
+  `455b53d28149bfaea607b7ad0ca43851248ec60d`. R07, der auf Deutschland
+  begrenzte Anteil von R13 und R14 wurden am aktuellen Code bestätigt:
+  Aussteller-/Empfängerpflichtfelder und Steuerkennung waren nicht strukturiert,
+  die IBAN-Prüfung enthielt eine allgemeine SEPA-Länderliste, und eine bewusst
+  leere Snapshot-BIC konnte durch heutige Einstellungen ersetzt werden.
+- **Profil:** Nach ausdrücklicher Nutzerentscheidung unterstützt die App für neue
+  Rechnungen das Kleinunternehmerprofil nach § 19 UStG. Vollständige Namen und
+  Anschriften von Aussteller und allen Empfängern, Profil sowie genau eine
+  ausdrücklich typisierte Steuerkennung (Steuernummer, USt-IdNr. oder
+  Kleinunternehmer-Identifikationsnummer) sind finalisierungsrelevant. Die
+  Kleinbetragsausnahme wird nicht automatisch aktiviert. Unvollständige
+  Einstellungen und Entwürfe bleiben speicherbar; Finalisierung nennt jedes
+  fehlende Feld und vergibt bei Fehlern keine Nummer.
+- **Zahlungsdaten:** Eine gemeinsame Fachfunktion normalisiert IBAN/BIC und wird
+  von Einstellungen, Finalisierung, Druck und EPC verwendet. Neue Verwendung
+  akzeptiert ausschließlich 22-stellige deutsche IBANs mit gültiger
+  Modulo-97-Prüfsumme. Nicht-DE, Länge/Format und Prüfsumme haben getrennte
+  deutsche Fehlermeldungen. BIC ist für den unterstützten deutschen
+  Empfängerkontofall optional, wird bei Eingabe aber früh auf 8/11 Stellen und
+  ISO-Zeichenstruktur geprüft. Prüfsumme/BIC bestätigen weder Inhaber noch
+  Erreichbarkeit.
+- **Snapshots/Invarianten:** Neue Belege frieren Profil, konkrete Steuerkennung,
+  vollständige Personen, Zahlungsempfänger, IBAN, BIC und Betrag ein. Sichtbarer
+  Bankblock und EPC lesen dieselbe ausgewählte Version. Vorhanden-leere BIC bleibt
+  leer; heutige Kontoeinstellungen werden nicht ergänzt. Historische Snapshots
+  ohne Profilfelder bleiben ohne diese Felder. Getrennte/reservierte Nummern,
+  Centbeträge, Referenzschutz, CSV-Formelabwehr, Rohdatenschutz und
+  Schreibkonfliktschutz bestehen weiter.
+- **Migration:** Schema 6; Speicherprotokoll und Schlüssel bleiben unverändert.
+  Formate 2–5 werden kontrolliert nach 6 übernommen. Aktuelle Einstellungen
+  erhalten das gewählte Profil und eine leere Steuerkennung, sodass keine neue
+  Finalisierung vor bewusster Eingabe möglich ist. Historische Snapshots werden
+  nicht ergänzt. Bericht `riffrechnung-to-v6` dokumentiert Quelle und Änderung;
+  Originalbytes bleiben vor Übernahme im Wiederherstellungsarchiv. Wiederholter
+  Import aktueller Daten ist idempotent. Unbekannte neuere Formate bleiben
+  schreibgeschützt. Rückweg: archivierte Originaldatei in getrenntem alten Profil.
+- **Grundlagen (Abruf 08.09.2026):** [§ 14 UStG](https://www.gesetze-im-internet.de/ustg_1980/__14.html),
+  [§ 34a UStDV](https://www.gesetze-im-internet.de/ustdv_1980/__34a.html),
+  [EPC069-12 v3.1](https://www.europeanpaymentscouncil.eu/sites/default/files/kb/file/2024-03/EPC069-12%20v3.1%20Quick%20Response%20Code%20-%20Guidelines%20to%20Enable%20the%20Data%20Capture%20for%20the%20Initiation%20of%20an%20SCT.pdf),
+  [SWIFT IBAN Registry, Release 102](https://www.swift.com/resource/iban-registry-pdf)
+  und [Deutsche Bundesbank: IBAN-Regeln](https://www.bundesbank.de/de/aufgaben/unbarer-zahlungsverkehr/serviceangebot/iban-regeln/iban-regeln-603042).
+
+| Abnahme Paket 07 | Ergebnis |
+| --- | --- |
+| Vollständiges Kleinunternehmerprofil / konkrete Feldfehler / Entwurf ohne Nummernverbrauch | Bestanden in Fachtests |
+| DE-IBAN normalisiert; Leerwert, Länge, Prüfsumme und gültige Nicht-DE-IBAN getrennt | Bestanden in Fachtests |
+| Leere Snapshot-BIC bleibt trotz späterer Kontenänderung in Bankblock und EPC leer | Bestanden in Funktions-/Ausgabeprüfungen |
+| Druck und EPC verwenden dieselbe Version von Name, IBAN, BIC und Betrag | Bestanden in Funktions-/Ausgabeprüfungen |
+| Export–Import, Migration 2–5, Reload, Idempotenz, Original-/Rohdatenschutz | Bestanden in Fach- und Speicherprüfungen |
+| Native Druckdialoge, Betriebssystem-Dateirechte und Banking-App-Scans | Nicht geprüft; spätere/native Abnahmen |
+
+R07, R13 im ausdrücklich deutschen Produktumfang und R14 sind umgesetzt; R24 wird
+durch Fach-, Serialisierungs- und Ablaufprüfungen weitergeführt. Rechtliche
+Einzelfallfreigabe, Kontoinhaber-/Bankerreichbarkeitsprüfung sowie Zahlerfälle
+außerhalb des modellierten Empfängerkontos werden nicht behauptet. CI- und
+Zwischenfehlernachweise stehen in `quality-gates.md`.
+
+**Prüfstand:** Implementierungscommit
+`2b23a1b976471318f4b5b97ba53fef8efab661ca`,
+[CI 34254617161](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34254617161).
+Ubuntu 24.04, Node 22.23.2/npm 10.9.8, Python 3.12.3 und Chromium
+153.0.8010.12: `npm ci`, Lint, 138/138 Fachtests, Typecheck einschließlich
+Testdateien, Build sowie 14/14 Chromium-/PDF-Prüfungen erfolgreich. Keine Tests
+fehlgeschlagen oder übersprungen; synthetisches Artefakt `browser-evidence`.
+Lokal sind Node 24.19.0/npm 11.9.0 und Git 2.51.1 verfügbar; der Terminalzugriff
+auf den GitHub-Clone wurde mit HTTP 403 durch die Umgebung blockiert. Daher sind
+lokale npm-Gates nicht behauptet.
+
+Nächstes vorgesehenes Paket: **08 – Zahlungstag und Berichte**, nicht begonnen.
