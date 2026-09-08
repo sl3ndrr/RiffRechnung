@@ -20,7 +20,7 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 | 02 | Fachbefehle, Validatoren, reparierbare Formate | R01, R04, R15; Grundlage R24 | Implementiert und CI-geprüft; reale Browser-/Mailprogrammabnahmen offen |
 | 03 | Speicherung, Backups, isolierte Demo | R05, R08, R22, N06; schrittweise R24 | Implementiert; CI-/Browsernachweise unten, native Dateirechte offen |
 | 04 | Originalbelege und Korrekturen | R03, R09, R10, F03, N09; schrittweise R24 | Implementiert; 116/116 Fachtests und 11/11 Browserprüfungen bestanden |
-| 05 | Exaktes Geld und Kalenderdaten | R06, R12; schrittweise R24 | Implementiert, CI-Abnahme läuft |
+| 05 | Exaktes Geld und Kalenderdaten | R06, R12; schrittweise R24 | Implementiert; 123/123 Fachtests und 13/13 Browserprüfungen bestanden |
 | 06 | Aufteilung nach Empfängern | R02; Integration R01 | Laut Analyse offen |
 | 07 | Rechnungsprofil, deutsche IBAN, Zahlungsdaten | R07, R13 angepasst, R14 | Laut Analyse offen |
 | 08 | Zahlungstag und Berichte | R11, F02 (MVP) | Laut Analyse offen |
@@ -135,7 +135,29 @@ CI ergänzt Poppler und ein sieben Tage verfügbares synthetisches Browser-/PDF-
   `npm view node@22 version --json --fetch-retries=0 --fetch-timeout=20000`: E403.
   Lint/Test/Typecheck/Build vor Prozessstart blockiert; keine lokalen Testergebnisse.
   CI übernimmt alle vorhandenen Gates einschließlich Testtypen und Chromium/PDF.
-  Konkrete Ergebnisse und offene Abnahmen werden nach dem Lauf ergänzt.
+  Prüflauf [34190927478](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34190927478)
+  gehört zu `0a4cd2885b095111570bf55214dd571e0f45db4b`: npm ci, Lint,
+  123/123 Fachtests, Typecheck, Build, Browserinstallation und 13/13 Browserprüfungen
+  bestanden. Ubuntu 24.04.4, Node 22.23.2/npm 10.9.8, Python 3.12.3,
+  Chromium 153.0.8010.12. Anschließend ergänzte Untercentpreisanzeige und
+  Grenzprüfungen werden im endgültigen Commit nochmals vollständig geprüft.
+  Ergebnisbranch/PR: [#26](https://github.com/sl3ndrr/RiffRechnung/pull/26).
+  Zwischenfehler und Baseline sind in `quality-gates.md` getrennt zugeordnet.
+
+| Abnahme Paket 05 | Ergebnis |
+| --- | --- |
+| 0,75 × 10,10 = 7,58; Halbcent, Viertelstunden, Hundertstel, mehrere Positionen, Grenzen | Bestanden (Fachtests) |
+| Unabhängige exakte Wertematrix, 100.000 Kombinationen | Bestanden (Python Decimal) |
+| Editor, Liste/Details, Dashboard, Berichte, CSV, Erinnerung, EPC-Betrag und PDF | Bestanden (Fach-/Chromiumprüfungen); reservierte historische Registerbeträge bleiben erhalten |
+| Historische 7,57 unverändert; neue Version 7,58; Untercentpräzision, JSON/Import/Reload | Bestanden; originale PDF-Texte und gesicherte Beträge geprüft |
+| Januar→Februar, Schaltjahr/Jahreswechsel, Berlin 00:30, UTC und Sommerzeit | Bestanden (Kalender- und Befehlsprüfungen) |
+| Deutsche IBAN-Regel, getrennte/reservierte Nummern, Referenzen, CSV-Formelabwehr, Rohdaten- und Schreibkonfliktschutz | Bestehende Regressionen weiter bestanden |
+| Native Druckdialoge/Dateirechte, Banking-App-Scan, umfassende Layoutmatrix | Nicht geprüft; spätere/native Abnahmen |
+
+R06/R12 im Paketumfang behoben, R24 durch Fach-/Ablaufprüfungen weitergeführt.
+Keine weiteren F-/N-Befunde als behoben beansprucht. Kein Merge/Deployment.
+Migrationsrückweg und neue Grenzen sind dokumentiert; Zahlungstagswahl/Jahreszuordnung
+bleiben Paket 08, Aufteilung bleibt bis Paket 06 gesperrt.
 
 Nächstes vorgesehenes Paket: **06 – Aufteilung nach Empfängern**, nicht begonnen.
 

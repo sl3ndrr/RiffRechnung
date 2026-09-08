@@ -392,3 +392,34 @@ identisch mit dem Implementierungsstand. Artefakt `browser-evidence`, ID
 Aufbewahrung bis 2026-09-15. Contents/Metadata ausschließlich lesend; kein Pages-
 Artefakt angefordert und kein Deployment. Nachfolgend ausschließlich Dokumentation;
 der abschließende Ergebniscommit wird erneut vollständig geprüft und im PR ausgewiesen.
+
+
+
+## Paket 05 – Geld/Kalender (2026-09-08)
+
+Ausgang: `main` `d44131b31b5e22eab5e28883bef167864aabe9b5`.
+Vorhandener [Baseline-Lauf 34189696762](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34189696762)
+prüfte diesen Commit erfolgreich mit allen bestehenden Schranken. Dieser bereits
+vor dem Auftrag gestartete Pages-Lauf ist kein Deployment durch Paket 05.
+Keine bereits fehlschlagenden Baseline-Gates festgestellt.
+
+| Commit / Lauf | Ergebnis und Zuordnung |
+| --- | --- |
+| `0eac10205dec52cac158eb355db5a8e8b4607236` / [34190705831](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34190705831) | Installation/Lint bestanden, 119/123 Fachtests. Ein Implementierungsfehler: direkte Finalisierung alter Entwürfe setzte den Berechnungsmarker nicht. Drei Testannahmen: Unterlaufprobe war noch darstellbar, Portal-Dialog ohne Browser-DOM, alte Differenzbeträge nach neuer Rundung. Behoben; Dialogprüfungen in echten Chromium-Ablauf verlegt. Keine abgeschwächte Abnahme. |
+| `0a4cd2885b095111570bf55214dd571e0f45db4b` / [34190927478](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34190927478) | npm ci, Lint, 123/123 Fachtests, Typecheck inklusive Tests, Build, Browser-/Popplerinstallation und 13/13 Chromiumprüfungen bestanden. Checkout `e4bf608b9aa0370f4692c9ba39422caa95545584` ist GitHubs PR-Mergestand gegen unverändertes main. |
+
+Umgebung: Ubuntu 24.04.4, Node 22.23.2, npm 10.9.8, Python 3.12.3,
+Chromium 153.0.8010.12. `npm test` enthält 100.000 Vergleiche gegen Python
+`decimal.Decimal`/`ROUND_HALF_UP`, keine zweite Kopie der Implementierung.
+`npm run test:browser` prüft Original/Korrektur/Reload, bestehende Schreibkonflikte
+und die neuen Ausgabekanäle einschließlich CSV-Download und echter PDFs.
+EPC-Payload wird geprüft; kein Banking-App-Scan. Synthetische PDFs/Browserberichte
+im Artefakt `browser-evidence`, sieben Tage Aufbewahrung.
+
+Lokal: Node 24.19.0/npm 11.9.0; Terminal-Clone, npm ci und Node-22-Abruf E403.
+`npm run lint`, `npm test`, `npm run typecheck`, `npm run build` jeweils vor
+Prozessstart blockiert (`network approval was cancelled before a decision was returned`).
+Kein lokales Testergebnis behauptet, keine Beschränkung umgangen. GitHub-Branch-,
+Tree-, Commit-, Ref- und PR-Schreiben tatsächlich erfolgreich. Keine neue Abhängigkeit;
+CI ergänzt lediglich die protokollierte Python-Version für den Referenzrechner.
+Abschließender Commit und zugehöriger vollständiger Prüflauf stehen im PR/Abschluss.

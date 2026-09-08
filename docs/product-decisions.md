@@ -265,12 +265,14 @@ in Paket 02, revisionssichere Speicherung in Paket 03.
 - **Originale/Umstieg:** Schema 5, unverändertes Speicherprotokoll 4. Formate 2/3
   sichern zunächst mit dem eingefrorenen Altalgorithmus ihren ältesten verfügbaren
   Belegstand; Format 4 übernimmt vorhandene Belegversionen unverändert. Neue
-  Versionen tragen `decimal-v1`/`decimal-output`. Legacy-Felder behalten ihre Namen.
+  Versionen zeigen Einzelpreise mit erhaltener Untercentpräzision und tragen `decimal-v1`/`decimal-output`. Legacy-Felder behalten ihre Namen.
   Bestehende Entwürfe behalten Mengen/Preise; Bericht und Editor zeigen geänderte
   Positionsergebnisse bzw. alte/neue Summe. Direktfinalisierung eines ungeprüften
   geänderten Altentwurfs verlangt den Editor; dessen Speichern/Finalisieren übernimmt
   die sichtbare Berechnung. Zu große Altentwürfe müssen vor neuem Speichern korrigiert
-  werden; gespeicherte Originale unterliegen nicht der neuen EPC-Grenze.
+  werden; gespeicherte Originale unterliegen nicht der neuen EPC-Grenze. Ein
+  Altentwurf außerhalb sicherer exakter Centzahlen blockiert die Übernahme mit
+  unveränderten Rohdaten, statt eine nicht darstellbare Summe zu laden.
   Archivierung der unveränderten Eingangsdaten und Bericht vor Übernahme bleibt
   verbindlich. Wiederholtes Laden/Importieren von Schema 5 migriert nichts.
   Neuere Formate bleiben schreibgeschützt; Rückweg nur mit archivierter Originaldatei

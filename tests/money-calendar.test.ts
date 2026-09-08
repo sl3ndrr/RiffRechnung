@@ -9,7 +9,7 @@ import { prepareInvoiceCopy, saveInvoiceState } from '../src/lib/commands'
 import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { captureLegacyDocuments, inspectImport } from '../src/lib/importState'
 import { selectInvoice, selectedInvoices } from '../src/lib/documents'
-import { buildEpcPayload, createReminder, invoiceTotal, invoicesToCsv, nextInvoiceAllocation, outputItemTotal } from '../src/lib/utils'
+import { buildEpcPayload, createReminder, invoiceTotal, invoicesToCsv, nextInvoiceAllocation, outputItemTotal, outputUnitPrice } from '../src/lib/utils'
 import { validateBackupState } from '../src/lib/validation'
 import { requireSuccess } from '../src/lib/result'
 import { serializeBackup, StorageSession, STORAGE_KEY } from '../src/lib/storage'
@@ -24,6 +24,10 @@ test('P05: Halbcentgrenzen, Viertelstunden, Hundertstel, Untercentpreise und Pos
   }
   assert.equal(invoiceTotalCents({ items: [line(.75, 10.1), line(.25, .02), line(.01, .5)] }), 760)
   assert.equal(invoiceTotalCents({ items: [line(.5, .01), line(.5, .01)] }), 2)
+  const fresh = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
+  assert.equal(outputUnitPrice(selectInvoice(fresh, fresh.invoices[0]), line(1, 1.005)), '1,005\u00a0€')
+  const old = v4Fixture()
+  assert.equal(outputUnitPrice({ ...old.invoices[0], issuedAmounts: old.documentVersions[0].amounts }, line(1, 1.005)), '1,01\u00a0€')
 })
 
 test('P05: 100.000 Kombinationen gegen unabhängigen Python Decimal ROUND_HALF_UP Referenzrechner', () => {
@@ -34,13 +38,13 @@ result = []
 for q in range(1, 1001):
     for p in range(1, 101):
         quantity = Decimal(q) / 100
-        price = Decimal(p) / 100
+        price = Decimal(p if p % 2 else p * 101) / 100
         cents = int((quantity * price).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP) * 100)
         result.append(cents)
 print(json.dumps(result))
 `], { encoding: 'utf8', maxBuffer: 4_000_000 })) as number[]
   let index = 0
-  for (let q = 1; q <= 1000; q++) for (let p = 1; p <= 100; p++) assert.equal(itemTotalCents(line(q / 100, p / 100)), reference[index++], `${q}/100 × ${p}/100`)
+  for (let q = 1; q <= 1000; q++) for (let p = 1; p <= 100; p++) assert.equal(itemTotalCents(line(q / 100, (p % 2 ? p : p * 101) / 100)), reference[index++], `${q}/100 × ${p}/100`)
   assert.equal(index, 100_000)
 })
 
@@ -122,6 +126,15 @@ test('P05: neue Versionen, EPC, Erinnerung, CSV, Register und Ausgabe stimmen na
   assert.match(createReminder(invoice, state.guardians, state.students).body, /7,58/)
   assert.match(invoicesToCsv(selectedInvoices(state), state.guardians, state.students), /"7,58"/)
   assert.equal(nextInvoiceAllocation(state, invoice.invoiceDate, invoice.studentIds).sequence, 2)
+  const corrupt = structuredClone(state)
+  corrupt.documentVersions[0].amounts.itemCents[0] = 757
+  corrupt.documentVersions[0].amounts.totalCents = 757
+  corrupt.documentVersions[0].amounts.legacyCalculatedTotalCents = 757
+  assert.equal(inspectImport(JSON.stringify(corrupt)).ok, false)
+  const precise = documentDraft(); precise.items[0].unitPrice = .12345678901234568
+  const restored = requireSuccess(inspectImport(serializeBackup(saveInvoiceDraft(documentFamily(), precise, true, documentAt)))).state
+  assert.equal(restored.documentVersions[0].content.items[0].unitPrice, .12345678901234568)
+  assert.equal(restored.documentVersions[0].amounts.totalCents, 9)
   assert.deepEqual(draftAmountChange(invoice), { before: 757, after: 758, changed: true })
 })
 

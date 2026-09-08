@@ -283,6 +283,7 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5, localItemIds: bool
       totalCents += invoice.calculation === 'decimal-v1' ? itemTotalCents({ quantity, unitPrice: price }) : Math.round(quantity * price * 100)
       if (!Number.isSafeInteger(totalCents)) invalidBackup(`${itemPath}.unitPrice`, 'überschreitet den sicheren Gesamtbetrag')
     })
+    if (schema === 5 && invoice.status === 'draft') sumCents((invoice.items as AppState['invoices'][number]['items']).map(itemTotalCents))
     backupString(invoice.introText, `${path}.introText`)
     backupString(invoice.freeText, `${path}.freeText`)
     backupString(invoice.legalText, `${path}.legalText`)

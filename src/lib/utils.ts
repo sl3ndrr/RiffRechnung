@@ -1,5 +1,5 @@
 import { addCalendarDays, localToday } from './calendar'
-import { invoiceTotalCents, itemTotalCents, moneyErrors } from './money'
+import { decimalInputText, invoiceTotalCents, itemTotalCents, moneyErrors } from './money'
 import { buildMailto } from './mailbox'
 import { validId, validPrice, validQuantity } from './values'
 import { assertInvoiceEditable, SPLIT_INVOICE_BLOCKED } from './safety'
@@ -580,4 +580,11 @@ export function outputItemTotal(invoice: Invoice, item: InvoiceItem): number {
 export function outputItemCents(invoice: Invoice, item: InvoiceItem): number {
   const index = invoice.items.findIndex((entry) => entry.id === item.id)
   return invoice.issuedAmounts && index >= 0 ? invoice.issuedAmounts.itemCents[index] : itemTotalCents(item)
+}
+
+export function outputUnitPrice(invoice: Invoice, item: InvoiceItem): string {
+  // Preserve historical formatting, including its original two-decimal display.
+  if (invoice.issuedAmounts?.calculation === 'legacy-v1') return euro.format(item.unitPrice)
+  const [whole, fraction = ''] = decimalInputText(item.unitPrice).split('.')
+  return `${new Intl.NumberFormat('de-DE').format(BigInt(whole))},${fraction.padEnd(2, '0')}\u00a0€`
 }
