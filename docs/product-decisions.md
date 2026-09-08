@@ -1,6 +1,6 @@
 # Produktentscheidungen
 
-Stand: Pakete 00–05, 2026-09-08. Quelle: beauftragter Umsetzungsplan zur Analyse von
+Stand: Pakete 00–06, 2026-09-08. Quelle: beauftragter Umsetzungsplan zur Analyse von
 `ba7857fd9180fa392c42a0235643e478e5077ee5`. Diese Regeln sind verbindliche Ziele;
 ihre technische Umsetzung wird pro Paket im [Umsetzungsstatus](implementation-status.md) belegt.
 
@@ -9,8 +9,8 @@ ihre technische Umsetzung wird pro Paket im [Umsetzungsstatus](implementation-st
 | Architektur | Statische React-/TypeScript-App, lokale Datenhaltung, deutsche Oberfläche; kein zusätzliches Backend. | In allen Paketen erhalten. |
 | IBAN | Ausschließlich deutsche IBANs für neue/geänderte Kontoeinstellungen und neue Finalisierungen. Keine Ausweitung auf weitere SEPA-Länder. | Sofortschutz in Paket 01 für Kontoeinstellungen und neue Finalisierungen; vollständiges Profil und EPC-Konsistenz in Paket 07. |
 | Historische Kontodaten | Alte Belege originalgetreu lesen; fremde oder leere Kontofelder weder löschen noch umschreiben noch durch aktuelle Kontodaten ersetzen. | In 04 erhalten; Profil-/EPC-Ausbau in 07. |
-| Getrennte Rechnungen | Jede Leistung pro Aufteilung insgesamt genau einmal berechnen; Empfänger erhalten nur zugeordnete Kinder/Positionen. Keine angenommene 50/50-Aufteilung. | Konservative Regel aus dem Plan übernommen, Paket 06. |
-| Rechnungskopien | Weitere Ausgabe desselben Belegs erzeugt weder neue Forderung noch zweiten Umsatz. Getrennte Forderungen brauchen getrennte Leistungen oder ausdrücklich bestätigte Anteile. | Pakete 04/06/08. |
+| Getrennte Rechnungen | Jede Leistung pro Aufteilung insgesamt genau einmal berechnen; Empfänger erhalten nur zugeordnete Kinder/Positionen. Keine angenommene 50/50-Aufteilung. | In Paket 06 als expliziter, atomarer Zuordnungsübergang umgesetzt. |
+| Rechnungskopien | Weitere Ausgabe desselben Belegs erzeugt weder neue Forderung noch zweiten Umsatz. Getrennte Forderungen brauchen getrennte Leistungen oder ausdrücklich bestätigte Anteile. | Paket 06 legt nur Forderungsrechnungen an; wiederholte Ausgabe bleibt eine Aktion am selben Beleg. Berichtsprüfung folgt zusätzlich in 08. |
 | Finalisierte Belege | Originalinhalt erhalten; Änderungen über verknüpften Korrekturentwurf mit neuer Nummer. Zahlungs- und Versandstatus separat pflegen. Fehlende Historie nicht erfinden. | In 04 umgesetzt; Details unten. |
 | Nummern und Export | Getrennte Nummernkreise, dauerhaft reservierte Nummern und CSV-Formelabwehr erhalten. | In allen betroffenen Paketen prüfen. |
 | Backup-Ordner | Ein Ordner gehört zu einem führenden Datenbestand. Abweichende Bestände erkennen; kein stilles Zusammenführen oder Überschreiben. | Konservative Regel übernommen, Paket 03. |
@@ -30,12 +30,13 @@ PRs prüfen GitHubs Merge-Stand; Pages prüft und veröffentlicht den auslösend
 
 Datei-/Demo-Sperren und die pauschale Importsperre sind durch Paket 03 ersetzt;
 die folgenden historischen Originalsperren durch den Korrekturweg aus Paket 04.
-Die Aufteilungssperre bleibt bestehen. Bei Überschneidungen gilt der jüngste Paketstand.
+Die damalige Aufteilungssperre wurde in Paket 06 durch den unten dokumentierten
+Zuordnungsübergang ersetzt. Bei Überschneidungen gilt der jüngste Paketstand.
 
 - **Aufteilung (R01/R02):** Mehrere getrennte Empfängerrechnungen sind bei Anlage,
   Entwurfsspeicherung und Finalisierung gesperrt. Eine einzelne gemeinsame
   Rechnung verlangt die Zuordnung jedes Empfängers zu jedem ausgewählten Kind.
-  Die Sperre ersetzt keine Anteilsberechnung; endgültige Aufteilung in Paket 06.
+  Die Sperre ersetzte keine Anteilsberechnung; endgültige Aufteilung siehe Paket 06.
 - **Preise (R04):** Leere, negative, unvollständige und nicht endliche Preise bleiben
   Formulareingaben; der letzte gültige Zahlenwert bleibt erhalten. Punkt und Komma
   sind als Dezimaltrenner zulässig, keine Exponentialschreibweise im Formular.
@@ -72,7 +73,7 @@ in Paket 02, revisionssichere Speicherung in Paket 03.
   ohne Personen, Positionen und vollständige Einrichtung beginnen. Vorhandene
   Positionen brauchen gültige IDs, Kalenderdaten und aktuelle Kindreferenzen.
   Finalisierung verlangt zusätzlich vollständige Leistungen/Empfänger und eine
-  gültige deutsche IBAN. Die Aufteilungssperre aus 01 bleibt bis 06 erhalten.
+  gültige deutsche IBAN. Die Aufteilungssperre aus 01 blieb bis Paket 06 erhalten.
 - **Zahlen/Identitäten:** Preise sind endlich, nicht negativ und höchstens
   `Number.MAX_SAFE_INTEGER / 100`; auch die Positions-/Rechnungssumme muss in
   sicheren Centzahlen darstellbar bleiben. Untercentpreise bleiben unverändert
@@ -285,3 +286,32 @@ in Paket 02, revisionssichere Speicherung in Paket 03.
   die freie Wahl/Korrektur des Zahlungstags und Berichtszuordnung bleiben Paket 08.
   Alte Zahlungstimestamps bleiben unverändert und zeigen weiter ihren gespeicherten
   Datumsanteil; eine historische Ortszeitzone wird nicht rückwirkend unterstellt.
+
+## Paket 06 – Empfängerbezogene Aufteilung
+
+- **Drei getrennte Begriffe:** `guardianIds` einer Ergebnisrechnung sind deren
+  Rechnungsempfänger:innen. Die Leistung wird davor je Quellposition ausdrücklich
+  einer Person oder mit bestätigten Centbeträgen mehreren Personen zugeordnet.
+  Ein erneuter Druck/Export desselben Belegs ist nur eine zusätzliche Ausgabe und
+  erzeugt weder Rechnung, Nummer noch Forderung.
+- **Keine geratene Quote:** Jede Position startet ungeklärt. Eine vollständige
+  Zuordnung übernimmt den unveränderten Positionsinhalt. Bei Teilung werden nur
+  manuell eingetragene ganze Centbeträge akzeptiert; die Summe muss exakt dem bereits
+  kaufmännisch gerundeten Quellpositionsbetrag entsprechen. Der sichtbare Rest kann
+  ausdrücklich einer Person zugeschlagen werden; es gibt keine automatische 50/50-
+  oder Haushaltsannahme.
+- **Teilpositionsdarstellung:** Ein bestätigter Teilbetrag wird als Pauschalposition
+  mit Menge 1 und exakt diesem Centpreis gespeichert. Beschreibung und Druck nennen
+  Teil- und ursprünglichen Betrag. Dadurch bleibt Schema 5 unverändert und der
+  bestehende Geld-/Export-/Reload-Vertrag gilt ohne neue Migration.
+- **Datensparsame Ergebnisse:** Kinder werden ausschließlich aus den einer Person
+  zugeordneten Positionen abgeleitet. Ausgabetexte mit dem Namen eines nicht
+  zugeordneten ausgewählten Kindes sperren den Übergang zur Klärung. Snapshot,
+  Kopf, Druck und Erinnerung verwenden danach nur die Ergebnisrechnung.
+- **Atomar und historisch:** Sämtliche Ergebnisrechnungen werden in einem reinen,
+  vollständig validierten Zustandsübergang angelegt. Erst der eine anschließende
+  Speicherabschluss macht sie sichtbar; Fehler verbrauchen keine Nummer. Jede
+  Rechnung und Position erhält eine neue ID, Nummern folgen ihrem Kindnummernkreis.
+  Übernommene historische `separate`-Belege mit ältestem verfügbarem Belegstand
+  werden nur als ungeklärt markiert und können einzeln korrigiert werden; keine
+  bestehende Forderung wird automatisch zusammengelegt oder umgeschrieben.

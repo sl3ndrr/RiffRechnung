@@ -1,10 +1,11 @@
 # Umsetzungsstatus
 
-Stand: 2026-09-08, Paket 05. Zielbranch `main` zu Beginn vollständig geprüft:
-`d44131b31b5e22eab5e28883bef167864aabe9b5`, Tree
-`6001df60433714625d31e3a0dee4e359af29372c`. Pakete 00–04 sind gemergt.
+Stand: 2026-09-08, Paket 06. Zielbranch `main` zu Beginn vollständig geprüft:
+`5b960d4c9ad46251a967d719b5b2f0c07260d145`, Tree
+`0328211bf1003796ed731eb73bb691de65fa38e7`. Pakete 00–05 sind gemergt.
 Keine `AGENTS.md` im vollständigen Repository-Tree. Arbeitsbranch:
-`codex/paket-05-geld-kalender`. Kein Merge oder Deployment in diesem Auftrag.
+`codex/paket-06-empfaengerzuordnung`, [PR #27](https://github.com/sl3ndrr/RiffRechnung/pull/27).
+Kein Merge oder Deployment in diesem Auftrag.
 
 ## Paketfolge
 
@@ -21,7 +22,7 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 | 03 | Speicherung, Backups, isolierte Demo | R05, R08, R22, N06; schrittweise R24 | Implementiert; CI-/Browsernachweise unten, native Dateirechte offen |
 | 04 | Originalbelege und Korrekturen | R03, R09, R10, F03, N09; schrittweise R24 | Implementiert; 116/116 Fachtests und 11/11 Browserprüfungen bestanden |
 | 05 | Exaktes Geld und Kalenderdaten | R06, R12; schrittweise R24 | Implementiert; 123/123 Fachtests und 13/13 Browserprüfungen bestanden |
-| 06 | Aufteilung nach Empfängern | R02; Integration R01 | Laut Analyse offen |
+| 06 | Aufteilung nach Empfängern | R02; Integration R01; schrittweise R24 | Implementiert; vollständiger CI-Nachweis unten |
 | 07 | Rechnungsprofil, deutsche IBAN, Zahlungsdaten | R07, R13 angepasst, R14 | Laut Analyse offen |
 | 08 | Zahlungstag und Berichte | R11, F02 (MVP) | Laut Analyse offen |
 | 09 | Druck und GiroCode | R16, R21, N03, N08 | Laut Analyse offen |
@@ -161,5 +162,51 @@ Keine weiteren F-/N-Befunde als behoben beansprucht. Kein Merge/Deployment.
 Migrationsrückweg und neue Grenzen sind dokumentiert; Zahlungstagswahl/Jahreszuordnung
 bleiben Paket 08, Aufteilung bleibt bis Paket 06 gesperrt.
 
-Nächstes vorgesehenes Paket: **06 – Aufteilung nach Empfängern**, nicht begonnen.
+Nächstes vorgesehenes Paket: **07 – Rechnungsprofil, deutsche IBAN und Zahlungsdaten**, nicht begonnen.
 
+## Paket 06 – Empfängerbezogene Rechnungsaufteilung
+
+- **Ausgang und Befund:** Basis `main` ist
+  `5b960d4c9ad46251a967d719b5b2f0c07260d145`. R02 und die letzte R01-Integration
+  am aktuellen Code bestätigt: Der UI-Weg war gesperrt, der Direktweg lehnte nur
+  pauschal ab, und es gab keine fachliche Zuordnung/Vorschau. Die historische
+  Vervielfältigung hätte vollständige Kinder-/Positionsmengen je Empfänger kopiert.
+- **Ergebnis:** `invoiceSplit.ts` bildet Voll- und bestätigte Centzuordnungen auf
+  datensparsame Ergebnisrechnungen ab. Der Editor zeigt Empfänger, Kinder,
+  Positionen, Einzel- und Gesamtsummen, bevor alle Ergebnisse als Entwürfe oder
+  finalisiert in einem Übergang angelegt werden. Resultate erhalten neue Rechnungs-,
+  Positions- und Beleg-IDs; Nummern folgen den vorhandenen getrennten Kinderkreisen.
+  Fremde Kindreferenzen und namentliche Fremdkinddaten in Ausgabetexten sperren.
+- **Invarianten:** Jede Quellposition ergibt über alle Ergebnisse exakt einmal ihren
+  Centbetrag. Keine Quote wird geraten. Teilbeträge müssen ganze Cent sein und exakt
+  summieren; der Rest ist sichtbar und nur ausdrücklich zuweisbar. Snapshot, Kopf,
+  Druck und Erinnerung beziehen Personen/Kinder aus der einzelnen Ergebnisrechnung.
+  Zusätzliche Ausgabe desselben Belegs erzeugt keinen Zustand und keine Forderung.
+  Ein Fehler liefert keinen Folgezustand; Zähler/Nummern bleiben unverändert.
+- **Historie/Migration:** Kein Formatwechsel; Schema 5 und Speicherprotokoll 4
+  bleiben unverändert. Ergebnisrechnungen bestehen daher vorhandenen Export-/Import-
+  und Reload-Vertrag. Historische `separate`-Belege mit Provenienz
+  `oldest-available` werden nur sichtbar zur Einzelkorrektur markiert; Beträge,
+  Snapshots, Belege, Nummern und Rohdaten bleiben unverändert. Neuere unbekannte
+  Formate, Wiederherstellungsarchive und Konfliktschutz bleiben unberührt.
+- **Nachweis:** Implementierungscommit
+  `4929c80758b1d77286eed17cbb38643c9a70ee88`. Lokal Node 24.19.0/npm 11.9.0
+  statt Node 22; `npm ci` scheiterte an Registry-E403 (`yocto-queue`). Syntaxprüfung
+  der geänderten `.ts`-Dateien und `git diff --check` erfolgreich, kein Ersatz für
+  Lint/Test/Typecheck/Build. Vollständiger Node-22-PR-Lauf wird dem Ergebniscommit
+  in `quality-gates.md` zugeordnet. Der erste Lauf 34234548343 bestand Installation,
+  Lint, 130/130 Fachtests, Test-Typecheck und Build; 13/14 Browserprüfungen. Der
+  fehlende Kindesname in Einzelkind-PDFs wurde als Implementierungsbefund korrigiert.
+
+| Abnahme Paket 06 | Ergebnis |
+| --- | --- |
+| Zwei Familien, je 30 EUR, zwei Belege und 60 EUR gesamt; nur passendes Kind in Snapshot/PDF | Implementiert; CI-Ausführung ausstehend |
+| Gemeinsame Eltern, getrennte Haushalte, Geschwister, Mehrfachberechtigte, zwei/drei Empfänger, Mehrdeutigkeit | Implementiert; CI-Ausführung ausstehend |
+| Belegkopien ohne neue Forderung; bestätigte Teilbeträge summengleich und sichtbar | Implementiert; CI-Ausführung ausstehend |
+| Entwurf/Finalisierung nach Export–Import und Speichern–Reload; Nummern/IDs | Implementiert; CI-Ausführung ausstehend |
+| Native Druckdialoge/Dateirechte, Banking-App-Scan | Nicht geprüft; nicht Gegenstand dieses Pakets |
+
+R02 und die R01-Aufteilungsintegration sind im Paketumfang implementiert; R24 wird
+durch Fach-, Speicher- und echten Browser-/PDF-Ablauf fortgeführt. Keine weiteren
+R-/F-/N-Befunde werden als behoben beansprucht. Produktannahmen stehen in
+`product-decisions.md`.

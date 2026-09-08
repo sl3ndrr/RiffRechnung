@@ -433,3 +433,39 @@ Kein lokales Testergebnis behauptet, keine Beschränkung umgangen. GitHub-Branch
 Tree-, Commit-, Ref- und PR-Schreiben tatsächlich erfolgreich. Keine neue Abhängigkeit;
 CI ergänzt lediglich die protokollierte Python-Version für den Referenzrechner.
 Abschließender Commit und zugehöriger vollständiger Prüflauf stehen im PR/Abschluss.
+
+## Paket 06 – Empfängerzuordnung (2026-09-08)
+
+Ausgang: `main` `5b960d4c9ad46251a967d719b5b2f0c07260d145`, Tree
+`0328211bf1003796ed731eb73bb691de65fa38e7`; alle früheren Pakete 00–05 gemergt.
+Implementierungscommit `4929c80758b1d77286eed17cbb38643c9a70ee88`,
+[PR #27](https://github.com/sl3ndrr/RiffRechnung/pull/27).
+
+Neue Fachregressionen prüfen Zwei-/Drei-Empfänger, verschiedene Familien,
+gemeinsame Eltern, getrennte Haushalte, Geschwister, ein Kind mit mehreren
+Erziehungsberechtigten, ungeklärte/fremde Zuordnungen, Namensschutz in Ausgabetexten,
+manuelle Teilcentbeträge, neue IDs und getrennte Nummernkreise. Der atomare
+Fehlerfall vergleicht den unveränderten Eingangszustand und leere Zähler. Entwürfe
+und Finalisierungen durchlaufen produktive Serialisierung, Import und Storage-Reload.
+Ein echter Chromium-/PDF-Ablauf bedient Zuordnung und gemeinsame Vorschau,
+finalisiert beide Rechnungen, lädt neu und prüft beide PDFs auf ausschließlich die
+passende Familie/das passende Kind. Wiederholte Ausgabe wird als zustandsloser
+Zugriff auf denselben Forderungsbeleg geprüft.
+
+Lokal steht nur Node 24.19.0/npm 11.9.0 bereit. `npm ci --fetch-retries=0
+--fetch-timeout=20000` scheiterte mit E403 beim Abruf von `yocto-queue`; deshalb
+konnten Lint, gebündelte Fachtests, Projekt-Typecheck, Build und Playwright lokal
+nicht starten. `node --experimental-strip-types --check` für die geänderten
+`.ts`-Module/Tests sowie `git diff --check` bestanden. Der vollständige Node-22-
+CI-Lauf einschließlich Testdatei-Typen, Chromium und echter PDFs ist ausstehend;
+Zwischenfehler werden hier dem verursachenden Commit zugeordnet.
+
+Erster Lauf [34234548343](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34234548343)
+auf `4929c80758b1d77286eed17cbb38643c9a70ee88`: `npm ci`, Lint, **130/130**
+Fachtests, Typecheck einschließlich Tests, Build, Chromium- und Popplerinstallation
+bestanden; 13/14 Browserprüfungen bestanden. Ausschließlich die neue PDF-Abnahme
+schlug fehl: Die bestehende Einzelkind-Druckvorlage enthielt zwar nur die korrekten
+Positionen, nannte den zugeordneten Kindesnamen aber nicht. Die Vorlage wurde um
+die aus dem jeweiligen Snapshot abgeleitete Zeile „Unterricht für“ ergänzt; die
+Prüferwartung bleibt unverändert. Umgebung: Ubuntu 24.04, Node 22.23.2, npm 10.9.8,
+Python 3.12.3, Chromium 153.0.8010.12. Artefakt `browser-evidence` ID 10059343469.

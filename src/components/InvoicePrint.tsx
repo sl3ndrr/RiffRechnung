@@ -154,6 +154,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
         <section className="invoice-intro">
           <p>Sehr geehrte/r {salutation},</p>
           <p>{invoice.introText}</p>
+          <p><strong>Unterricht für:</strong> {studentList.map((student) => student.name).join(', ') || '–'}</p>
         </section>
 
         <table className="invoice-table">
@@ -231,4 +232,3 @@ function PrintGroup({ invoice, label, items, showSubtotal }: { invoice: Invoice;
     </>
   )
 }
-

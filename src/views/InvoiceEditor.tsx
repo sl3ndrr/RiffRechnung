@@ -261,7 +261,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
         </section>
 
         <section className="form-section">
-          <div className="form-section__heading form-section__heading--action"><span>3</span><div><h3>Positionen</h3><p>Unterricht, Pauschalen oder sonstige Leistungen.</p></div><button className="button button--tonal" type="button" onClick={addItem}><Plus aria-hidden="true" /> Position</button></div>
+          <div className="form-section__heading form-section__heading--action"><span>{form.recipientStrategy === 'separate' && form.guardianIds.length > 1 ? '4' : '3'}</span><div><h3>Positionen</h3><p>Unterricht, Pauschalen oder sonstige Leistungen.</p></div><button className="button button--tonal" type="button" onClick={addItem}><Plus aria-hidden="true" /> Position</button></div>
           <div className="editor-items">
             {form.items.map((item, index) => (
               <div className="editor-item" key={item.id}>
@@ -282,7 +282,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
         </section>
 
         <section className="form-section">
-          <div className="form-section__heading"><span>4</span><div><h3>Textbausteine</h3><p>Individuelle Hinweise für diese Rechnung.</p></div></div>
+          <div className="form-section__heading"><span>{form.recipientStrategy === 'separate' && form.guardianIds.length > 1 ? '5' : '4'}</span><div><h3>Textbausteine</h3><p>Individuelle Hinweise für diese Rechnung.</p></div></div>
           <div className="form-grid form-grid--2">
             <label className="field"><span id="invoice-intro-label">Einleitung</span><textarea aria-labelledby="invoice-intro-label" rows={4} value={form.introText} onChange={(event) => setForm({ ...form, introText: event.target.value })} /></label>
             <label className="field"><span id="invoice-note-label">Freitext / Hinweis</span><textarea aria-labelledby="invoice-note-label" rows={4} value={form.freeText} onChange={(event) => setForm({ ...form, freeText: event.target.value })} placeholder="Optional" /></label>
