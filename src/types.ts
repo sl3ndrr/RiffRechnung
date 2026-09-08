@@ -73,6 +73,7 @@ export interface InvoiceSnapshot {
 }
 
 export interface Invoice {
+  calculation?: 'decimal-v1'
   id: string
   number: string | null
   sequence: number | null
@@ -105,8 +106,8 @@ export interface DocumentAmounts {
   itemCents: number[]
   totalCents: number
   legacyCalculatedTotalCents: number
-  source: 'legacy-output' | 'number-register'
-  calculation: 'legacy-v1'
+  source: 'legacy-output' | 'number-register' | 'decimal-output'
+  calculation: 'legacy-v1' | 'decimal-v1'
 }
 
 export type DocumentContent = Omit<Invoice, 'status' | 'paidAt' | 'sentAt' | 'updatedAt' | 'versionId' | 'correction' | 'issuedAmounts' | 'claimState' | 'archived'>
@@ -194,7 +195,7 @@ export interface VoidedInvoiceNumber {
 }
 
 export interface AppState {
-  schemaVersion: 4
+  schemaVersion: 5
   guardians: Guardian[]
   students: Student[]
   invoices: Invoice[]
@@ -230,3 +231,4 @@ export interface InvoiceDraft {
   freeText: string
   legalText: string
 }
+

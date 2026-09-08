@@ -1,7 +1,8 @@
+import { sumCents } from '../lib/money'
 import { useEffect, useMemo, useState } from 'react'
 import QRCode from 'qrcode'
 import type { Guardian, Invoice, Settings, Student } from '../types'
-import { billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, euro, footerTextForPrint, formatDateLong, formatIban, groupItemsByStudent, invoiceTotal, isValidIban, outputItemTotal, number, parseDate } from '../lib/utils'
+import { billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, euro, footerTextForPrint, formatDateLong, formatIban, groupItemsByStudent, invoiceTotal, isValidIban, outputItemTotal, outputItemCents, outputUnitPrice, number, parseDate } from '../lib/utils'
 
 interface InvoicePrintProps {
   invoice: Invoice | null
@@ -206,7 +207,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
 }
 
 function PrintGroup({ invoice, label, items, showSubtotal }: { invoice: Invoice; label: string; items: Invoice['items']; showSubtotal: boolean }) {
-  const subtotal = items.reduce((sum, item) => sum + outputItemTotal(invoice, item), 0)
+  const subtotal = sumCents(items.map((item) => outputItemCents(invoice, item))) / 100
   return (
     <>
       <tr className="invoice-group-heading"><td colSpan={5}><strong>{label}</strong><span /></td></tr>
@@ -215,7 +216,7 @@ function PrintGroup({ invoice, label, items, showSubtotal }: { invoice: Invoice;
           <td>{item.serviceDate ? new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' }).format(parseDate(item.serviceDate)) : '–'}</td>
           <td>{item.description}</td>
           <td>{number.format(item.quantity)} {item.unit === 'Std.' ? '' : item.unit}</td>
-          <td>{euro.format(item.unitPrice)}</td>
+          <td>{outputUnitPrice(invoice, item)}</td>
           <td>{euro.format(outputItemTotal(invoice, item))}</td>
         </tr>
       ))}
@@ -230,3 +231,4 @@ function PrintGroup({ invoice, label, items, showSubtotal }: { invoice: Invoice;
     </>
   )
 }
+

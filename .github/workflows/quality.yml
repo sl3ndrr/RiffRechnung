@@ -30,6 +30,7 @@ jobs:
           git rev-parse HEAD
           node --version
           npm --version
+          python3 --version
       - run: npm ci
       - run: npm run lint
       - run: npm test
@@ -61,3 +62,4 @@ jobs:
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: dist
+

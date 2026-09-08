@@ -1,6 +1,6 @@
 # Produktentscheidungen
 
-Stand: Pakete 00–04, 2026-09-08. Quelle: beauftragter Umsetzungsplan zur Analyse von
+Stand: Pakete 00–05, 2026-09-08. Quelle: beauftragter Umsetzungsplan zur Analyse von
 `ba7857fd9180fa392c42a0235643e478e5077ee5`. Diese Regeln sind verbindliche Ziele;
 ihre technische Umsetzung wird pro Paket im [Umsetzungsstatus](implementation-status.md) belegt.
 
@@ -242,3 +242,46 @@ in Paket 02, revisionssichere Speicherung in Paket 03.
   Rückkehr zu altem Code ausschließlich mit Originaldatei in getrenntem Profil.
   Vollständige JSON-Backups enthalten alle Versionen und Verwaltungsdaten;
   CSV dient als gekennzeichnete Übersicht, nicht als vollständiges Restore-Format.
+
+
+## Paket 05 – Dezimalbeträge und Kalenderdaten
+
+- **Einheiten/Präzision:** Menge in Std., Pauschale oder Stück, jeweils 0,01–99,99,
+  höchstens zwei Nachkommastellen; Schaltflächen ändern weiter um 0,25. Preise
+  sind EUR je Einheit. Altcode erlaubte jede endliche nichtnegative JSON-Zahl bis
+  `Number.MAX_SAFE_INTEGER / 100`, ohne feste Nachkommastellengrenze. Diese
+  kanonische Dezimalpräzision bleibt vollständig erhalten (auch Untercentpreise,
+  Exponenten und subnormale Zahlen; höchstens 324 Nachkommastellen bei Number).
+  Neue Texteingaben erlauben Punkt/Komma ohne Exponenten und müssen dezimal exakt
+  als JSON-Number rücklesbar sein; andernfalls sichtbarer Eingabefehler statt Rundung.
+  Zusätzliche ursprünglich schon beim JSON-Parsen verlorene Ziffern werden nicht erfunden.
+- **Rechnung:** BigInt-Koeffizienten mit Dezimalskala, Multiplikation vor jeder
+  Number-Konvertierung. Jede Position kaufmännisch (HALF_UP) auf Cent runden,
+  dann Centbeträge addieren. BigInt bleibt intern; JSON enthält sichere Zahlen.
+  Neue/gespeicherte Entwürfe und neue Finalisierungen maximal 999.999.999,99 EUR
+  (gemeinsame EPC-Obergrenze); Null bleibt als Betrag erlaubt, ohne GiroCode.
+  Alte Preisgrenze bleibt zur verlustfreien Bearbeitung bestehen; maßgeblich ist
+  zusätzlich die Rechnungssumme. Überlauf wird kontrolliert abgewiesen.
+- **Originale/Umstieg:** Schema 5, unverändertes Speicherprotokoll 4. Formate 2/3
+  sichern zunächst mit dem eingefrorenen Altalgorithmus ihren ältesten verfügbaren
+  Belegstand; Format 4 übernimmt vorhandene Belegversionen unverändert. Neue
+  Versionen zeigen Einzelpreise mit erhaltener Untercentpräzision und tragen `decimal-v1`/`decimal-output`. Legacy-Felder behalten ihre Namen.
+  Bestehende Entwürfe behalten Mengen/Preise; Bericht und Editor zeigen geänderte
+  Positionsergebnisse bzw. alte/neue Summe. Direktfinalisierung eines ungeprüften
+  geänderten Altentwurfs verlangt den Editor; dessen Speichern/Finalisieren übernimmt
+  die sichtbare Berechnung. Zu große Altentwürfe müssen vor neuem Speichern korrigiert
+  werden; gespeicherte Originale unterliegen nicht der neuen EPC-Grenze. Ein
+  Altentwurf außerhalb sicherer exakter Centzahlen blockiert die Übernahme mit
+  unveränderten Rohdaten, statt eine nicht darstellbare Summe zu laden.
+  Archivierung der unveränderten Eingangsdaten und Bericht vor Übernahme bleibt
+  verbindlich. Wiederholtes Laden/Importieren von Schema 5 migriert nichts.
+  Neuere Formate bleiben schreibgeschützt; Rückweg nur mit archivierter Originaldatei
+  in getrenntem Profil mit passendem alten Code, kein In-place-Downgrade.
+- **Kalender:** Rechnungs-, Leistungs-, Fälligkeits- und neue Zahlungstage sind
+  Gregorianische YYYY-MM-DD-Daten (0001–9999). Heute wird aus lokalen Komponenten
+  der Browser-Zeitzone erzeugt. Monatsverschiebung begrenzt jeden Tag auf den letzten
+  gültigen Zielmonatstag. Technische Ereignisse bleiben ISO-Zeitpunkte. Neue
+  Vollzahlungen speichern den lokalen Erfassungstag getrennt von `recordedAt`;
+  die freie Wahl/Korrektur des Zahlungstags und Berichtszuordnung bleiben Paket 08.
+  Alte Zahlungstimestamps bleiben unverändert und zeigen weiter ihren gespeicherten
+  Datumsanteil; eine historische Ortszeitzone wird nicht rückwirkend unterstellt.

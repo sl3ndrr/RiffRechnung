@@ -1,3 +1,4 @@
+import { invoiceTotalCents, sumCents } from '../lib/money'
 import { activeInvoices, openCents, selectedInvoices, recordedPayments } from '../lib/documents'
 import { CalendarRange, CheckCircle2, Download, ReceiptText, TrendingUp, TriangleAlert } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -13,8 +14,8 @@ export function Reports({ state }: { state: AppState }) {
   const paid = invoices.filter((invoice) => effectiveStatus(invoice) === 'paid')
   const open = invoices.filter((invoice) => ['sent', 'overdue'].includes(effectiveStatus(invoice)))
   const received = recordedPayments(state, year)
-  const paidTotal = received.reduce((sum, payment) => sum + payment.amountCents / 100, 0)
-  const billedTotal = invoices.reduce((sum, invoice) => sum + invoiceTotal(invoice), 0)
+  const paidTotal = sumCents(received.map((payment) => payment.amountCents)) / 100
+  const billedTotal = sumCents(invoices.map(invoiceTotalCents)) / 100
   const monthly = Array.from({ length: 12 }, (_, index) => {
     const key = `${year}-${String(index + 1).padStart(2, '0')}`
     const monthInvoices = invoices.filter((invoice) => monthKey(invoice.invoiceDate) === key)
@@ -22,8 +23,8 @@ export function Reports({ state }: { state: AppState }) {
       key,
       label: new Intl.DateTimeFormat('de-DE', { month: 'long' }).format(new Date(year, index, 1)),
       count: monthInvoices.length,
-      billed: monthInvoices.reduce((sum, invoice) => sum + invoiceTotal(invoice), 0),
-      paid: received.filter((payment) => monthKey(state.documentVersions.find((version) => version.id === payment.sourceVersionId)!.content.invoiceDate) === key).reduce((sum, payment) => sum + payment.amountCents / 100, 0),
+      billed: sumCents(monthInvoices.map(invoiceTotalCents)) / 100,
+      paid: sumCents(received.filter((payment) => monthKey(state.documentVersions.find((version) => version.id === payment.sourceVersionId)!.content.invoiceDate) === key).map((payment) => payment.amountCents)) / 100,
     }
   })
   const max = Math.max(...monthly.map((month) => month.billed), 1)
@@ -47,7 +48,7 @@ export function Reports({ state }: { state: AppState }) {
       <section className="metric-grid metric-grid--3">
         <article className="mini-metric"><span className="mini-metric__icon mini-metric__icon--blue"><ReceiptText aria-hidden="true" /></span><div><p>Rechnungen</p><strong>{invoices.length}</strong></div></article>
         <article className="mini-metric"><span className="mini-metric__icon mini-metric__icon--green"><CheckCircle2 aria-hidden="true" /></span><div><p>Bezahlt</p><strong>{paid.length}</strong></div></article>
-        <article className="mini-metric"><span className="mini-metric__icon mini-metric__icon--red"><TriangleAlert aria-hidden="true" /></span><div><p>Offen</p><strong>{euro.format(open.reduce((sum, invoice) => sum + openCents(state, invoice) / 100, 0))}</strong></div></article>
+        <article className="mini-metric"><span className="mini-metric__icon mini-metric__icon--red"><TriangleAlert aria-hidden="true" /></span><div><p>Offen</p><strong>{euro.format(sumCents(open.map((invoice) => openCents(state, invoice))) / 100)}</strong></div></article>
       </section>
 
       <div className="reports-grid">
@@ -74,3 +75,4 @@ export function Reports({ state }: { state: AppState }) {
     </div>
   )
 }
+

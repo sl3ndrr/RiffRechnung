@@ -70,8 +70,8 @@ Der GiroCode füllt Empfänger, IBAN, Betrag und Rechnungsnummer in unterstützt
 Finalisieren sichert den vollständigen Beleg. Spätere Änderungen an Stammdaten,
 Konten oder Textbausteinen verändern ihn nicht. Ansicht, Druck, Erinnerung und
 Export verwenden dieselbe ausgewählte Version, auch bei leeren historischen
-Kontofeldern. Bereits ausgegebene Beträge werden vor der Rechenumstellung in
-Paket 05 mit der bisherigen Logik gesichert.
+Kontofeldern. Bereits gesicherte Beträge bleiben bei der Rechenumstellung erhalten;
+ältere Formate ohne Belegversion sichern zunächst ihren bisherigen Ausgabestand.
 
 In den Rechnungsdetails einen **Korrekturgrund** eingeben und **Korrekturentwurf
 erzeugen** wählen. Der Entwurf übernimmt sämtliche Positionen. Gelöschte Kinder
@@ -145,12 +145,12 @@ Demo-Änderungen gehen beim Verlassen verloren.
 
 ### Datenprüfung und kontrollierter Formatumstieg
 
-Das Datenschema ist Format 4; die Speicherung verwendet weiterhin den versionierten
+Das Datenschema ist Format 5; die Speicherung verwendet weiterhin den versionierten
 Umschlag aus Paket 03 (Speicherprotokoll 4). Entwürfe können unvollständig sein; ungültige
 Preise, Mengen, IDs oder Referenzen werden nicht gespeichert. Nur deutsche IBANs
 sind für neue/geänderte Kontoeinstellungen und neue Finalisierungen zugelassen.
 
-Beim Import und im Wiederherstellungsmodus lassen sich Formate 2 und 3 prüfen. Bekannte
+Beim Import und im Wiederherstellungsmodus lassen sich Formate 2, 3 und 4 prüfen. Bekannte
 Empfängerkopien mit doppelten Positions-IDs erhalten eine Reparaturvorschau,
 separate Exporte und einen Bericht mit Originaldaten. Die bestätigte Übernahme
 verwendet denselben abgesicherten Schreibdienst wie normale Änderungen.
@@ -159,7 +159,7 @@ Abweichungen und übernommenen Verwaltungs-/Zahlungsangaben. Vorhandene Register
 haben Vorrang; die abweichende bisherige Rechnungssumme bleibt ebenfalls erhalten.
 
 Beim Umstieg **alle alten Tabs schließen**, Original exportieren und die Vorschau
-bestätigen. Paket 04 verwendet die Speicher-Schlüssel und Handle-Datenbank aus
+bestätigen. Paket 05 verwendet die Speicher-Schlüssel und Handle-Datenbank aus
 Paket 03 weiter. Alte Rohtexte bleiben im Wiederherstellungsarchiv erhalten. Ändert ein alter
 Tab ihn später, erscheint ein Konflikt; beide Stände separat exportieren und in
 einem getrennten aktuellen Profil prüfen. Unbekannte neuere Formate bleiben
@@ -181,3 +181,17 @@ Paket 04 prüft zusätzlich echte Chromium-PDFs anhand ihres Textinhalts. Synthe
 PDFs und Browsernachweise stehen sieben Tage als CI-Artefakt `browser-evidence`
 bereit. Native Druckdialoge, Drucklayout-Matrix und Banking-App-Scans sind separate
 Abnahmen; die automatisierte PDF-Prüfung ersetzt sie nicht.
+
+
+### Dezimalbeträge und Kalenderdaten (Paket 05)
+
+Neue Positionen werden vor der Multiplikation dezimal exakt ausgewertet,
+positionsweise kaufmännisch auf Cent gerundet und als Centbeträge addiert.
+Mengen erlauben 0,01–99,99 mit zwei Nachkommastellen; Untercentpreise bleiben
+verlustfrei erhalten. Neue Rechnungen sind auf 999.999.999,99 EUR begrenzt.
+Schema 5 bewahrt bereits gesicherte Originalbeträge. Geänderte Altentwurfsbeträge
+werden beim Umstieg und im Editor angezeigt. Vor Übernahme bleibt das Original
+mit Migrationsbericht im Wiederherstellungsarchiv; alte Tabs vorher schließen.
+Rechnungs- und Leistungstage verwenden lokale Kalenderdaten; Monatskopien
+begrenzen etwa den 31. Januar auf den 28./29. Februar. Details und Nachweise:
+[Produktentscheidungen](docs/product-decisions.md), [Umsetzungsstatus](docs/implementation-status.md).

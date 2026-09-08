@@ -20,10 +20,11 @@ export function documentDraft(): InvoiceDraft {
 export function legacyFixture(state: AppState): LegacyState {
   const copy = structuredClone(state)
   for (const key of ['documentVersions', 'invoiceAdministration', 'payments', 'historicalSnapshotCorrections']) Reflect.deleteProperty(copy, key)
-  for (const invoice of copy.invoices) for (const key of ['versionId', 'correction', 'issuedAmounts', 'claimState', 'archived']) Reflect.deleteProperty(invoice, key)
+  for (const invoice of copy.invoices) for (const key of ['calculation', 'versionId', 'correction', 'issuedAmounts', 'claimState', 'archived']) Reflect.deleteProperty(invoice, key)
   return { ...copy, schemaVersion: 3 }
 
 }
 export function editable(invoice: Invoice): InvoiceDraft {
   return { id: invoice.id, correction: invoice.correction, invoiceDate: invoice.invoiceDate, dueDate: invoice.dueDate, period: invoice.period, guardianIds: [...invoice.guardianIds], studentIds: [...invoice.studentIds], recipientStrategy: invoice.recipientStrategy, items: structuredClone(invoice.items), introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText }
 }
+

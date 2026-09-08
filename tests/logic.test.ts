@@ -1,3 +1,4 @@
+import './money-calendar.test'
 import { legacyFixture } from './documentFixtures'
 import { captureLegacyDocuments } from '../src/lib/importState'
 import { seedState, sharedLock, fakeDirectory } from './storageHarness'
@@ -579,7 +580,7 @@ test('vollständiges Backup lässt sich wiederherstellen', () => {
     },
   })
   const restored = parseBackup(serializeBackup(state))
-  assert.equal(restored.schemaVersion, 4)
+  assert.equal(restored.schemaVersion, 5)
   assert.equal(restored.settings.issuer.name, 'Test Unterricht')
   assert.equal(restored.students[0]?.billingCode, 'a')
   assert.equal(restored.voidedInvoiceNumbers[0]?.number, '2026-a-0004')
@@ -910,3 +911,4 @@ test('sichtbare App-Version entspricht dem neuesten Changelog-Eintrag', () => {
 test('nicht unterstütztes Backup wird abgelehnt', () => {
   assert.throws(() => parseBackup('{"schemaVersion":99}'), /unterstütztes Backup-Format/)
 })
+

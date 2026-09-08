@@ -1,3 +1,5 @@
+import { localToday } from './calendar'
+import { draftAmountChange, moneyErrors } from './money'
 import { allocatedCents, captureDocument, correctionErrors, snapshotFor, persistentInvoice } from './documents'
 import { validId } from './values'
 import { freshId } from './identities'
@@ -13,11 +15,12 @@ function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatu
   if (ibanError) errors.push(ibanError)
   if (errors.length) throw new Error(`Finalisieren nicht möglich: ${errors.join(' ')}`)
   if (status === 'paid' && invoice.correction && state.payments.some((payment) => state.documentVersions.find((entry) => entry.id === payment.sourceVersionId)?.originalId === state.documentVersions.find((entry) => entry.id === invoice.correction?.replacesId)?.originalId)) throw new Error('Vorhandene Zahlungen müssen nach der Korrektur manuell zugeordnet werden; eine neue Vollzahlung wird nicht erzeugt.')
+  if (!invoice.calculation && draftAmountChange(invoice).changed) throw new Error('Die Betragsberechnung hat sich geändert. Bitte den Entwurf im Editor prüfen und speichern.')
   const allocation = nextInvoiceAllocation(state, invoice.invoiceDate, invoice.studentIds)
   const finalized: Invoice = {
-    ...invoice, number: allocation.number, sequence: allocation.sequence, status,
+    ...invoice, calculation: 'decimal-v1', number: allocation.number, sequence: allocation.sequence, status,
     snapshot: snapshotFor(state, invoice), sentAt: at, updatedAt: at,
-    ...(status === 'paid' ? { paidAt: at } : {}),
+    ...(status === 'paid' ? { paidAt: localToday(new Date(at)) } : {}),
   }
   const version = captureDocument(state, finalized, freshId('version', new Set(state.documentVersions.map((entry) => entry.id)), uid), false)
   finalized.versionId = version.id
@@ -29,7 +32,7 @@ function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatu
     invoiceAdministration: [...state.invoiceAdministration, { versionId: version.id, archived: false, events: [{ at, status: status as Exclude<InvoiceStatus, 'draft'>, kind: 'status', reason: 'Beleg finalisiert.' }], resolutions: [] }],
     payments: status === 'paid' ? [...state.payments, {
       id: freshId('payment', new Set(state.payments.map((entry) => entry.id)), uid), sourceVersionId: version.id, amountCents: version.amounts.totalCents,
-      paidAt: at, recordedAt: at, provenance: 'recorded', allocations: [{ versionId: version.id, at, reason: 'Bei Finalisierung als vollständig bezahlt erfasst.' }],
+      paidAt: localToday(new Date(at)), recordedAt: at, provenance: 'recorded', allocations: [{ versionId: version.id, at, reason: 'Bei Finalisierung als vollständig bezahlt erfasst.' }],
     }] : state.payments,
   }
 }
@@ -41,12 +44,12 @@ export function saveInvoiceDraft(state: AppState, draft: InvoiceDraft, finalize:
   if (draft.id && !existing) throw new Error('Der Entwurf ist nicht mehr vorhanden. Bitte neu laden.')
   assertInvoiceEditable(existing)
   if (existing?.correction?.replacesId !== draft.correction?.replacesId && existing) throw new Error('Der Korrekturverweis eines gespeicherten Entwurfs bleibt erhalten.')
-  const errors = finalize ? invoiceFinalizationErrors(state, draft) : draftAudienceErrors(state, draft)
+  const errors = [...moneyErrors(draft), ...(finalize ? invoiceFinalizationErrors(state, draft) : draftAudienceErrors(state, draft))]
   if (errors.length) throw new Error(errors.join(' '))
   const saved: Invoice = {
     ...structuredClone(draft), id: existing?.id ?? freshId('invoice', new Set(state.invoices.map((invoice) => invoice.id)), uid), number: null, sequence: null,
     year: parseDate(draft.invoiceDate).getFullYear(), period: billingPeriodFromItems(draft.items, draft.invoiceDate),
-    status: 'draft', recipientStrategy: 'joint', createdAt: existing?.createdAt ?? at, updatedAt: at,
+    status: 'draft', calculation: 'decimal-v1', recipientStrategy: 'joint', createdAt: existing?.createdAt ?? at, updatedAt: at,
   }
   let next = { ...state, invoices: [...state.invoices.filter((invoice) => invoice.id !== saved.id), persistentInvoice(saved)] }
   validateBackupState(next)
@@ -72,7 +75,7 @@ export function changeInvoiceStatus(state: AppState, invoiceId: string, status: 
       if (related.length && allocatedCents(state, versionId) < version.amounts.totalCents) throw new Error('Es gibt bereits Zahlungen zu diesem Vorgang. Bitte diese ausdrücklich zuordnen und eine Betragsdifferenz prüfen; es wird keine Zahlung kopiert.')
       if (!related.length) payments = [...payments, {
         id: freshId('payment', new Set(payments.map((entry) => entry.id)), uid), sourceVersionId: versionId, amountCents: version.amounts.totalCents,
-        paidAt: at, recordedAt: at, provenance: 'recorded', allocations: [{ versionId, at, reason: 'Vollzahlung ausdrücklich erfasst.' }],
+        paidAt: localToday(new Date(at)), recordedAt: at, provenance: 'recorded', allocations: [{ versionId, at, reason: 'Vollzahlung ausdrücklich erfasst.' }],
       }]
     } else if (invoice.status === 'paid') {
       payments = payments.map((payment) => payment.allocations.at(-1)?.versionId === versionId ? { ...payment, allocations: [...payment.allocations, { versionId: null, at, reason: 'Zahlungsstatus ausdrücklich zurückgenommen; Zahlung zur manuellen Klärung erhalten.' }] } : payment)
@@ -102,3 +105,4 @@ export function invoiceDraftErrors(state: AppState, draft: InvoiceDraft): string
   const result = commandResult(() => saveInvoiceDraft(state, draft, false))
   return result.ok ? [] : result.errors.map((error) => error.message)
 }
+

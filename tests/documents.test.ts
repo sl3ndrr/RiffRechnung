@@ -138,9 +138,9 @@ test('P04: kontrollierte Migration eines Protokoll-4/Schema-3-Bestands bewahrt R
   assert.equal(session.revision!.datasetId, old.datasetId)
   const archive = JSON.parse(JSON.parse(session.exportRecoveryArchive()).recoveries[0].raw)
   assert.equal(archive.previousRaw, raw); assert.equal(archive.sourceRaw, raw)
-  assert.equal(archive.report.toSchema, 4)
+  assert.equal(archive.report.toSchema, 5)
   assert.equal(new StorageSession({ storage, lock: sharedLock() }).initial.status, 'ready')
-  const future = JSON.stringify({ ...old, schemaVersion: 5, data: { ...old.data, schemaVersion: 5 } })
+  const future = JSON.stringify({ ...old, schemaVersion: 6, data: { ...old.data, schemaVersion: 6 } })
   storage.setItem(STORAGE_KEY, future)
   await assert.rejects(new StorageSession({ storage, lock: sharedLock() }).restore(session.export()), /neuere Formate/)
   assert.equal(storage.getItem(STORAGE_KEY), future)
@@ -181,7 +181,7 @@ test('P04: bezahlte Korrekturen zählen genau einmal; Zahlungen werden nur manue
   assert.deepEqual(state.payments[0], originalPayment)
   assert.equal(activeInvoices(state).length, 1)
   assert.equal(openCents(state, first), 0)
-  assert.equal(openCents(state, replacement), 757)
+  assert.equal(openCents(state, replacement), 758)
   assert.throws(() => changeInvoiceStatus(state, replacement.id, 'paid', at), /zuordnen/)
   const before = state
   const another = createCorrectionDraft(state, replacement.id, 'Weitere Korrektur', at)
@@ -191,13 +191,13 @@ test('P04: bezahlte Korrekturen zählen genau einmal; Zahlungen werden nur manue
   assert.equal(allocatedCents(state, first.versionId!), 0)
   assert.equal(openCents(state, replacement), 0)
   assert.equal(state.payments.length, 1)
-  assert.equal(state.payments[0].amountCents, 757)
+  assert.equal(state.payments[0].amountCents, 758)
   assert.equal(state.payments[0].sourceVersionId, first.versionId)
   assert.equal(state.payments[0].allocations.length, 2)
   state = await persistReload(state)
   const released = allocatePayment(state, originalPayment.id, null, 'Zuordnung zur manuellen Klärung gelöst', at)
   assert.equal(released.payments.length, 1)
-  assert.equal(openCents(released, replacement), 757)
+  assert.equal(openCents(released, replacement), 758)
   assertOriginalsPreserved(state, released)
 })
 
@@ -211,8 +211,8 @@ test('P04: Betragsdifferenz bleibt als Restforderung oder Überzahlung sichtbar,
     const last = state.invoices.at(-1)!
     state = allocatePayment(state, state.payments[0].id, last.versionId!, 'Alte Vollzahlung auf Korrektur anrechnen; Differenz separat klären', at)
     assert.equal(state.payments.length, 1)
-    assert.equal(openCents(state, last), price === 20 ? 743 : 0)
-    assert.equal(state.documentVersions.at(-1)!.amounts.totalCents - allocatedCents(state, last.versionId!), price === 20 ? 743 : -382)
+    assert.equal(openCents(state, last), price === 20 ? 742 : 0)
+    assert.equal(state.documentVersions.at(-1)!.amounts.totalCents - allocatedCents(state, last.versionId!), price === 20 ? 742 : -383)
     await persistReload(state)
   }
 })
@@ -314,3 +314,4 @@ test('P04: Snapshot-Differenzen gelöschter Altrechnungen bleiben sichtbar, ohne
   assert.match(markup, /nicht rekonstruiert/)
   assert.throws(() => assertOriginalsPreserved(state, { ...state, historicalSnapshotCorrections: [] }), /Snapshot-Differenzen/)
 })
+

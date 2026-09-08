@@ -1,7 +1,8 @@
+import { invoiceTotalCents, itemTotalCents, legacyItemCents } from './money'
 import type { AppState, DocumentContent, DocumentVersion, Invoice, InvoiceDraft, InvoiceSnapshot } from '../types'
 import { canonical } from './envelope'
 import { copyItemsWithFreshIds, freshId } from './identities'
-import { billingPeriodFromItems, guardianName, invoiceTotal, itemTotal, uid } from './utils'
+import { billingPeriodFromItems, guardianName, uid } from './utils'
 import { validateBackupState } from './validation'
 
 export function documentContent(invoice: Invoice): DocumentContent {
@@ -28,13 +29,13 @@ export function snapshotFor(state: Pick<AppState, 'guardians' | 'students' | 'se
   }
 }
 
-// This deliberately freezes the existing calculation BEFORE package 05.
+// Historical imports use the frozen pre-P05 algorithm; new versions use exact cents.
 // The raw inputs, calculated output and any register evidence remain distinct.
 export function captureDocument(state: AppState, invoice: Invoice, id: string, historical: boolean): DocumentVersion {
   const snapshot = structuredClone(invoice.snapshot ?? snapshotFor(state, invoice))
   const registerEntries = state.voidedInvoiceNumbers.filter((entry) => entry.number === invoice.number)
-  const itemCents = invoice.items.map((item) => Math.round(itemTotal(item) * 100))
-  const legacyCalculatedTotalCents = Math.round(invoiceTotal(invoice) * 100)
+  const itemCents = invoice.items.map(historical ? legacyItemCents : itemTotalCents)
+  const legacyCalculatedTotalCents = historical ? itemCents.reduce((sum, value) => sum + value, 0) : invoiceTotalCents(invoice)
   const totalCents = registerEntries.length ? Math.round(registerEntries[0].amount * 100) : legacyCalculatedTotalCents
   const parent = invoice.correction && state.documentVersions.find((version) => version.id === invoice.correction?.replacesId)
   const version: DocumentVersion = {
@@ -44,7 +45,7 @@ export function captureDocument(state: AppState, invoice: Invoice, id: string, h
     content: documentContent(invoice), outputSnapshot: snapshot,
     outputPeriod: billingPeriodFromItems(invoice.items, invoice.invoiceDate),
     outputLegalText: historical ? invoice.legalText || invoice.snapshot?.legalText || state.settings.defaultLegalText : invoice.legalText,
-    amounts: { itemCents, totalCents, legacyCalculatedTotalCents, source: registerEntries.length ? 'number-register' : 'legacy-output', calculation: 'legacy-v1' },
+    amounts: { itemCents, totalCents, legacyCalculatedTotalCents, source: historical ? registerEntries.length ? 'number-register' : 'legacy-output' : 'decimal-output', calculation: historical ? 'legacy-v1' : 'decimal-v1' },
     conflicts: [], snapshotHistory: structuredClone(state.historicalSnapshotCorrections.filter((event) => event.entityType === 'invoice' && event.entityId === invoice.id && event.snapshotCorrection)),
     registerEntries: structuredClone(registerEntries),
   }
@@ -196,3 +197,4 @@ export function persistentInvoice(invoice: Invoice): Invoice {
   for (const [key, value] of Object.entries(result)) if (value === undefined) Reflect.deleteProperty(result, key)
   return result
 }
+

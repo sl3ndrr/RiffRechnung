@@ -1,3 +1,5 @@
+import { addCalendarDays, localToday } from './calendar'
+import { decimalInputText, invoiceTotalCents, itemTotalCents, moneyErrors } from './money'
 import { buildMailto } from './mailbox'
 import { validId, validPrice, validQuantity } from './values'
 import { assertInvoiceEditable, SPLIT_INVOICE_BLOCKED } from './safety'
@@ -25,7 +27,7 @@ export function limitFooterText(value: string): string {
 type InvoiceFinalizationCandidate = Pick<Invoice, 'guardianIds' | 'studentIds' | 'invoiceDate' | 'dueDate' | 'items' | 'legalText'> & Partial<Pick<Invoice, 'recipientStrategy'>>
 
 export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 'students'>, invoice: InvoiceFinalizationCandidate): string[] {
-  const errors: string[] = []
+  const errors: string[] = [...moneyErrors(invoice)]
   if (invoice.recipientStrategy === 'separate' && invoice.guardianIds.length > 1) errors.push(SPLIT_INVOICE_BLOCKED)
   const guardianIds = new Set(state.guardians.map((guardian) => guardian.id))
   const studentIds = new Set(state.students.map((student) => student.id))
@@ -141,18 +143,8 @@ export function formatDateLong(value: string): string {
   return Number.isNaN(parsed.getTime()) ? value : dateLong.format(parsed)
 }
 
-function isoDate(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 export function calculateDueDate(invoiceDate: string, paymentTermDays: number): string {
-  const parsed = parseDate(invoiceDate)
-  if (Number.isNaN(parsed.getTime())) return ''
-  parsed.setDate(parsed.getDate() + Math.max(0, Math.trunc(paymentTermDays)))
-  return isoDate(parsed)
+  try { return addCalendarDays(invoiceDate, paymentTermDays) } catch { return '' }
 }
 
 export function billingPeriodFromItems(items: Array<Pick<InvoiceItem, 'serviceDate'>>, fallbackDate = ''): string {
@@ -214,16 +206,8 @@ export function createLessonItem(studentId: string, serviceDate: string, setting
   }
 }
 
-function itemTotalCents(item: Pick<InvoiceItem, 'quantity' | 'unitPrice'>): number {
-  const total = item.quantity * item.unitPrice
-  const value = Math.abs(total)
-  const [coefficient, exponent = '0'] = value.toString().split('e')
-  return Math.sign(total) * Math.round(Number(`${coefficient}e${Number(exponent) + 2}`))
-}
-
 export function invoiceTotal(invoice: Pick<Invoice, 'items' | 'issuedAmounts'>): number {
-  if (invoice.issuedAmounts) return invoice.issuedAmounts.totalCents / 100
-  return invoice.items.reduce((sum, item) => sum + itemTotalCents(item), 0) / 100
+  return invoiceTotalCents(invoice) / 100
 }
 
 export function itemTotal(item: InvoiceItem): number {
@@ -233,7 +217,7 @@ export function itemTotal(item: InvoiceItem): number {
 export function effectiveStatus(invoice: Invoice, reference = new Date()): InvoiceStatus {
   if (invoice.status === 'sent' && invoice.dueDate) {
     const dueDate = parseDate(invoice.dueDate)
-    if (!Number.isNaN(dueDate.getTime()) && isoDate(dueDate) < isoDate(reference)) return 'overdue'
+    if (!Number.isNaN(dueDate.getTime()) && localToday(dueDate) < localToday(reference)) return 'overdue'
   }
   return invoice.status
 }
@@ -589,6 +573,18 @@ export function downloadBytes(fileName: string, bytes: Uint8Array): void {
 }
 
 export function outputItemTotal(invoice: Invoice, item: InvoiceItem): number {
+  return outputItemCents(invoice, item) / 100
+}
+
+
+export function outputItemCents(invoice: Invoice, item: InvoiceItem): number {
   const index = invoice.items.findIndex((entry) => entry.id === item.id)
-  return invoice.issuedAmounts && index >= 0 ? invoice.issuedAmounts.itemCents[index] / 100 : itemTotal(item)
+  return invoice.issuedAmounts && index >= 0 ? invoice.issuedAmounts.itemCents[index] : itemTotalCents(item)
+}
+
+export function outputUnitPrice(invoice: Invoice, item: InvoiceItem): string {
+  // Preserve historical formatting, including its original two-decimal display.
+  if (invoice.issuedAmounts?.calculation === 'legacy-v1') return euro.format(item.unitPrice)
+  const [whole, fraction = ''] = decimalInputText(item.unitPrice).split('.')
+  return `${new Intl.NumberFormat('de-DE').format(BigInt(whole))},${fraction.padEnd(2, '0')}\u00a0€`
 }

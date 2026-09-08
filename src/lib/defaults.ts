@@ -1,3 +1,5 @@
+import { localToday } from './calendar'
+import { calculateDueDate } from './utils'
 import { captureLegacyDocuments } from './importState'
 import type { AppState, Guardian, Invoice, InvoiceDraft, InvoiceItem, LessonType, Settings, Student } from '../types'
 
@@ -26,7 +28,7 @@ export const defaultSettings: Settings = {
 
 export function emptyState(): AppState {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     documentVersions: [], invoiceAdministration: [], payments: [], historicalSnapshotCorrections: [],
     guardians: [],
     students: [],
@@ -40,19 +42,18 @@ export function emptyState(): AppState {
   }
 }
 
+// Synthetic demo dates were explicitly created in UTC.
 function isoDate(date: Date): string {
   return date.toISOString().slice(0, 10)
 }
 
-export function createEmptyInvoiceDraft(settings: Settings): InvoiceDraft {
-  const invoiceDate = new Date()
-  const dueDate = new Date(invoiceDate)
-  dueDate.setDate(dueDate.getDate() + settings.paymentTermDays)
+export function createEmptyInvoiceDraft(settings: Settings, reference = new Date()): InvoiceDraft {
+  const invoiceDate = reference
   const monthName = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' }).format(invoiceDate)
 
   return {
-    invoiceDate: isoDate(invoiceDate),
-    dueDate: isoDate(dueDate),
+    invoiceDate: localToday(invoiceDate),
+    dueDate: calculateDueDate(localToday(invoiceDate), settings.paymentTermDays),
     period: monthName,
     guardianIds: [],
     studentIds: [],
@@ -272,3 +273,4 @@ export function createDemoState(referenceDate = new Date()): AppState {
     updatedAt: now,
   })
 }
+

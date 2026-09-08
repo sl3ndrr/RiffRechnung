@@ -1,3 +1,4 @@
+import { sumCents } from '../lib/money'
 import { activeInvoices, openCents, selectedInvoices, recordedPayments } from '../lib/documents'
 import { ArrowRight, Banknote, CheckCircle2, Clock3, FilePlus2, ReceiptText, Sparkles, TriangleAlert, Users } from 'lucide-react'
 import type { AppState, PageKey } from '../types'
@@ -20,8 +21,8 @@ export function Dashboard({ state, onNavigate, onNewInvoice, onLoadDemo, demoBlo
   const overdue = finalized.filter((invoice) => effectiveStatus(invoice) === 'overdue')
   const year = new Date().getFullYear()
   const received = recordedPayments(state, year)
-  const paidThisYear = received.reduce((sum, payment) => sum + payment.amountCents / 100, 0)
-  const openTotal = open.reduce((sum, invoice) => sum + openCents(state, invoice) / 100, 0)
+  const paidThisYear = sumCents(received.map((payment) => payment.amountCents)) / 100
+  const openTotal = sumCents(open.map((invoice) => openCents(state, invoice))) / 100
   const recent = selectedInvoices(state).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 5)
   const monthly = getMonthlyData(state)
   const maxMonth = Math.max(...monthly.map((month) => month.amount), 1)
@@ -100,7 +101,7 @@ export function Dashboard({ state, onNavigate, onNewInvoice, onLoadDemo, demoBlo
         </article>
         <article className={`metric-card ${overdue.length ? 'metric-card--red' : 'metric-card--neutral'}`}>
           <span className="metric-card__icon"><TriangleAlert aria-hidden="true" /></span>
-          <div><p>Überfällig</p><strong>{overdue.length}</strong><small>{overdue.length ? euro.format(overdue.reduce((sum, invoice) => sum + openCents(state, invoice) / 100, 0)) : 'Alles im grünen Bereich'}</small></div>
+          <div><p>Überfällig</p><strong>{overdue.length}</strong><small>{overdue.length ? euro.format(sumCents(overdue.map((invoice) => openCents(state, invoice))) / 100) : 'Alles im grünen Bereich'}</small></div>
         </article>
         <article className="metric-card metric-card--purple">
           <span className="metric-card__icon"><Users aria-hidden="true" /></span>
@@ -178,10 +179,11 @@ function getMonthlyData(state: AppState) {
   for (let offset = 5; offset >= 0; offset -= 1) {
     const date = new Date(now.getFullYear(), now.getMonth() - offset, 1)
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-    const amount = recordedPayments(state)
+    const amount = sumCents(recordedPayments(state)
       .filter((payment) => monthKey(payment.paidAt?.slice(0, 10) || state.documentVersions.find((version) => version.id === payment.sourceVersionId)!.content.invoiceDate) === key)
-      .reduce((sum, payment) => sum + payment.amountCents / 100, 0)
+      .map((payment) => payment.amountCents)) / 100
     result.push({ key, label: monthLabel(key), amount })
   }
   return result
 }
+
