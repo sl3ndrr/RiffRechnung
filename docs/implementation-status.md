@@ -286,4 +286,48 @@ Lokal sind Node 24.19.0/npm 11.9.0 und Git 2.51.1 verfügbar; der Terminalzugrif
 auf den GitHub-Clone wurde mit HTTP 403 durch die Umgebung blockiert. Daher sind
 lokale npm-Gates nicht behauptet.
 
-Nächstes vorgesehenes Paket: **08 – Zahlungstag und Berichte**, nicht begonnen.
+Nächstes vorgesehenes Paket: **08 – Zahlungstag und Berichte**, im folgenden Abschnitt dokumentiert.
+
+## Paket 08 – Zahlungstag und Berichte
+
+- **Ausgang und Befund:** Basis `main` ist
+  `3332222917daf6662b8e9639251fa7a22f1a4f85`. R11 und F02 (MVP) waren am
+  aktuellen Code nachvollziehbar: Der Status setzte einen Zeitpunkt automatisch
+  zugleich als Zahlungstag, und Dashboard, Jahresübersicht sowie CSV ordneten
+  Zahlungen über das Rechnungsjahr statt über den Geldfluss zu. Keine N-ID ist
+  diesem Paket zugeordnet; R24 wird durch Ablauf-, Import- und Reloadprüfungen
+  fortgeführt.
+- **Ergebnis:** Schema 7 trennt bestätigten Zahlungstag, unbekannten Tag und
+  technischen Erfassungszeitpunkt. Vollzahlungen brauchen einen Kalendertag;
+  Nachpflege/Korrektur wird als Ereignis nachvollziehbar. `reporting.ts` ist die
+  gemeinsame Cent- und Kalenderquelle für Dashboard, Jahresübersicht und
+  Jahres-CSV. Kennzahlen heißen Rechnungsvolumen, Zahlungseingänge und offene
+  Forderungen am Stichtag.
+- **Invarianten:** Rechnungsvolumen nutzt das Rechnungsdatum, Zahlungseingänge
+  ausschließlich den bestätigten Zahlungstag. Unbekannte Altzahlungen bleiben
+  sichtbar, aber jahrslos. Statusrücknahme löst nur die Zuordnung; Korrekturen
+  ersetzen die Forderung ohne den Geldfluss zu duplizieren oder zu löschen.
+  Getrennte/reservierte Nummern, exakte Centbeträge, DE-IBAN-Regel,
+  CSV-Formelabwehr, Referenz- und Rohdatenschutz bleiben unverändert.
+- **Migration/Rückweg:** Formate 2–6 werden mit `riffrechnung-to-v7` nach 7
+  übernommen. P6-`paidAt` wird als `legacyPaymentDay` erhalten, jedoch bewusst
+  nicht als bestätigter Banktag ausgegeben; `paymentDayStatus` bleibt `unknown`
+  bis zur Nachpflege. Bericht und unveränderte Originalbytes werden vor einer
+  Übernahme gesichert. Aktuelles Schema 7 migriert beim erneuten Laden/Import
+  nicht weiter; unbekannte neuere Formate bleiben schreibgeschützt. Rückweg ist
+  die archivierte Originaldatei in einem getrennten Profil mit altem Code.
+- **Nachweisstand vor CI:** Neue Fachregressionen decken Dezember-2025- /
+  Januar-2026-Zuordnung, Nachpflege/Korrektur, Statusrücknahme, Korrekturbeleg,
+  unbekannten historischen Zahlungstag, Formelabwehr und Export–Import–Reload
+  ab. Lokaler `npm ci --fetch-retries=0 --fetch-timeout=20000` scheiterte unter
+  Node 24.19.0/npm 11.9.0 mit Registry-E403 bei `yocto-queue`; Node 22 ist lokal
+  nicht verfügbar. Syntax-/Diffprüfungen sind kein CI-Ersatz. Der vollständige
+  Node-22-Nachweis wird dem Ergebniscommit zugeordnet ergänzt.
+
+| Abnahme Paket 08 | Stand vor CI |
+| --- | --- |
+| Dezemberrechnung 2025, Zahlung Januar 2026: getrennte Jahreswerte | Fachregression angelegt |
+| Nachpflege, Datumsänderung, Statusrücknahme, korrigierter Beleg | Fachregression angelegt |
+| Historischer unbekannter Zahlungstag bleibt sichtbar und jahrslos | Fachregression angelegt |
+| Dashboard, Jahresübersicht, CSV, Saldo sowie Export–Import–Reload | Fachregression angelegt; CI ausstehend |
+| Native Bank-App-Scan, Druckdialoge und Dateirechte | Nicht geprüft; nicht Gegenstand dieses Pakets |

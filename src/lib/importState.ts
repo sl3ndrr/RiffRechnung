@@ -3,17 +3,17 @@ import { captureDocument } from './documents'
 import { validateEnvelope, type StorageEnvelope } from './envelope'
 import type { AppState, Invoice, InvoiceItem, Settings, Student } from '../types'
 import { commandResult, requireSuccess, type CommandResult } from './result'
-import { backupEnum, backupObject, backupTimestamp, knownKeys, validateBackupState, validateLegacyV2Structure, validateLegacyV3Structure, validateLegacyV4Structure, validateLegacyV5Structure } from './validation'
+import { backupEnum, backupObject, backupTimestamp, knownKeys, validateBackupState, validateLegacyV2Structure, validateLegacyV3Structure, validateLegacyV4Structure, validateLegacyV5Structure, validateLegacyV6Structure } from './validation'
 import { ensureStudentCodePattern, invoiceStudentCode, studentCodeForIndex, studentCodeIndex } from './utils'
 import { mailboxError } from './mailbox'
 
 interface MigrationChange { path: string; before: unknown; after: unknown; reason: string }
 export interface IdMapping { invoiceId: string; itemIndex: number; oldId: string; newId: string }
 export interface MigrationReport {
-  migration: 'riffrechnung-to-v6'
+  migration: 'riffrechnung-to-v7'
   version: 1
-  fromSchema: 2 | 3 | 4 | 5
-  toSchema: 6
+  fromSchema: 2 | 3 | 4 | 5 | 6
+  toSchema: 7
   source: 'local-state' | 'riffrechnung' | 'gitarrenrechnungen'
   changes: MigrationChange[]
   idMappings: IdMapping[]
@@ -28,10 +28,45 @@ export interface ImportPreview {
 
 function upgradeToV6(value: unknown): AppState {
   const state = structuredClone(value) as AppState
-  state.schemaVersion = 6
+  state.schemaVersion = 6 as never
   const settings = state.settings as Settings
   if (!settings.invoiceProfile) settings.invoiceProfile = 'small-business'
   if (!settings.taxIdentifier) settings.taxIdentifier = { kind: 'tax-number', value: '' }
+  return state
+}
+
+/**
+ * Version 6 never collected a user-confirmed bank day: every paidAt value was
+ * derived by the application when a status changed. Preserve it for audit, but
+ * keep it out of payment-year reports until a person confirms the actual day.
+ */
+function upgradeToV7(value: unknown, report?: Pick<MigrationReport, 'changes'>): AppState {
+  const state = structuredClone(value) as AppState
+  const record = (path: string, before: unknown, after: unknown, reason: string) => {
+    if (report && canonical(before) !== canonical(after)) report.changes.push({ path, before: before ?? null, after, reason })
+  }
+  state.schemaVersion = 7
+  state.payments = state.payments.map((payment, index) => {
+    const invoice = state.invoices.find((entry) => entry.versionId === payment.sourceVersionId)
+    const retained = payment.paidAt ?? invoice?.paidAt
+    const next = {
+      ...payment,
+      paidAt: null,
+      paymentDayStatus: 'unknown' as const,
+      ...(retained ? { legacyPaymentDay: retained } : {}),
+    }
+    record(`payments[${index}].paymentDayStatus`, undefined, 'unknown', 'Vor Paket 08 gab es keine Bestätigung des tatsächlichen Bankzahlungstags; Zahlung bleibt mit unbekanntem Datum erhalten.')
+    if (retained) record(`payments[${index}].legacyPaymentDay`, undefined, retained, 'Bisheriger automatisch gesetzter oder historisch übernommener Wert bleibt nur als unbestätigter Nachweis erhalten.')
+    record(`payments[${index}].paidAt`, payment.paidAt, null, 'Der bisherige Wert war kein bestätigter Zahlungstag und wird nicht in Kalenderauswertungen verwendet.')
+    return next
+  })
+  state.invoices = state.invoices.map((invoice, index) => {
+    if (invoice.paidAt === undefined) return invoice
+    record(`invoices[${index}].paidAt`, invoice.paidAt, null, 'Die Rechnungsprojektion übernimmt nur noch bestätigte Zahlungstage aus dem Zahlungsdatensatz.')
+    const next = { ...invoice }
+    Reflect.deleteProperty(next, 'paidAt')
+    return next
+  })
   return state
 }
 
@@ -95,7 +130,7 @@ function migrateV2(data: unknown, source: MigrationReport['source']): { state: L
   // Shape has been checked, including references and ALL numeric values.
   // Only the following documented optional v2 fields may still be absent.
   const state = structuredClone(data) as LegacyState
-  const report: MigrationReport = { migration: 'riffrechnung-to-v6', version: 1, fromSchema: 2, toSchema: 6, source, changes: [], idMappings: [] }
+  const report: MigrationReport = { migration: 'riffrechnung-to-v7', version: 1, fromSchema: 2, toSchema: 7, source, changes: [], idMappings: [] }
   repairCopiedItemIds(state, report)
   const record = (path: string, before: unknown, after: unknown, reason: string) => {
     if (canonical(before) !== canonical(after)) report.changes.push({ path, before: before ?? null, after, reason })
@@ -179,27 +214,32 @@ export function inspectImport(rawData: string): CommandResult<ImportPreview> {
       if (root.schemaVersion !== backupObject(data, 'data').schemaVersion) throw new Error('Backup-Umschlag und Daten haben unterschiedliche Formatversionen.')
     }
     const version = backupObject(data, 'data').schemaVersion
-    if (version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== 6) throw new Error('Die Datei hat kein unterstütztes Backup-Format. Neuere oder unbekannte Formate bleiben unverändert.')
+    if (version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== 6 && version !== 7) throw new Error('Die Datei hat kein unterstütztes Backup-Format. Neuere oder unbekannte Formate bleiben unverändert.')
     let report: MigrationReport | null = null
     let state: AppState
-    if (version === 6) { validateBackupState(data); state = structuredClone(data) }
+    if (version === 7) { validateBackupState(data); state = structuredClone(data) }
+    else if (version === 6) {
+      validateLegacyV6Structure(data)
+      report = { migration: 'riffrechnung-to-v7', version: 1, fromSchema: 6, toSchema: 7, source, changes: [], idMappings: [] }
+      state = upgradeToV7(data, report)
+    }
     else if (version === 5) {
       validateLegacyV5Structure(data)
-      state = upgradeToV6(data)
-      report = { migration: 'riffrechnung-to-v6', version: 1, fromSchema: 5, toSchema: 6, source, changes: [], idMappings: [] }
+      report = { migration: 'riffrechnung-to-v7', version: 1, fromSchema: 5, toSchema: 7, source, changes: [], idMappings: [] }
+      state = upgradeToV7(upgradeToV6(data), report)
     }
     else if (version === 4) {
       validateLegacyV4Structure(data)
-      state = upgradeToV6({ ...structuredClone(data as AppState), schemaVersion: 5 })
-      report = { migration: 'riffrechnung-to-v6', version: 1, fromSchema: 4, toSchema: 6, source, changes: [], idMappings: [] }
+      report = { migration: 'riffrechnung-to-v7', version: 1, fromSchema: 4, toSchema: 7, source, changes: [], idMappings: [] }
+      state = upgradeToV7(upgradeToV6({ ...structuredClone(data as AppState), schemaVersion: 5 }), report)
     }
     else {
       let legacy: LegacyState
       if (version === 2) ({ state: legacy, report } = migrateV2(data, source))
       else { validateLegacyV3Structure(data); legacy = structuredClone(data) as LegacyState }
-      report ??= { migration: 'riffrechnung-to-v6', version: 1, fromSchema: 3, toSchema: 6, source, changes: [], idMappings: [] }
+      report ??= { migration: 'riffrechnung-to-v7', version: 1, fromSchema: 3, toSchema: 7, source, changes: [], idMappings: [] }
       state = captureLegacyDocuments(legacy)
-      report.changes.push({ path: 'schemaVersion', before: version, after: 6, reason: 'Vollständige älteste verfügbare Belegstände und getrennte Verwaltung sichern; frühere Inhalte bleiben unbekannt' })
+      report.changes.push({ path: 'schemaVersion', before: version, after: 7, reason: 'Vollständige älteste verfügbare Belegstände, getrennte Verwaltung und unbekannte historische Zahlungstage sichern; frühere Inhalte bleiben unbekannt' })
       for (const document of state.documentVersions) report.changes.push({ path: `documentVersions.${document.id}`, before: null, after: document, reason: 'Jetzt verfügbarer historischer Inhalt, alte Ausgabebeträge und Snapshot-/Registerbelege; keine Wiederherstellung verlorener Originale' })
       for (const invoice of state.invoices.filter((entry) => entry.versionId)) report.changes.push({ path: `invoices.${invoice.id}.versionId`, before: null, after: invoice.versionId, reason: 'Verweis auf den gesicherten vollständigen Belegstand' })
       report.changes.push({ path: 'invoiceAdministration', before: null, after: state.invoiceAdministration, reason: 'Vorhandenen Verwaltungsstatus übernehmen; frühere Ereignisse bleiben unbekannt' })
@@ -208,9 +248,10 @@ export function inspectImport(rawData: string): CommandResult<ImportPreview> {
       validateBackupState(state)
     }
     if (report) {
-      if (version >= 4) report.changes.push({ path: 'schemaVersion', before: version, after: 6, reason: 'Rechnungsprofil und steuerliche Identifikationsangabe strukturiert erfassen; historische Beleg-Snapshots bleiben unverändert' })
-      report.changes.push({ path: 'settings.invoiceProfile', before: null, after: 'small-business', reason: 'Vom Produktverantwortlichen in Paket 07 ausdrücklich gewähltes Kleinunternehmerprofil; neue Finalisierung bleibt bis zur Steuerkennung gesperrt' })
-      report.changes.push({ path: 'settings.taxIdentifier', before: null, after: state.settings.taxIdentifier, reason: 'Leeres strukturiertes Feld; keine fehlende steuerliche Kennung erfunden' })
+      if (version < 6) {
+        report.changes.push({ path: 'settings.invoiceProfile', before: null, after: 'small-business', reason: 'Vom Produktverantwortlichen in Paket 07 ausdrücklich gewähltes Kleinunternehmerprofil; neue Finalisierung bleibt bis zur Steuerkennung gesperrt' })
+        report.changes.push({ path: 'settings.taxIdentifier', before: null, after: state.settings.taxIdentifier, reason: 'Leeres strukturiertes Feld; keine fehlende steuerliche Kennung erfunden' })
+      }
       for (const invoice of state.invoices.filter((entry) => entry.status === 'draft')) {
         const change = draftAmountChange(invoice)
         if (change.changed) report.changes.push({ path: `invoices.${invoice.id}.amountReview`, before: change.before, after: change.after, reason: 'Centvergleich Altberechnung/exakte Dezimalberechnung; Originalwerte unverändert. Vor Finalisierung im Editor prüfen. Kein gespeicherter historischer Belegbetrag.' })
@@ -257,6 +298,6 @@ export function captureLegacyDocuments(legacy: LegacyState): AppState {
       allocations: [{ versionId: invoice.status === 'paid' ? version.id : null, at: invoice.updatedAt, reason: 'Aus historischem Vollzahlungsstatus übernommen; Zahlungsdatum bleibt unbekannt, wenn es nicht gespeichert war.' }],
     })
   })
-  return state
+  return upgradeToV7(state)
 }
 

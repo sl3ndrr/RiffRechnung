@@ -512,3 +512,16 @@ unverändertem Storage und durchläuft dieselben Schranken erneut.
   übersprungenen Tests. Synthetisches Artefakt `browser-evidence`.
 
 Keine Tests wurden gelöscht, übersprungen oder abgeschwächt.
+
+## Paket 08 – CI und Fehlerzuordnung
+
+- Lokaler Vorabstand: Node 24.19.0/npm 11.9.0; das festgelegte Node 22 ist nicht
+  vorhanden. `npm ci --fetch-retries=0 --fetch-timeout=20000` endete beim
+  Registry-Abruf von `yocto-queue` mit E403. Deshalb sind lokale Lint-, Test-,
+  Typecheck-, Build- und Browserergebnisse nicht behauptet.
+- `git diff --check` sowie `node --experimental-strip-types --check` für die
+  geänderten `.ts`-Fachmodule und Fachtests bestanden. Das prüft weder JSX noch
+  Typen und ist ausdrücklich kein Ersatz für die CI-Schranken.
+- Der Node-22-Workflow des Ergebniscommits muss `npm ci`, Lint, Fachtests,
+  Typecheck einschließlich Tests, Build sowie die Chromium-/PDF-Prüfungen
+  ausweisen. Kein Test wurde gelöscht, übersprungen oder abgeschwächt.

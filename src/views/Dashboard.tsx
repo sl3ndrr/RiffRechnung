@@ -1,8 +1,10 @@
 import { sumCents } from '../lib/money'
-import { activeInvoices, openCents, selectedInvoices, recordedPayments } from '../lib/documents'
+import { activeInvoices, openCents, selectedInvoices } from '../lib/documents'
+import { financialReport } from '../lib/reporting'
 import { ArrowRight, Banknote, CheckCircle2, Clock3, FilePlus2, ReceiptText, Sparkles, TriangleAlert, Users } from 'lucide-react'
 import type { AppState, PageKey } from '../types'
-import { effectiveStatus, euro, formatDate, guardianName, invoiceTotal, isInvoiceSetupComplete, monthKey, monthLabel, statusLabel, studentName } from '../lib/utils'
+import { effectiveStatus, euro, formatDate, guardianName, invoiceTotal, isInvoiceSetupComplete, monthLabel, statusLabel, studentName } from '../lib/utils'
+import { localToday } from '../lib/calendar'
 
 interface DashboardProps {
   state: AppState
@@ -17,12 +19,11 @@ export function Dashboard({ state, onNavigate, onNewInvoice, onLoadDemo, demoBlo
   const issuerReady = isInvoiceSetupComplete(state.settings)
   const completedSetupSteps = Number(issuerReady) + Number(state.students.length > 0)
   const finalized = activeInvoices(state)
-  const open = finalized.filter((invoice) => ['sent', 'overdue'].includes(effectiveStatus(invoice)))
   const overdue = finalized.filter((invoice) => effectiveStatus(invoice) === 'overdue')
   const year = new Date().getFullYear()
-  const received = recordedPayments(state, year)
-  const paidThisYear = sumCents(received.map((payment) => payment.amountCents)) / 100
-  const openTotal = sumCents(open.map((invoice) => openCents(state, invoice))) / 100
+  const report = financialReport(state, year)
+  const paidThisYear = report.paymentIncomeCents / 100
+  const openTotal = report.openClaimsCents / 100
   const recent = selectedInvoices(state).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 5)
   const monthly = getMonthlyData(state)
   const maxMonth = Math.max(...monthly.map((month) => month.amount), 1)
@@ -93,11 +94,11 @@ export function Dashboard({ state, onNavigate, onNewInvoice, onLoadDemo, demoBlo
       <section className="metric-grid" aria-label="Kennzahlen">
         <article className="metric-card metric-card--blue">
           <span className="metric-card__icon"><Clock3 aria-hidden="true" /></span>
-          <div><p>Offener Betrag</p><strong>{euro.format(openTotal)}</strong><small>{open.length} {open.length === 1 ? 'Rechnung' : 'Rechnungen'}</small></div>
+          <div><p>Offene Forderungen am {formatDate(localToday())}</p><strong>{euro.format(openTotal)}</strong><small>{report.openClaimCount} {report.openClaimCount === 1 ? 'Rechnung' : 'Rechnungen'}</small></div>
         </article>
         <article className="metric-card metric-card--green">
           <span className="metric-card__icon"><CheckCircle2 aria-hidden="true" /></span>
-          <div><p>Zahlungen zum Belegjahr {year}</p><strong>{euro.format(paidThisYear)}</strong><small>{received.length} erfasste Zahlungen</small></div>
+          <div><p>Zahlungseingänge {year}</p><strong>{euro.format(paidThisYear)}</strong><small>{report.payments.length} mit bestätigtem Zahlungstag{report.unknownDatePayments.length ? ` · ${report.unknownDatePayments.length} Zahlungsdatum unbekannt` : ''}</small></div>
         </article>
         <article className={`metric-card ${overdue.length ? 'metric-card--red' : 'metric-card--neutral'}`}>
           <span className="metric-card__icon"><TriangleAlert aria-hidden="true" /></span>
@@ -179,11 +180,9 @@ function getMonthlyData(state: AppState) {
   for (let offset = 5; offset >= 0; offset -= 1) {
     const date = new Date(now.getFullYear(), now.getMonth() - offset, 1)
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-    const amount = sumCents(recordedPayments(state)
-      .filter((payment) => monthKey(payment.paidAt?.slice(0, 10) || state.documentVersions.find((version) => version.id === payment.sourceVersionId)!.content.invoiceDate) === key)
-      .map((payment) => payment.amountCents)) / 100
+    const report = financialReport(state, date.getFullYear())
+    const amount = (report.months.find((month) => month.key === key)?.paymentIncomeCents ?? 0) / 100
     result.push({ key, label: monthLabel(key), amount })
   }
   return result
 }
-

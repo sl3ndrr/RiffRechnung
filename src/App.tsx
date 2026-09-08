@@ -275,9 +275,10 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     }
   }
 
-  const setInvoiceStatus = async (invoice: Invoice, status: InvoiceStatus) => {
-    if (await commit((current) => changeInvoiceStatus(current, invoice.id, status), `Rechnungsstatus auf ${statusLabel[status]} gesetzt`, 'invoice', invoice.id)) {
-      toast('Status aktualisiert.', 'success')
+  const setInvoiceStatus = async (invoice: Invoice, status: InvoiceStatus, paymentDay?: string) => {
+    const message = status === 'paid' && paymentDay ? 'Vollzahlung mit Zahlungstag ' + paymentDay + ' erfasst' : 'Rechnungsstatus auf ' + statusLabel[status] + ' gesetzt'
+    if (await commit((current) => changeInvoiceStatus(current, invoice.id, status, new Date().toISOString(), paymentDay), message, 'invoice', invoice.id)) {
+      toast(status === 'paid' && paymentDay ? 'Zahlung erfasst.' : 'Status aktualisiert.', 'success')
     }
   }
 

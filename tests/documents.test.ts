@@ -140,9 +140,9 @@ test('P04: kontrollierte Migration eines Protokoll-4/Schema-3-Bestands bewahrt R
   assert.equal(session.revision!.datasetId, old.datasetId)
   const archive = JSON.parse(JSON.parse(session.exportRecoveryArchive()).recoveries[0].raw)
   assert.equal(archive.previousRaw, raw); assert.equal(archive.sourceRaw, raw)
-  assert.equal(archive.report.toSchema, 6)
+  assert.equal(archive.report.toSchema, 7)
   assert.equal(new StorageSession({ storage, lock: sharedLock() }).initial.status, 'ready')
-  const future = JSON.stringify({ ...old, schemaVersion: 7, data: { ...old.data, schemaVersion: 7 } })
+  const future = JSON.stringify({ ...old, schemaVersion: 8, data: { ...old.data, schemaVersion: 8 } })
   storage.setItem(STORAGE_KEY, future)
   await assert.rejects(new StorageSession({ storage, lock: sharedLock() }).restore(session.export()), /neuere Formate/)
   assert.equal(storage.getItem(STORAGE_KEY), future)
@@ -174,7 +174,7 @@ test('P04: mehr als 200 Aktivitäten, Archivierung und Export–Import erhalten 
 
 test('P04: bezahlte Korrekturen zählen genau einmal; Zahlungen werden nur manuell zugeordnet', async () => {
   let state = issued(); const first = state.invoices[0]
-  state = changeInvoiceStatus(state, first.id, 'paid', at)
+  state = changeInvoiceStatus(state, first.id, 'paid', at, '2026-09-05')
   const originalPayment = structuredClone(state.payments[0])
   state = createCorrectionDraft(state, first.id, 'Textkorrektur nach Zahlung', at)
   state = saveInvoiceDraft(state, { ...editable(state.invoices.at(-1)!), introText: 'Korrigiert' }, true, at)
@@ -184,10 +184,10 @@ test('P04: bezahlte Korrekturen zählen genau einmal; Zahlungen werden nur manue
   assert.equal(activeInvoices(state).length, 1)
   assert.equal(openCents(state, first), 0)
   assert.equal(openCents(state, replacement), 758)
-  assert.throws(() => changeInvoiceStatus(state, replacement.id, 'paid', at), /zuordnen/)
+  assert.throws(() => changeInvoiceStatus(state, replacement.id, 'paid', at, '2026-09-05'), /zuordnen/)
   const before = state
   const another = createCorrectionDraft(state, replacement.id, 'Weitere Korrektur', at)
-  assert.throws(() => changeInvoiceStatus(another, another.invoices.at(-1)!.id, 'paid', at), /manuell zugeordnet/)
+  assert.throws(() => changeInvoiceStatus(another, another.invoices.at(-1)!.id, 'paid', at, '2026-09-05'), /manuell zugeordnet/)
   state = allocatePayment(state, originalPayment.id, replacement.versionId!, 'Zahlung gehört zur ersetzenden Rechnung', at)
   assertOriginalsPreserved(before, state)
   assert.equal(allocatedCents(state, first.versionId!), 0)
@@ -206,7 +206,7 @@ test('P04: bezahlte Korrekturen zählen genau einmal; Zahlungen werden nur manue
 test('P04: Betragsdifferenz bleibt als Restforderung oder Überzahlung sichtbar, ohne Zahlungen zu kopieren', async () => {
   for (const price of [5, 20]) {
     let state = issued(); const first = state.invoices[0]
-    state = changeInvoiceStatus(state, first.id, 'paid', at)
+    state = changeInvoiceStatus(state, first.id, 'paid', at, '2026-09-05')
     state = createCorrectionDraft(state, first.id, 'Betrag berichtigen', at)
     const draft = editable(state.invoices.at(-1)!); draft.items[0].unitPrice = price
     state = saveInvoiceDraft(state, draft, true, at)
@@ -251,7 +251,7 @@ test('P04: zwei schreibende Sitzungen verlieren keine Belegversion oder Zahlung'
   const stale = new StorageSession({ storage, lock })
   await first.change((state) => createCorrectionDraft(state, state.invoices[0].id, 'Erste Sitzung', at))
   const before = storage.getItem(STORAGE_KEY)
-  await assert.rejects(stale.change((state) => changeInvoiceStatus(state, state.invoices[0].id, 'paid', at)), /anderen Tab/)
+  await assert.rejects(stale.change((state) => changeInvoiceStatus(state, state.invoices[0].id, 'paid', at, '2026-09-05')), /anderen Tab/)
   assert.equal(storage.getItem(STORAGE_KEY), before)
 })
 
@@ -273,7 +273,7 @@ test('P04: nach Migration ohne früheren Snapshot dürfen Stammdaten gelöscht w
 
 test('P04: Vollzahlung, Zuordnung und Nummernregister werden bei Import gemeinsam geprüft', () => {
   const initial = issued()
-  const state = changeInvoiceStatus(initial, initial.invoices[0].id, 'paid', at)
+  const state = changeInvoiceStatus(initial, initial.invoices[0].id, 'paid', at, '2026-09-05')
   const withoutPayment = { ...state, payments: [] }
   assert.throws(() => validateBackupState(withoutPayment), /Zahlungszuordnung/)
   const duplicate = structuredClone(state)
@@ -316,4 +316,3 @@ test('P04: Snapshot-Differenzen gelöschter Altrechnungen bleiben sichtbar, ohne
   assert.match(markup, /nicht rekonstruiert/)
   assert.throws(() => assertOriginalsPreserved(state, { ...state, historicalSnapshotCorrections: [] }), /Snapshot-Differenzen/)
 })
-

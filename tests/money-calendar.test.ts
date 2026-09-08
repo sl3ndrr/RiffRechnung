@@ -76,10 +76,11 @@ function v4Fixture() {
   const captured = captureLegacyDocuments(legacyFixture(current))
   Reflect.deleteProperty(captured.settings, 'invoiceProfile')
   Reflect.deleteProperty(captured.settings, 'taxIdentifier')
-  return { ...captured, schemaVersion: 4 }
+  const legacyPayments = captured.payments.map(({ paymentDayStatus, legacyPaymentDay, ...payment }) => payment)
+  return { ...captured, payments: legacyPayments, schemaVersion: 4 as const }
 }
 
-test('P05: Schema 4 → 6 bewahrt Originale; Entwürfe zeigen Änderungen, Import/Reload sind idempotent', async () => {
+test('P05/P08: Schema 4 → 7 bewahrt Originale; Entwürfe zeigen Änderungen, Import/Reload sind idempotent', async () => {
   const old = v4Fixture()
   const draft = { ...structuredClone(old.invoices[0]), id: 'old-draft', status: 'draft' as const, number: null, sequence: null, items: [line(.75, 10.1)] }
   delete draft.versionId; delete draft.snapshot
@@ -89,7 +90,7 @@ test('P05: Schema 4 → 6 bewahrt Originale; Entwürfe zeigen Änderungen, Impor
   const preview = requireSuccess(inspectImport(raw))
   assert.equal(preview.rawData, raw)
   assert.equal(preview.report?.fromSchema, 4)
-  assert.equal(preview.report?.toSchema, 6)
+  assert.equal(preview.report?.toSchema, 7)
   assert.ok(preview.report?.changes.some((change) => change.path.endsWith('amountReview') && change.before === 757 && change.after === 758))
   assert.deepEqual(preview.state.documentVersions, old.documentVersions)
   assert.equal(invoiceTotal(selectInvoice(preview.state, preview.state.invoices[0])), 7.57)
@@ -111,7 +112,7 @@ test('P05: Schema 4 → 6 bewahrt Originale; Entwürfe zeigen Änderungen, Impor
   assert.equal(requireSuccess(inspectImport(storage.getItem(STORAGE_KEY)!)).report, null)
   assert.equal(requireSuccess(inspectImport(serializeBackup(accepted))).report, null)
   validateBackupState(JSON.parse(JSON.stringify(accepted)))
-  const future = JSON.stringify({ ...old, schemaVersion: 7 })
+  const future = JSON.stringify({ ...old, schemaVersion: 8 })
   assert.equal(inspectImport(future).ok, false)
   storage.setItem(STORAGE_KEY, future)
   await assert.rejects(() => new StorageSession({ storage, lock }).restore(serializeBackup(accepted)), /neuere|schreibgeschützt/)
@@ -168,7 +169,7 @@ test('P05: Europe/Berlin und UTC – Mitternacht, Sommerzeit, Zahlungstag, Kopie
         assert.equal(localToday(new Date(instant)), expected)
         assert.equal(createEmptyInvoiceDraft(documentFamily().settings, new Date(instant)).invoiceDate, expected)
         let state = saveInvoiceDraft(documentFamily(), documentDraft(), true, instant)
-        state = changeInvoiceStatus(state, state.invoices[0].id, 'paid', instant)
+        state = changeInvoiceStatus(state, state.invoices[0].id, 'paid', instant, expected)
         const restored = requireSuccess(inspectImport(serializeBackup(state))).state
         assert.equal(restored.payments[0].paidAt, expected)
         assert.equal(restored.payments[0].recordedAt, instant)

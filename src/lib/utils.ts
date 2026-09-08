@@ -434,7 +434,7 @@ export function downloadText(filename: string, content: string, type = 'applicat
   URL.revokeObjectURL(url)
 }
 
-function csvCell(value: string | number): string {
+export function csvCell(value: string | number): string {
   const raw = String(value)
   const safe = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw
   const normalized = safe.replaceAll('"', '""')

@@ -1,4 +1,4 @@
-import { localToday } from './calendar'
+import { localToday, paymentDay } from './calendar'
 import { calculateDueDate } from './utils'
 import { captureLegacyDocuments } from './importState'
 import type { AppState, Guardian, Invoice, InvoiceDraft, InvoiceItem, LessonType, Settings, Student } from '../types'
@@ -30,7 +30,7 @@ export const defaultSettings: Settings = {
 
 export function emptyState(): AppState {
   return {
-    schemaVersion: 6,
+    schemaVersion: 7,
     documentVersions: [], invoiceAdministration: [], payments: [], historicalSnapshotCorrections: [],
     guardians: [],
     students: [],
@@ -264,7 +264,7 @@ export function createDemoState(referenceDate = new Date()): AppState {
   }
   families.forEach((family, index) => invoices.push(createInvoice(family, currentYear, currentMonth, index < 2 ? 'sent' : 'draft')))
 
-  return captureLegacyDocuments({
+  const demo = captureLegacyDocuments({
     schemaVersion: 3,
     guardians,
     students,
@@ -276,5 +276,15 @@ export function createDemoState(referenceDate = new Date()): AppState {
     audit: [{ id: 'event-demo-data-loaded', at: now, label: 'Vollständige Beispieldaten ab Januar 2025 angelegt', entityType: 'system' }],
     updatedAt: now,
   })
+  // Demo data is generated here with intentional, synthetic payment days. It
+  // is not historical input, so those days are safe to mark as confirmed.
+  demo.payments = demo.payments.map((payment) => {
+    const { legacyPaymentDay, ...rest } = payment
+    return legacyPaymentDay ? { ...rest, paidAt: paymentDay(legacyPaymentDay), paymentDayStatus: 'confirmed' as const } : payment
+  })
+  demo.invoices = demo.invoices.map((invoice) => {
+    const payment = demo.payments.find((entry) => entry.allocations.at(-1)?.versionId === invoice.versionId && entry.paymentDayStatus === 'confirmed')
+    return payment?.paidAt ? { ...invoice, paidAt: payment.paidAt } : invoice
+  })
+  return demo
 }
-

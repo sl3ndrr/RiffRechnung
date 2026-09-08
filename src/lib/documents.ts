@@ -156,7 +156,7 @@ export function resolveDocumentConflicts(state: AppState, versionId: string, rea
 export function syncPaymentStatus(state: AppState, versionId: string, at: string, reason: string): AppState {
   const version = state.documentVersions.find((entry) => entry.id === versionId)!
   const paid = allocatedCents(state, versionId) >= version.amounts.totalCents
-  const payment = state.payments.find((entry) => entry.allocations.at(-1)?.versionId === versionId)
+  const payment = state.payments.find((entry) => entry.allocations.at(-1)?.versionId === versionId && entry.paymentDayStatus === 'confirmed')
   const status = paid ? 'paid' as const : 'sent' as const
   return {
     ...state,

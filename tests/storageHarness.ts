@@ -28,7 +28,7 @@ export function sharedLock(): WriteLock {
 // StorageSession in storage.test and the real-browser suite.
 export function seedState(state: AppState, storage: Storage = localStorage): StorageEnvelope {
   validateBackupState(state)
-  const envelope: StorageEnvelope = { app: 'riffrechnung', storageVersion: 4, schemaVersion: 6, datasetId: crypto.randomUUID(), commitId: crypto.randomUUID(), revision: 1, savedAt: '2026-09-06T12:00:00.000Z', operation: 'edit', ancestors: [], source: null, data: structuredClone(state) }
+  const envelope: StorageEnvelope = { app: 'riffrechnung', storageVersion: 4, schemaVersion: 7, datasetId: crypto.randomUUID(), commitId: crypto.randomUUID(), revision: 1, savedAt: '2026-09-06T12:00:00.000Z', operation: 'edit', ancestors: [], source: null, data: structuredClone(state) }
   storage.setItem(STORAGE_KEY, JSON.stringify(envelope))
   storage.setItem(LEGACY_GUARD_KEY, JSON.stringify(storage.getItem(LEGACY_STORAGE_KEY)))
   return envelope

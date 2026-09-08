@@ -14,7 +14,7 @@ ihre technische Umsetzung wird pro Paket im [Umsetzungsstatus](implementation-st
 | Finalisierte Belege | Originalinhalt erhalten; Änderungen über verknüpften Korrekturentwurf mit neuer Nummer. Zahlungs- und Versandstatus separat pflegen. Fehlende Historie nicht erfinden. | In 04 umgesetzt; Details unten. |
 | Nummern und Export | Getrennte Nummernkreise, dauerhaft reservierte Nummern und CSV-Formelabwehr erhalten. | In allen betroffenen Paketen prüfen. |
 | Backup-Ordner | Ein Ordner gehört zu einem führenden Datenbestand. Abweichende Bestände erkennen; kein stilles Zusammenführen oder Überschreiben. | Konservative Regel übernommen, Paket 03. |
-| Zahlungen | Zunächst Vollzahlung mit tatsächlichem Zahlungstag. Fehlende historische Zahlungstage bleiben unbekannt. Teilzahlungen später separat. | Paket 08 (F02-MVP), optional Paket 14. |
+| Zahlungen | Zunächst Vollzahlung mit tatsächlichem Zahlungstag. Fehlende historische Zahlungstage bleiben unbekannt. Teilzahlungen später separat. | Paket 08 (F02-MVP) umgesetzt, optional Paket 14. |
 | Datenformate | Änderungen versionieren; Altformate definieren, unveränderte Eingangsdaten schützen, Migrationsbericht und Wiederherstellung vorsehen. Laden/Importieren muss idempotent sein. Unbekannte neuere Formate nicht überschreiben; ausgestellte Beträge/Snapshots nicht still ändern. | Pakete 02–05 und spätere Formatänderungen; Paket 00 ohne Migration. |
 | Steuerliches Profil | Kleinunternehmer nach § 19 UStG für neue Rechnungen; keine automatische Kleinbetrags- oder andere Ausnahme. | Vom Nutzer ausdrücklich für Paket 07 gewählt. Profil, vollständige Anschriften und eine typisierte zulässige Steuerkennung sind vor Finalisierung erforderlich. |
 | Zielbrowser | README nennt Chromium ab 131 für Druck und Chromium für Ordnerzugriff. Das ist keine verifizierte Freigabeliste. Nur tatsächlich geprüfte Browser/Versionen freigeben. | Verbindliche Betrieb-/Druckmatrix in Paketen 09/12 festlegen. |
@@ -349,3 +349,20 @@ Offizielle Grundlagen, geprüft am 08.09.2026:
 [EPC Quick Response Code Guidelines v3.1](https://www.europeanpaymentscouncil.eu/sites/default/files/kb/file/2024-03/EPC069-12%20v3.1%20Quick%20Response%20Code%20-%20Guidelines%20to%20Enable%20the%20Data%20Capture%20for%20the%20Initiation%20of%20an%20SCT.pdf),
 [SWIFT IBAN Registry Release 102](https://www.swift.com/resource/iban-registry-pdf)
 und [Bundesbank-IBAN-Regeln](https://www.bundesbank.de/de/aufgaben/unbarer-zahlungsverkehr/serviceangebot/iban-regeln/iban-regeln-603042).
+
+## Paket 08 – Zahlungstage und Berichte
+
+- Eine neue Vollzahlung verlangt einen bestätigten Gregorianischen Zahlungstag;
+  `recordedAt` bleibt ausschließlich der technische Erfassungszeitpunkt. Ein
+  bereits bestätigter Tag kann mit einem nachvollziehbaren Verwaltungsereignis
+  korrigiert werden. Teilzahlungen werden weder erzeugt noch nachgebildet.
+- Schema-6-`paidAt` war kein bestätigter Banktag. Die Migration übernimmt den
+  Rohwert deshalb nur als `legacyPaymentDay`, setzt `paymentDayStatus: unknown`
+  und bewahrt Betrag, Herkunft, Zuordnung sowie `recordedAt`. Erst eine bewusste
+  Nachpflege macht daraus einen bestätigten Zahlungstag.
+- Rechnungsvolumen zählt nur aktuelle Forderungsbelege nach Rechnungsdatum;
+  Zahlungseingänge zählen jeden Geldfluss genau einmal nach bestätigtem
+  Zahlungstag. Statusrücknahme oder Korrektur ändern den Geldfluss nicht.
+  Unbekannte Zahlungstage bilden eine sichtbare, jahrlose Menge. Sie erscheinen
+  in jedem Jahres-CSV als „Zahlung ohne Kalenderjahr“, damit kein Export ihnen
+  stillschweigend ein Jahr zuordnet.
