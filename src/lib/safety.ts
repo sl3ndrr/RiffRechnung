@@ -39,7 +39,13 @@ export function assertOriginalsPreserved(current: AppState, next: AppState): voi
   }
   for (const payment of current.payments) {
     const candidate = next.payments.find((entry) => entry.id === payment.id)
-    if (!candidate || canonical({ ...candidate, allocations: payment.allocations }) !== canonical(payment)
+    // Paket 08 permits only a documented business-day correction (including
+    // unknown → confirmed after historic-data review). Origin, amount,
+    // recordedAt and the established allocation history remain immutable.
+    const permittedDayTransition = candidate && (candidate.paymentDayStatus === payment.paymentDayStatus
+      || payment.paymentDayStatus === 'unknown' && candidate.paymentDayStatus === 'confirmed')
+    if (!candidate || !permittedDayTransition
+      || canonical({ ...candidate, paidAt: payment.paidAt, paymentDayStatus: payment.paymentDayStatus, allocations: payment.allocations }) !== canonical(payment)
       || canonical(candidate.allocations.slice(0, payment.allocations.length)) !== canonical(payment.allocations)) throw new Error('Zahlungen und bisherige Zuordnungen müssen unverändert erhalten bleiben.')
   }
   for (const admin of current.invoiceAdministration) {
