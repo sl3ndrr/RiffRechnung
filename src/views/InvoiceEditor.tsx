@@ -8,7 +8,8 @@ import { Calendar, CircleDollarSign, FileCheck2, Minus, Plus, Save, Send, Trash2
 import type { AppState, Guardian, InvoiceDraft, InvoiceItemAllocation, InvoiceSplitPreview, LessonType, Settings, Student } from '../types'
 import { FINALIZED_INVOICE_BLOCKED } from '../lib/safety'
 import { Modal } from '../components/Modal'
-import { applyLessonType, billingPeriodFromItems, calculateDueDate, createLessonItem, euro, germanIbanError, invoiceFinalizationErrors, isFooterTextWithinLimit, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH } from '../lib/utils'
+import { applyLessonType, billingPeriodFromItems, calculateDueDate, createLessonItem, euro, invoiceFinalizationErrors, isFooterTextWithinLimit, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH } from '../lib/utils'
+import { paymentDataErrors } from '../lib/paymentData'
 
 const INVOICE_EDITOR_FORM_ID = 'invoice-editor-form'
 interface InvoiceEditorProps {
@@ -123,8 +124,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
     if (finalize) {
       nextErrors.push(...correctionErrors(state, form))
       nextErrors.push(...invoiceFinalizationErrors({ guardians, students }, form))
-      const ibanError = germanIbanError(settings.iban)
-      if (ibanError) nextErrors.push(ibanError)
+      nextErrors.push(...paymentDataErrors(settings).map((error) => error.message))
     }
     setErrors(nextErrors)
     if (!nextErrors.length) {
@@ -174,8 +174,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
         ...form, guardianIds: [result.guardianId], studentIds: result.studentIds, items: result.items, recipientStrategy: 'separate',
       })) : []
       if (finalize) {
-        const ibanError = germanIbanError(settings.iban)
-        if (ibanError) finalizationErrors.push(ibanError)
+        finalizationErrors.push(...paymentDataErrors(settings).map((error) => error.message))
       }
       if (finalizationErrors.length) { setErrors([...new Set(finalizationErrors)]); return }
       onSave({ ...form, period: calculatedPeriod, legalText: limitFooterText(form.legalText) }, finalize, parsed.allocations)

@@ -17,6 +17,7 @@ const at = '2026-08-20T12:00:00.000Z'
 function families(count = 2): AppState {
   const state = emptyState()
   state.settings.issuer.name = 'Synthetisches Teststudio'
+  state.settings.accountHolder = 'Synthetisches Teststudio'
   state.settings.iban = 'DE02120300000000202051'
   for (let index = 0; index < count; index++) {
     state.guardians.push({ id: `g${index}`, name: `Testfamilie ${index}`, email: `test${index}@example.org`, phone: '', address: { street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }, iban: '', paymentNote: '', createdAt: at, updatedAt: at })

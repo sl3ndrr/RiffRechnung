@@ -7,12 +7,12 @@ import { commandResult } from './result'
 import type { AppState, Invoice, InvoiceDraft, InvoiceStatus } from '../types'
 import { assertInvoiceEditable, assertOriginalsPreserved } from './safety'
 import { validateBackupState } from './validation'
-import { billingPeriodFromItems, germanIbanError, invoiceFinalizationErrors, nextInvoiceAllocation, parseDate, uid } from './utils'
+import { billingPeriodFromItems, invoiceFinalizationErrors, nextInvoiceAllocation, parseDate, uid } from './utils'
+import { paymentDataErrors } from './paymentData'
 
 function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatus, at: string, createId: (prefix: string) => string): AppState {
   const errors = [...invoiceFinalizationErrors(state, invoice), ...correctionErrors(state, invoice)]
-  const ibanError = germanIbanError(state.settings.iban)
-  if (ibanError) errors.push(ibanError)
+  errors.push(...paymentDataErrors(state.settings).map((error) => error.message))
   if (errors.length) throw new Error(`Finalisieren nicht möglich: ${errors.join(' ')}`)
   if (status === 'paid' && invoice.correction && state.payments.some((payment) => state.documentVersions.find((entry) => entry.id === payment.sourceVersionId)?.originalId === state.documentVersions.find((entry) => entry.id === invoice.correction?.replacesId)?.originalId)) throw new Error('Vorhandene Zahlungen müssen nach der Korrektur manuell zugeordnet werden; eine neue Vollzahlung wird nicht erzeugt.')
   if (!invoice.calculation && draftAmountChange(invoice).changed) throw new Error('Die Betragsberechnung hat sich geändert. Bitte den Entwurf im Editor prüfen und speichern.')

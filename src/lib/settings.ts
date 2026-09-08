@@ -1,7 +1,8 @@
 import { parseDecimalInput, validPrice } from './values'
 import { mailboxError } from './mailbox'
 import type { Settings } from '../types'
-import { cleanIban, ensureStudentCodePattern, germanIbanError, limitFooterText } from './utils'
+import { ensureStudentCodePattern, limitFooterText } from './utils'
+import { bicError, cleanIban, germanIbanError, normalizePaymentData } from './paymentData'
 
 export const STANDARD_RATE_ERROR = 'Bitte einen vollständigen, endlichen Preis ab 0 eingeben. Der letzte gültige Preis bleibt erhalten.'
 
@@ -27,11 +28,15 @@ export function settingsChangeErrors(previous: Settings, next: Settings): string
     const error = germanIbanError(next.iban)
     if (error) errors.push(error)
   }
+  if (accountChanged && next.bic.trim()) {
+    const error = bicError(next.bic)
+    if (error) errors.push(error)
+  }
   return errors
 }
 
 export function updateSettings(previous: Settings, next: Settings): Settings {
   const errors = settingsChangeErrors(previous, next)
   if (errors.length) throw new Error(errors.join(' '))
-  return { ...next, defaultLegalText: limitFooterText(next.defaultLegalText), numberPattern: ensureStudentCodePattern(next.numberPattern) }
+  return { ...next, ...normalizePaymentData(next), defaultLegalText: limitFooterText(next.defaultLegalText), numberPattern: ensureStudentCodePattern(next.numberPattern) }
 }

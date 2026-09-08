@@ -2,7 +2,8 @@ import { sumCents } from '../lib/money'
 import { useEffect, useMemo, useState } from 'react'
 import QRCode from 'qrcode'
 import type { Guardian, Invoice, Settings, Student } from '../types'
-import { billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, euro, footerTextForPrint, formatDateLong, formatIban, groupItemsByStudent, invoiceTotal, isValidIban, outputItemTotal, outputItemCents, outputUnitPrice, number, parseDate } from '../lib/utils'
+import { billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, euro, footerTextForPrint, formatDateLong, formatIban, groupItemsByStudent, invoiceTotal, outputItemTotal, outputItemCents, outputUnitPrice, number, parseDate } from '../lib/utils'
+import { germanIbanError, paymentDataForInvoice } from '../lib/paymentData'
 
 interface InvoicePrintProps {
   invoice: Invoice | null
@@ -29,12 +30,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
   const footerText = invoice ? footerTextForPrint(invoice.versionId || source ? invoice.legalText : invoice.legalText || settings.defaultLegalText) : ''
   const pageStyle = invoice ? buildInvoicePrintPageStyle(footerText, invoice.number) : ''
   const issuer = source?.issuer ?? settings.issuer
-  const account = {
-    holder: source?.accountHolder ?? settings.accountHolder,
-    iban: source?.iban ?? settings.iban,
-    bic: source?.bic ?? settings.bic,
-    bank: source?.bankName ?? settings.bankName,
-  }
+  const account = invoice ? paymentDataForInvoice(invoice, settings) : { accountHolder: '', iban: '', bic: '', bankName: '' }
   const recipientList = useMemo(() => {
     if (!invoice) return []
     if (source) return source.guardians
@@ -74,7 +70,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
   }, [invoice, period, studentList])
 
   const qrRequest = useMemo<{ payload: string | null; error: string | null }>(() => {
-    if (!invoice || !invoice.number || !isValidIban(account.iban) || !account.holder || total <= 0) {
+    if (!invoice || !invoice.number || germanIbanError(account.iban) || !account.accountHolder || total <= 0) {
       return { payload: null, error: null }
     }
     try {
@@ -82,7 +78,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
     } catch (error) {
       return { payload: null, error: error instanceof Error ? error.message : 'GiroCode konnte nicht erzeugt werden.' }
     }
-  }, [account.holder, account.iban, invoice, settings, total])
+  }, [account.accountHolder, account.iban, invoice, settings, total])
 
   useEffect(() => {
     setQrCode(null)
@@ -181,10 +177,10 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
 
           <section className="invoice-payment">
             <dl>
-              <dt>Kontoinhaber:</dt><dd><strong>{account.holder || '–'}</strong></dd>
+              <dt>Kontoinhaber:</dt><dd><strong>{account.accountHolder || '–'}</strong></dd>
               <dt>IBAN:</dt><dd className="mono">{formatIban(account.iban) || '–'}</dd>
               <dt>BIC:</dt><dd className="mono">{account.bic || '–'}</dd>
-              <dt>Bank:</dt><dd>{account.bank || '–'}</dd>
+              <dt>Bank:</dt><dd>{account.bankName || '–'}</dd>
               <dt>Verwendungszweck:</dt><dd><strong>Rechnung {invoice.number ?? 'Entwurf'}</strong></dd>
             </dl>
             <div className="invoice-qr">

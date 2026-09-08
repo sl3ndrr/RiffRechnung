@@ -3,6 +3,7 @@ import { decimalInputText, invoiceTotalCents, itemTotalCents, moneyErrors } from
 import { buildMailto } from './mailbox'
 import { validId, validPrice, validQuantity } from './values'
 import { assertInvoiceEditable } from './safety'
+import { cleanIban, germanIbanError, isValidGermanIban, paymentDataErrors, paymentDataForInvoice } from './paymentData'
 import type { AppState, Guardian, Invoice, InvoiceItem, InvoiceStatus, LessonType, Settings, Student } from '../types'
 
 export const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
@@ -376,74 +377,10 @@ export function uid(prefix: string): string {
   return `${prefix}-${crypto.randomUUID()}`
 }
 
-export function cleanIban(value: string): string {
-  return value.replace(/\s/g, '').toUpperCase()
-}
+export { cleanIban, formatIban, germanIbanError, isValidGermanIban as isValidIban } from './paymentData'
 
-export function formatIban(value: string): string {
-  return cleanIban(value).replace(/(.{4})/g, '$1 ').trim()
-}
-
-export const SEPA_IBAN_LENGTH_BY_COUNTRY: Readonly<Record<string, number>> = {
-  AD: 24,
-  AT: 20,
-  BE: 16,
-  BG: 22,
-  CH: 21,
-  CY: 28,
-  CZ: 24,
-  DE: 22,
-  DK: 18,
-  EE: 20,
-  ES: 24,
-  FI: 18,
-  FR: 27,
-  GB: 22,
-  GR: 27,
-  HR: 21,
-  HU: 28,
-  IE: 22,
-  IS: 26,
-  IT: 27,
-  LI: 21,
-  LT: 20,
-  LU: 20,
-  LV: 21,
-  MC: 27,
-  MT: 31,
-  NL: 18,
-  NO: 15,
-  PL: 28,
-  PT: 25,
-  RO: 24,
-  SE: 24,
-  SI: 19,
-  SK: 24,
-  SM: 27,
-  VA: 22,
-}
-
-export function isValidIban(input: string): boolean {
-  const iban = cleanIban(input)
-  if (!/^[A-Z]{2}\d{2}[A-Z0-9]+$/.test(iban)) return false
-  const expectedLength = SEPA_IBAN_LENGTH_BY_COUNTRY[iban.slice(0, 2)]
-  if (expectedLength === undefined || iban.length !== expectedLength) return false
-  const rearranged = iban.slice(4) + iban.slice(0, 4)
-  const numeric = rearranged.replace(/[A-Z]/g, (letter) => String(letter.charCodeAt(0) - 55))
-  let remainder = 0
-  for (const digit of numeric) remainder = (remainder * 10 + Number(digit)) % 97
-  return remainder === 1
-}
-
-export function germanIbanError(input: string): string | null {
-  const iban = cleanIban(input)
-  if (iban && !iban.startsWith('DE')) return 'Es werden nur deutsche IBANs unterstützt.'
-  if (!/^DE\d{20}$/.test(iban) || !isValidIban(iban)) return 'Bitte eine gültige deutsche IBAN mit 22 Zeichen und korrekter Prüfsumme eingeben.'
-  return null
-}
-
-export function isInvoiceSetupComplete(settings: Pick<Settings, 'issuer' | 'iban'>): boolean {
-  return Boolean(settings.issuer.name.trim()) && germanIbanError(settings.iban) === null
+export function isInvoiceSetupComplete(settings: Pick<Settings, 'issuer' | 'accountHolder' | 'iban' | 'bic'>): boolean {
+  return Boolean(settings.issuer.name.trim()) && paymentDataErrors(settings).length === 0
 }
 
 function sanitizeEpc(value: string, maxLength: number): string {
@@ -454,13 +391,12 @@ export function buildEpcPayload(invoice: Invoice, settings: Settings, amount: nu
   if (!Number.isFinite(amount) || amount < 0.01 || amount > 999_999_999.99) {
     throw new Error('EPC-GiroCode: Der Betrag muss zwischen 0,01 und 999.999.999,99 EUR liegen.')
   }
-  const source = invoice.snapshot
-  const name = source ? source.accountHolder : settings.accountHolder || settings.issuer.name
-  const iban = cleanIban(source ? source.iban : settings.iban)
-  const bic = (source ? source.bic : settings.bic).replace(/\s/g, '').toUpperCase()
-  if (bic && !/^(?:[A-Z0-9]{8}|[A-Z0-9]{11})$/.test(bic)) {
-    throw new Error('EPC-GiroCode: Die BIC muss 8 oder 11 alphanumerische Zeichen enthalten.')
-  }
+  const account = paymentDataForInvoice(invoice, settings)
+  const paymentErrors = paymentDataErrors(account)
+  if (paymentErrors.length) throw new Error(`EPC-GiroCode: ${paymentErrors[0].message}`)
+  const name = account.accountHolder
+  const iban = cleanIban(account.iban)
+  const bic = account.bic
   const purpose = invoice.number ? `Rechnung ${invoice.number}` : 'Rechnung Entwurf'
   const fields = [
     'BCD',

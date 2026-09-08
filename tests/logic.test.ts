@@ -1,5 +1,6 @@
 import './money-calendar.test'
 import './invoice-split.test'
+import './payment-data.test'
 import { legacyFixture } from './documentFixtures'
 import { captureLegacyDocuments } from '../src/lib/importState'
 import { seedState, sharedLock, fakeDirectory } from './storageHarness'
@@ -22,7 +23,7 @@ import { Dashboard } from '../src/views/Dashboard'
 import { createDemoState, defaultSettings, emptyState } from '../src/lib/defaults'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, runInvoiceMenuAction } from '../src/lib/invoiceMenu'
 import { loadLastBackupAt, StorageSession, loadState, parseBackup, recordBackupExport, serializeBackup } from '../src/lib/storage'
-import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoiceFinalizationErrors, invoicePdfTitle, invoiceTotal, invoicesToCsv, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, reopenInvoiceAsDraft, SEPA_IBAN_LENGTH_BY_COUNTRY, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
+import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoiceFinalizationErrors, invoicePdfTitle, invoiceTotal, invoicesToCsv, isFooterTextWithinLimit, isInvoiceSetupComplete, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, reopenInvoiceAsDraft, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
 import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { assertOriginalsPreserved } from '../src/lib/safety'
 import { applyStandardRateInput, updateSettings } from '../src/lib/settings'
@@ -179,31 +180,11 @@ test('historisches Zurücksetzen ist gesperrt und verbrauchte Nummern bleiben re
 
 })
 
-test('historische EPC-Kontodaten behalten die bisherige IBAN-Prüfung', () => {
-  assert.deepEqual(Object.keys(SEPA_IBAN_LENGTH_BY_COUNTRY).sort(), [
-    'AD', 'AT', 'BE', 'BG', 'CH', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI',
-    'FR', 'GB', 'GR', 'HR', 'HU', 'IE', 'IS', 'IT', 'LI', 'LT', 'LU', 'LV',
-    'MC', 'MT', 'NL', 'NO', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK', 'SM', 'VA',
-  ])
-  assert.equal(isValidIban('DE02 1203 0000 0000 2020 51'), true)
-  assert.equal(isValidIban('GB29 NWBK 6016 1331 9268 19'), true)
-  assert.equal(isValidIban('CH93 0076 2011 6238 5295 7'), true)
-  assert.equal(isValidIban('DE02 1203 0000 0000 2020 52'), false)
-  assert.equal(isValidIban('DE31 1203 0000 0000 2020 5100'), false)
-  assert.equal(isValidIban('ZZ32 1203 0000 0000 2020 51'), false)
-  assert.equal(isValidIban('AE07 0331 2345 6789 0123 456'), false)
-  assert.equal(isValidIban('AL47 2121 1009 0000 0002 3569 8741'), false)
-  assert.equal(isValidIban('MD24 AG00 0225 1000 1310 4168'), false)
-  assert.equal(isValidIban('ME25 5050 0001 2345 6789 51'), false)
-  assert.equal(isValidIban('MK07 2501 2000 0058 984'), false)
-  assert.equal(isValidIban('RS35 2600 0560 1001 6113 79'), false)
-  assert.equal(isValidIban('GI75 NWBK 0000 0000 7099 453'), false)
-})
-
 test('Entwürfe dürfen vor der Einrichtung starten; vollständige Einrichtung verlangt gültige IBAN', () => {
   const settings = structuredClone(defaultSettings)
   assert.equal(isInvoiceSetupComplete(settings), false)
   settings.issuer.name = '  Gitarrenstudio Beispiel  '
+  settings.accountHolder = 'Gitarrenstudio Beispiel'
   settings.iban = 'DE02 1203 0000 0000 2020 52'
   assert.equal(isInvoiceSetupComplete(settings), false)
   settings.iban = 'DE02 1203 0000 0000 2020 51'
@@ -236,6 +217,7 @@ test('Onboarding priorisiert die Einrichtung und hält den Demo-Zugang sichtbar'
 
   const issuerReady = emptyState()
   issuerReady.settings.issuer.name = 'Gitarrenstudio Beispiel'
+  issuerReady.settings.accountHolder = 'Gitarrenstudio Beispiel'
   issuerReady.settings.iban = 'DE02 1203 0000 0000 2020 51'
   assert.match(renderDashboard(issuerReady), /1 von 2 Schritten abgeschlossen/)
 
