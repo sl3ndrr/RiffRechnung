@@ -83,3 +83,32 @@ export function prepareInvoiceCopy(state: AppState, invoiceId: string, targetDat
 export function saveInvoiceState(state: AppState, draft: InvoiceDraft, finalize: boolean, at?: string): CommandResult<AppState> {
   return commandResult(() => saveInvoiceDraft(state, draft, finalize, at))
 }
+
+export function deleteGuardianState(state: AppState, id: string): CommandResult<AppState> {
+  return commandResult(() => {
+    validateBackupState(state)
+    const next = {
+      ...state, guardians: state.guardians.filter((guardian) => guardian.id !== id),
+      students: state.students.map((student) => ({ ...student, guardianIds: student.guardianIds.filter((value) => value !== id) })),
+      invoices: state.invoices.map((invoice) => invoice.status === 'draft' && !invoice.correction ? { ...invoice, guardianIds: invoice.guardianIds.filter((value) => value !== id) } : invoice),
+    }
+    validateBackupState(next)
+    return next
+  })
+}
+
+export function deleteStudentState(state: AppState, id: string): CommandResult<AppState> {
+  return commandResult(() => {
+    validateBackupState(state)
+    const next = {
+      ...state, students: state.students.filter((student) => student.id !== id),
+      invoices: state.invoices.map((invoice) => invoice.status === 'draft' && !invoice.correction ? { ...invoice, studentIds: invoice.studentIds.filter((value) => value !== id), items: invoice.items.filter((item) => item.studentId !== id) } : invoice),
+    }
+    validateBackupState(next)
+    return next
+  })
+}
+
+export function recordActivity(state: AppState, event: AppState['audit'][number]): AppState {
+  return { ...state, updatedAt: event.at, audit: [event, ...state.audit].slice(0, 200) }
+}

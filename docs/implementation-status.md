@@ -1,8 +1,10 @@
 # Umsetzungsstatus
 
-Stand: 2026-09-07, Paket 03. Zielbranch `main` erneut geprüft:
-`ba7857fd9180fa392c42a0235643e478e5077ee5`. Die offenen PRs bauen aufeinander auf;
-kein Merge und kein Deployment. Keine `AGENTS.md` im vollständig geprüften Tree.
+Stand: 2026-09-08, Paket 04. Tatsächliches `main` geprüft:
+`b7babea58bcb2f9a0423870eadaf7b18109f3eec`. PRs #21/#22 wurden in ihre
+Vorgängerbranches übernommen, die anschließend gelöscht wurden; deren Paket-02/03-
+Inhalte sind noch nicht in `main`. Keine `AGENTS.md` im vollständig geprüften Tree.
+Kein Merge und kein Deployment durch diesen Auftrag.
 
 ## Paketfolge
 
@@ -17,7 +19,7 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 | 01 | Gefährliche Abläufe vorläufig absichern | R01–R05, R10, R22 (Sofortschutz) | Sofortschutz implementiert und CI-geprüft; reale Browserabnahmen offen |
 | 02 | Fachbefehle, Validatoren, reparierbare Formate | R01, R04, R15; Grundlage R24 | Implementiert und CI-geprüft; reale Browser-/Mailprogrammabnahmen offen |
 | 03 | Speicherung, Backups, isolierte Demo | R05, R08, R22, N06; schrittweise R24 | Implementiert; CI-/Browsernachweise unten, native Dateirechte offen |
-| 04 | Originalbelege und Korrekturen | R03, R09, R10, F03, N09 | Laut Analyse offen |
+| 04 | Originalbelege und Korrekturen | R03, R09, R10, F03, N09; schrittweise R24 | Implementiert; 116/116 Fachtests und 11/11 Browserprüfungen bestanden |
 | 05 | Exaktes Geld und Kalenderdaten | R06, R12 | Laut Analyse offen |
 | 06 | Aufteilung nach Empfängern | R02; Integration R01 | Laut Analyse offen |
 | 07 | Rechnungsprofil, deutsche IBAN, Zahlungsdaten | R07, R13 angepasst, R14 | Laut Analyse offen |
@@ -39,71 +41,81 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 | 00 | PR #19: gemeinsame Node-22-CI, Testtypen, esbuild; R23/R25/N01 | 45/45 Tests; Pflichtstatuscheck administrativ offen |
 | 01 | PR #20: vorläufiger Original-, Aufteilungs-, Datei- und Demoschutz | 56/56 Tests; in 03 werden nur Datei-/Demo-Sperren fachlich ersetzt |
 | 02 | PR #21, `3433c9c0fbab8f57ee66ce669a856a2d82fb43e9`: Fachbefehle, Format 3, ID-Reparatur, Mailboxen; R01/R04/R15, Grundlage R24 | 74/74 Tests; [CI 34056037557](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34056037557) |
+| 03 | PR #22, `203f07c93f90eed40e049956e55a58e3e654714f`: gemeinsamer Schreibdienst, Protokoll 4, sichere Versionsdateien und isolierte Demo; R05/R08/R22/N06 | 101/101 Fachtests, 8/8 Browserprüfungen; [CI 34087436918](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34087436918) |
 
 Historische Einzelbefunde und CI-Fehlerzuordnung: [quality-gates.md](quality-gates.md).
 Produktregeln: [product-decisions.md](product-decisions.md).
 
-## Paket 03 – Speicherung, Backups und isolierte Demo
+## Paket 04 – Originalbelege und nachvollziehbare Korrekturen
 
-- **Ausgangsstand:** Arbeits-/PR-Basis ist PR #21, Branch
-  `codex/paket-02-fachbefehle-migration`, vollständige SHA
-  `3433c9c0fbab8f57ee66ce669a856a2d82fb43e9`. Alle 57 Basisdateien anhand ihrer
-  Git-Blobs geprüft; Tree `bbc24026bf854fcc742e0f7f05d6476157d1e50d` lokal identisch.
-  R05/R08/R22/N06 am aktuellen Code bestätigt: mehrere Speicherwege, verzögerte
-  Bestätigung/Einstellungen und vorläufig gesperrte Datei-/Demoabläufe.
-- **Ergebnis:** Branch `codex/paket-03-sichere-speicherung`,
-  [PR #22](https://github.com/sl3ndrr/RiffRechnung/pull/22) gegen den Paket-02-Branch.
-  Implementierung und Ergänzungen bis `c034f63af72aeaeec0bbf8ef10bd2c8f274c0c58`;
-  abschließender Dokumentationscommit und zugehöriger Prüflauf stehen im PR.
-  R05/R08/R22/N06 im Paketumfang implementiert; R24 für Speicherung weitergeführt.
-  Keine F-Erweiterung und kein weiteres Paket begonnen.
-- **Änderungen:** Ein Schreibdienst mit Tab-Warteschlange und echten Web Locks;
-  vollständiger Inhaltsvergleich, Bestands-ID, Revision und Vorgänger-Fingerprints.
-  Verbindung liest zuerst alle JSON-Dateien; ausdrückliche Zuordnung anonymer
-  Altbackups. Datei-Backups werden ausschließlich als neue Dateien geschrieben,
-  erfolgreich geschlossen und zurückgelesen. Vorherige gültige Dateien bleiben.
-  Konflikte und Berechtigungs-/Speicherfehler bleiben sichtbar, auch mobil.
-  Gültige Einstellungen werden beim Ansichtswechsel bestätigt lokal gespeichert.
-  Demo arbeitet ausschließlich im Arbeitsspeicher ohne reale Schlüssel/Handles.
-- **Invarianten:** DE-IBAN-Regeln, historische Beträge/Snapshots, Referenzen,
-  CSV-Formelabwehr, getrennte Nummernkreise und reservierte Nummern erhalten.
-  Wiederherstellung bewahrt bekannte Originale/Reservierungen und erhöht die
-  Revision über aktuellen und importierten Stand. Kein Gewinner allein aufgrund
-  von Revision, Dateiname oder Datum; kein stilles Zusammenführen externer Zweige.
-- **Migration:** Speicherprotokoll 4 um Datenschema 3, eigener localStorage-Schlüssel
-  und neue Handle-Datenbank. Altformat 2 wird mit dem bestehenden Algorithmus nach 3
-  migriert, Format 3 übernommen; beide erst nach Vorschau/Bestätigung. Alte Schlüssel,
-  Originaltext, Eingangsdatei und Berichte bleiben erhalten. Archiv und vorheriger
-  lokaler Stand sind exportierbar/prüfbar. Weitere Lesevorgänge ändern nichts;
-  erneute Bestätigung erzeugt eine neue Revision, aber keine weitere Reparatur.
-  Unbekannte neuere Formate bleiben schreibgeschützt. Kein automatisches Downgrade.
+- **Ausgangsstand:** Fachliche Basis ist Paket 03,
+  `203f07c93f90eed40e049956e55a58e3e654714f`, Tree
+  `860865368a3dd58f532128571ba84bfd00984128`; alle 67 Dateien anhand ihrer Git-Blobs
+  verifiziert. R03/R10 waren nur vorläufig gesperrt; vollständige Versionen und
+  sicherer Korrekturweg fehlten. R09 (uneinheitlicher Snapshot-Zugriff) und N09
+  (nicht einsehbare Snapshot-Differenzen) am aktuellen Code bestätigt.
+- **Ergebnis:** Branch `codex/paket-04-belegversionen`,
+  [PR #24](https://github.com/sl3ndrr/RiffRechnung/pull/24). PR-Basis ist der
+  unveränderte Paket-03-Commit als `codex/paket-04-basis-03`; dadurch bleibt der
+  Vergleich auf Paket 04 begrenzt. Die fehlende Übernahme von 02/03 nach `main`
+  ist eine Integrationsabhängigkeit, kein in diesem Auftrag ausgeführter Merge.
+  Geprüfter Implementierungsstand: `67a8a689ef1d1888d091619ee655011c079ed6ac`;
+  anschließend ausschließlich Nachweisdokumentation. R03/R09/R10/F03/N09 im
+  Paketumfang behoben; R24 durch Fachmodule/Selektoren weitergeführt.
+- **Änderungen:** Vollständige unveränderliche Belege mit alten Ausgabebeträgen;
+  verknüpfte Korrekturentwürfe und ausdrückliche Neuzuordnung gelöschter Personen
+  ohne verlorene Positionen. Archiv statt Löschen ausgestellter Belege. Gemeinsame
+  Versionsauswahl für Ansicht/Druck/Erinnerung/EPC/CSV. Einsehbare Abweichungen und
+  begründete Klärung. Separater Zahlungs-/Verwaltungsverlauf; manuelle Zuordnung
+  vorhandener Vollzahlungen innerhalb einer Korrekturkette, Rest/Überzahlung sichtbar.
+- **Invarianten:** Originalinhalt bleibt reproduzierbar; keine In-place-Korrektur.
+  Nur letzter finalisierter Nachfolger zählt als aktive Forderung. Archivieren
+  storniert nichts. Jede Zahlung bleibt einmal mit ihrer Herkunft erfasst;
+  Zuordnungswechsel löschen/kopieren kein Geld. Vollständige Versionen, vorhandene
+  Snapshot-Differenzen und Verwaltungsverläufe überleben die 200-Ereignis-Grenze.
+  DE-IBAN-Regeln, reservierte Nummern/getrennte Kreise, Referenzschutz,
+  CSV-Formelabwehr, Rohdatenschutz und Schreibkonfliktprüfung bleiben erhalten.
+- **Migration:** Datenschema 4 im bestehenden Speicherprotokoll 4. Altformate 2/3,
+  einschließlich alter Umschläge, werden nach Vorschau/Bestätigung migriert;
+  vorhandene ID-Reparatur bleibt begrenzt/deterministisch. Bericht
+  `riffrechnung-to-v4` Version 1 enthält Belegstände, Quellen, Differenzen und neue
+  Verwaltungs-/Zahlungsangaben. Historische Registerbeträge haben Vorrang;
+  abweichende bisherige Rechnungssummen bleiben separat erhalten. Altbelege heißen
+  ältester verfügbarer Stand; fehlende frühere Versionen werden nicht erfunden.
+  Snapshot-Differenzen gelöschter/zurückgesetzter Rechnungen bleiben als unvollständige
+  Hinweise sichtbar. Originaltexte/-bytes und Berichte bleiben vor Übernahme im
+  Archiv; danach erzeugen Laden/Import keine weitere Reparatur. Neuere unbekannte
+  Formate bleiben schreibgeschützt. Rückweg: Originaldatei in getrenntem alten Profil.
 
-| Abnahme Paket 03 | Ergebnis / Nachweisart |
+| Abnahme Paket 04 | Ergebnis / Nachweisart |
 | --- | --- |
-| Leerer Browser mit bestehendem Backup; fremder Bestand; gleicher Zähler mit anderem Inhalt | Bestanden in Funktionsprüfungen mit synthetischen Storage-/Datei-Adaptern |
-| Manuelle und automatische Sicherung gleichzeitig; Fehler bei createWritable/write/close; Wiederholung | Bestanden mit Fehler-Injektion; reale OPFS-Sicherung zusätzlich im Browser |
-| Veralteter Tab und zwei zeitgleich schreibende Tabs | Bestanden mit zwei echten Chromium-Tabs und nativen Web Locks |
-| Einstellung ändern, sofort Ansicht wechseln, bestätigt speichern, schließen/öffnen | Bestanden im echten Chromium-Browser |
-| Beschädigte Rohdaten tatsächlich herunterladen; Backup bestätigen/persistieren/reload | Bestanden im echten Chromium-Browser; Originalbytes und Archiv geprüft |
-| Demo mit verbundenem Ordner: Echtbestand, Dateien und gespeichertes Handle unverändert | Bestanden mit echtem OPFS/IndexedDB und vollständigem Browserneustart im isolierten Profil |
-| Quota/Security, IndexedDB-Öffnung/Abbruch, veraltete Handles, granted/prompt/denied, fehlende Funktionen | Automatisierte Fehler-Injektion; native OS-Dialoge/Berechtigungen nicht geprüft |
-| Picker-Abbruch | Bestanden im Browser mit injiziertem AbortError; kein nativer Picker-Nachweis |
-| Bereits geöffnete historische Anwendung nach Umstieg | Bestanden mit dem echten historischen Build `ba7857f…` unter derselben Origin |
-| Migration/Reparatur, Geld, Referenzen, Reservierungen, Import und Reload | Vorhandene Regressionen erhalten; bestätigte Reparatur über den produktiven Schreibdienst ergänzt |
+| Finalisieren → Stammdaten löschen → Original drucken → Korrektur neu zuordnen → speichern → Reload | Bestanden: Fachprüfung und echter Chromium-Ablauf mit PDF-Textvergleich |
+| Betrag, Leistungsdatum, Text und Empfänger ändern; früheren Beleg identisch ausgeben | Bestanden: Schreibschutz-/Korrekturtests und echter PDF-Vergleich |
+| A/B und leere Snapshot-Kontofelder in Ansicht, Druck, Erinnerung und Export | Bestanden: Funktions-/Ausgabeprüfungen plus Browser und echte PDF-Erzeugung |
+| Mehr als 200 Aktionen, Archivierung, alle Versionen/Reservierungen und Export–Import | Bestanden: 205-Aktionen-Fachprüfung sowie Browserarchivierung, JSON-Download, Import und Reload |
+| Keine doppelte Forderung; bezahlte Korrektur und manuelle Zahlungszuordnung | Bestanden: Fachprüfungen und vollständiger Browserablauf, einschließlich Korrektur im Folgejahr und Vorjahres-CSV |
+| Geld, Referenzen, Migration/Idempotenz, Nummern und Schreibkonflikte nach Reload | Bestanden in Funktionsprüfungen; bisherige zwei echte Tabs bleiben Teil der CI |
+| Native Druckdialoge, Drucklayout-Matrix, Banking-App-Scan, OS-Dateirechte | Nicht geprüft; eigenständige spätere/native Abnahmen |
 
-**Ausführungsstand:** [CI 34087140552](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34087140552)
-für `c034f63af72aeaeec0bbf8ef10bd2c8f274c0c58`: Ubuntu 24.04.4,
-Node 22.23.2/npm 10.9.8, Chromium 153.0.8010.12; alle Schranken, 101/101 Fachtests
-und 8/8 Browserprüfungen bestanden, keine übersprungenen Tests. Lokal Node 24.19.0/npm 11.9.0;
-Installation/Node-22-Abruf E403, reguläre Prüfbefehle vor Prozessstart blockiert.
+**Prüfstand:** `67a8a689ef1d1888d091619ee655011c079ed6ac`,
+[CI 34188112394](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34188112394):
+**npm ci, Lint, 116/116 Fachtests, Typecheck einschließlich Tests, Build,
+Browserinstallation und 11/11 Browserprüfungen erfolgreich.** Umgebung: Ubuntu
+24.04.4, Node 22.23.2/npm 10.9.8, Chromium 153.0.8010.12. Synthetische PDFs und
+Browserergebnisse als CI-Artefakt `browser-evidence`. Der ausgecheckte PR-Merge-Tree
+ist identisch mit dem Implementierungs-Tree. Keine Tests gelöscht, übersprungen
+oder abgeschwächt; Zwischenfehler sind in `quality-gates.md` zugeordnet. Der
+abschließende reine Dokumentationscommit wird erneut vollständig durch CI geprüft;
+sein konkreter Commit und Lauf stehen im PR und Abschlussbericht.
+Lokal Node 24.19.0/npm 11.9.0; Node-22-Abruf/Installation E403, reguläre Gates vor
+Prozessstart blockiert. Syntax-/Diffprüfungen erfolgreich, kein lokaler CI-Ersatz.
 
-**Offen:** Native Ordnerwahl und Rechtevergabe/-entzug auf Zielbetriebssystemen,
-reale Synchronisationsprogramme/zweites Gerät sowie administrative Pflichtchecks.
-Keine Zusage geräteübergreifender Atomizität. Fehlende Web Locks sperren Schreiben;
-fehlende Dateifunktionen lassen lokalen Speicher und JSON-Export verfügbar.
-Versionsdateien/Archive werden nicht automatisch gelöscht und benötigen Speicherplatz.
-Der Chromium-Absturz bei OPFS-Handles im privaten Testprofil ist separat ohne App
-reproduziert; Datei-Abnahme verwendet ein dauerhaftes synthetisches Profil.
-Fokus, Druck und Banking-App-Scans gehören zu späteren Abnahmen.
+**Grenzen/offen:** Kein Wiederherstellen verlorener Originale, keine automatische
+GoBD-Konformität. Unbegrenzte Beleg-/Zahlungsdaten benötigen zusätzlichen Speicher;
+Quota-Fehler bleiben sichtbar. Betragsdifferenzen werden manuell geklärt;
+Teilzahlungen/Erstattungen und Zahlungstagsauswertungen sind nicht vorgezogen.
+Eigenständiger Storno-Workflow gehört nicht zum MVP. Native Datei-/Druck-/Banking-
+Abnahmen und administrative Pflichtchecks bleiben offen. Keine neue npm-Abhängigkeit;
+CI ergänzt Poppler und ein sieben Tage verfügbares synthetisches Browser-/PDF-Artefakt.
 
-Nächstes vorgesehenes Paket: **04 – Originalbelege und Korrekturen**, nicht begonnen.
+Nächstes vorgesehenes Paket: **05 – Exaktes Geld und Kalenderdaten**, nicht begonnen.

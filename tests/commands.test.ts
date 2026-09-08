@@ -1,3 +1,4 @@
+import { legacyFixture } from './documentFixtures'
 import { seedState, sharedLock } from './storageHarness'
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -72,7 +73,7 @@ function legacyCopies(count: number, finalized: boolean) {
   }))
   state.counters = { '2026:a': count + 1 }
   state.voidedInvoiceNumbers = [{ number: '2026-a-0099', sequence: 99, year: 2026, invoiceDate: '2026-08-15', deletedAt: at, reason: 'deleted', amount: 30, recipient: 'Testperson' }]
-  return { ...state, schemaVersion: 2 }
+  return { ...legacyFixture(state), schemaVersion: 2 }
 }
 
 function legacyRaw(data: unknown, app = 'riffrechnung'): string {
@@ -173,7 +174,7 @@ for (const count of [2, 3]) for (const finalized of [false, true]) test(`P02: ${
   assert.deepEqual(preview.state.invoices.map((invoice) => invoice.snapshot), before.invoices.map((invoice) => invoice.snapshot))
   assert.deepEqual(preview.state.counters, before.counters)
   assert.deepEqual(preview.state.voidedInvoiceNumbers, before.voidedInvoiceNumbers)
-  preview.state.invoices.forEach((invoice, index) => assert.deepEqual({ ...invoice, items: invoice.items.map((item, itemIndex) => ({ ...item, id: before.invoices[index].items[itemIndex].id })) }, before.invoices[index]))
+  preview.state.invoices.forEach((invoice, index) => assert.deepEqual({ ...invoice, versionId: undefined, items: invoice.items.map((item, itemIndex) => ({ ...item, id: before.invoices[index].items[itemIndex].id })) }, { ...before.invoices[index], versionId: undefined }))
   assert.deepEqual(legacy, before)
   const report = JSON.parse(serializeMigrationReport(preview))
   assert.deepEqual(new TextEncoder().encode(report.originalUtf8), new TextEncoder().encode(raw))
@@ -247,7 +248,7 @@ test('P02: Schema-2-Normalisierungen sind versioniert; vorhandene Typen, Nummern
   const saved = saveInvoiceDraft(state, draft(state), true, at)
   saved.invoices[0].items[0].description = 'Alttext (Duo)'
   saved.invoices[0].items[0].lessonType = 'solo'
-  const legacy = JSON.parse(JSON.stringify({ ...saved, schemaVersion: 2 }))
+  const legacy = JSON.parse(JSON.stringify({ ...legacyFixture(saved), schemaVersion: 2 }))
   delete legacy.students[0].billingCode
   delete legacy.nextStudentCodeIndex
   legacy.settings.numberPattern = '{YYYY}-{NNNN}'
@@ -353,7 +354,7 @@ test('P02: fehlerhafte importierte Mailboxen sind sichtbar, historische Werte bl
   const historical = saveInvoiceDraft(state, draft(state), true, at)
   historical.invoices[0].snapshot!.guardians[0].email = 'bad@example.org?bcc=x@example.org'
   historical.invoices[0].snapshot!.iban = 'FR1420041010050500013M02606'
-  const preview = requireSuccess(inspectImport(serializeBackup(historical)))
+  const preview = requireSuccess(inspectImport(JSON.stringify(legacyFixture(historical))))
   assert.equal(preview.warnings.length, 1)
   assert.deepEqual(preview.state.invoices[0].snapshot, historical.invoices[0].snapshot)
   assert.throws(() => mailtoUrl(preview.state.invoices[0], state.guardians, state.students), /ungültige Empfängeradresse/)

@@ -1,12 +1,12 @@
 import type { AppState } from '../types'
-import { validateBackupState } from './validation'
+import { validateBackupState, validateLegacyV3Structure } from './validation'
 
 export const STORAGE_VERSION = 4
 export interface RevisionRef { commitId: string; revision: number; fingerprint: string }
 export interface StorageEnvelope {
   app: 'riffrechnung'
   storageVersion: 4
-  schemaVersion: 3
+  schemaVersion: 3 | 4
   datasetId: string
   commitId: string
   revision: number
@@ -34,12 +34,12 @@ const hash = (value: unknown): value is string => typeof value === 'string' && /
 const revision = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value > 0
 const keys = (value: object, allowed: string) => Object.keys(value).every((key) => allowed.split(' ').includes(key))
 
-export function validateEnvelope(value: unknown): asserts value is StorageEnvelope {
+export function validateEnvelope(value: unknown, allowLegacy = false): asserts value is StorageEnvelope {
   if (!value || typeof value !== 'object') throw new Error('Ungültiger Speicherumschlag.')
   const e = value as StorageEnvelope
   if (e.storageVersion !== STORAGE_VERSION) throw new Error('Unbekannte Speicherversion: ausschließlich lesender Zugriff.')
   if (!keys(e, 'app storageVersion schemaVersion datasetId commitId revision savedAt operation ancestors source data')
-    || e.app !== 'riffrechnung' || e.schemaVersion !== 3 || !id(e.datasetId) || !id(e.commitId) || !revision(e.revision)
+    || e.app !== 'riffrechnung' || (e.schemaVersion !== 4 && !(allowLegacy && e.schemaVersion === 3)) || !id(e.datasetId) || !id(e.commitId) || !revision(e.revision)
     || typeof e.savedAt !== 'string' || Number.isNaN(Date.parse(e.savedAt))
     || !['edit', 'restore', 'adopt', 'reset'].includes(e.operation) || !Array.isArray(e.ancestors)) throw new Error('Ungültiger Speicherumschlag oder Revisionszähler.')
   let last = 0
@@ -52,7 +52,9 @@ export function validateEnvelope(value: unknown): asserts value is StorageEnvelo
   }
   if (e.source !== null && (!e.source || !keys(e.source, 'datasetId revision fingerprint') || !hash(e.source.fingerprint)
     || (e.source.datasetId !== null && !id(e.source.datasetId)) || (e.source.revision !== null && !revision(e.source.revision)))) throw new Error('Ungültige Wiederherstellungsquelle.')
-  validateBackupState(e.data)
+  if (e.schemaVersion !== (e.data as { schemaVersion: number }).schemaVersion) throw new Error('Backup-Umschlag und Daten haben unterschiedliche Formatversionen.')
+  if (e.schemaVersion === 3) validateLegacyV3Structure(e.data)
+  else validateBackupState(e.data)
 }
 
 export async function reference(envelope: StorageEnvelope): Promise<RevisionRef> {

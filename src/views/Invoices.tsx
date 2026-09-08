@@ -1,14 +1,16 @@
+import { DocumentHistory, HistoricalSnapshotEvidence, type DocumentHistoryActions } from '../components/DocumentHistory'
+import { activeInvoices, isActiveClaim, openCents, selectedInvoices } from '../lib/documents'
 import { commandResult } from '../lib/result'
 import { FINALIZED_INVOICE_BLOCKED, isFinalizedInvoice } from '../lib/safety'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, ArrowUp, ArrowUpDown, CalendarDays, ChevronDown, Copy, Edit3, FilePlus2, Mail, MoreVertical, Printer, RotateCcw, Search, Send, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, CalendarDays, ChevronDown, Copy, Edit3, FilePlus2, Mail, MoreVertical, Printer, Search, Send, Trash2 } from 'lucide-react'
 import type { AppState, Invoice, InvoiceStatus } from '../types'
 import { EmptyState } from '../components/EmptyState'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, type InvoiceMenuPosition, runInvoiceMenuAction } from '../lib/invoiceMenu'
 import { billingPeriodFromItems, createReminder, effectiveStatus, euro, formatDate, formatDateLong, guardianName, invoiceTotal, mailtoUrl, sortInvoices, statusLabel, studentName, type InvoiceSortKey, type SortDirection } from '../lib/utils'
 
-interface InvoicesProps {
+interface InvoicesProps extends DocumentHistoryActions {
   state: AppState
   selectedId: string | null
   onSelect: (id: string | null) => void
@@ -21,22 +23,25 @@ interface InvoicesProps {
   onToast: (message: string, tone?: 'success' | 'error' | 'info') => void
 }
 
-export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplicate, onDelete, onSetStatus, onPrint, onToast }: InvoicesProps) {
+export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplicate, onDelete, onSetStatus, onPrint, onToast, onCorrection, onAllocatePayment, onResolveConflicts }: InvoicesProps) {
   const [search, setSearch] = useState('')
+  const [showArchived, setShowArchived] = useState(false)
+  const invoices = useMemo(() => selectedInvoices(state), [state])
   const [status, setStatus] = useState<'all' | InvoiceStatus>('all')
   const [year, setYear] = useState('all')
   const [sort, setSort] = useState<{ key: InvoiceSortKey; direction: SortDirection }>({ key: 'date', direction: 'desc' })
   const [menu, setMenu] = useState<{ invoiceId: string; trigger: HTMLButtonElement } | null>(null)
   const [menuPosition, setMenuPosition] = useState<InvoiceMenuPosition | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
-  const selected = state.invoices.find((invoice) => invoice.id === selectedId) ?? null
-  const menuInvoice = menu ? state.invoices.find((invoice) => invoice.id === menu.invoiceId) ?? null : null
+  const selected = invoices.find((invoice) => invoice.id === selectedId) ?? null
+  const menuInvoice = menu ? invoices.find((invoice) => invoice.id === menu.invoiceId) ?? null : null
   const years = [...new Set(state.invoices.map((invoice) => String(invoice.year)))].sort().reverse()
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase('de-DE')
-    const matches = state.invoices
+    const matches = invoices
       .filter((invoice) => {
+        if (!showArchived && state.invoiceAdministration.some((admin) => admin.versionId === invoice.versionId && admin.archived)) return false
         const actualStatus = effectiveStatus(invoice)
         if (status !== 'all' && actualStatus !== status) return false
         if (year !== 'all' && String(invoice.year) !== year) return false
@@ -45,7 +50,7 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
         return haystack.includes(needle)
       })
     return sortInvoices(matches, sort.key, sort.direction, state.guardians, state.students)
-  }, [search, sort.direction, sort.key, state.guardians, state.invoices, state.students, status, year])
+  }, [search, sort.direction, sort.key, state, invoices, status, year, showArchived])
 
   const toggleSort = (key: InvoiceSortKey) => setSort((current) => ({
     key,
@@ -115,11 +120,11 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
   return (
     <div className="page invoice-page">
       <header className="page-header">
-        <div><p className="eyebrow">Verwaltung</p><h1>Rechnungen</h1><p>{state.invoices.length} Vorgänge · {euro.format(state.invoices.reduce((sum, invoice) => sum + invoiceTotal(invoice), 0))} Gesamtvolumen</p></div>
+        <div><p className="eyebrow">Verwaltung</p><h1>Rechnungen</h1><p>{state.invoices.length} Vorgänge · {euro.format(activeInvoices(state).reduce((sum, invoice) => sum + invoiceTotal(invoice), 0))} aktives Belegvolumen</p></div>
         <button className="button button--primary button--large" onClick={onNew}><FilePlus2 aria-hidden="true" /> Neue Rechnung</button>
       </header>
 
-      <section className="filter-bar" aria-label="Rechnungen filtern">
+      <section className="filter-bar" aria-label="Rechnungen filtern"><label><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} /> Archivierte anzeigen</label>
         <label className="search-field">
           <Search aria-hidden="true" />
           <span className="sr-only">Rechnungen durchsuchen</span>
@@ -142,10 +147,10 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
                 <thead><tr><SortableHeader label="Rechnung" sortKey="number" sort={sort} onSort={toggleSort} /><SortableHeader label="Familie / Kind" sortKey="family" sort={sort} onSort={toggleSort} /><SortableHeader label="Zeitraum" sortKey="period" sort={sort} onSort={toggleSort} /><SortableHeader label="Status" sortKey="status" sort={sort} onSort={toggleSort} /><SortableHeader label="Betrag" sortKey="amount" sort={sort} onSort={toggleSort} alignRight /><th><span className="sr-only">Aktion</span></th></tr></thead>
                 <tbody>{filtered.map((invoice) => {
                   const actualStatus = effectiveStatus(invoice)
-                  const period = billingPeriodFromItems(invoice.items, invoice.invoiceDate)
+                  const period = invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate)
                   return (
                     <tr className={invoice.id === selectedId ? 'is-selected' : ''} key={invoice.id} onClick={() => onSelect(invoice.id)}>
-                      <td><strong>{invoice.number ?? 'Entwurf'}</strong><small>{formatDate(invoice.invoiceDate)}</small></td>
+                      <td><button className="button button--text" onClick={() => onSelect(invoice.id)}>{invoice.number ?? 'Entwurf'}</button>{invoice.versionId && !isActiveClaim(state, invoice) && <small>Ersetzt</small>}<small>{formatDate(invoice.invoiceDate)}</small></td>
                       <td>{guardianName(invoice, state.guardians)}<small>{studentName(invoice, state.students)}</small></td>
                       <td>{period}</td>
                       <td><span className={`status-chip status-chip--${actualStatus}`}><i />{statusLabel[actualStatus]}</span></td>
@@ -174,10 +179,12 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
               onSetStatus={(next) => onSetStatus(selected, next)}
               onPrint={() => onPrint(selected)}
               onToast={onToast}
+              onSelect={onSelect} onCorrection={onCorrection} onAllocatePayment={onAllocatePayment} onResolveConflicts={onResolveConflicts}
             />
           )}
         </div>
       )}
+      <HistoricalSnapshotEvidence state={state} />
       {menu && menuInvoice && createPortal(
         <div
           className="invoice-kebab-menu"
@@ -193,7 +200,7 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
           <button type="button" role="menuitem" disabled={isFinalizedInvoice(menuInvoice)} title={isFinalizedInvoice(menuInvoice) ? FINALIZED_INVOICE_BLOCKED : undefined} onClick={() => chooseMenuAction('edit', menuInvoice)}><Edit3 aria-hidden="true" /> Bearbeiten</button>
           <button type="button" role="menuitem" onClick={() => chooseMenuAction('pdf', menuInvoice)}><Printer aria-hidden="true" /> {menuInvoice.status === 'draft' ? 'Vorschau' : 'PDF generieren'}</button>
           <button type="button" role="menuitem" onClick={() => chooseMenuAction('duplicate', menuInvoice)}><Copy aria-hidden="true" /> Duplizieren</button>
-          <button className="is-danger" type="button" role="menuitem" disabled={isFinalizedInvoice(menuInvoice)} title={isFinalizedInvoice(menuInvoice) ? FINALIZED_INVOICE_BLOCKED : undefined} onClick={() => chooseMenuAction('delete', menuInvoice)}><Trash2 aria-hidden="true" /> Löschen</button>
+          <button className="is-danger" type="button" role="menuitem" onClick={() => chooseMenuAction('delete', menuInvoice)}><Trash2 aria-hidden="true" /> {isFinalizedInvoice(menuInvoice) ? 'Archivieren / zurückholen' : 'Löschen'}</button>
         </div>,
         document.body,
       )}
@@ -218,9 +225,10 @@ function SortableHeader({ label, sortKey, sort, onSort, alignRight = false }: {
   )
 }
 
-function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete, onSetStatus, onPrint, onToast }: {
+function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete, onSetStatus, onPrint, onToast, onSelect, onCorrection, onAllocatePayment, onResolveConflicts }: DocumentHistoryActions & {
   invoice: Invoice
   state: AppState
+  onSelect: (id: string) => void
   onClose: () => void
   onEdit: () => void
   onDuplicate: () => void
@@ -230,10 +238,10 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
   onToast: (message: string, tone?: 'success' | 'error' | 'info') => void
 }) {
   const status = effectiveStatus(invoice)
-  const period = billingPeriodFromItems(invoice.items, invoice.invoiceDate)
+  const period = invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate)
   const reminder = createReminder(invoice, state.guardians, state.students)
   const mailto = commandResult(() => mailtoUrl(invoice, state.guardians, state.students))
-  const canRemind = status === 'sent' || status === 'overdue'
+  const canRemind = (status === 'sent' || status === 'overdue') && isActiveClaim(state, invoice) && openCents(state, invoice) === Math.round(invoiceTotal(invoice) * 100) && !state.payments.some((payment) => state.documentVersions.find((version) => version.id === payment.sourceVersionId)?.originalId === state.documentVersions.find((version) => version.id === invoice.versionId)?.originalId && payment.allocations.at(-1)?.versionId !== invoice.versionId)
 
   const copyReminder = async () => {
     await navigator.clipboard.writeText(`${reminder.subject}\n\n${reminder.body}`)
@@ -261,9 +269,10 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
         ) : (
           <><button className="button button--primary" onClick={onPrint}><Printer aria-hidden="true" /> PDF / Drucken</button><button className="button button--tonal" onClick={onEdit} disabled><Edit3 aria-hidden="true" /> Rechnung bearbeiten</button></>
         )}
-        {invoice.status !== 'draft' && <div className="status-editor"><label htmlFor={`invoice-status-${invoice.id}`}>Status</label><div><select id={`invoice-status-${invoice.id}`} value={status} onChange={(event) => onSetStatus(event.target.value as InvoiceStatus)}><option value="sent">Versendet / offen</option><option value="paid">Bezahlt</option><option value="overdue">Überfällig</option></select><ChevronDown aria-hidden="true" /></div><button className="button button--text status-editor__reopen" type="button" onClick={() => onSetStatus('draft')} disabled><RotateCcw aria-hidden="true" /> Zurück in Entwurf</button></div>}
+        {invoice.status !== 'draft' && <div className="status-editor"><label htmlFor={`invoice-status-${invoice.id}`}>Status</label><div><select id={`invoice-status-${invoice.id}`} value={status} onChange={(event) => onSetStatus(event.target.value as InvoiceStatus)}><option value="sent">Versendet / offen</option><option value="paid">Bezahlt</option><option value="overdue">Überfällig</option></select><ChevronDown aria-hidden="true" /></div></div>}
       </div>
 
+      <DocumentHistory key={invoice.id} state={state} invoice={invoice} onSelect={onSelect} onCorrection={onCorrection} onAllocatePayment={onAllocatePayment} onResolveConflicts={onResolveConflicts} />
       {isFinalizedInvoice(invoice) && <p className="field-hint" role="status">{FINALIZED_INVOICE_BLOCKED}</p>}
 
       {canRemind && (
@@ -280,7 +289,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
 
       <footer className="invoice-detail__footer">
         <button className="button button--text" onClick={onDuplicate}><Copy aria-hidden="true" /> Duplizieren</button>
-        <button className="button button--text button--danger-text" onClick={onDelete} disabled={isFinalizedInvoice(invoice)}><Trash2 aria-hidden="true" /> Löschen</button>
+        <button className="button button--text button--danger-text" onClick={onDelete}><Trash2 aria-hidden="true" /> {isFinalizedInvoice(invoice) ? state.invoiceAdministration.find((admin) => admin.versionId === invoice.versionId)?.archived ? 'Aus Archiv holen' : 'Archivieren' : 'Löschen'}</button>
       </footer>
     </aside>
   )

@@ -1,3 +1,5 @@
+import { legacyFixture } from './documentFixtures'
+import { captureLegacyDocuments } from '../src/lib/importState'
 import { seedState, sharedLock, fakeDirectory } from './storageHarness'
 import { prepareNewInvoice, saveInvoiceState } from '../src/lib/commands'
 import { requireSuccess, ValidationError } from '../src/lib/result'
@@ -5,6 +7,7 @@ import { adjustQuantity, parseQuantityInput } from '../src/lib/values'
 import './safety.test'
 import './commands.test'
 import './storage.test'
+import './documents.test'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -101,7 +104,7 @@ function validImportState() {
     guardianIds: ['guardian-a'],
     items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-a')],
   }))
-  return state
+  return captureLegacyDocuments(legacyFixture(state))
 }
 
 function corruptBackup(mutate: (data: Record<string, unknown>) => void): string {
@@ -576,7 +579,7 @@ test('vollständiges Backup lässt sich wiederherstellen', () => {
     },
   })
   const restored = parseBackup(serializeBackup(state))
-  assert.equal(restored.schemaVersion, 3)
+  assert.equal(restored.schemaVersion, 4)
   assert.equal(restored.settings.issuer.name, 'Test Unterricht')
   assert.equal(restored.students[0]?.billingCode, 'a')
   assert.equal(restored.voidedInvoiceNumbers[0]?.number, '2026-a-0004')
@@ -652,16 +655,14 @@ test('finalisierte Historie darf gelöschte Stammdaten über den Snapshot refere
   state.guardians = []
   state.students = []
 
-  const restored = parseBackup(serializeBackup(state))
+  const restored = parseBackup(JSON.stringify(legacyFixture(state)))
   assert.deepEqual(restored.invoices[0]?.guardianIds, ['guardian-a'])
   assert.deepEqual(restored.invoices[0]?.studentIds, ['student-a'])
 })
 
 test('ältere Backups erhalten stabile Kinderkennzeichen in Speicherreihenfolge', () => {
-  const legacy = JSON.parse(serializeBackup(emptyState()))
-  legacy.app = 'gitarrenrechnungen'
-  legacy.schemaVersion = 2
-  legacy.data.schemaVersion = 2
+  const state = legacyFixture(emptyState())
+  const legacy = JSON.parse(JSON.stringify({ app: 'gitarrenrechnungen', exportedAt: state.updatedAt, schemaVersion: 2, data: { ...state, schemaVersion: 2 } }))
   legacy.data.students = [student('student-a', 'Anna', ''), student('student-b', 'Ben', '')]
   legacy.data.settings.numberPattern = '{YYYY}-{NNNN}'
   delete legacy.data.nextStudentCodeIndex
@@ -676,7 +677,7 @@ test('ältere Kombinationszähler werden auf segmentierte Schlüssel migriert', 
   state.students = [student('student-a', 'Anna', 'a'), student('student-b', 'Ben', 'b'), student('student-ab', 'Zora', 'ab')]
   state.invoices = [invoice({ studentIds: ['student-a', 'student-b'], number: '2026-ab-0003', sequence: 3 })]
   state.counters = { '2026:ab': 4 }
-  const restored = parseBackup(JSON.stringify({ ...state, schemaVersion: 2 }))
+  const restored = parseBackup(JSON.stringify({ ...legacyFixture(state), schemaVersion: 2 }))
   assert.equal(restored.counters['2026:a+b'], 4)
   assert.equal(restored.counters['2026:ab'], 4)
 })
@@ -693,9 +694,12 @@ test('ältere Rechnungspositionen erhalten einen Typ ohne Preis- oder Titelände
       unitPrice: 17,
     }],
   })]
-  const legacy = JSON.parse(serializeBackup(state))
+  const legacy = { app: 'riffrechnung', exportedAt: state.updatedAt, schemaVersion: 2, data: JSON.parse(JSON.stringify(legacyFixture(state))) }
   legacy.schemaVersion = 2
   legacy.data.schemaVersion = 2
+  delete legacy.data.documentVersions
+  delete legacy.data.invoiceAdministration
+  delete legacy.data.payments
   delete legacy.data.invoices[0].items[0].lessonType
   const restoredItem = parseBackup(JSON.stringify(legacy)).invoices[0]?.items[0]
   assert.equal(restoredItem?.lessonType, 'duo')
@@ -752,6 +756,7 @@ test('Entwürfe lassen sich aus der Detailansicht nur mit vollständigen aktuell
 
   state.settings.iban = 'DE02120300000000202051'
   state.invoices = [draft]
+  state.documentVersions = []; state.invoiceAdministration = []; state.payments = []
   const original = structuredClone(state)
   assert.throws(() => changeInvoiceStatus({ ...state, guardians: [] }, draft.id, 'sent'), (error: unknown) => error instanceof ValidationError && error.path === 'students[0].guardianIds[0]')
   assert.deepEqual(state, original)

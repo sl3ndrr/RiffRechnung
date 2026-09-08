@@ -1,6 +1,6 @@
 # Produktentscheidungen
 
-Stand: Pakete 00–03, 2026-09-07. Quelle: beauftragter Umsetzungsplan zur Analyse von
+Stand: Pakete 00–04, 2026-09-08. Quelle: beauftragter Umsetzungsplan zur Analyse von
 `ba7857fd9180fa392c42a0235643e478e5077ee5`. Diese Regeln sind verbindliche Ziele;
 ihre technische Umsetzung wird pro Paket im [Umsetzungsstatus](implementation-status.md) belegt.
 
@@ -8,10 +8,10 @@ ihre technische Umsetzung wird pro Paket im [Umsetzungsstatus](implementation-st
 | --- | --- | --- |
 | Architektur | Statische React-/TypeScript-App, lokale Datenhaltung, deutsche Oberfläche; kein zusätzliches Backend. | In allen Paketen erhalten. |
 | IBAN | Ausschließlich deutsche IBANs für neue/geänderte Kontoeinstellungen und neue Finalisierungen. Keine Ausweitung auf weitere SEPA-Länder. | Sofortschutz in Paket 01 für Kontoeinstellungen und neue Finalisierungen; vollständiges Profil und EPC-Konsistenz in Paket 07. |
-| Historische Kontodaten | Alte Belege originalgetreu lesen; fremde IBANs weder löschen noch umschreiben noch durch aktuelle Kontodaten ersetzen. Neue Verwendung darf eine Korrektur verlangen. | Pakete 04/07. |
+| Historische Kontodaten | Alte Belege originalgetreu lesen; fremde oder leere Kontofelder weder löschen noch umschreiben noch durch aktuelle Kontodaten ersetzen. | In 04 erhalten; Profil-/EPC-Ausbau in 07. |
 | Getrennte Rechnungen | Jede Leistung pro Aufteilung insgesamt genau einmal berechnen; Empfänger erhalten nur zugeordnete Kinder/Positionen. Keine angenommene 50/50-Aufteilung. | Konservative Regel aus dem Plan übernommen, Paket 06. |
 | Rechnungskopien | Weitere Ausgabe desselben Belegs erzeugt weder neue Forderung noch zweiten Umsatz. Getrennte Forderungen brauchen getrennte Leistungen oder ausdrücklich bestätigte Anteile. | Pakete 04/06/08. |
-| Finalisierte Belege | Originalinhalt erhalten; Änderungen über verknüpften Korrekturentwurf. Zahlungs- und Versandstatus separat pflegen. Fehlende Historie nicht erfinden. | Paket 04; keine rückwirkende Behauptung vollständiger Historie. |
+| Finalisierte Belege | Originalinhalt erhalten; Änderungen über verknüpften Korrekturentwurf mit neuer Nummer. Zahlungs- und Versandstatus separat pflegen. Fehlende Historie nicht erfinden. | In 04 umgesetzt; Details unten. |
 | Nummern und Export | Getrennte Nummernkreise, dauerhaft reservierte Nummern und CSV-Formelabwehr erhalten. | In allen betroffenen Paketen prüfen. |
 | Backup-Ordner | Ein Ordner gehört zu einem führenden Datenbestand. Abweichende Bestände erkennen; kein stilles Zusammenführen oder Überschreiben. | Konservative Regel übernommen, Paket 03. |
 | Zahlungen | Zunächst Vollzahlung mit tatsächlichem Zahlungstag. Fehlende historische Zahlungstage bleiben unbekannt. Teilzahlungen später separat. | Paket 08 (F02-MVP), optional Paket 14. |
@@ -28,7 +28,9 @@ PRs prüfen GitHubs Merge-Stand; Pages prüft und veröffentlicht den auslösend
 
 ## Vorläufige Regeln für Paket 01
 
-Datei-/Demo-Sperren und die pauschale Importsperre sind durch die Regeln aus Paket 03 ersetzt. Original- und Aufteilungsschutz gelten weiter.
+Datei-/Demo-Sperren und die pauschale Importsperre sind durch Paket 03 ersetzt;
+die folgenden historischen Originalsperren durch den Korrekturweg aus Paket 04.
+Die Aufteilungssperre bleibt bestehen. Bei Überschneidungen gilt der jüngste Paketstand.
 
 - **Aufteilung (R01/R02):** Mehrere getrennte Empfängerrechnungen sind bei Anlage,
   Entwurfsspeicherung und Finalisierung gesperrt. Eine einzelne gemeinsame
@@ -182,3 +184,61 @@ in Paket 02, revisionssichere Speicherung in Paket 03.
 - **Aufbewahrung:** Keine automatische Löschung alter Versionsdateien oder Archive
   in Paket 03. Das braucht zusätzlichen Speicherplatz; Quota-Fehler sind sichtbar.
   Komfortabler Vergleich/Archivverwaltung aus F01 gehört weiterhin zu Paket 13.
+
+## Paket 04 – vollständige Belege und Korrekturen
+
+- **Unveränderliche Version:** Jede Finalisierung sichert Positionen, damalige
+  Positions-/Gesamtbeträge, Leistungs-/Rechnungs-/Fälligkeitsdaten, Nummer,
+  Aussteller, Empfänger, Kinder, Bank und sämtliche belegbezogenen Ausgabetexte.
+  Ansicht, Druck, Erinnerung, EPC und CSV beziehen ihren Inhalt aus derselben
+  ausgewählten Version. Leere Snapshot-Felder sind verbindlich. Zahlungs- und
+  Versandereignisse sowie Archiv-/Klärungsdaten stehen separat; bisherige Ereignisse
+  und Zahlungszuordnungen dürfen bei Wiederherstellung nicht verschwinden.
+- **Korrekturregel:** Ein begründeter Entwurf übernimmt alle Positionen und die
+  Beziehung zum Original. Fehlende Personen/Kinder bleiben als Referenzen erkennbar;
+  Neuzuordnung ändert im Entwurf Kindreferenzen und Positionen gemeinsam. Die
+  Finalisierung verlangt aktuelle gültige Beziehungen und eine deutsche IBAN,
+  erzeugt einen gemeinsamen neuen Snapshot und vergibt eine neue Nummer. Pro
+  Vorgänger gibt es höchstens einen offenen Korrekturentwurf und einen finalisierten
+  Nachfolger. Nur der letzte finalisierte Beleg zählt als aktive Forderung;
+  ein noch offener Korrekturentwurf ersetzt die Forderung nicht.
+- **Historische Abweichungen:** Registerbetrag hat Vorrang vor der aus vorhandenen
+  Positionen berechneten bisherigen Summe; beide bleiben getrennt gespeichert.
+  Snapshot-/Zuordnungs-, Text-, Zeitraum- und Registerabweichungen bleiben sichtbar.
+  Vor Finalisierung einer Korrektur ist das Ergebnis der Klärung mit Grund
+  festzuhalten. Das ändert keine historischen Angaben; gewünschte inhaltliche
+  Berichtigungen werden anschließend im Korrekturentwurf vorgenommen.
+- **Fehlende Historie:** Migration kennzeichnet jeden Altbeleg als ältesten
+  verfügbaren Stand, nicht als wiederhergestelltes Original. Ohne damaligen Snapshot
+  wird nur die heute noch mögliche Ausgabe gesichert und entsprechend markiert;
+  der fehlende ursprüngliche Snapshot bleibt fehlend. Vorhandene Snapshot-Differenzen
+  werden auch bei gelöschten/zurückgesetzten Rechnungen unabhängig von der
+  200-Ereignis-Liste erhalten. Daraus wird kein vollständiger Beleg erfunden.
+- **Zahlungen bei Korrektur:** Eine erfasste Zahlung bleibt mit unveränderlicher
+  Herkunft, Betrag und Datum beim Original, bis sie mit Begründung vollständig
+  einem Beleg derselben Korrekturkette oder keiner Version zugeordnet wird.
+  Der Zuordnungsverlauf bleibt erhalten. Zurücknehmen von „Bezahlt“ löst nur die
+  Zuordnung; es löscht keinen Geldfluss. Existiert bereits Geld im Vorgang,
+  erzeugt erneutes „Bezahlt“ keine Kopie. Restforderung/Überzahlung bleibt sichtbar;
+  automatische Vollbetragserinnerungen sind bei ungeklärtem Geld oder Restbeträgen
+  gesperrt. Keine automatische Erstattung, Teilzahlung oder Aufteilung. Zahlungen
+  werden in Übersichten einmal nach ihrem Ursprungsbeleg gezählt. Der bisherige
+  Erfassungszeitpunkt neuer Vollzahlungen bleibt bis 08 zugleich Zahlungstag;
+  vorhandene historische Tage bleiben erhalten, fehlende bleiben unbekannt.
+  Kalender-/Jahresauswertungen nach tatsächlichem Geldfluss folgen in 08.
+- **Archiv und Umfang:** Finalisierte Belege werden archiviert und können wieder
+  eingeblendet werden; das storniert keine Forderung und gibt keine Nummer frei.
+  Nur echte Entwürfe sind löschbar. Korrekturen ersetzen ihren Vorgänger vollständig.
+  Ein eigenständiger Storno-Workflow gehört nicht zu diesem MVP; ein optionaler
+  Stornierungsverweis wird im Format validiert. Keine automatische GoBD-Konformität
+  oder Manipulationssicherheit durch lokale Versionierung zugesagt.
+- **Format und Rückweg:** Datenschema 4, Speicherprotokoll/Schlüssel aus 03 bleiben.
+  Altformat 2 durchläuft weiter die begrenzte deterministische ID-Reparatur;
+  Formate 2/3 werden durch `riffrechnung-to-v4`, Version 1, mit Bericht nach 4
+  übernommen. Normales Laden und erneute Importprüfung erzeugen keine weiteren
+  Reparaturen. Bestätigung archiviert unveränderte Eingangsdaten und Bericht vor
+  dem neuen Schreibabschluss. Bekannte Versionen, Zahlungen, Historie und
+  Reservierungen bleiben geschützt; neuere unbekannte Formate schreibgeschützt.
+  Rückkehr zu altem Code ausschließlich mit Originaldatei in getrenntem Profil.
+  Vollständige JSON-Backups enthalten alle Versionen und Verwaltungsdaten;
+  CSV dient als gekennzeichnete Übersicht, nicht als vollständiges Restore-Format.

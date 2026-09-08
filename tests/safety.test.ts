@@ -1,3 +1,6 @@
+import { legacyFixture } from './documentFixtures'
+import { validateLegacyV3Structure } from '../src/lib/validation'
+import { captureLegacyDocuments } from '../src/lib/importState'
 import { seedState, sharedLock, fakeDirectory } from './storageHarness'
 import { ValidationError } from '../src/lib/result'
 import test from 'node:test'
@@ -141,7 +144,7 @@ test('P01: historische Belege ohne Stammdaten bleiben samt Betrag, Snapshot und 
   const original = structuredClone(state)
   const invoice = state.invoices[0]
   assert.throws(() => reopenInvoiceAsDraft(state, invoice.id), /Finalisierte Belege/)
-  assert.throws(() => changeInvoiceStatus(state, invoice.id, 'draft'), /Finalisierte Belege/)
+  assert.throws(() => changeInvoiceStatus(state, invoice.id, 'draft'), /Korrekturentwurf/)
   for (const patch of [{ guardianIds: [] }, { items: [] }, { freeText: 'Geändert' }, { invoiceDate: '2026-09-01' }]) {
     assert.throws(() => saveInvoiceDraft(state, { ...invoice, ...patch }, false), /Finalisierte Belege/)
     const altered = { ...state, invoices: [{ ...invoice, ...patch }] }
@@ -168,10 +171,12 @@ test('P01: verdeckte Empfängerabweichungen und Verlust ungesicherter historisch
   assert.throws(() => assertOriginalsPreserved(finalized, changed), /Finalisierte Belege/)
   changed.invoices[0].snapshot!.guardians = [{ ...changed.guardians[1].address, id: 'g1', name: 'Andere Familie', email: '' }]
   assert.throws(() => assertOriginalsPreserved(finalized, changed), /Finalisierte Belege/)
-  const historical = structuredClone(finalized)
-  delete historical.invoices[0].snapshot
+  const historicalSource = legacyFixture(finalized)
+  delete historicalSource.invoices[0].snapshot
+  const historical = captureLegacyDocuments(historicalSource)
   validateBackupState(historical)
-  assert.throws(() => validateBackupState({ ...historical, guardians: [], students: [] }), /unbekannte Person|unbekanntes Kind/)
+  assert.doesNotThrow(() => validateBackupState({ ...historical, guardians: [], students: [] }), 'P04: gesicherte Version besitzt ihren eigenen historischen Referenzbereich')
+  assert.throws(() => validateLegacyV3Structure({ ...historicalSource, guardians: [], students: [] }), /unbekannte Person|unbekanntes Kind/, 'Ungesicherte Alt-Referenzen bleiben geschützt')
 })
 
 test('P01: reservierte Nummern bleiben nach abgewiesenem Austausch und Reload belegt', async () => withStorage(() => {
@@ -236,7 +241,7 @@ test('P01: nur deutsche Konten für Änderungen und Finalisierung; fremde histor
   let historical = saveInvoiceDraft(state, draftFor(state), true, at)
   historical.settings.iban = 'GB29NWBK60161331926819'
   historical.invoices[0].snapshot!.iban = 'GB29NWBK60161331926819'
-  historical = roundTrip(historical)
+  historical = roundTrip(captureLegacyDocuments(legacyFixture(historical)))
   assert.throws(() => updateSettings(historical.settings, { ...historical.settings, accountHolder: 'Neuer Name' }), /nur deutsche/)
   assert.equal(updateSettings(historical.settings, { ...historical.settings, theme: 'dark' }).iban, historical.settings.iban)
   assert.throws(() => saveInvoiceDraft(historical, { ...draftFor(state), items: [createLessonItem('s0', '2026-08-12', state.settings, 'new-item')] }, true), /nur deutsche/)

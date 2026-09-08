@@ -221,7 +221,8 @@ function itemTotalCents(item: Pick<InvoiceItem, 'quantity' | 'unitPrice'>): numb
   return Math.sign(total) * Math.round(Number(`${coefficient}e${Number(exponent) + 2}`))
 }
 
-export function invoiceTotal(invoice: Pick<Invoice, 'items'>): number {
+export function invoiceTotal(invoice: Pick<Invoice, 'items' | 'issuedAmounts'>): number {
+  if (invoice.issuedAmounts) return invoice.issuedAmounts.totalCents / 100
   return invoice.items.reduce((sum, item) => sum + itemTotalCents(item), 0) / 100
 }
 
@@ -246,7 +247,7 @@ export const statusLabel: Record<InvoiceStatus, string> = {
 
 export function guardianName(invoice: Invoice, guardians: Guardian[]): string {
   const snapshot = invoice.snapshot?.guardians.map((item) => item.name).filter(Boolean)
-  if (snapshot?.length) return snapshot.join(' & ')
+  if (snapshot) return snapshot.join(' & ') || 'Ohne Empfänger'
   const names = invoice.guardianIds
     .map((id) => guardians.find((guardian) => guardian.id === id)?.name)
     .filter(Boolean)
@@ -255,7 +256,7 @@ export function guardianName(invoice: Invoice, guardians: Guardian[]): string {
 
 export function studentName(invoice: Invoice, students: Student[]): string {
   const snapshot = invoice.snapshot?.students.map((item) => item.name).filter(Boolean)
-  if (snapshot?.length) return snapshot.join(', ')
+  if (snapshot) return snapshot.join(', ') || 'Ohne Kind'
   const names = invoice.studentIds
     .map((id) => students.find((student) => student.id === id)?.name)
     .filter(Boolean)
@@ -470,9 +471,9 @@ export function buildEpcPayload(invoice: Invoice, settings: Settings, amount: nu
     throw new Error('EPC-GiroCode: Der Betrag muss zwischen 0,01 und 999.999.999,99 EUR liegen.')
   }
   const source = invoice.snapshot
-  const name = source?.accountHolder || settings.accountHolder || source?.issuer.name || settings.issuer.name
-  const iban = cleanIban(source?.iban || settings.iban)
-  const bic = (source?.bic || settings.bic).replace(/\s/g, '').toUpperCase()
+  const name = source ? source.accountHolder : settings.accountHolder || settings.issuer.name
+  const iban = cleanIban(source ? source.iban : settings.iban)
+  const bic = (source ? source.bic : settings.bic).replace(/\s/g, '').toUpperCase()
   if (bic && !/^(?:[A-Z0-9]{8}|[A-Z0-9]{11})$/.test(bic)) {
     throw new Error('EPC-GiroCode: Die BIC muss 8 oder 11 alphanumerische Zeichen enthalten.')
   }
@@ -518,7 +519,7 @@ function csvCell(value: string | number): string {
 }
 
 export function invoicesToCsv(invoices: Invoice[], guardians: Guardian[], students: Student[]): string {
-  const header = ['Rechnungsnummer', 'Datum', 'Zeitraum', 'Empfänger', 'Kind(er)', 'Status', 'Netto/Gesamt EUR', 'Bezahlt am']
+  const header = ['Rechnungsnummer', 'Datum', 'Zeitraum', 'Empfänger', 'Kind(er)', 'Status', 'Netto/Gesamt EUR', 'Bezahlt am', 'Belegversion', 'Ersetzt Version', 'Korrekturgrund', 'Forderungsbeleg', 'Archiviert']
   const rows = invoices
     .filter((invoice) => invoice.number)
     .sort((a, b) => a.invoiceDate.localeCompare(b.invoiceDate))
@@ -531,6 +532,11 @@ export function invoicesToCsv(invoices: Invoice[], guardians: Guardian[], studen
       statusLabel[effectiveStatus(invoice)],
       invoiceTotal(invoice).toFixed(2).replace('.', ','),
       invoice.paidAt?.slice(0, 10) ?? '',
+      invoice.versionId ?? '',
+      invoice.correction?.replacesId ?? '',
+      invoice.correction?.reason ?? '',
+      invoice.claimState === 'replaced' ? 'Ersetzt – keine zusätzliche Forderung' : 'Aktuell',
+      invoice.archived ? 'Ja' : 'Nein',
     ])
   return `\uFEFF${[header, ...rows].map((row) => row.map(csvCell).join(';')).join('\r\n')}`
 }
@@ -580,4 +586,9 @@ export function downloadBytes(fileName: string, bytes: Uint8Array): void {
   anchor.download = fileName
   anchor.click()
   URL.revokeObjectURL(url)
+}
+
+export function outputItemTotal(invoice: Invoice, item: InvoiceItem): number {
+  const index = invoice.items.findIndex((entry) => entry.id === item.id)
+  return invoice.issuedAmounts && index >= 0 ? invoice.issuedAmounts.itemCents[index] / 100 : itemTotal(item)
 }

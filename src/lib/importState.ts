@@ -1,17 +1,18 @@
+import { captureDocument } from './documents'
 import { validateEnvelope, type StorageEnvelope } from './envelope'
 import type { AppState, Invoice, InvoiceItem, Student } from '../types'
 import { commandResult, requireSuccess, type CommandResult } from './result'
-import { backupEnum, backupObject, backupTimestamp, knownKeys, validateBackupState, validateLegacyV2Structure } from './validation'
+import { backupEnum, backupObject, backupTimestamp, knownKeys, validateBackupState, validateLegacyV2Structure, validateLegacyV3Structure } from './validation'
 import { ensureStudentCodePattern, invoiceStudentCode, studentCodeForIndex, studentCodeIndex } from './utils'
 import { mailboxError } from './mailbox'
 
 interface MigrationChange { path: string; before: unknown; after: unknown; reason: string }
 export interface IdMapping { invoiceId: string; itemIndex: number; oldId: string; newId: string }
 export interface MigrationReport {
-  migration: 'riffrechnung-v2-to-v3'
+  migration: 'riffrechnung-to-v4'
   version: 1
-  fromSchema: 2
-  toSchema: 3
+  fromSchema: 2 | 3
+  toSchema: 4
   source: 'local-state' | 'riffrechnung' | 'gitarrenrechnungen'
   changes: MigrationChange[]
   idMappings: IdMapping[]
@@ -43,7 +44,7 @@ function copySignature(invoice: Invoice): string {
   })
 }
 
-function repairCopiedItemIds(state: AppState, report: MigrationReport): void {
+function repairCopiedItemIds(state: LegacyState, report: MigrationReport): void {
   const occurrences = new Map<string, Array<{ invoice: Invoice; itemIndex: number }>>()
   for (const invoice of state.invoices) invoice.items.forEach((item, itemIndex) => {
     occurrences.set(item.id, [...(occurrences.get(item.id) ?? []), { invoice, itemIndex }])
@@ -79,12 +80,12 @@ function repairCopiedItemIds(state: AppState, report: MigrationReport): void {
   }))
 }
 
-function migrateV2(data: unknown, source: MigrationReport['source']): { state: AppState; report: MigrationReport } {
+function migrateV2(data: unknown, source: MigrationReport['source']): { state: LegacyState; report: MigrationReport } {
   validateLegacyV2Structure(data)
   // Shape has been checked, including references and ALL numeric values.
   // Only the following documented optional v2 fields may still be absent.
-  const state = structuredClone(data) as AppState
-  const report: MigrationReport = { migration: 'riffrechnung-v2-to-v3', version: 1, fromSchema: 2, toSchema: 3, source, changes: [], idMappings: [] }
+  const state = structuredClone(data) as LegacyState
+  const report: MigrationReport = { migration: 'riffrechnung-to-v4', version: 1, fromSchema: 2, toSchema: 4, source, changes: [], idMappings: [] }
   repairCopiedItemIds(state, report)
   const record = (path: string, before: unknown, after: unknown, reason: string) => {
     if (canonical(before) !== canonical(after)) report.changes.push({ path, before: before ?? null, after, reason })
@@ -129,7 +130,7 @@ function migrateV2(data: unknown, source: MigrationReport['source']): { state: A
   }
   record('schemaVersion', 2, 3, 'Geprüftes Speicherformat')
   state.schemaVersion = 3
-  validateBackupState(state)
+  validateLegacyV3Structure(state)
   return { state, report }
 }
 
@@ -157,7 +158,7 @@ export function inspectImport(rawData: string): CommandResult<ImportPreview> {
     let source: MigrationReport['source'] = 'local-state'
     let envelope: StorageEnvelope | null = null
     if ('storageVersion' in root) {
-      validateEnvelope(root)
+      validateEnvelope(root, true)
       envelope = root
       data = root.data
     } else if ('data' in root) {
@@ -168,12 +169,25 @@ export function inspectImport(rawData: string): CommandResult<ImportPreview> {
       if (root.schemaVersion !== backupObject(data, 'data').schemaVersion) throw new Error('Backup-Umschlag und Daten haben unterschiedliche Formatversionen.')
     }
     const version = backupObject(data, 'data').schemaVersion
-    if (version !== 2 && version !== 3) throw new Error('Die Datei hat kein unterstütztes Backup-Format. Neuere oder unbekannte Formate bleiben unverändert.')
+    if (version !== 2 && version !== 3 && version !== 4) throw new Error('Die Datei hat kein unterstütztes Backup-Format. Neuere oder unbekannte Formate bleiben unverändert.')
     let report: MigrationReport | null = null
     let state: AppState
-    if (version === 2) ({ state, report } = migrateV2(data, source))
-    else { validateBackupState(data); state = structuredClone(data) }
-    return { rawData, state, report, envelope, warnings: historicalEmailWarnings(state) }
+    if (version === 4) { validateBackupState(data); state = structuredClone(data) }
+    else {
+      let legacy: LegacyState
+      if (version === 2) ({ state: legacy, report } = migrateV2(data, source))
+      else { validateLegacyV3Structure(data); legacy = structuredClone(data) as LegacyState }
+      report ??= { migration: 'riffrechnung-to-v4', version: 1, fromSchema: 3, toSchema: 4, source, changes: [], idMappings: [] }
+      state = captureLegacyDocuments(legacy)
+      report.changes.push({ path: 'schemaVersion', before: version, after: 4, reason: 'Vollständige älteste verfügbare Belegstände und getrennte Verwaltung sichern; frühere Inhalte bleiben unbekannt' })
+      for (const document of state.documentVersions) report.changes.push({ path: `documentVersions.${document.id}`, before: null, after: document, reason: 'Jetzt verfügbarer historischer Inhalt, alte Ausgabebeträge und Snapshot-/Registerbelege; keine Wiederherstellung verlorener Originale' })
+      for (const invoice of state.invoices.filter((entry) => entry.versionId)) report.changes.push({ path: `invoices.${invoice.id}.versionId`, before: null, after: invoice.versionId, reason: 'Verweis auf den gesicherten vollständigen Belegstand' })
+      report.changes.push({ path: 'invoiceAdministration', before: null, after: state.invoiceAdministration, reason: 'Vorhandenen Verwaltungsstatus übernehmen; frühere Ereignisse bleiben unbekannt' })
+      report.changes.push({ path: 'payments', before: null, after: state.payments, reason: 'Vorhandenen Vollzahlungsstatus oder gespeicherten Zahlungshinweis einmalig übernehmen; fehlende Zahlungstage bleiben unbekannt' })
+      if (state.historicalSnapshotCorrections.length) report.changes.push({ path: 'historicalSnapshotCorrections', before: null, after: state.historicalSnapshotCorrections, reason: 'Vorhandene Snapshot-Differenzen unabhängig von der begrenzten Aktivitätsliste bewahren; auch ohne vollständigen Beleg' })
+      validateBackupState(state)
+    }
+    return { rawData, state, report, envelope, warnings: [...historicalEmailWarnings(state), ...state.documentVersions.flatMap((version) => version.conflicts.map((conflict) => `${version.content.number}: ${conflict.message}`))] }
   })
 }
 
@@ -190,4 +204,24 @@ export function parseBackup(text: string): AppState {
 
 export function serializeMigrationReport(preview: ImportPreview): string {
   return JSON.stringify({ app: 'riffrechnung-recovery', version: 1, originalUtf8: preview.rawData, report: preview.report, warnings: preview.warnings }, null, 2)
+}
+
+export type LegacyState = Omit<AppState, 'schemaVersion' | 'documentVersions' | 'invoiceAdministration' | 'payments' | 'historicalSnapshotCorrections'> & { schemaVersion: 3 }
+
+/** Deterministic capture: sourceUpdatedAt is a source timestamp, not a guessed issuance date. */
+export function captureLegacyDocuments(legacy: LegacyState): AppState {
+  const state: AppState = { ...structuredClone(legacy), schemaVersion: 4, documentVersions: [], invoiceAdministration: [], payments: [], historicalSnapshotCorrections: structuredClone(legacy.audit.filter((event) => event.snapshotCorrection)) }
+  state.invoices.forEach((invoice, index) => {
+    if (invoice.status === 'draft') return
+    const version = captureDocument(state, invoice, `version-v4-${index}`, true)
+    state.documentVersions.push(version)
+    invoice.versionId = version.id
+    state.invoiceAdministration.push({ versionId: version.id, archived: false, events: [{ at: invoice.updatedAt, status: invoice.status, kind: 'imported', reason: 'Ältester verfügbarer Verwaltungsstand; frühere Versand-/Statusereignisse unbekannt.' }], resolutions: [] })
+    if (invoice.status === 'paid' || invoice.paidAt) state.payments.push({
+      id: `payment-v4-${index}`, sourceVersionId: version.id, amountCents: version.amounts.totalCents,
+      paidAt: invoice.paidAt ?? null, recordedAt: invoice.updatedAt, provenance: 'legacy-status',
+      allocations: [{ versionId: invoice.status === 'paid' ? version.id : null, at: invoice.updatedAt, reason: 'Aus historischem Vollzahlungsstatus übernommen; Zahlungsdatum bleibt unbekannt, wenn es nicht gespeichert war.' }],
+    })
+  })
+  return state
 }

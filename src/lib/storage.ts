@@ -24,7 +24,7 @@ export type WriteLock = <T>(action: () => Promise<T>) => Promise<T>
 export function newerFormat(raw: string): boolean {
   try {
     const root = JSON.parse(raw)
-    return root.storageVersion > 4 || root.schemaVersion > 3 || root.data?.schemaVersion > 3
+    return root.storageVersion > 4 || root.schemaVersion > 4 || root.data?.schemaVersion > 4
   } catch { return false }
 }
 
@@ -34,7 +34,9 @@ export function loadState(storage: Storage = localStorage): StateLoadResult {
     raw = storage.getItem(STORAGE_KEY)
     if (raw !== null) {
       const inspected = inspectImport(raw)
-      if (!inspected.ok || !inspected.value.envelope) throw new Error(inspected.ok ? 'Der Speicherumschlag fehlt. Bitte Übernahme ausdrücklich bestätigen.' : inspected.errors.map((error) => error.message).join(' '))
+      if (!inspected.ok) throw new Error(inspected.errors.map((error) => error.message).join(' '))
+      if (inspected.value.report) throw new Error('Das ältere Datenformat benötigt einen kontrollierten Umstieg. Bitte Altformat und Reparatur prüfen und die Übernahme ausdrücklich bestätigen.')
+      if (!inspected.value.envelope) throw new Error('Der Speicherumschlag fehlt. Bitte Übernahme ausdrücklich bestätigen.')
       return { status: 'ready', state: inspected.value.state, envelope: inspected.value.envelope, rawData: raw }
     }
     raw = storage.getItem(LEGACY_STORAGE_KEY)
@@ -123,7 +125,7 @@ export class StorageSession {
     const maxRevision = Math.max(previous?.revision ?? 0, source?.revision ?? 0)
     if (!Number.isSafeInteger(maxRevision + 1)) throw new Error('Revisionszähler ausgeschöpft. Der Bestand bleibt unverändert.')
     const envelope: StorageEnvelope = {
-      app: 'riffrechnung', storageVersion: 4, schemaVersion: 3,
+      app: 'riffrechnung', storageVersion: 4, schemaVersion: 4,
       datasetId: base?.datasetId ?? crypto.randomUUID(), commitId: crypto.randomUUID(), revision: maxRevision + 1,
       savedAt: new Date().toISOString(), operation,
       ancestors: base ? [...base.ancestors, await reference(base)] : [],
@@ -169,6 +171,10 @@ export class StorageSession {
       const preview = inspected.value
       // Original-content protection from package 01 remains valid for known local
       // issued records. A damaged source is archived, never silently repaired here.
+      if (this.recovery && this.token) {
+        const current = inspectImport(this.token)
+        if (current.ok) assertOriginalsPreserved(current.value.state, preview.state)
+      }
       if (!this.recovery) assertOriginalsPreserved(this.current, preview.state)
       const next = structuredClone(preview.state)
       // Reserve known counters/numbers even when an older backup is restored.
