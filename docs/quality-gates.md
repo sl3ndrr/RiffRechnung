@@ -357,6 +357,7 @@ Paket-Commit zu; GitHub checkt den temporären PR-Merge-Commit aus.
 | `7485cbcc0a9c69b15ede344fff7f89f5954b2c1b`, [34158495236](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34158495236) | Alle bisherigen Gates, 114/114 Fachtests; 9/11 Browserprüfungen. Echter Original-/Korrektur-PDF-Ablauf bestanden. Zahlungsselektor auf tatsächlichen zugänglichen Rollennamen umgestellt; Migrationstest wartet vor Reload auf bestätigten Speicherabschluss. |
 | `9ad4e4c43e29fafb925a6436afcfb7ae294e7838`, [34158920782](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34158920782) | Installation/Lint bestanden; 115/116 Fachtests. Ein alter Test baute Format 2 noch durch selektives Löschen aktueller Felder; auf den expliziten Altformat-Builder umgestellt. Alle neuen Tests bestanden; weitere Gates nicht gestartet. |
 | `7eb666e4db7be425b73e8373dac174c329cb4c95`, [34159150309](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34159150309) | Installation/Lint/116 Fachtests/Typen/Build bestanden; 10/11 Browserprüfungen. Original-/Korrektur-PDF und Schema-3-Umstieg mit A/B und leeren historischen Kontofeldern bestanden. Datei-Import im neuen Zahlungsablauf traf zwei Inputs; auf den Backup-Bereich eingegrenzt. |
+| `67a8a689ef1d1888d091619ee655011c079ed6ac`, [34188112394](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34188112394) | **Alle Schranken erfolgreich; 116/116 Fachtests, 11/11 Browserprüfungen, 0 übersprungen.** Vollständiger Zahlungs-/Archiv-/Importablauf einschließlich Korrektur im Folgejahr und CSV des ersetzten Vorjahresbelegs bestanden. |
 
 Alle Zwischenfehler gehören zu Paket 04; keine Tests gelöscht, übersprungen,
 mit Wiederholungen kaschiert oder in ihrer Prüfabsicht abgeschwächt. Betroffene
@@ -383,4 +384,11 @@ und `npm run build` wurden vom Laufzeitwerkzeug vor Prozessstart abgebrochen:
 `network approval was cancelled before a decision was returned`. Keine regulären
 lokalen Gate-Ergebnisse. `node --experimental-strip-types --check` für betroffene
 TS-Module/Tests und `git diff --check` erfolgreich; nur ergänzende Syntax-/Diffprüfung.
-Der abschließende Gesamtlauf und Ergebnisstand werden im PR und Umsetzungsstatus ergänzt.
+Der erfolgreiche Lauf 34188112394 hat `head_sha = 67a8a689…` und checkt
+`0b3b03429809815180cfdabae8b2833c6c891906` aus. Dessen Tree
+`9b1105d2a18e629a95ab3c565d25b4754c89c270` ist per GitHub-API und lokalem Git-Tree
+identisch mit dem Implementierungsstand. Artefakt `browser-evidence`, ID
+`10041251131`, gehört zu diesem Commit und enthält die synthetischen Nachweise;
+Aufbewahrung bis 2026-09-15. Contents/Metadata ausschließlich lesend; kein Pages-
+Artefakt angefordert und kein Deployment. Nachfolgend ausschließlich Dokumentation;
+der abschließende Ergebniscommit wird erneut vollständig geprüft und im PR ausgewiesen.

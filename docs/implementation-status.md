@@ -1,6 +1,6 @@
 # Umsetzungsstatus
 
-Stand: 2026-09-07, Paket 04. Tatsächliches `main` geprüft:
+Stand: 2026-09-08, Paket 04. Tatsächliches `main` geprüft:
 `b7babea58bcb2f9a0423870eadaf7b18109f3eec`. PRs #21/#22 wurden in ihre
 Vorgängerbranches übernommen, die anschließend gelöscht wurden; deren Paket-02/03-
 Inhalte sind noch nicht in `main`. Keine `AGENTS.md` im vollständig geprüften Tree.
@@ -19,7 +19,7 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 | 01 | Gefährliche Abläufe vorläufig absichern | R01–R05, R10, R22 (Sofortschutz) | Sofortschutz implementiert und CI-geprüft; reale Browserabnahmen offen |
 | 02 | Fachbefehle, Validatoren, reparierbare Formate | R01, R04, R15; Grundlage R24 | Implementiert und CI-geprüft; reale Browser-/Mailprogrammabnahmen offen |
 | 03 | Speicherung, Backups, isolierte Demo | R05, R08, R22, N06; schrittweise R24 | Implementiert; CI-/Browsernachweise unten, native Dateirechte offen |
-| 04 | Originalbelege und Korrekturen | R03, R09, R10, F03, N09; schrittweise R24 | Implementiert; abschließende CI-/Browserabnahme läuft |
+| 04 | Originalbelege und Korrekturen | R03, R09, R10, F03, N09; schrittweise R24 | Implementiert; 116/116 Fachtests und 11/11 Browserprüfungen bestanden |
 | 05 | Exaktes Geld und Kalenderdaten | R06, R12 | Laut Analyse offen |
 | 06 | Aufteilung nach Empfängern | R02; Integration R01 | Laut Analyse offen |
 | 07 | Rechnungsprofil, deutsche IBAN, Zahlungsdaten | R07, R13 angepasst, R14 | Laut Analyse offen |
@@ -59,7 +59,9 @@ Produktregeln: [product-decisions.md](product-decisions.md).
   unveränderte Paket-03-Commit als `codex/paket-04-basis-03`; dadurch bleibt der
   Vergleich auf Paket 04 begrenzt. Die fehlende Übernahme von 02/03 nach `main`
   ist eine Integrationsabhängigkeit, kein in diesem Auftrag ausgeführter Merge.
-  R03/R09/R10/F03/N09 implementiert, R24 durch Fachmodule/Selektoren weitergeführt.
+  Geprüfter Implementierungsstand: `67a8a689ef1d1888d091619ee655011c079ed6ac`;
+  anschließend ausschließlich Nachweisdokumentation. R03/R09/R10/F03/N09 im
+  Paketumfang behoben; R24 durch Fachmodule/Selektoren weitergeführt.
 - **Änderungen:** Vollständige unveränderliche Belege mit alten Ausgabebeträgen;
   verknüpfte Korrekturentwürfe und ausdrückliche Neuzuordnung gelöschter Personen
   ohne verlorene Positionen. Archiv statt Löschen ausgestellter Belege. Gemeinsame
@@ -90,18 +92,21 @@ Produktregeln: [product-decisions.md](product-decisions.md).
 | Finalisieren → Stammdaten löschen → Original drucken → Korrektur neu zuordnen → speichern → Reload | Bestanden: Fachprüfung und echter Chromium-Ablauf mit PDF-Textvergleich |
 | Betrag, Leistungsdatum, Text und Empfänger ändern; früheren Beleg identisch ausgeben | Bestanden: Schreibschutz-/Korrekturtests und echter PDF-Vergleich |
 | A/B und leere Snapshot-Kontofelder in Ansicht, Druck, Erinnerung und Export | Bestanden: Funktions-/Ausgabeprüfungen plus Browser und echte PDF-Erzeugung |
-| Mehr als 200 Aktionen, Archivierung, alle Versionen/Reservierungen und Export–Import | Fachprüfungen bestanden; abschließender Browser-Import in Prüfung |
-| Keine doppelte Forderung; bezahlte Korrektur und manuelle Zahlungszuordnung | Fachprüfungen bestanden; Browserzuordnung/Archivierung bestanden, kompletter Importablauf in Prüfung |
+| Mehr als 200 Aktionen, Archivierung, alle Versionen/Reservierungen und Export–Import | Bestanden: 205-Aktionen-Fachprüfung sowie Browserarchivierung, JSON-Download, Import und Reload |
+| Keine doppelte Forderung; bezahlte Korrektur und manuelle Zahlungszuordnung | Bestanden: Fachprüfungen und vollständiger Browserablauf, einschließlich Korrektur im Folgejahr und Vorjahres-CSV |
 | Geld, Referenzen, Migration/Idempotenz, Nummern und Schreibkonflikte nach Reload | Bestanden in Funktionsprüfungen; bisherige zwei echte Tabs bleiben Teil der CI |
 | Native Druckdialoge, Drucklayout-Matrix, Banking-App-Scan, OS-Dateirechte | Nicht geprüft; eigenständige spätere/native Abnahmen |
 
-**Prüfstand:** `7eb666e4db7be425b73e8373dac174c329cb4c95`,
-[CI 34159150309](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34159150309):
-116/116 Fachtests, Installation/Lint/Typecheck einschließlich Tests/Build bestanden;
-10/11 Browserprüfungen. Der verbleibende neue Test scheiterte am mehrdeutigen
-Datei-Input-Selektor; korrigiert, erneuter Gesamtlauf folgt. Umgebung: Ubuntu
-24.04.4, Node 22.23.2/npm 10.9.8, Chromium 153.0.8010.12. Keine Tests gelöscht,
-übersprungen oder abgeschwächt. Paketbezogene Zwischenfehler in `quality-gates.md`.
+**Prüfstand:** `67a8a689ef1d1888d091619ee655011c079ed6ac`,
+[CI 34188112394](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34188112394):
+**npm ci, Lint, 116/116 Fachtests, Typecheck einschließlich Tests, Build,
+Browserinstallation und 11/11 Browserprüfungen erfolgreich.** Umgebung: Ubuntu
+24.04.4, Node 22.23.2/npm 10.9.8, Chromium 153.0.8010.12. Synthetische PDFs und
+Browserergebnisse als CI-Artefakt `browser-evidence`. Der ausgecheckte PR-Merge-Tree
+ist identisch mit dem Implementierungs-Tree. Keine Tests gelöscht, übersprungen
+oder abgeschwächt; Zwischenfehler sind in `quality-gates.md` zugeordnet. Der
+abschließende reine Dokumentationscommit wird erneut vollständig durch CI geprüft;
+sein konkreter Commit und Lauf stehen im PR und Abschlussbericht.
 Lokal Node 24.19.0/npm 11.9.0; Node-22-Abruf/Installation E403, reguläre Gates vor
 Prozessstart blockiert. Syntax-/Diffprüfungen erfolgreich, kein lokaler CI-Ersatz.
 
