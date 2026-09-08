@@ -98,6 +98,7 @@ test('P04: Empfaenger A/B und leere historische Kontofelder sind für alle Ausga
   state = createCorrectionDraft(state, invoice.id, 'Empfaenger B bestätigen', at)
   assert.throws(() => changeInvoiceStatus(state, state.invoices.at(-1)!.id, 'sent', at), /Abweichungen/)
   state = resolveDocumentConflicts(state, version.id, 'Snapshot zeigt A. Neue Rechnung ausdrücklich an B; keine Änderung des alten Snapshots.', at)
+  state.settings.taxIdentifier = { kind: 'tax-number', value: '12/345/67890' }
   state = saveInvoiceDraft(state, editable(state.invoices.at(-1)!), true, at)
   state = await persistReload(state)
   const corrected = selectInvoice(state, state.invoices.at(-1)!)

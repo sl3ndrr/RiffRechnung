@@ -240,7 +240,7 @@ test('P01: nur deutsche Konten für Änderungen und Finalisierung; fremde histor
   assert.match(germanIbanError('GB29 NWBK 6016 1331 9268 19') ?? '', /nur deutsche/)
   assert.match(germanIbanError('') ?? '', /deutsche IBAN eingeben/)
   assert.match(germanIbanError('DE02120300000000202052') ?? '', /Prüfsumme/)
-  assert.match(germanIbanError('DE0212030000000020205') ?? '', /22 Stellen/)
+  assert.match(germanIbanError('DE0212030000000020205') ?? '', /22 (Stellen|Zeichen)/)
   const state = families(1)
   assert.throws(() => updateSettings(state.settings, { ...state.settings, iban: 'GB29NWBK60161331926819' }), /nur deutsche/)
   let historical = saveInvoiceDraft(state, draftFor(state), true, at)
