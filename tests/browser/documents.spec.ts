@@ -283,7 +283,7 @@ test('P05 Browser: Altentwurf prüfen; Editor, Liste, Dashboard, Bericht, CSV, E
   expect(pdf.text).toContain('7,58')
   await testInfo.attach('dezimal-7-58.pdf', { body: pdf.pdf, contentType: 'application/pdf' })
   await page.getByRole('button', { name: 'Übersicht', exact: true }).first().click()
-  await expect(page.locator('.metric-card').filter({ hasText: 'Offener Betrag' })).toContainText('7,58')
+  await expect(page.locator('.metric-card').filter({ hasText: 'Offene Forderungen am' })).toContainText('7,58')
   await page.getByRole('button', { name: 'Auswertung', exact: true }).first().click()
   await expect(page.locator('.report-hero')).toContainText('7,58')
   const download = page.waitForEvent('download')
