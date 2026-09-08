@@ -408,6 +408,16 @@ Keine bereits fehlschlagenden Baseline-Gates festgestellt.
 | `0eac10205dec52cac158eb355db5a8e8b4607236` / [34190705831](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34190705831) | Installation/Lint bestanden, 119/123 Fachtests. Ein Implementierungsfehler: direkte Finalisierung alter Entwürfe setzte den Berechnungsmarker nicht. Drei Testannahmen: Unterlaufprobe war noch darstellbar, Portal-Dialog ohne Browser-DOM, alte Differenzbeträge nach neuer Rundung. Behoben; Dialogprüfungen in echten Chromium-Ablauf verlegt. Keine abgeschwächte Abnahme. |
 | `0a4cd2885b095111570bf55214dd571e0f45db4b` / [34190927478](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34190927478) | npm ci, Lint, 123/123 Fachtests, Typecheck inklusive Tests, Build, Browser-/Popplerinstallation und 13/13 Chromiumprüfungen bestanden. Checkout `e4bf608b9aa0370f4692c9ba39422caa95545584` ist GitHubs PR-Mergestand gegen unverändertes main. |
 
+Finaler Implementierungsstand `238fb7380abf791ba802fc2526a6c4cf9141c0ba`,
+[Lauf 34213179499](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34213179499):
+alle genannten Gates einschließlich 123/123 Fachtests und 13/13 Chromiumprüfungen
+bestanden. Enthält die erweiterte Preisreferenzmatrix, Untercentpreisanzeige und
+zusätzliche Präzisions-/Manipulations-/Grenzregressionen. PR-Merge-Commit
+`a22c0956e4ae3ade8bf3d1198e92bcaa8d55d275` hat denselben Tree
+`e875e7b27daf1f694f57c7fd0c82c7d1350611a6` wie die Implementierung.
+Alle 30 neuen/geänderten lokalen Dateien stimmen per Git-Blob-Hash mit GitHub überein.
+Anschließend nur README-/Nachweisdokumentation, keine Fachcodeänderung.
+
 Umgebung: Ubuntu 24.04.4, Node 22.23.2, npm 10.9.8, Python 3.12.3,
 Chromium 153.0.8010.12. `npm test` enthält 100.000 Vergleiche gegen Python
 `decimal.Decimal`/`ROUND_HALF_UP`, keine zweite Kopie der Implementierung.

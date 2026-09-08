@@ -135,12 +135,14 @@ CI ergänzt Poppler und ein sieben Tage verfügbares synthetisches Browser-/PDF-
   `npm view node@22 version --json --fetch-retries=0 --fetch-timeout=20000`: E403.
   Lint/Test/Typecheck/Build vor Prozessstart blockiert; keine lokalen Testergebnisse.
   CI übernimmt alle vorhandenen Gates einschließlich Testtypen und Chromium/PDF.
-  Prüflauf [34190927478](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34190927478)
-  gehört zu `0a4cd2885b095111570bf55214dd571e0f45db4b`: npm ci, Lint,
+  Prüflauf [34213179499](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34213179499)
+  gehört zu `238fb7380abf791ba802fc2526a6c4cf9141c0ba`: npm ci, Lint,
   123/123 Fachtests, Typecheck, Build, Browserinstallation und 13/13 Browserprüfungen
   bestanden. Ubuntu 24.04.4, Node 22.23.2/npm 10.9.8, Python 3.12.3,
-  Chromium 153.0.8010.12. Anschließend ergänzte Untercentpreisanzeige und
-  Grenzprüfungen werden im endgültigen Commit nochmals vollständig geprüft.
+  Chromium 153.0.8010.12. Untercentpreisanzeige und ergänzte Grenzprüfungen
+  sind enthalten. Der geprüfte PR-Merge-Tree stimmt mit dem Implementierungs-Tree
+  überein. Danach ausschließlich README-/Nachweisdokumentation; der abschließende
+  Dokumentationscommit wird erneut durch dieselben CI-Schranken geprüft.
   Ergebnisbranch/PR: [#26](https://github.com/sl3ndrr/RiffRechnung/pull/26).
   Zwischenfehler und Baseline sind in `quality-gates.md` getrennt zugeordnet.
 

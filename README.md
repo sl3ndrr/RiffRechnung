@@ -70,8 +70,8 @@ Der GiroCode füllt Empfänger, IBAN, Betrag und Rechnungsnummer in unterstützt
 Finalisieren sichert den vollständigen Beleg. Spätere Änderungen an Stammdaten,
 Konten oder Textbausteinen verändern ihn nicht. Ansicht, Druck, Erinnerung und
 Export verwenden dieselbe ausgewählte Version, auch bei leeren historischen
-Kontofeldern. Bereits ausgegebene Beträge werden vor der Rechenumstellung in
-Paket 05 mit der bisherigen Logik gesichert.
+Kontofeldern. Bereits gesicherte Beträge bleiben bei der Rechenumstellung erhalten;
+ältere Formate ohne Belegversion sichern zunächst ihren bisherigen Ausgabestand.
 
 In den Rechnungsdetails einen **Korrekturgrund** eingeben und **Korrekturentwurf
 erzeugen** wählen. Der Entwurf übernimmt sämtliche Positionen. Gelöschte Kinder
@@ -145,12 +145,12 @@ Demo-Änderungen gehen beim Verlassen verloren.
 
 ### Datenprüfung und kontrollierter Formatumstieg
 
-Das Datenschema ist Format 4; die Speicherung verwendet weiterhin den versionierten
+Das Datenschema ist Format 5; die Speicherung verwendet weiterhin den versionierten
 Umschlag aus Paket 03 (Speicherprotokoll 4). Entwürfe können unvollständig sein; ungültige
 Preise, Mengen, IDs oder Referenzen werden nicht gespeichert. Nur deutsche IBANs
 sind für neue/geänderte Kontoeinstellungen und neue Finalisierungen zugelassen.
 
-Beim Import und im Wiederherstellungsmodus lassen sich Formate 2 und 3 prüfen. Bekannte
+Beim Import und im Wiederherstellungsmodus lassen sich Formate 2, 3 und 4 prüfen. Bekannte
 Empfängerkopien mit doppelten Positions-IDs erhalten eine Reparaturvorschau,
 separate Exporte und einen Bericht mit Originaldaten. Die bestätigte Übernahme
 verwendet denselben abgesicherten Schreibdienst wie normale Änderungen.
@@ -159,7 +159,7 @@ Abweichungen und übernommenen Verwaltungs-/Zahlungsangaben. Vorhandene Register
 haben Vorrang; die abweichende bisherige Rechnungssumme bleibt ebenfalls erhalten.
 
 Beim Umstieg **alle alten Tabs schließen**, Original exportieren und die Vorschau
-bestätigen. Paket 04 verwendet die Speicher-Schlüssel und Handle-Datenbank aus
+bestätigen. Paket 05 verwendet die Speicher-Schlüssel und Handle-Datenbank aus
 Paket 03 weiter. Alte Rohtexte bleiben im Wiederherstellungsarchiv erhalten. Ändert ein alter
 Tab ihn später, erscheint ein Konflikt; beide Stände separat exportieren und in
 einem getrennten aktuellen Profil prüfen. Unbekannte neuere Formate bleiben
