@@ -76,7 +76,12 @@ function v4Fixture() {
   const captured = captureLegacyDocuments(legacyFixture(current))
   Reflect.deleteProperty(captured.settings, 'invoiceProfile')
   Reflect.deleteProperty(captured.settings, 'taxIdentifier')
-  const legacyPayments = captured.payments.map(({ paymentDayStatus, legacyPaymentDay, ...payment }) => payment)
+  const legacyPayments = captured.payments.map((payment) => {
+    const legacy = { ...payment }
+    Reflect.deleteProperty(legacy, 'paymentDayStatus')
+    Reflect.deleteProperty(legacy, 'legacyPaymentDay')
+    return legacy
+  })
   return { ...captured, payments: legacyPayments, schemaVersion: 4 as const }
 }
 
