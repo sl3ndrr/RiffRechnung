@@ -323,3 +323,64 @@ bzw. zweites Gerät erzeugen und unveränderte Dateien/sichtbare Sperre bestäti
 Für diese Punkte liegen automatisierte Fehler-Injektionen, aber keine native
 Abnahme vor. Keine geräteübergreifende atomare Synchronisation zugesagt.
 Administrative Pflichtchecks aus Paket 00 bleiben separat offen.
+
+## Paket 04 – vollständige Belege, Korrekturen und PDF-Inhalt
+
+Tatsächliches `main`: `b7babea58bcb2f9a0423870eadaf7b18109f3eec`.
+Fachliche Basis: Paket 03, `203f07c93f90eed40e049956e55a58e3e654714f`;
+[Baseline-CI 34087436918](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34087436918)
+erneut erfolgreich ausgelesen. Keine vorbestehenden Testfehler festgestellt.
+PR #21/#22 wurden in Vorgängerbranches gemergt; `main` enthält 02/03 noch nicht.
+[PR #24](https://github.com/sl3ndrr/RiffRechnung/pull/24) vergleicht deshalb mit
+`codex/paket-04-basis-03`, einem unveränderten Verweis auf den Paket-03-Commit.
+Branch-/Tree-/Commit-/Ref-/PR-Schreiben tatsächlich ausgeführt; kein Merge/Deployment.
+
+Unveränderte Pflichtbefehle: `npm ci`, `npm run lint`, `npm test`,
+`npm run typecheck` (einschließlich Tests), `npm run build`,
+`npx playwright install --with-deps chromium`, `npm run test:browser`.
+Neu: `sudo apt-get install -y poppler-utils` für den Textvergleich echter
+Chromium-PDFs. Keine neue npm-Abhängigkeit, kein Lockfile-Update. Browserergebnisse,
+synthetische PDFs und Fehlerkontexte werden sieben Tage als `browser-evidence`
+aufbewahrt. `actions/upload-artifact` v7.0.0 wurde über die offizielle GitHub-Ref
+auf `bbbca2ddaa5d8feaa63e36b76fdaad77386f024f` geprüft und unveränderlich fixiert.
+Keine erweiterten Repository-Schreib-/Deployment-Rechte für den Quality-Job.
+
+Alle PR-Läufe: Ubuntu 24.04.4, Node 22.23.2/npm 10.9.8;
+Browserläufe mit Chromium 153.0.8010.12. `head_sha` ordnet jeden Lauf seinem
+Paket-Commit zu; GitHub checkt den temporären PR-Merge-Commit aus.
+
+| Commit / CI-Lauf | Ergebnis und Fehlerzuordnung |
+| --- | --- |
+| `b4a830e2a62e1409ca6e891b18e9cb11d085bc29`, [34145935935](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34145935935) | Installation/Lint bestanden; 106/112 Fachtests. Drei optionale Felder gingen als `undefined` beim JSON-Roundtrip verloren: produktive Persistenz korrigiert. Drei historische Testaufbauten enthielten unzulässig aktuelle Versionsdaten: explizite Altformat-Fixtures ergänzt. Nachfolgende Gates nicht gestartet. |
+| `99999576485240b371bf4eada05730baf0c58560`, [34157537901](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34157537901) | 112/112 Fachtests und Lint bestanden; Typecheck findet TS18048 im neuen Korrekturvalidator. Null-Check korrigiert; Build/Browser noch nicht ausgeführt. |
+| `acb33b40a6cb1a51f987a18feaffbe2626bf0571`, [34157822545](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34157822545) | Alle bisherigen Gates, 112/112 Fachtests; 8/11 Browserprüfungen. Neue Textfeldselektoren und fehlender Schritt zur Altformat-Vorschau korrigiert. Die acht bestehenden Browserprüfungen bestanden. |
+| `7485cbcc0a9c69b15ede344fff7f89f5954b2c1b`, [34158495236](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34158495236) | Alle bisherigen Gates, 114/114 Fachtests; 9/11 Browserprüfungen. Echter Original-/Korrektur-PDF-Ablauf bestanden. Zahlungsselektor auf tatsächlichen zugänglichen Rollennamen umgestellt; Migrationstest wartet vor Reload auf bestätigten Speicherabschluss. |
+| `9ad4e4c43e29fafb925a6436afcfb7ae294e7838`, [34158920782](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34158920782) | Installation/Lint bestanden; 115/116 Fachtests. Ein alter Test baute Format 2 noch durch selektives Löschen aktueller Felder; auf den expliziten Altformat-Builder umgestellt. Alle neuen Tests bestanden; weitere Gates nicht gestartet. |
+| `7eb666e4db7be425b73e8373dac174c329cb4c95`, [34159150309](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34159150309) | Installation/Lint/116 Fachtests/Typen/Build bestanden; 10/11 Browserprüfungen. Original-/Korrektur-PDF und Schema-3-Umstieg mit A/B und leeren historischen Kontofeldern bestanden. Datei-Import im neuen Zahlungsablauf traf zwei Inputs; auf den Backup-Bereich eingegrenzt. |
+
+Alle Zwischenfehler gehören zu Paket 04; keine Tests gelöscht, übersprungen,
+mit Wiederholungen kaschiert oder in ihrer Prüfabsicht abgeschwächt. Betroffene
+Altformat-Prüfungen erzeugen ausdrücklich Altformate; produktive Ergebnisse werden
+nicht für Erwartungen normalisiert. 15 neue Fachtests prüfen vollständige Versionen,
+Referenzen nach Löschung, Korrekturketten, gespeicherte Beträge/Registerwidersprüche,
+Zahlungsdeckung/Zuordnung/Überzahlung, reservierte Nummern, 205 Aktivitäten,
+verbliebene Snapshot-Differenzen ohne vollständigen Beleg, Migration und Schreibkonflikte.
+Zustände werden über den produktiven Schreibdienst serialisiert, importiert und neu geladen.
+
+Drei neue echte Chromium-Abläufe ergänzen die acht aus Paket 03. Die Druckprüfung
+bedient den produktiven Druckknopf und beobachtet `beforeprint`; zusätzlich erzeugt
+Chromium mit der produktiven `InvoicePrint`-Komponente tatsächliche PDF-Dateien.
+`pdftotext -layout` vergleicht Original vor/nach Stammdatenlöschung und Korrektur,
+Empfänger A/B, Datum/Text/Betrag und leere Bankfelder. Keine Ersetzung von
+`window.print`, keine echten Rechnungsdaten, kein Mailversand. Browser-JSON-Download,
+Wiederherstellung in getrenntem Kontext und Reload prüfen die vollständigen Daten.
+Dies belegt PDF-Inhalt, keine Bedienung nativer Druckdialoge, geräteübergreifende
+Drucklayout-Matrix, Banking-App-Scans, OS-Dateirechte oder echte Synchronisation.
+
+Lokal: Node 24.19.0/npm 11.9.0 statt Node 22. Git-Zugriff per Terminal HTTP 403;
+Node-22-Abruf und `npm ci` E403. `npm run lint`, `npm test`, `npm run typecheck`
+und `npm run build` wurden vom Laufzeitwerkzeug vor Prozessstart abgebrochen:
+`network approval was cancelled before a decision was returned`. Keine regulären
+lokalen Gate-Ergebnisse. `node --experimental-strip-types --check` für betroffene
+TS-Module/Tests und `git diff --check` erfolgreich; nur ergänzende Syntax-/Diffprüfung.
+Der abschließende Gesamtlauf und Ergebnisstand werden im PR und Umsetzungsstatus ergänzt.

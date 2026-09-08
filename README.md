@@ -5,12 +5,12 @@ Eine vollständig clientseitige Web-App für Rechnungen rund um Gitarrenunterric
 ## Funktionsumfang
 
 - Kinder und mehrere Erziehungsberechtigte verwalten, filtern, sortieren und miteinander verknüpfen
-- gemeinsame Rechnung oder je Empfänger:in eine eigenständige Rechnung erstellen
+- gemeinsame Rechnungen erstellen; getrennte Empfängerrechnungen bleiben bis Paket 06 gesperrt
 - mehrere Kinder und automatisch berechnete Zwischensummen auf einer Rechnung
 - frei definierbare Positionen, Zahlungsziel und Textbausteine
-- Entwurf, versendet, bezahlt und automatisch erkanntes „überfällig“; finalisierte Rechnungen können kontrolliert in einen neuen Entwurf zurückversetzt werden
+- Entwurf, versendet, bezahlt und automatisch erkanntes „überfällig“; verknüpfte Korrekturentwürfe erhalten den vollständigen Originalbeleg
 - konfigurierbarer Nummernkreis mit dauerhaftem Kinderkennzeichen (`a`, `b`, `c` …); jedes Kind bzw. jede Kindkombination zählt getrennt und Nummern werden erst bei Finalisierung vergeben
-- eingefrorener Adress-/Kontostand als Snapshot auf finalisierten Rechnungen; kontrolliertes späteres Bearbeiten wird protokolliert
+- unveränderliche vollständige Belegversionen mit damaligen Positionen, Beträgen, Personen, Konto und Texten; einsehbare Korrekturgründe und Snapshot-Differenzen
 - A4-Druckansicht mit Entwurfswasserzeichen, gemeinsamer Rechtstext-/Seitenzahl-Fußzeile und Rechnungsnummer auf Folgeseiten
 - clientseitig erzeugter EPC-GiroCode (EPC069-12 / Version 002) für SEPA-Überweisungen
 - Dashboard, Volltextsuche, Filter, sortierbare Rechnungslisten, Zahlungserinnerung per `mailto:`, Duplizieren wiederkehrender Rechnungen und CSV-Jahresübersicht
@@ -45,6 +45,9 @@ npm run test:browser
 npm run preview
 ```
 
+Die PDF-Regressionsprüfung benötigt zusätzlich `pdftotext` aus Poppler. Der
+Ubuntu-CI-Job installiert es mit `sudo apt-get install -y poppler-utils`.
+
 ## Auf GitHub Pages veröffentlichen
 
 1. Änderungen als Pull Request gegen `main` prüfen lassen und erst nach Freigabe übernehmen.
@@ -61,6 +64,36 @@ Vite verwendet für den Produktions-Build relative Asset-Pfade. Dadurch funktion
 „PDF / Drucken“ öffnet den nativen Druckdialog des Browsers. Dort **Als PDF speichern** wählen. Das Druck-CSS setzt A4, 20 mm Seitenränder, Inter-Typografie, den blau-grauen Briefkopf, Tabellenfarben, Bankdaten und eine gemeinsame Fußzeile aus Rechtstext und Seitenzahl um. Entwürfe tragen ein Wasserzeichen; auf der zweiten und jeder weiteren Seite steht zusätzlich die Rechnungsnummer. Der Browser erzeugt dabei durchsuchbaren Text statt eines gerasterten Screenshots. Für die dynamischen Seitenränder wird ein aktueller Chromium-Browser ab Version 131 (zum Beispiel Chrome oder Edge) empfohlen.
 
 Der GiroCode füllt Empfänger, IBAN, Betrag und Rechnungsnummer in unterstützten Banking-Apps aus. Der EPC-Standard selbst kann keine Echtzeitüberweisung erzwingen; diese Option wird – sofern verfügbar – in der Banking-App ausgewählt.
+
+## Originale, Korrekturen und Zahlungen
+
+Finalisieren sichert den vollständigen Beleg. Spätere Änderungen an Stammdaten,
+Konten oder Textbausteinen verändern ihn nicht. Ansicht, Druck, Erinnerung und
+Export verwenden dieselbe ausgewählte Version, auch bei leeren historischen
+Kontofeldern. Bereits ausgegebene Beträge werden vor der Rechenumstellung in
+Paket 05 mit der bisherigen Logik gesichert.
+
+In den Rechnungsdetails einen **Korrekturgrund** eingeben und **Korrekturentwurf
+erzeugen** wählen. Der Entwurf übernimmt sämtliche Positionen. Gelöschte Kinder
+und empfangende Personen ausdrücklich neu zuordnen; bis dahin lässt sich der
+Entwurf speichern, aber nicht finalisieren. Historische Abweichungen zuerst mit
+dem Ergebnis der Klärung dokumentieren. Die Finalisierung vergibt eine neue Nummer
+und ersetzt die aktive Forderung. Das Original bleibt auswählbar und druckbar.
+
+Vorhandene Zahlungen bleiben zunächst beim ursprünglichen Beleg. Unter
+**Zahlungszuordnung** den korrigierten Beleg wählen und die Zuordnung begründen.
+Die Zahlung wird weder kopiert noch gelöscht; Herkunft, Datum und bisherige
+Zuordnungen bleiben sichtbar. Abweichende Beträge erscheinen als Restforderung
+oder Überzahlung. Neue Teilzahlungen, Erstattungen und ein frei wählbarer
+Zahlungstag folgen in ihren vorgesehenen Paketen. Bei ungeklärten Zuordnungen oder
+Restbeträgen ist die bisherige Erinnerung über den vollen Betrag gesperrt.
+
+Finalisierte Belege lassen sich **archivieren** und über **Archivierte anzeigen**
+wieder aufrufen. Archivierung ändert keine Forderung und gibt keine Nummer frei.
+Nur echte Entwürfe können gelöscht werden. Die Aktivitätsliste ist auf 200 Einträge
+begrenzt; vollständige Versionen, Zahlungszuordnungen und vorhandene historische
+Snapshot-Differenzen werden unabhängig davon aufbewahrt. JSON-Backups enthalten
+alle Versionen; CSV kennzeichnet ersetzte und archivierte Belege ausdrücklich.
 
 ## Backup und Restore
 
@@ -99,7 +132,8 @@ Demo-Änderungen gehen beim Verlassen verloren.
 - Browserdaten sind an das jeweilige Browserprofil und die konkrete GitHub-Pages-Adresse gebunden. Regelmäßige JSON-Backups werden empfohlen.
 - Inkognito-Modus, das Löschen von Website-Daten oder ein Geräteverlust können lokale Daten entfernen.
 - Rechnungsnummern sind innerhalb jedes Kinderkennzeichens monoton und eindeutig. Das erste angelegte Kind erhält `a`, das zweite `b`; kombinierte Rechnungen verwenden beispielsweise `ab`. Parallel genutzte Browserprofile/Geräte teilen keinen Nummernkreis; für einen lückenlosen gemeinsamen Nummernkreis darf nur ein führender Datenbestand verwendet werden.
-- Finalisierte Rechnungen können bearbeitet, im Status geändert, dupliziert, zurück in Entwurf versetzt oder nach Bestätigung gelöscht werden. Beim Zurücksetzen oder Löschen bleibt die bisherige Rechnungsnummer im lokalen Nummernregister dauerhaft reserviert und wird nicht erneut vergeben.
+- Finalisierte Rechnungen bleiben erhalten; inhaltliche Änderungen erzeugen Korrekturen. Archivierung und Zahlungs-/Versandverwaltung ändern den gesicherten Inhalt nicht. Originalnummern und frühere Registereinträge bleiben dauerhaft reserviert.
+- Ein migrierter Beleg ist nur der älteste verfügbare Stand. Fehlende frühere Versionen werden nicht rekonstruiert. Lokale Versionierung garantiert weder Manipulationssicherheit noch automatische GoBD-Konformität.
 - Voreingestellt ist „Privatrechnung“ mit einem Hinweis auf § 19 UStG ohne Umsatzsteuerausweis. Der auf 120 Zeichen begrenzte Fußzeilen-/Rechtstext ist editierbar und muss zur tatsächlichen steuerlichen Situation passen. Die App ersetzt keine Steuer- oder Rechtsberatung.
 
 ## Bewusst nicht enthalten
@@ -109,21 +143,24 @@ Demo-Änderungen gehen beim Verlassen verloren.
 - keine Mehrgeräte-Synchronisation oder kollaborative Bearbeitung, da dies ohne Backend nicht konfliktfrei und sicher möglich wäre
 
 
-### Datenprüfung und Altformat-Reparatur (Paket 02)
+### Datenprüfung und kontrollierter Formatumstieg
 
-Das Datenschema bleibt Format 3; die Speicherung verwendet einen versionierten
-Umschlag (Speicherprotokoll 4). Entwürfe können unvollständig sein; ungültige
+Das Datenschema ist Format 4; die Speicherung verwendet weiterhin den versionierten
+Umschlag aus Paket 03 (Speicherprotokoll 4). Entwürfe können unvollständig sein; ungültige
 Preise, Mengen, IDs oder Referenzen werden nicht gespeichert. Nur deutsche IBANs
 sind für neue/geänderte Kontoeinstellungen und neue Finalisierungen zugelassen.
 
-Beim Import und im Wiederherstellungsmodus lässt sich Format 2 prüfen. Bekannte
+Beim Import und im Wiederherstellungsmodus lassen sich Formate 2 und 3 prüfen. Bekannte
 Empfängerkopien mit doppelten Positions-IDs erhalten eine Reparaturvorschau,
 separate Exporte und einen Bericht mit Originaldaten. Die bestätigte Übernahme
 verwendet denselben abgesicherten Schreibdienst wie normale Änderungen.
+Der Migrationsbericht dokumentiert die jetzt gesicherten Belegstände, Betragsquellen,
+Abweichungen und übernommenen Verwaltungs-/Zahlungsangaben. Vorhandene Registerbeträge
+haben Vorrang; die abweichende bisherige Rechnungssumme bleibt ebenfalls erhalten.
 
 Beim Umstieg **alle alten Tabs schließen**, Original exportieren und die Vorschau
-bestätigen. Neue Schlüssel und eine neue Handle-Datenbank trennen den Bestand von
-alten Anwendungsversionen. Der alte Rohtext bleibt unverändert. Ändert ein alter
+bestätigen. Paket 04 verwendet die Speicher-Schlüssel und Handle-Datenbank aus
+Paket 03 weiter. Alte Rohtexte bleiben im Wiederherstellungsarchiv erhalten. Ändert ein alter
 Tab ihn später, erscheint ein Konflikt; beide Stände separat exportieren und in
 einem getrennten aktuellen Profil prüfen. Unbekannte neuere Formate bleiben
 schreibgeschützt. Für alten Anwendungscode nur die Originaldatei in einem eigenen
@@ -140,3 +177,7 @@ Testseite unter derselben Origin, um einen wirklich geöffneten alten Tab zu pr�
 GitHub-Zugriff. Die Testseite wird anschließend entfernt und nicht ausgeliefert.
 Dateihandles werden in einem isolierten dauerhaften Chromium-Profil mit echtem
 OPFS/IndexedDB geprüft; native Ordnerdialoge und OS-Rechte bleiben separate Abnahmen.
+Paket 04 prüft zusätzlich echte Chromium-PDFs anhand ihres Textinhalts. Synthetische
+PDFs und Browsernachweise stehen sieben Tage als CI-Artefakt `browser-evidence`
+bereit. Native Druckdialoge, Drucklayout-Matrix und Banking-App-Scans sind separate
+Abnahmen; die automatisierte PDF-Prüfung ersetzt sie nicht.
