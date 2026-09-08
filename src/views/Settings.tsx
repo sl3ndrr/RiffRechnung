@@ -11,6 +11,7 @@ import { isFinalizedInvoice } from '../lib/safety'
 
 import { SettingsBuffer } from '../lib/settingsBuffer'
 import { invoiceSetupErrors, TAX_IDENTIFIER_LABELS, taxIdentifierInputError } from '../lib/invoiceProfile'
+import { bicError } from '../lib/paymentData'
 
 interface SettingsProps {
   state: AppState
@@ -42,6 +43,7 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
   const footerTextLimitReached = form.defaultLegalText.length >= MAX_FOOTER_TEXT_LENGTH
 
   const ibanError = form.iban.trim() ? germanIbanError(form.iban) : null
+  const currentBicError = form.bic.trim() ? bicError(form.bic) : null
   const replacementBlocked = state.invoices.some(isFinalizedInvoice) || state.voidedInvoiceNumbers.length > 0
   const emailError = mailboxError(form.issuer.email)
   const paymentTermError = parsePaymentTermInput(paymentTermInput) === null
@@ -114,7 +116,7 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
               <label className="field"><span>Kontoinhaber</span><input value={form.accountHolder} onChange={(event) => setForm({ ...form, accountHolder: event.target.value })} /></label>
               <label className="field"><span>Bank</span><input value={form.bankName} onChange={(event) => setForm({ ...form, bankName: event.target.value })} /></label>
               <label className="field field--full"><span>IBAN</span><input className="mono" value={formatIban(form.iban)} onChange={(event) => setForm({ ...form, iban: event.target.value })} aria-invalid={Boolean(ibanError)} aria-describedby="iban-error" />{ibanError && <small id="iban-error" className="field-error">{ibanError}</small>}</label>
-              <label className="field"><span>BIC (für deutsche Empfängerkonten im EPC-QR optional)</span><input className="mono" value={form.bic} onChange={(event) => setForm({ ...form, bic: event.target.value.toUpperCase() })} /></label>
+              <label className="field"><span>BIC (für deutsche Empfängerkonten im EPC-QR optional)</span><input className="mono" value={form.bic} aria-invalid={Boolean(currentBicError)} aria-describedby="bic-error" onChange={(event) => setForm({ ...form, bic: event.target.value.toUpperCase() })} />{currentBicError && <small id="bic-error" className="field-error" role="alert">{currentBicError}</small>}</label>
               <label className="field"><span>Standard-Zahlungsziel (Tage)</span><input type="text" inputMode="numeric" aria-invalid={paymentTermError} value={paymentTermInput} onChange={(event) => { const raw = event.target.value; setPaymentTermInput(raw); const value = parsePaymentTermInput(raw); if (value !== null) setForm({ ...form, paymentTermDays: value }) }} /><small>{paymentTermError ? 'Bitte eine ganze Anzahl Tage ab 0 eingeben; der letzte gültige Wert bleibt erhalten.' : 'Wird bei neuen Rechnungen zum Rechnungsdatum addiert.'}</small></label>
             </div>
             <div className="info-banner"><ShieldCheck aria-hidden="true" /><p>Für neue Verwendung werden ausschließlich deutsche Empfänger-IBANs unterstützt. Die Format- und Prüfsummenprüfung bestätigt weder Kontoinhaber noch Erreichbarkeit. Die BIC ist bei einem deutschen Empfängerkonto nach EPC v3.1 optional; daraus folgt keine Aussage über jeden möglichen Zahlerfall.</p></div>
