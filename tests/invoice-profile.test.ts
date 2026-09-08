@@ -12,3 +12,21 @@ const draft = (): InvoiceDraft => ({ invoiceDate: '2026-09-08', dueDate: '2026-0
 test('Kleinunternehmerprofil prüft Einrichtung und Empfänger feldgenau', () => { const state = completeState(); assert.deepEqual(invoiceSetupErrors(state.settings), []); assert.deepEqual(invoiceFinalizationErrors(state, draft()), []); const incomplete = { ...state.settings, issuer: { ...state.settings.issuer, street: '' }, taxIdentifier: { ...state.settings.taxIdentifier, value: '' } }; const setup = invoiceSetupErrors(incomplete).map((error) => error.message).join(' '); assert.match(setup, /Rechnungssteller: Straße & Hausnummer fehlt/); assert.match(setup, /Steuernummer: Steuerliche Identifikationsangabe fehlt/); const recipient = invoiceProfileErrors(state.settings, [guardian({ address: { street: '', postalCode: '', city: '' } })]).map((error) => error.message).join(' '); assert.match(recipient, /Familien → Erika Beispiel: Straße & Hausnummer fehlt/); assert.match(recipient, /PLZ fehlt/); assert.match(recipient, /Ort fehlt/) })
 test('unvollständige Einrichtung erlaubt Entwurf, blockiert aber Finalisierung ohne Nummernverbrauch', () => { const state = completeState(); state.settings.taxIdentifier.value = ''; const saved = saveInvoiceDraft(state, draft(), false, at); assert.equal(saved.invoices[0].number, null); assert.deepEqual(saved.counters, {}); assert.throws(() => saveInvoiceDraft(state, draft(), true, at), /Steuernummer.*fehlt/); assert.deepEqual(state.invoices, []); assert.deepEqual(state.counters, {}) })
 test('neuer Beleg friert Profil und verwendete Steuerkennung ein; heutige Änderungen wirken nicht zurück', () => { const state = completeState(); const issued = saveInvoiceDraft(state, draft(), true, at); const invoice = issued.invoices[0]; assert.equal(invoice.snapshot?.invoiceProfile, 'small-business'); assert.deepEqual(invoice.snapshot?.taxIdentifier, { kind: 'tax-number', value: '12/345/67890' }); issued.settings.taxIdentifier = { kind: 'vat-id', value: 'DE123456789' }; assert.deepEqual(taxDataForInvoice(invoice, issued.settings).taxIdentifier, { kind: 'tax-number', value: '12/345/67890' }); assert.equal(SMALL_BUSINESS_TAX_NOTICE, 'Steuerbefreiung für Kleinunternehmer (§ 19 UStG).') })
+
+test('Profilwahl und zulässige Steuerkennungsarten bleiben ausdrücklich getrennt', () => {
+  const unconfigured = completeState()
+  unconfigured.settings.invoiceProfile = 'unconfigured'
+  assert.match(invoiceFinalizationErrors(unconfigured, draft()).join(' '), /Kleinunternehmer.*ausdrücklich auswählen/)
+
+  const identifiers = [
+    { kind: 'tax-number' as const, value: '12/345/67890' },
+    { kind: 'vat-id' as const, value: 'DE123456789' },
+    { kind: 'small-business-id' as const, value: 'DE-KU-SYNTHETISCH' },
+  ]
+  for (const taxIdentifier of identifiers) {
+    const state = completeState()
+    state.settings.taxIdentifier = taxIdentifier
+    const issued = saveInvoiceDraft(state, draft(), true, at)
+    assert.deepEqual(issued.invoices[0].snapshot?.taxIdentifier, taxIdentifier)
+  }
+})
