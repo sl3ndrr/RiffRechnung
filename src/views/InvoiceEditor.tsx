@@ -171,8 +171,6 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
       const finalizationErrors = finalize ? preview.results.flatMap((result) => invoiceFinalizationErrors(state, {
         ...form, guardianIds: [result.guardianId], studentIds: result.studentIds, items: result.items, recipientStrategy: 'separate',
       })) : []
-      if (finalize) {
-      }
       if (finalizationErrors.length) { setErrors([...new Set(finalizationErrors)]); return }
       onSave({ ...form, period: calculatedPeriod, legalText: limitFooterText(form.legalText) }, finalize, parsed.allocations)
     } catch (error) {
