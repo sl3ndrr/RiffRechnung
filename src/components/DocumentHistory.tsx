@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { AppState, Invoice } from '../types'
 import { allocatedCents, isActiveClaim, versionFor } from '../lib/documents'
 import { snapshotDifferences } from '../lib/documents'
+import { unknownPaymentDayLabel } from '../lib/reporting'
 import { downloadText, euro, invoicesToCsv } from '../lib/utils'
 
 
@@ -73,7 +74,7 @@ function PaymentAllocation({ state, paymentId, versionIds, onAllocatePayment }: 
   const [reason, setReason] = useState('')
   const name = (id: string | null) => state.documentVersions.find((entry) => entry.id === id)?.content.number ?? 'Nicht zugeordnet'
   return <div className="payment-allocation">
-    <p><strong>{euro.format(payment.amountCents / 100)}</strong> · Herkunft: {name(payment.sourceVersionId)} · Zuordnung: {name(current)} · Zahlungstag: {payment.paidAt?.slice(0, 10) ?? 'Unbekannt'}</p>
+    <p><strong>{euro.format(payment.amountCents / 100)}</strong> · Herkunft: {name(payment.sourceVersionId)} · Zuordnung: {name(current)} · Zahlungstag: {payment.paymentDayStatus === 'confirmed' ? payment.paidAt : unknownPaymentDayLabel(payment)} · Erfasst: {payment.recordedAt}</p>
     {payment.provenance === 'legacy-status' && <p>Aus historischem Vollzahlungsstatus übernommen; kein zusätzlicher Zahlungsnachweis.</p>}
     <details><summary>Zuordnungsverlauf</summary><ol>{payment.allocations.map((entry, index) => <li key={index}>{name(entry.versionId)} · {entry.at} · {entry.reason}</li>)}</ol></details>
     <label className="field"><span>Zahlung zuordnen</span><select value={target} onChange={(event) => setTarget(event.target.value)}><option value="">Zur manuellen Klärung offen lassen</option>{versionIds.map((id) => <option key={id} value={id}>{name(id)}</option>)}</select></label>

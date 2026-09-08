@@ -21,7 +21,7 @@ interface InvoicesProps extends DocumentHistoryActions {
   onEdit: (invoice: Invoice) => void
   onDuplicate: (invoice: Invoice) => void
   onDelete: (invoice: Invoice) => void
-  onSetStatus: (invoice: Invoice, status: InvoiceStatus) => void
+  onSetStatus: (invoice: Invoice, status: InvoiceStatus, paymentDay?: string) => void
   onPrint: (invoice: Invoice) => void
   onToast: (message: string, tone?: 'success' | 'error' | 'info') => void
 }
@@ -179,7 +179,7 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
               onEdit={() => onEdit(selected)}
               onDuplicate={() => onDuplicate(selected)}
               onDelete={() => onDelete(selected)}
-              onSetStatus={(next) => onSetStatus(selected, next)}
+              onSetStatus={(next, paymentDay) => onSetStatus(selected, next, paymentDay)}
               onPrint={() => onPrint(selected)}
               onToast={onToast}
               onSelect={onSelect} onCorrection={onCorrection} onAllocatePayment={onAllocatePayment} onResolveConflicts={onResolveConflicts}
@@ -236,7 +236,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
   onEdit: () => void
   onDuplicate: () => void
   onDelete: () => void
-  onSetStatus: (status: InvoiceStatus) => void
+  onSetStatus: (status: InvoiceStatus, paymentDay?: string) => void
   onPrint: () => void
   onToast: (message: string, tone?: 'success' | 'error' | 'info') => void
 }) {
@@ -245,6 +245,12 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
   const reminder = createReminder(invoice, state.guardians, state.students)
   const mailto = commandResult(() => mailtoUrl(invoice, state.guardians, state.students))
   const canRemind = (status === 'sent' || status === 'overdue') && isActiveClaim(state, invoice) && openCents(state, invoice) === invoiceTotalCents(invoice) && !state.payments.some((payment) => state.documentVersions.find((version) => version.id === payment.sourceVersionId)?.originalId === state.documentVersions.find((version) => version.id === invoice.versionId)?.originalId && payment.allocations.at(-1)?.versionId !== invoice.versionId)
+  const payment = state.payments.find((entry) => entry.allocations.at(-1)?.versionId === invoice.versionId && entry.amountCents === invoiceTotalCents(invoice))
+  const [paymentDay, setPaymentDay] = useState('')
+
+  useEffect(() => {
+    setPaymentDay(payment?.paymentDayStatus === 'confirmed' ? payment.paidAt ?? '' : '')
+  }, [invoice.id, payment?.id, payment?.paidAt, payment?.paymentDayStatus])
 
   const copyReminder = async () => {
     await navigator.clipboard.writeText(`${reminder.subject}\n\n${reminder.body}`)
@@ -272,7 +278,21 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
         ) : (
           <><button className="button button--primary" onClick={onPrint}><Printer aria-hidden="true" /> PDF / Drucken</button><button className="button button--tonal" onClick={onEdit} disabled><Edit3 aria-hidden="true" /> Rechnung bearbeiten</button></>
         )}
-        {invoice.status !== 'draft' && <div className="status-editor"><label htmlFor={`invoice-status-${invoice.id}`}>Status</label><div><select id={`invoice-status-${invoice.id}`} value={status} onChange={(event) => onSetStatus(event.target.value as InvoiceStatus)}><option value="sent">Versendet / offen</option><option value="paid">Bezahlt</option><option value="overdue">Überfällig</option></select><ChevronDown aria-hidden="true" /></div></div>}
+        {invoice.status !== 'draft' && <div className="status-editor">
+          <label htmlFor={`invoice-status-${invoice.id}`}>Forderungsstatus</label>
+          <div><select id={`invoice-status-${invoice.id}`} value={status} onChange={(event) => {
+            const next = event.target.value as InvoiceStatus
+            if (next !== 'paid') onSetStatus(next)
+          }}><option value="sent">Versendet / offen</option><option value="paid">Bezahlt (Vollzahlung)</option><option value="overdue">Überfällig</option></select><ChevronDown aria-hidden="true" /></div>
+          <div className="payment-day-editor">
+            <label htmlFor={`payment-day-${invoice.id}`}>Tatsächlicher Zahlungstag</label>
+            <input id={`payment-day-${invoice.id}`} type="date" value={paymentDay} onChange={(event) => setPaymentDay(event.target.value)} />
+            {payment?.paymentDayStatus === 'unknown' && <p className="field-hint" role="status">Zahlungsdatum unbekannt{payment.legacyPaymentDay ? ` · bisheriger unbestätigter Wert: ${payment.legacyPaymentDay}` : ''}. Erfasst am {payment.recordedAt}.</p>}
+            {status === 'paid'
+              ? <button className="button button--tonal" type="button" disabled={!paymentDay} onClick={() => onSetStatus('paid', paymentDay)}>Zahlungstag korrigieren</button>
+              : <button className="button button--tonal" type="button" disabled={!paymentDay} onClick={() => onSetStatus('paid', paymentDay)}>Vollzahlung erfassen</button>}
+          </div>
+        </div>}
       </div>
 
       <DocumentHistory key={invoice.id} state={state} invoice={invoice} onSelect={onSelect} onCorrection={onCorrection} onAllocatePayment={onAllocatePayment} onResolveConflicts={onResolveConflicts} />

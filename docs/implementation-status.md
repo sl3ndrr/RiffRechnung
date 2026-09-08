@@ -1,10 +1,10 @@
 # Umsetzungsstatus
 
-Stand: 2026-09-08, Paket 07. Zielbranch `main` zu Beginn vollständig geprüft:
-`455b53d28149bfaea607b7ad0ca43851248ec60d`, Tree
-`6c5c42df674c4ab597e9e996371ac9462a72d9cf`. Pakete 00–06 sind gemergt.
+Stand: 2026-09-08, Paket 08. Zielbranch `main` zu Beginn vollständig geprüft:
+`3332222917daf6662b8e9639251fa7a22f1a4f85`, Tree
+`32d1e158591c8e59394c66acf19e21f9ed8dc1e0`. Pakete 00–07 sind gemergt.
 Keine `AGENTS.md` im vollständigen Repository-Tree. Arbeitsbranch:
-`codex/paket-07-rechnungsprofil-de-iban`, [PR #28](https://github.com/sl3ndrr/RiffRechnung/pull/28).
+`codex/paket-08-zahlungstag-berichte`, [PR #29](https://github.com/sl3ndrr/RiffRechnung/pull/29).
 Kein Merge oder Deployment in diesem Auftrag.
 
 ## Paketfolge
@@ -24,7 +24,7 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 | 05 | Exaktes Geld und Kalenderdaten | R06, R12; schrittweise R24 | Implementiert; 123/123 Fachtests und 13/13 Browserprüfungen bestanden |
 | 06 | Aufteilung nach Empfängern | R02; Integration R01; schrittweise R24 | Implementiert; vollständiger CI-Nachweis unten |
 | 07 | Rechnungsprofil, deutsche IBAN, Zahlungsdaten | R07, R13 angepasst, R14 | Implementiert; vollständiger CI-Nachweis unten |
-| 08 | Zahlungstag und Berichte | R11, F02 (MVP) | Laut Analyse offen |
+| 08 | Zahlungstag und Berichte | R11, F02 (MVP); schrittweise R24 | Implementiert; vollständiger CI-Nachweis unten |
 | 09 | Druck und GiroCode | R16, R21, N03, N08 | Laut Analyse offen |
 | 10 | Tastatur, Dialoge, Navigation, Kontrast | R17–R20, N05, N07 | Laut Analyse offen |
 | 11 | Sicherheitstexte und Komfort | R26, N02, N04, N10 | Laut Analyse offen |
@@ -286,4 +286,54 @@ Lokal sind Node 24.19.0/npm 11.9.0 und Git 2.51.1 verfügbar; der Terminalzugrif
 auf den GitHub-Clone wurde mit HTTP 403 durch die Umgebung blockiert. Daher sind
 lokale npm-Gates nicht behauptet.
 
-Nächstes vorgesehenes Paket: **08 – Zahlungstag und Berichte**, nicht begonnen.
+Nächstes vorgesehenes Paket: **08 – Zahlungstag und Berichte**, im folgenden Abschnitt dokumentiert.
+
+## Paket 08 – Zahlungstag und Berichte
+
+- **Ausgang und Befund:** Basis `main` ist
+  `3332222917daf6662b8e9639251fa7a22f1a4f85`. R11 und F02 (MVP) waren am
+  aktuellen Code nachvollziehbar: Der Status setzte einen Zeitpunkt automatisch
+  zugleich als Zahlungstag, und Dashboard, Jahresübersicht sowie CSV ordneten
+  Zahlungen über das Rechnungsjahr statt über den Geldfluss zu. Keine N-ID ist
+  diesem Paket zugeordnet; R24 wird durch Ablauf-, Import- und Reloadprüfungen
+  fortgeführt.
+- **Ergebnis:** Schema 7 trennt bestätigten Zahlungstag, unbekannten Tag und
+  technischen Erfassungszeitpunkt. Vollzahlungen brauchen einen Kalendertag;
+  Nachpflege/Korrektur wird als Ereignis nachvollziehbar. `reporting.ts` ist die
+  gemeinsame Cent- und Kalenderquelle für Dashboard, Jahresübersicht und
+  Jahres-CSV. Kennzahlen heißen Rechnungsvolumen, Zahlungseingänge und offene
+  Forderungen am Stichtag.
+- **Invarianten:** Rechnungsvolumen nutzt das Rechnungsdatum, Zahlungseingänge
+  ausschließlich den bestätigten Zahlungstag. Unbekannte Altzahlungen bleiben
+  sichtbar, aber jahrslos. Statusrücknahme löst nur die Zuordnung; Korrekturen
+  ersetzen die Forderung ohne den Geldfluss zu duplizieren oder zu löschen.
+  Getrennte/reservierte Nummern, exakte Centbeträge, DE-IBAN-Regel,
+  CSV-Formelabwehr, Referenz- und Rohdatenschutz bleiben unverändert.
+- **Migration/Rückweg:** Formate 2–6 werden mit `riffrechnung-to-v7` nach 7
+  übernommen. P6-`paidAt` wird als `legacyPaymentDay` erhalten, jedoch bewusst
+  nicht als bestätigter Banktag ausgegeben; `paymentDayStatus` bleibt `unknown`
+  bis zur Nachpflege. Bericht und unveränderte Originalbytes werden vor einer
+  Übernahme gesichert. Aktuelles Schema 7 migriert beim erneuten Laden/Import
+  nicht weiter; unbekannte neuere Formate bleiben schreibgeschützt. Rückweg ist
+  die archivierte Originaldatei in einem getrennten Profil mit altem Code.
+- **Nachweis:** Fachregressionen decken Dezember-2025-/Januar-2026-Zuordnung,
+  Nachpflege/Korrektur, Statusrücknahme, Korrekturbeleg, unbekannten historischen
+  Zahlungstag, Formelabwehr und Export–Import–Reload ab. Auf
+  `f71d73311fb0559a6438464a007985b6a87f73a6` bestanden in
+  [CI 34278036194](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34278036194)
+  `npm ci`, Lint, 142/142 Fachtests, Typecheck einschließlich Tests, Build und
+  14/14 Chromium-/PDF-Prüfungen. Umgebung: Ubuntu 24.04.4, Node 22.23.2,
+  npm 10.9.8, Python 3.12.3, Chromium 153.0.8010.12. Keine Tests wurden
+  übersprungen oder abgeschwächt. Lokal: Node 24.19.0/npm 11.9.0; `npm ci
+  --fetch-retries=0 --fetch-timeout=20000` scheiterte vor Ausführung mit
+  Registry-E403 bei `yocto-queue`; Node 22 ist lokal nicht verfügbar.
+
+| Abnahme Paket 08 | Ergebnis |
+| --- | --- |
+| Dezemberrechnung 2025, Zahlung Januar 2026: getrennte Jahreswerte | Bestanden in Fachregression und Node-22-CI |
+| Nachpflege, Datumsänderung, Statusrücknahme, korrigierter Beleg | Bestanden in Fachregression und Node-22-CI |
+| Historischer unbekannter Zahlungstag bleibt sichtbar und jahrslos | Bestanden in Fachregression und Node-22-CI |
+| Dashboard, Jahresübersicht, CSV, Saldo sowie Export–Import–Reload | Bestanden in Fachregression; Dashboard-/CSV-Ablauf auch im Chromium-Lauf |
+| Native Bank-App-Scan, Druckdialoge und Dateirechte | Nicht geprüft; nicht Gegenstand dieses Pakets |
+
+Nächstes vorgesehenes Paket: **09 – Druck und GiroCode zuverlässig ausgeben**, nicht begonnen.

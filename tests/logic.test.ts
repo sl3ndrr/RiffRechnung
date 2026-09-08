@@ -1,6 +1,7 @@
 import './money-calendar.test'
 import './invoice-split.test'
 import './payment-data.test'
+import './payment-reporting.test'
 import './invoice-profile.test'
 import { legacyFixture } from './documentFixtures'
 import { captureLegacyDocuments } from '../src/lib/importState'
@@ -577,7 +578,7 @@ test('vollständiges Backup lässt sich wiederherstellen', () => {
     },
   })
   const restored = parseBackup(serializeBackup(state))
-  assert.equal(restored.schemaVersion, 6)
+  assert.equal(restored.schemaVersion, 7)
   assert.equal(restored.settings.issuer.name, 'Test Unterricht')
   assert.equal(restored.students[0]?.billingCode, 'a')
   assert.equal(restored.voidedInvoiceNumbers[0]?.number, '2026-a-0004')

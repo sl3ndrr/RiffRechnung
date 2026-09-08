@@ -157,7 +157,7 @@ test('P01: historische Belege ohne Stammdaten bleiben samt Betrag, Snapshot und 
   assert.throws(() => assertReplacementAllowed(state), /Austausch/)
   assert.deepEqual(state, original)
   for (const status of ['paid', 'sent', 'overdue'] as const) {
-    state = roundTrip(changeInvoiceStatus(state, invoice.id, status, at))
+    state = roundTrip(changeInvoiceStatus(state, invoice.id, status, at, status === 'paid' ? '2026-09-05' : undefined))
     assert.equal(state.invoices[0].status, status)
     assert.equal(state.invoices[0].number, invoice.number)
     assert.deepEqual(state.invoices[0].items, invoice.items)
@@ -250,6 +250,6 @@ test('P01: nur deutsche Konten für Änderungen und Finalisierung; fremde histor
   assert.throws(() => updateSettings(historical.settings, { ...historical.settings, accountHolder: 'Neuer Name' }), /nur deutsche/)
   assert.equal(updateSettings(historical.settings, { ...historical.settings, theme: 'dark' }).iban, historical.settings.iban)
   assert.throws(() => saveInvoiceDraft(historical, { ...draftFor(state), items: [createLessonItem('s0', '2026-08-12', state.settings, 'new-item')] }, true), /nur deutsche/)
-  const paid = roundTrip(changeInvoiceStatus(historical, historical.invoices[0].id, 'paid', at))
+  const paid = roundTrip(changeInvoiceStatus(historical, historical.invoices[0].id, 'paid', at, '2026-09-05'))
   assert.deepEqual(paid.invoices[0].snapshot, historical.invoices[0].snapshot)
 }))

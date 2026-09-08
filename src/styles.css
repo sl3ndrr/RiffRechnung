@@ -363,6 +363,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .status-editor svg { position: absolute; right: 11px; width: 15px; pointer-events: none; }
 .status-editor .status-editor__reopen { min-height: 34px; justify-self: start; color: var(--error); font-size: 10px; }
 .status-editor .status-editor__reopen svg { position: static; width: 15px; pointer-events: auto; }
+.payment-day-editor { display: grid !important; gap: 7px; align-items: start !important; }
+.payment-day-editor label { color: var(--on-surface-variant); font-size: 10px; font-weight: 650; }
+.payment-day-editor input { min-height: 40px; width: 100%; padding: 0 10px; border: 1px solid var(--outline-variant); border-radius: var(--radius-sm); background: var(--surface-container-lowest); color: var(--on-surface); font: inherit; }
+.payment-day-editor input:focus { outline: 0; border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent); }
+.payment-day-editor .field-hint { margin: 0; font-size: 10px; line-height: 1.45; }
+.payment-day-editor .button { justify-self: start; }
 .reminder-panel { margin: 22px 0; padding: 16px; border-radius: var(--radius-md); background: var(--warning-container); color: var(--warning); }
 .reminder-panel > div:first-child { display: flex; gap: 10px; }
 .reminder-panel p { margin: 3px 0 9px; font-size: 10px; line-height: 1.5; opacity: .8; }

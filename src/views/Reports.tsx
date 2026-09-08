@@ -1,78 +1,62 @@
-import { invoiceTotalCents, sumCents } from '../lib/money'
-import { activeInvoices, openCents, selectedInvoices, recordedPayments } from '../lib/documents'
 import { CalendarRange, CheckCircle2, Download, ReceiptText, TrendingUp, TriangleAlert } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { AppState } from '../types'
-import { effectiveStatus, euro, formatDate, guardianName, invoiceTotal, invoicesToCsv, monthKey, statusLabel } from '../lib/utils'
-import { downloadText } from '../lib/utils'
+import { financialReport, financialReportToCsv, reportYears, unknownPaymentDayLabel } from '../lib/reporting'
+import { downloadText, euro, formatDate, guardianName, invoiceTotal, statusLabel } from '../lib/utils'
+import { localToday } from '../lib/calendar'
 
 export function Reports({ state }: { state: AppState }) {
-  const availableYears = [...new Set(state.invoices.map((invoice) => invoice.year))].sort((a, b) => b - a)
+  const availableYears = reportYears(state)
   const [year, setYear] = useState(availableYears[0] ?? new Date().getFullYear())
-  const invoices = useMemo(() => activeInvoices(state).filter((invoice) => invoice.year === year && invoice.number), [state, year])
-  const exportInvoices = useMemo(() => selectedInvoices(state).filter((invoice) => invoice.year === year), [state, year])
-  const paid = invoices.filter((invoice) => effectiveStatus(invoice) === 'paid')
-  const open = invoices.filter((invoice) => ['sent', 'overdue'].includes(effectiveStatus(invoice)))
-  const received = recordedPayments(state, year)
-  const paidTotal = sumCents(received.map((payment) => payment.amountCents)) / 100
-  const billedTotal = sumCents(invoices.map(invoiceTotalCents)) / 100
-  const monthly = Array.from({ length: 12 }, (_, index) => {
-    const key = `${year}-${String(index + 1).padStart(2, '0')}`
-    const monthInvoices = invoices.filter((invoice) => monthKey(invoice.invoiceDate) === key)
-    return {
-      key,
-      label: new Intl.DateTimeFormat('de-DE', { month: 'long' }).format(new Date(year, index, 1)),
-      count: monthInvoices.length,
-      billed: sumCents(monthInvoices.map(invoiceTotalCents)) / 100,
-      paid: sumCents(received.filter((payment) => monthKey(state.documentVersions.find((version) => version.id === payment.sourceVersionId)!.content.invoiceDate) === key).map((payment) => payment.amountCents)) / 100,
-    }
-  })
-  const max = Math.max(...monthly.map((month) => month.billed), 1)
+  const report = useMemo(() => financialReport(state, year), [state, year])
+  const max = Math.max(...report.months.map((month) => Math.max(month.invoiceVolumeCents, month.paymentIncomeCents)), 1)
+  const canExport = report.invoices.length > 0 || report.payments.length > 0 || report.unknownDatePayments.length > 0
 
   const exportCsv = () => {
-    downloadText(`rechnungen-${year}.csv`, invoicesToCsv(exportInvoices, state.guardians, state.students), 'text/csv;charset=utf-8')
+    downloadText(`jahresauswertung-${year}.csv`, financialReportToCsv(state, year), 'text/csv;charset=utf-8')
   }
 
   return (
     <div className="page reports-page">
       <header className="page-header">
-        <div><p className="eyebrow">Auswertung</p><h1>Jahresübersicht</h1><p>Zahlungen und offene Beträge als Vorbereitung für deine Unterlagen.</p></div>
-        <div className="page-header__actions"><label className="select-field select-field--compact"><span className="sr-only">Jahr wählen</span><select value={year} onChange={(event) => setYear(Number(event.target.value))}>{availableYears.length ? availableYears.map((value) => <option key={value}>{value}</option>) : <option>{year}</option>}</select></label><button className="button button--primary" onClick={exportCsv} disabled={!exportInvoices.length}><Download aria-hidden="true" /> CSV exportieren</button></div>
+        <div><p className="eyebrow">Auswertung</p><h1>Jahresübersicht</h1><p>Rechnungsvolumen und tatsächliche Zahlungseingänge werden getrennt ausgewiesen.</p></div>
+        <div className="page-header__actions"><label className="select-field select-field--compact"><span className="sr-only">Jahr wählen</span><select value={year} onChange={(event) => setYear(Number(event.target.value))}>{availableYears.length ? availableYears.map((value) => <option key={value}>{value}</option>) : <option>{year}</option>}</select></label><button className="button button--primary" onClick={exportCsv} disabled={!canExport}><Download aria-hidden="true" /> CSV exportieren</button></div>
       </header>
 
       <section className="report-hero">
-        <div><span><TrendingUp aria-hidden="true" /></span><p>Erfasste Zahlungen zum Belegjahr {year}</p><strong>{euro.format(paidTotal)}</strong><small>von {euro.format(billedTotal)} in Rechnung gestellt</small></div>
-        <div className="report-progress"><div><span style={{ width: `${billedTotal ? paidTotal / billedTotal * 100 : 0}%` }} /></div><p><strong>{billedTotal ? Math.round(paidTotal / billedTotal * 100) : 0}%</strong> bezahlt</p></div>
+        <div><span><TrendingUp aria-hidden="true" /></span><p>Rechnungsvolumen {year}</p><strong>{euro.format(report.invoiceVolumeCents / 100)}</strong><small>{report.invoices.length} aktuelle Rechnungen nach Rechnungsdatum</small></div>
+        <div className="report-progress"><p>Zahlungseingänge {year}</p><strong>{euro.format(report.paymentIncomeCents / 100)}</strong><small>{report.payments.length} Zahlungen nach bestätigtem Zahlungstag</small></div>
       </section>
 
       <section className="metric-grid metric-grid--3">
-        <article className="mini-metric"><span className="mini-metric__icon mini-metric__icon--blue"><ReceiptText aria-hidden="true" /></span><div><p>Rechnungen</p><strong>{invoices.length}</strong></div></article>
-        <article className="mini-metric"><span className="mini-metric__icon mini-metric__icon--green"><CheckCircle2 aria-hidden="true" /></span><div><p>Bezahlt</p><strong>{paid.length}</strong></div></article>
-        <article className="mini-metric"><span className="mini-metric__icon mini-metric__icon--red"><TriangleAlert aria-hidden="true" /></span><div><p>Offen</p><strong>{euro.format(sumCents(open.map((invoice) => openCents(state, invoice))) / 100)}</strong></div></article>
+        <article className="mini-metric"><span className="mini-metric__icon mini-metric__icon--blue"><ReceiptText aria-hidden="true" /></span><div><p>Rechnungen {year}</p><strong>{report.invoices.length}</strong></div></article>
+        <article className="mini-metric"><span className="mini-metric__icon mini-metric__icon--green"><CheckCircle2 aria-hidden="true" /></span><div><p>Zahlungseingänge {year}</p><strong>{report.payments.length}</strong></div></article>
+        <article className="mini-metric"><span className="mini-metric__icon mini-metric__icon--red"><TriangleAlert aria-hidden="true" /></span><div><p>Offene Forderungen am {formatDate(localToday())}</p><strong>{euro.format(report.openClaimsCents / 100)}</strong></div></article>
       </section>
 
       <div className="reports-grid">
         <section className="surface annual-chart-card">
-          <div className="section-heading"><div><p className="eyebrow">Monatsvergleich</p><h2>In Rechnung gestellt</h2></div></div>
-          <div className="annual-chart" role="img" aria-label={`Rechnungsvolumen ${year} nach Monat`}>
-            {monthly.map((month) => <div className="annual-chart__month" key={month.key}><div className="annual-chart__track"><span style={{ height: `${Math.max(month.billed ? 5 : 0, month.billed / max * 100)}%` }} /></div><small>{month.label.slice(0, 3)}</small></div>)}
+          <div className="section-heading"><div><p className="eyebrow">Monatsvergleich</p><h2>Rechnungsvolumen {year}</h2></div></div>
+          <div className="annual-chart" role="img" aria-label={`Rechnungsvolumen ${year} nach Monat: ${report.months.map((month) => `${month.key} ${euro.format(month.invoiceVolumeCents / 100)}`).join(', ')}`}>
+            {report.months.map((month) => <div className="annual-chart__month" key={month.key}><div className="annual-chart__track"><span style={{ height: `${Math.max(month.invoiceVolumeCents ? 5 : 0, month.invoiceVolumeCents / max * 100)}%` }} /></div><small>{new Intl.DateTimeFormat('de-DE', { month: 'short' }).format(new Date(year, Number(month.key.slice(5, 7)) - 1, 1))}</small></div>)}
           </div>
         </section>
         <section className="surface report-note">
           <CalendarRange aria-hidden="true" />
           <h2>Für deine Unterlagen</h2>
-          <p>Zahlungen werden einmal nach dem ursprünglichen Belegjahr angezeigt, auch vor einer manuellen Neuzuordnung. Der tatsächliche Zahlungstag bestimmt diese Jahreszuordnung noch nicht. Die Forderungsübersicht zählt jeweils die neueste finalisierte Version, auch im Archiv. Der CSV-Export erhält alle Versionen und kennzeichnet Korrekturbeziehungen. Er ersetzt keine steuerliche Beratung.</p>
-          <button className="button button--tonal" onClick={exportCsv} disabled={!exportInvoices.length}><Download aria-hidden="true" /> {year} als CSV</button>
+          <p>Rechnungsvolumen richtet sich nach dem Rechnungsdatum. Zahlungseingänge richten sich ausschließlich nach dem bestätigten tatsächlichen Zahlungstag. Statusrücknahmen und Korrekturen ändern keinen bereits erfassten Geldfluss.</p>
+          <button className="button button--tonal" onClick={exportCsv} disabled={!canExport}><Download aria-hidden="true" /> {year} als CSV</button>
         </section>
       </div>
 
       <section className="surface monthly-table-card">
         <div className="section-heading"><div><p className="eyebrow">Details</p><h2>Monate {year}</h2></div></div>
-        <div className="table-scroll"><table className="data-table"><thead><tr><th>Monat</th><th>Rechnungen</th><th className="align-right">Gestellt</th><th className="align-right">Bezahlt</th></tr></thead><tbody>{monthly.map((month) => <tr key={month.key}><td><strong>{month.label}</strong></td><td>{month.count || '–'}</td><td className="align-right">{month.billed ? euro.format(month.billed) : '–'}</td><td className="align-right">{month.paid ? euro.format(month.paid) : '–'}</td></tr>)}</tbody></table></div>
+        <div className="table-scroll"><table className="data-table"><thead><tr><th>Monat</th><th>Rechnungen</th><th className="align-right">Rechnungsvolumen</th><th className="align-right">Zahlungseingänge</th></tr></thead><tbody>{report.months.map((month) => <tr key={month.key}><td><strong>{new Intl.DateTimeFormat('de-DE', { month: 'long' }).format(new Date(year, Number(month.key.slice(5, 7)) - 1, 1))}</strong></td><td>{month.invoiceCount || '–'}</td><td className="align-right">{month.invoiceVolumeCents ? euro.format(month.invoiceVolumeCents / 100) : '–'}</td><td className="align-right">{month.paymentIncomeCents ? euro.format(month.paymentIncomeCents / 100) : '–'}</td></tr>)}</tbody></table></div>
       </section>
 
-      {exportInvoices.length > 0 && <section className="surface export-preview"><div className="section-heading"><div><p className="eyebrow">Enthaltene Belege</p><h2>Exportvorschau</h2></div></div><div className="compact-invoice-list">{exportInvoices.slice(0, 8).map((invoice) => <div key={invoice.id}><span><strong>{invoice.number}</strong><small>{guardianName(invoice, state.guardians)} · {formatDate(invoice.invoiceDate)}</small></span><span className={`status-chip status-chip--${effectiveStatus(invoice)}`}><i />{statusLabel[effectiveStatus(invoice)]}</span><strong>{euro.format(invoiceTotal(invoice))}</strong></div>)}</div></section>}
+      {report.unknownDatePayments.length > 0 && <section className="surface export-preview"><div className="section-heading"><div><p className="eyebrow">Ohne Kalenderjahr</p><h2>Zahlungsdatum unbekannt</h2><p>{euro.format(report.unknownDatePayments.reduce((sum, payment) => sum + payment.amountCents, 0) / 100)} werden keinem Jahr zugeschlagen. Du kannst den Zahlungstag in der Rechnung nachpflegen.</p></div></div><div className="compact-invoice-list">{report.unknownDatePayments.slice(0, 8).map((payment) => <div key={payment.id}><span><strong>{unknownPaymentDayLabel(payment)}</strong><small>Erfasst am {payment.recordedAt}</small></span><strong>{euro.format(payment.amountCents / 100)}</strong></div>)}</div></section>}
+
+      {report.invoices.length > 0 && <section className="surface export-preview"><div className="section-heading"><div><p className="eyebrow">Rechnungsvolumen</p><h2>Aktuelle Belege {year}</h2></div></div><div className="compact-invoice-list">{report.invoices.slice(0, 8).map((invoice) => <div key={invoice.id}><span><strong>{invoice.number}</strong><small>{guardianName(invoice, state.guardians)} · {formatDate(invoice.invoiceDate)}</small></span><span className={`status-chip status-chip--${invoice.status}`}><i />{statusLabel[invoice.status]}</span><strong>{euro.format(invoiceTotal(invoice))}</strong></div>)}</div></section>}
     </div>
   )
 }
-

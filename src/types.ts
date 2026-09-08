@@ -160,7 +160,12 @@ export interface InvoicePayment {
   id: string
   sourceVersionId: string
   amountCents: number
+  /** A confirmed business calendar day, never an automatically captured timestamp. */
   paidAt: string | null
+  /** Separates a user-confirmed bank day from migrated, unconfirmed legacy data. */
+  paymentDayStatus: 'confirmed' | 'unknown'
+  /** Raw pre-P08 value retained only for traceability; it is never used for reports. */
+  legacyPaymentDay?: string
   recordedAt: string
   provenance: 'recorded' | 'legacy-status'
   allocations: { versionId: string | null; at: string; reason: string }[]
@@ -208,7 +213,7 @@ export interface VoidedInvoiceNumber {
 }
 
 export interface AppState {
-  schemaVersion: 6
+  schemaVersion: 7
   guardians: Guardian[]
   students: Student[]
   invoices: Invoice[]
