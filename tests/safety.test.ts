@@ -16,7 +16,10 @@ import { createLessonItem, germanIbanError, invoiceTotal, nextInvoiceAllocation,
 const at = '2026-08-20T12:00:00.000Z'
 function families(count = 2): AppState {
   const state = emptyState()
-  state.settings.issuer.name = 'Synthetisches Teststudio'
+  state.settings.issuer = { ...state.settings.issuer, name: 'Synthetisches Teststudio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }
+  state.settings.invoiceProfile = 'small-business'
+  state.settings.taxIdentifier = { kind: 'tax-number', value: '12/345/67890' }
+  state.settings.accountHolder = 'Synthetisches Teststudio'
   state.settings.iban = 'DE02120300000000202051'
   for (let index = 0; index < count; index++) {
     state.guardians.push({ id: `g${index}`, name: `Testfamilie ${index}`, email: `test${index}@example.org`, phone: '', address: { street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }, iban: '', paymentNote: '', createdAt: at, updatedAt: at })
@@ -235,7 +238,9 @@ test('P03 ersetzt P01: Demo erhält jede begonnene Einstellung, Nutzerdaten und 
 test('P01: nur deutsche Konten für Änderungen und Finalisierung; fremde historische Snapshots bleiben original', async () => withStorage(() => {
   assert.equal(germanIbanError('de02 1203 0000 0000 2020 51'), null)
   assert.match(germanIbanError('GB29 NWBK 6016 1331 9268 19') ?? '', /nur deutsche/)
-  for (const iban of ['', 'DE02120300000000202052', 'DE0212030000000020205']) assert.match(germanIbanError(iban) ?? '', /gültige deutsche/)
+  assert.match(germanIbanError('') ?? '', /deutsche IBAN eingeben/)
+  assert.match(germanIbanError('DE02120300000000202052') ?? '', /Prüfsumme/)
+  assert.match(germanIbanError('DE0212030000000020205') ?? '', /22 Zeichen/)
   const state = families(1)
   assert.throws(() => updateSettings(state.settings, { ...state.settings, iban: 'GB29NWBK60161331926819' }), /nur deutsche/)
   let historical = saveInvoiceDraft(state, draftFor(state), true, at)

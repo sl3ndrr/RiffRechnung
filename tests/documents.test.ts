@@ -80,7 +80,7 @@ test('P04: Betrag, Datum, Texte und Empfaenger dürfen keine ausgestellte Versio
 test('P04: Empfaenger A/B und leere historische Kontofelder sind für alle Ausgaben identisch', async () => {
   const raw = legacyFixture(issued())
   raw.invoices[0].guardianIds = ['g-b']
-  Object.assign(raw.invoices[0].snapshot!, { accountHolder: '', iban: '', bic: '', bankName: '' })
+  Object.assign(raw.invoices[0].snapshot!, { accountHolder: 'HISTORISCHES KONTO', iban: 'DE02120300000000202051', bic: '', bankName: '' })
   raw.settings.bic = 'MARKDEF1100'; raw.settings.accountHolder = 'HEUTIGES KONTO'; raw.settings.defaultLegalText = 'HEUTIGER RECHTSTEXT'
   let state = requireSuccess(inspectImport(JSON.stringify(raw))).state
   const version = state.documentVersions[0]
@@ -94,10 +94,12 @@ test('P04: Empfaenger A/B und leere historische Kontofelder sind für alle Ausga
   const markup = printContent(state, state.invoices[0])
   assert.match(markup, /Empfaenger A/); assert.doesNotMatch(markup, /HEUTIGES KONTO|MARKDEF1100/)
   const epc = buildEpcPayload(invoice, state.settings, invoiceTotal(invoice)).split('\n')
-  assert.equal(epc[4], ''); assert.equal(epc[5], ''); assert.equal(epc[6], '')
+  assert.equal(epc[4], ''); assert.equal(epc[5], 'HISTORISCHES KONTO'); assert.equal(epc[6], 'DE02120300000000202051')
+  state.settings.taxIdentifier = { kind: 'tax-number', value: '12/345/67890' }
   state = createCorrectionDraft(state, invoice.id, 'Empfaenger B bestätigen', at)
   assert.throws(() => changeInvoiceStatus(state, state.invoices.at(-1)!.id, 'sent', at), /Abweichungen/)
   state = resolveDocumentConflicts(state, version.id, 'Snapshot zeigt A. Neue Rechnung ausdrücklich an B; keine Änderung des alten Snapshots.', at)
+  state.settings.taxIdentifier = { kind: 'tax-number', value: '12/345/67890' }
   state = saveInvoiceDraft(state, editable(state.invoices.at(-1)!), true, at)
   state = await persistReload(state)
   const corrected = selectInvoice(state, state.invoices.at(-1)!)
@@ -138,9 +140,9 @@ test('P04: kontrollierte Migration eines Protokoll-4/Schema-3-Bestands bewahrt R
   assert.equal(session.revision!.datasetId, old.datasetId)
   const archive = JSON.parse(JSON.parse(session.exportRecoveryArchive()).recoveries[0].raw)
   assert.equal(archive.previousRaw, raw); assert.equal(archive.sourceRaw, raw)
-  assert.equal(archive.report.toSchema, 5)
+  assert.equal(archive.report.toSchema, 6)
   assert.equal(new StorageSession({ storage, lock: sharedLock() }).initial.status, 'ready')
-  const future = JSON.stringify({ ...old, schemaVersion: 6, data: { ...old.data, schemaVersion: 6 } })
+  const future = JSON.stringify({ ...old, schemaVersion: 7, data: { ...old.data, schemaVersion: 7 } })
   storage.setItem(STORAGE_KEY, future)
   await assert.rejects(new StorageSession({ storage, lock: sharedLock() }).restore(session.export()), /neuere Formate/)
   assert.equal(storage.getItem(STORAGE_KEY), future)

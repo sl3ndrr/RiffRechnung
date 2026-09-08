@@ -16,6 +16,8 @@ export const defaultSettings: Settings = {
   iban: '',
   bic: '',
   bankName: '',
+  invoiceProfile: 'small-business',
+  taxIdentifier: { kind: 'tax-number', value: '' },
   privateRate: 30,
   duoRate: 20,
   numberPattern: '{YYYY}-{K}-{NNNN}',
@@ -28,7 +30,7 @@ export const defaultSettings: Settings = {
 
 export function emptyState(): AppState {
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     documentVersions: [], invoiceAdministration: [], payments: [], historicalSnapshotCorrections: [],
     guardians: [],
     students: [],
@@ -159,6 +161,8 @@ export function createDemoState(referenceDate = new Date()): AppState {
   settings.iban = demoIban(100)
   settings.bic = 'MUSTDEFFXXX'
   settings.bankName = 'Musterbank Köln'
+  settings.invoiceProfile = 'small-business'
+  settings.taxIdentifier = { kind: 'tax-number', value: '12/345/67890' }
 
   const monthFormatter = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric', timeZone: 'UTC' })
   const topics = {

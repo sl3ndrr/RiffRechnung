@@ -8,6 +8,7 @@ Eine vollständig clientseitige Web-App für Rechnungen rund um Gitarrenunterric
 - gemeinsame Rechnungen erstellen oder Positionen nach ausdrücklicher Empfänger-/Centzuordnung atomar in mehrere Rechnungen aufteilen
 - mehrere Kinder und automatisch berechnete Zwischensummen auf einer Rechnung
 - frei definierbare Positionen, Zahlungsziel und Textbausteine
+- strukturiertes Kleinunternehmerprofil mit vollständigen Aussteller-/Empfängeranschriften und ausdrücklich typisierter Steuerkennung
 - Entwurf, versendet, bezahlt und automatisch erkanntes „überfällig“; verknüpfte Korrekturentwürfe erhalten den vollständigen Originalbeleg
 - konfigurierbarer Nummernkreis mit dauerhaftem Kinderkennzeichen (`a`, `b`, `c` …); jedes Kind bzw. jede Kindkombination zählt getrennt und Nummern werden erst bei Finalisierung vergeben
 - unveränderliche vollständige Belegversionen mit damaligen Positionen, Beträgen, Personen, Konto und Texten; einsehbare Korrekturgründe und Snapshot-Differenzen
@@ -63,7 +64,7 @@ Vite verwendet für den Produktions-Build relative Asset-Pfade. Dadurch funktion
 
 „PDF / Drucken“ öffnet den nativen Druckdialog des Browsers. Dort **Als PDF speichern** wählen. Das Druck-CSS setzt A4, 20 mm Seitenränder, Inter-Typografie, den blau-grauen Briefkopf, Tabellenfarben, Bankdaten und eine gemeinsame Fußzeile aus Rechtstext und Seitenzahl um. Entwürfe tragen ein Wasserzeichen; auf der zweiten und jeder weiteren Seite steht zusätzlich die Rechnungsnummer. Der Browser erzeugt dabei durchsuchbaren Text statt eines gerasterten Screenshots. Für die dynamischen Seitenränder wird ein aktueller Chromium-Browser ab Version 131 (zum Beispiel Chrome oder Edge) empfohlen.
 
-Der GiroCode füllt Empfänger, IBAN, Betrag und Rechnungsnummer in unterstützten Banking-Apps aus. Der EPC-Standard selbst kann keine Echtzeitüberweisung erzwingen; diese Option wird – sofern verfügbar – in der Banking-App ausgewählt.
+Der GiroCode füllt Empfänger, deutsche IBAN, optional eingegebene BIC, Betrag und Rechnungsnummer aus derselben Belegversion in unterstützten Banking-Apps aus. Für neue Verwendung werden ausschließlich deutsche Empfänger-IBANs unterstützt. IBAN-Prüfsumme und BIC-Format bestätigen weder Kontoinhaber noch Erreichbarkeit. Der EPC-Standard selbst kann keine Echtzeitüberweisung erzwingen; diese Option wird – sofern verfügbar – in der Banking-App ausgewählt.
 
 ## Originale, Korrekturen und Zahlungen
 
@@ -134,7 +135,7 @@ Demo-Änderungen gehen beim Verlassen verloren.
 - Rechnungsnummern sind innerhalb jedes Kinderkennzeichens monoton und eindeutig. Das erste angelegte Kind erhält `a`, das zweite `b`; kombinierte Rechnungen verwenden beispielsweise `ab`. Parallel genutzte Browserprofile/Geräte teilen keinen Nummernkreis; für einen lückenlosen gemeinsamen Nummernkreis darf nur ein führender Datenbestand verwendet werden.
 - Finalisierte Rechnungen bleiben erhalten; inhaltliche Änderungen erzeugen Korrekturen. Archivierung und Zahlungs-/Versandverwaltung ändern den gesicherten Inhalt nicht. Originalnummern und frühere Registereinträge bleiben dauerhaft reserviert.
 - Ein migrierter Beleg ist nur der älteste verfügbare Stand. Fehlende frühere Versionen werden nicht rekonstruiert. Lokale Versionierung garantiert weder Manipulationssicherheit noch automatische GoBD-Konformität.
-- Voreingestellt ist „Privatrechnung“ mit einem Hinweis auf § 19 UStG ohne Umsatzsteuerausweis. Der auf 120 Zeichen begrenzte Fußzeilen-/Rechtstext ist editierbar und muss zur tatsächlichen steuerlichen Situation passen. Die App ersetzt keine Steuer- oder Rechtsberatung.
+- Für neue Rechnungen ist nach ausdrücklicher Produktentscheidung das Kleinunternehmerprofil nach § 19 UStG vorgesehen. Vor Finalisierung sind vollständige Aussteller-/Empfängeranschriften und eine ausdrücklich typisierte Steuerkennung erforderlich. Andere Steuerprofile oder Ausnahmen werden nicht automatisch angenommen. Die App ersetzt keine Steuer- oder Rechtsberatung.
 
 ## Bewusst nicht enthalten
 
@@ -145,12 +146,12 @@ Demo-Änderungen gehen beim Verlassen verloren.
 
 ### Datenprüfung und kontrollierter Formatumstieg
 
-Das Datenschema ist Format 5; die Speicherung verwendet weiterhin den versionierten
+Das Datenschema ist Format 6; die Speicherung verwendet weiterhin den versionierten
 Umschlag aus Paket 03 (Speicherprotokoll 4). Entwürfe können unvollständig sein; ungültige
 Preise, Mengen, IDs oder Referenzen werden nicht gespeichert. Nur deutsche IBANs
 sind für neue/geänderte Kontoeinstellungen und neue Finalisierungen zugelassen.
 
-Beim Import und im Wiederherstellungsmodus lassen sich Formate 2, 3 und 4 prüfen. Bekannte
+Beim Import und im Wiederherstellungsmodus lassen sich Formate 2, 3, 4 und 5 prüfen. Bekannte
 Empfängerkopien mit doppelten Positions-IDs erhalten eine Reparaturvorschau,
 separate Exporte und einen Bericht mit Originaldaten. Die bestätigte Übernahme
 verwendet denselben abgesicherten Schreibdienst wie normale Änderungen.
@@ -159,7 +160,7 @@ Abweichungen und übernommenen Verwaltungs-/Zahlungsangaben. Vorhandene Register
 haben Vorrang; die abweichende bisherige Rechnungssumme bleibt ebenfalls erhalten.
 
 Beim Umstieg **alle alten Tabs schließen**, Original exportieren und die Vorschau
-bestätigen. Paket 05 verwendet die Speicher-Schlüssel und Handle-Datenbank aus
+bestätigen. Paket 07 verwendet die Speicher-Schlüssel und Handle-Datenbank aus
 Paket 03 weiter. Alte Rohtexte bleiben im Wiederherstellungsarchiv erhalten. Ändert ein alter
 Tab ihn später, erscheint ein Konflikt; beide Stände separat exportieren und in
 einem getrennten aktuellen Profil prüfen. Unbekannte neuere Formate bleiben
@@ -195,3 +196,18 @@ mit Migrationsbericht im Wiederherstellungsarchiv; alte Tabs vorher schließen.
 Rechnungs- und Leistungstage verwenden lokale Kalenderdaten; Monatskopien
 begrenzen etwa den 31. Januar auf den 28./29. Februar. Details und Nachweise:
 [Produktentscheidungen](docs/product-decisions.md), [Umsetzungsstatus](docs/implementation-status.md).
+
+
+### Rechnungsprofil und deutsche IBAN (Paket 07)
+
+Unvollständige Einstellungen und Rechnungsentwürfe sind speicherbar. Finalisieren
+ist erst mit vollständigem Kleinunternehmerprofil, Aussteller- und
+Empfängeranschriften, einer als Steuernummer, USt-IdNr. oder
+Kleinunternehmer-Identifikationsnummer ausgewählten Angabe sowie gültigen
+deutschen Zahlungsdaten möglich. Fehlende Angaben werden feldbezogen angezeigt.
+
+Schema 6 ergänzt Profil und Steuerkennung in den aktuellen Einstellungen und in
+neuen Snapshots. Bei der Migration aus Format 2–5 bleibt die Steuerkennung leer
+und sperrt neue Finalisierungen bis zur bewussten Eingabe. Historische Snapshots
+werden nicht ergänzt; auch eine dort leere BIC bleibt leer. Grundlagen und
+Produktannahmen stehen in [Produktentscheidungen](docs/product-decisions.md).

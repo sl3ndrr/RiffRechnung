@@ -10,6 +10,8 @@ import { applyStandardRateInput, parseStandardRate, settingsChangeErrors, STANDA
 import { isFinalizedInvoice } from '../lib/safety'
 
 import { SettingsBuffer } from '../lib/settingsBuffer'
+import { invoiceSetupErrors, TAX_IDENTIFIER_LABELS, taxIdentifierInputError } from '../lib/invoiceProfile'
+import { bicError } from '../lib/paymentData'
 
 interface SettingsProps {
   state: AppState
@@ -41,10 +43,13 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
   const footerTextLimitReached = form.defaultLegalText.length >= MAX_FOOTER_TEXT_LENGTH
 
   const ibanError = form.iban.trim() ? germanIbanError(form.iban) : null
+  const currentBicError = form.bic.trim() ? bicError(form.bic) : null
   const replacementBlocked = state.invoices.some(isFinalizedInvoice) || state.voidedInvoiceNumbers.length > 0
   const emailError = mailboxError(form.issuer.email)
   const paymentTermError = parsePaymentTermInput(paymentTermInput) === null
   const invalidRateInput = Object.values(rateInputs).some((raw) => parseStandardRate(raw) === null)
+  const setupErrors = invoiceSetupErrors(form)
+  const taxIdentifierError = form.taxIdentifier.value ? taxIdentifierInputError(form.taxIdentifier) : null
 
   const setRate = (field: 'privateRate' | 'duoRate', raw: string) => {
     setRateInputs((current) => ({ ...current, [field]: raw }))
@@ -91,6 +96,7 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
         <div className="settings-content" >
           <section id="profile" className="surface settings-section">
             <div className="settings-section__heading"><span><ShieldCheck aria-hidden="true" /></span><div><h2>Rechnungssteller</h2><p>Diese Angaben erscheinen im Briefkopf und werden beim Finalisieren eingefroren.</p></div></div>
+            {setupErrors.length > 0 && <div className="form-errors" role="status"><strong>Für neue Finalisierungen fehlen:</strong><ul>{setupErrors.map((error) => <li key={error.field}>{error.message}</li>)}</ul></div>}
             <div className="form-grid form-grid--2">
               <label className="field field--full"><span>Name / Geschäftsbezeichnung</span><input value={form.issuer.name} onChange={(event) => setForm({ ...form, issuer: { ...form.issuer, name: event.target.value } })} /></label>
               <label className="field field--full"><span>Straße & Hausnummer</span><input value={form.issuer.street} onChange={(event) => setForm({ ...form, issuer: { ...form.issuer, street: event.target.value } })} /></label>
@@ -98,6 +104,9 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
               <label className="field"><span>Ort</span><input value={form.issuer.city} onChange={(event) => setForm({ ...form, issuer: { ...form.issuer, city: event.target.value } })} /></label>
               <label className="field"><span>E-Mail</span><input type="text" inputMode="email" aria-invalid={Boolean(emailError)} value={form.issuer.email} onChange={(event) => setForm({ ...form, issuer: { ...form.issuer, email: event.target.value } })} />{emailError && <small role="alert">{emailError}</small>}</label>
               <label className="field"><span>Telefon</span><input type="tel" value={form.issuer.phone} onChange={(event) => setForm({ ...form, issuer: { ...form.issuer, phone: event.target.value } })} /></label>
+              <label className="field field--full"><span>Rechnungsprofil</span><select value={form.invoiceProfile} onChange={(event) => setForm({ ...form, invoiceProfile: event.target.value as SettingsType['invoiceProfile'] })}><option value="unconfigured">Bitte ausdrücklich auswählen</option><option value="small-business">Kleinunternehmer nach § 19 UStG</option></select><small>Dieses Paket unterstützt ausschließlich das ausdrücklich gewählte Kleinunternehmerprofil. Andere steuerliche Konstellationen werden nicht automatisch eingeordnet.</small></label>
+              <label className="field"><span>Art der steuerlichen Identifikationsangabe</span><select value={form.taxIdentifier.kind} onChange={(event) => setForm({ ...form, taxIdentifier: { ...form.taxIdentifier, kind: event.target.value as SettingsType['taxIdentifier']['kind'] } })}>{Object.entries(TAX_IDENTIFIER_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              <label className="field"><span>{TAX_IDENTIFIER_LABELS[form.taxIdentifier.kind]}</span><input value={form.taxIdentifier.value} aria-invalid={Boolean(taxIdentifierError)} onChange={(event) => setForm({ ...form, taxIdentifier: { ...form.taxIdentifier, value: event.target.value } })} />{taxIdentifierError && <small className="field-error" role="alert">{taxIdentifierError}</small>}</label>
             </div>
           </section>
 
@@ -107,10 +116,10 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
               <label className="field"><span>Kontoinhaber</span><input value={form.accountHolder} onChange={(event) => setForm({ ...form, accountHolder: event.target.value })} /></label>
               <label className="field"><span>Bank</span><input value={form.bankName} onChange={(event) => setForm({ ...form, bankName: event.target.value })} /></label>
               <label className="field field--full"><span>IBAN</span><input className="mono" value={formatIban(form.iban)} onChange={(event) => setForm({ ...form, iban: event.target.value })} aria-invalid={Boolean(ibanError)} aria-describedby="iban-error" />{ibanError && <small id="iban-error" className="field-error">{ibanError}</small>}</label>
-              <label className="field"><span>BIC (optional im EPC-QR)</span><input className="mono" value={form.bic} onChange={(event) => setForm({ ...form, bic: event.target.value.toUpperCase() })} /></label>
+              <label className="field"><span>BIC (für deutsche Empfängerkonten im EPC-QR optional)</span><input className="mono" value={form.bic} aria-invalid={Boolean(currentBicError)} aria-describedby="bic-error" onChange={(event) => setForm({ ...form, bic: event.target.value.toUpperCase() })} />{currentBicError && <small id="bic-error" className="field-error" role="alert">{currentBicError}</small>}</label>
               <label className="field"><span>Standard-Zahlungsziel (Tage)</span><input type="text" inputMode="numeric" aria-invalid={paymentTermError} value={paymentTermInput} onChange={(event) => { const raw = event.target.value; setPaymentTermInput(raw); const value = parsePaymentTermInput(raw); if (value !== null) setForm({ ...form, paymentTermDays: value }) }} /><small>{paymentTermError ? 'Bitte eine ganze Anzahl Tage ab 0 eingeben; der letzte gültige Wert bleibt erhalten.' : 'Wird bei neuen Rechnungen zum Rechnungsdatum addiert.'}</small></label>
             </div>
-            <div className="info-banner"><ShieldCheck aria-hidden="true" /><p>Der QR-Code füllt eine SEPA-Überweisung in unterstützten Banking-Apps aus. Ob sie als Echtzeitüberweisung ausgeführt wird, entscheidet die Banking-App bzw. die zahlende Person.</p></div>
+            <div className="info-banner"><ShieldCheck aria-hidden="true" /><p>Für neue Verwendung werden ausschließlich deutsche Empfänger-IBANs unterstützt. Die Format- und Prüfsummenprüfung bestätigt weder Kontoinhaber noch Erreichbarkeit. Die BIC ist bei einem deutschen Empfängerkonto nach EPC v3.1 optional; daraus folgt keine Aussage über jeden möglichen Zahlerfall.</p></div>
           </section>
 
           <section id="numbering" className="surface settings-section">

@@ -23,7 +23,7 @@ const at = '2026-09-06T12:00:00.000Z'
 function family(count = 1): AppState {
   let state = emptyState()
   state.updatedAt = at
-  state = requireSuccess(saveSettingsState(state, { ...state.settings, issuer: { ...state.settings.issuer, name: 'Synthetisches Teststudio', email: 'studio+test@example.org' }, accountHolder: 'Teststudio', iban: 'DE02120300000000202051' }))
+  state = requireSuccess(saveSettingsState(state, { ...state.settings, issuer: { ...state.settings.issuer, name: 'Synthetisches Teststudio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', email: 'studio+test@example.org' }, accountHolder: 'Teststudio', iban: 'DE02120300000000202051', invoiceProfile: 'small-business', taxIdentifier: { kind: 'tax-number', value: '12/345/67890' } }))
   for (let index = 0; index < count; index++) state = requireSuccess(saveGuardianState(state, {
     id: `g${index}`, name: `Testperson ${index}`, email: `test${index}@example.org`, phone: '', address: { street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }, iban: '', paymentNote: '', createdAt: at, updatedAt: at,
   }))
@@ -354,9 +354,10 @@ test('P02: fehlerhafte importierte Mailboxen sind sichtbar, historische Werte bl
   const historical = saveInvoiceDraft(state, draft(state), true, at)
   historical.invoices[0].snapshot!.guardians[0].email = 'bad@example.org?bcc=x@example.org'
   historical.invoices[0].snapshot!.iban = 'FR1420041010050500013M02606'
-  const preview = requireSuccess(inspectImport(JSON.stringify(legacyFixture(historical))))
+  const legacyHistorical = legacyFixture(historical)
+  const preview = requireSuccess(inspectImport(JSON.stringify(legacyHistorical)))
   assert.equal(preview.warnings.length, 1)
-  assert.deepEqual(preview.state.invoices[0].snapshot, historical.invoices[0].snapshot)
+  assert.deepEqual(preview.state.invoices[0].snapshot, legacyHistorical.invoices[0].snapshot)
   assert.throws(() => mailtoUrl(preview.state.invoices[0], state.guardians, state.students), /ungültige Empfängeradresse/)
   const emptySnapshot = structuredClone(historical.invoices[0])
   emptySnapshot.snapshot!.guardians[0].email = ''

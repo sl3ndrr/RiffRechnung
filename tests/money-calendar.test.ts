@@ -74,10 +74,12 @@ test('P05: Grenzen/Überläufe liefern Fehler; JSON und Eingaben verlieren keine
 function v4Fixture() {
   const current = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
   const captured = captureLegacyDocuments(legacyFixture(current))
+  Reflect.deleteProperty(captured.settings, 'invoiceProfile')
+  Reflect.deleteProperty(captured.settings, 'taxIdentifier')
   return { ...captured, schemaVersion: 4 }
 }
 
-test('P05: Schema 4 → 5 bewahrt Originale; Entwürfe zeigen Änderungen, Import/Reload sind idempotent', async () => {
+test('P05: Schema 4 → 6 bewahrt Originale; Entwürfe zeigen Änderungen, Import/Reload sind idempotent', async () => {
   const old = v4Fixture()
   const draft = { ...structuredClone(old.invoices[0]), id: 'old-draft', status: 'draft' as const, number: null, sequence: null, items: [line(.75, 10.1)] }
   delete draft.versionId; delete draft.snapshot
@@ -87,11 +89,12 @@ test('P05: Schema 4 → 5 bewahrt Originale; Entwürfe zeigen Änderungen, Impor
   const preview = requireSuccess(inspectImport(raw))
   assert.equal(preview.rawData, raw)
   assert.equal(preview.report?.fromSchema, 4)
-  assert.equal(preview.report?.toSchema, 5)
+  assert.equal(preview.report?.toSchema, 6)
   assert.ok(preview.report?.changes.some((change) => change.path.endsWith('amountReview') && change.before === 757 && change.after === 758))
   assert.deepEqual(preview.state.documentVersions, old.documentVersions)
   assert.equal(invoiceTotal(selectInvoice(preview.state, preview.state.invoices[0])), 7.57)
   assert.equal(invoiceTotal(preview.state.invoices[1]), 7.58)
+  preview.state.settings = { ...preview.state.settings, invoiceProfile: 'small-business', taxIdentifier: { kind: 'tax-number', value: '12/345/67890' } }
   assert.throws(() => changeInvoiceStatus(preview.state, draft.id, 'sent', documentAt), /Editor/)
   // Actual review text/amounts are asserted in the P05 Chromium test (Modal uses a portal).
   const accepted = saveInvoiceDraft(preview.state, { ...draft }, true, documentAt)
@@ -108,7 +111,7 @@ test('P05: Schema 4 → 5 bewahrt Originale; Entwürfe zeigen Änderungen, Impor
   assert.equal(requireSuccess(inspectImport(storage.getItem(STORAGE_KEY)!)).report, null)
   assert.equal(requireSuccess(inspectImport(serializeBackup(accepted))).report, null)
   validateBackupState(JSON.parse(JSON.stringify(accepted)))
-  const future = JSON.stringify({ ...old, schemaVersion: 6 })
+  const future = JSON.stringify({ ...old, schemaVersion: 7 })
   assert.equal(inspectImport(future).ok, false)
   storage.setItem(STORAGE_KEY, future)
   await assert.rejects(() => new StorageSession({ storage, lock }).restore(serializeBackup(accepted)), /neuere|schreibgeschützt/)

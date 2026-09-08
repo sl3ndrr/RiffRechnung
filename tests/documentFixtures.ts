@@ -8,7 +8,7 @@ export const documentAt = '2026-09-07T12:00:00.000Z'
 export function documentFamily(): AppState {
   let state = emptyState()
   state.updatedAt = documentAt
-  state.settings = { ...state.settings, issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', phone: '', email: 'studio@example.org' }, accountHolder: 'Studio', iban: 'DE02120300000000202051' }
+  state.settings = { ...state.settings, issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', phone: '', email: 'studio@example.org' }, accountHolder: 'Studio', iban: 'DE02120300000000202051', invoiceProfile: 'small-business', taxIdentifier: { kind: 'tax-number', value: '12/345/67890' } }
   for (const id of ['a', 'b']) state = requireSuccess(saveGuardianState(state, { id: `g-${id}`, name: `Empfaenger ${id.toUpperCase()}`, email: `${id}@example.org`, phone: '', address: { street: `Testweg ${id === 'a' ? 2 : 3}`, postalCode: '12345', city: 'Teststadt' }, iban: '', paymentNote: '', createdAt: documentAt, updatedAt: documentAt }))
   for (const id of ['a', 'b']) state = requireSuccess(saveStudentState(state, { id: `s-${id}`, name: `Testkind ${id.toUpperCase()}`, billingCode: '', guardianIds: ['g-a', 'g-b'], note: '', active: true, createdAt: documentAt, updatedAt: documentAt }))
   return state
@@ -20,7 +20,12 @@ export function documentDraft(): InvoiceDraft {
 export function legacyFixture(state: AppState): LegacyState {
   const copy = structuredClone(state)
   for (const key of ['documentVersions', 'invoiceAdministration', 'payments', 'historicalSnapshotCorrections']) Reflect.deleteProperty(copy, key)
-  for (const invoice of copy.invoices) for (const key of ['calculation', 'versionId', 'correction', 'issuedAmounts', 'claimState', 'archived']) Reflect.deleteProperty(invoice, key)
+  for (const invoice of copy.invoices) {
+    for (const key of ['calculation', 'versionId', 'correction', 'issuedAmounts', 'claimState', 'archived']) Reflect.deleteProperty(invoice, key)
+    if (invoice.snapshot) { Reflect.deleteProperty(invoice.snapshot, 'invoiceProfile'); Reflect.deleteProperty(invoice.snapshot, 'taxIdentifier') }
+  }
+  Reflect.deleteProperty(copy.settings, 'invoiceProfile')
+  Reflect.deleteProperty(copy.settings, 'taxIdentifier')
   return { ...copy, schemaVersion: 3 }
 
 }
