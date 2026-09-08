@@ -1,10 +1,10 @@
 # Umsetzungsstatus
 
-Stand: 2026-09-08, Paket 04. Tatsächliches `main` geprüft:
-`b7babea58bcb2f9a0423870eadaf7b18109f3eec`. PRs #21/#22 wurden in ihre
-Vorgängerbranches übernommen, die anschließend gelöscht wurden; deren Paket-02/03-
-Inhalte sind noch nicht in `main`. Keine `AGENTS.md` im vollständig geprüften Tree.
-Kein Merge und kein Deployment durch diesen Auftrag.
+Stand: 2026-09-08, Paket 05. Zielbranch `main` zu Beginn vollständig geprüft:
+`d44131b31b5e22eab5e28883bef167864aabe9b5`, Tree
+`6001df60433714625d31e3a0dee4e359af29372c`. Pakete 00–04 sind gemergt.
+Keine `AGENTS.md` im vollständigen Repository-Tree. Arbeitsbranch:
+`codex/paket-05-geld-kalender`. Kein Merge oder Deployment in diesem Auftrag.
 
 ## Paketfolge
 
@@ -20,7 +20,7 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 | 02 | Fachbefehle, Validatoren, reparierbare Formate | R01, R04, R15; Grundlage R24 | Implementiert und CI-geprüft; reale Browser-/Mailprogrammabnahmen offen |
 | 03 | Speicherung, Backups, isolierte Demo | R05, R08, R22, N06; schrittweise R24 | Implementiert; CI-/Browsernachweise unten, native Dateirechte offen |
 | 04 | Originalbelege und Korrekturen | R03, R09, R10, F03, N09; schrittweise R24 | Implementiert; 116/116 Fachtests und 11/11 Browserprüfungen bestanden |
-| 05 | Exaktes Geld und Kalenderdaten | R06, R12 | Laut Analyse offen |
+| 05 | Exaktes Geld und Kalenderdaten | R06, R12; schrittweise R24 | Implementiert, CI-Abnahme läuft |
 | 06 | Aufteilung nach Empfängern | R02; Integration R01 | Laut Analyse offen |
 | 07 | Rechnungsprofil, deutsche IBAN, Zahlungsdaten | R07, R13 angepasst, R14 | Laut Analyse offen |
 | 08 | Zahlungstag und Berichte | R11, F02 (MVP) | Laut Analyse offen |
@@ -118,4 +118,24 @@ Eigenständiger Storno-Workflow gehört nicht zum MVP. Native Datei-/Druck-/Bank
 Abnahmen und administrative Pflichtchecks bleiben offen. Keine neue npm-Abhängigkeit;
 CI ergänzt Poppler und ein sieben Tage verfügbares synthetisches Browser-/PDF-Artefakt.
 
-Nächstes vorgesehenes Paket: **05 – Exaktes Geld und Kalenderdaten**, nicht begonnen.
+## Paket 05 – Exaktes Geld und Kalenderdaten
+
+- Ausgangsbefunde R06/R12 am aktuellen Code bestätigt: binäre Multiplikation vor
+  Rundung, direkte Detailmultiplikation, Euro- statt Centaggregation, Monatsüberlauf
+  und UTC-Ableitung neuer Rechnungsdaten. Implementierung in `money.ts`/`calendar.ts`;
+  gemeinsame Rechnung in allen betroffenen Ausgabekanälen, genaue neue Belegversionen.
+- Schema 5 übernimmt 2/3 über historische Betragssicherung und 4 ohne Änderung
+  vorhandener Originale. Präzision bleibt erhalten; Migrationsbericht und Editor
+  zeigen geänderte Entwurfsbeträge. Rohdaten/Archive, Wiederherstellung, unbekannte
+  Formate und Idempotenz bleiben geschützt. Produktregeln siehe Entscheidungsdatei.
+- Regressionen: Halbcent, 100.000 Werte gegen Python Decimal, Grenzen/Überlauf,
+  JSON/Import/Reload, Originalbeträge, Nummern, Berlin/UTC, Mitternacht, Schaltjahr,
+  Jahreswechsel, Sommerzeit und Kopierablauf. Vorhandene Referenz-/Konflikttests bleiben.
+- Lokale Umgebung Node 24.19.0/npm 11.9.0 statt gefordertem Node 22. `npm ci` und
+  `npm view node@22 version --json --fetch-retries=0 --fetch-timeout=20000`: E403.
+  Lint/Test/Typecheck/Build vor Prozessstart blockiert; keine lokalen Testergebnisse.
+  CI übernimmt alle vorhandenen Gates einschließlich Testtypen und Chromium/PDF.
+  Konkrete Ergebnisse und offene Abnahmen werden nach dem Lauf ergänzt.
+
+Nächstes vorgesehenes Paket: **06 – Aufteilung nach Empfängern**, nicht begonnen.
+

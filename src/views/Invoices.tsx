@@ -1,3 +1,5 @@
+import { invoiceTotalCents, sumCents } from '../lib/money'
+import { outputItemTotal } from '../lib/utils'
 import { DocumentHistory, HistoricalSnapshotEvidence, type DocumentHistoryActions } from '../components/DocumentHistory'
 import { activeInvoices, isActiveClaim, openCents, selectedInvoices } from '../lib/documents'
 import { commandResult } from '../lib/result'
@@ -120,7 +122,7 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
   return (
     <div className="page invoice-page">
       <header className="page-header">
-        <div><p className="eyebrow">Verwaltung</p><h1>Rechnungen</h1><p>{state.invoices.length} Vorgänge · {euro.format(activeInvoices(state).reduce((sum, invoice) => sum + invoiceTotal(invoice), 0))} aktives Belegvolumen</p></div>
+        <div><p className="eyebrow">Verwaltung</p><h1>Rechnungen</h1><p>{state.invoices.length} Vorgänge · {euro.format(sumCents(activeInvoices(state).map(invoiceTotalCents)) / 100)} aktives Belegvolumen</p></div>
         <button className="button button--primary button--large" onClick={onNew}><FilePlus2 aria-hidden="true" /> Neue Rechnung</button>
       </header>
 
@@ -241,7 +243,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
   const period = invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate)
   const reminder = createReminder(invoice, state.guardians, state.students)
   const mailto = commandResult(() => mailtoUrl(invoice, state.guardians, state.students))
-  const canRemind = (status === 'sent' || status === 'overdue') && isActiveClaim(state, invoice) && openCents(state, invoice) === Math.round(invoiceTotal(invoice) * 100) && !state.payments.some((payment) => state.documentVersions.find((version) => version.id === payment.sourceVersionId)?.originalId === state.documentVersions.find((version) => version.id === invoice.versionId)?.originalId && payment.allocations.at(-1)?.versionId !== invoice.versionId)
+  const canRemind = (status === 'sent' || status === 'overdue') && isActiveClaim(state, invoice) && openCents(state, invoice) === invoiceTotalCents(invoice) && !state.payments.some((payment) => state.documentVersions.find((version) => version.id === payment.sourceVersionId)?.originalId === state.documentVersions.find((version) => version.id === invoice.versionId)?.originalId && payment.allocations.at(-1)?.versionId !== invoice.versionId)
 
   const copyReminder = async () => {
     await navigator.clipboard.writeText(`${reminder.subject}\n\n${reminder.body}`)
@@ -284,7 +286,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
 
       {invoice.status === 'draft' && <section className="position-summary">
         <h3>Positionen</h3>
-        {invoice.items.map((item) => <div key={item.id}><span>{item.description}<small>{formatDate(item.serviceDate)} · {item.quantity.toLocaleString('de-DE')} {item.unit}</small></span><strong>{euro.format(item.quantity * item.unitPrice)}</strong></div>)}
+        {invoice.items.map((item) => <div key={item.id}><span>{item.description}<small>{formatDate(item.serviceDate)} · {item.quantity.toLocaleString('de-DE')} {item.unit}</small></span><strong>{euro.format(outputItemTotal(invoice, item))}</strong></div>)}
       </section>}
 
       <footer className="invoice-detail__footer">
@@ -294,3 +296,4 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
     </aside>
   )
 }
+

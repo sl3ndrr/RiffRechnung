@@ -1,3 +1,4 @@
+import { decimalInputText } from '../lib/money'
 import { mailboxError } from '../lib/mailbox'
 import { parsePaymentTermInput } from '../lib/values'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
@@ -30,7 +31,7 @@ interface SettingsProps {
 
 export function Settings({ state, folderSupported, folderConnected, folderName, onSave, onDirty, onRegisterFlush, onExport, onImport, onConnectFolder, onDisconnectFolder, onBackupNow, onReset, onPrevious, onArchive }: SettingsProps) {
   const [form, setForm] = useState<SettingsType>(state.settings)
-  const [rateInputs, setRateInputs] = useState({ privateRate: String(state.settings.privateRate), duoRate: String(state.settings.duoRate) })
+  const [rateInputs, setRateInputs] = useState({ privateRate: decimalInputText(state.settings.privateRate), duoRate: decimalInputText(state.settings.duoRate) })
   const [paymentTermInput, setPaymentTermInput] = useState(String(state.settings.paymentTermDays))
   const [saveStatus, setSaveStatus] = useState<'saved' | 'pending' | 'invalid'>('saved')
   const [buffer] = useState(() => new SettingsBuffer(state.settings))
@@ -158,3 +159,4 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
     </div>
   )
 }
+

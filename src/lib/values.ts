@@ -1,6 +1,7 @@
+import { sameDecimal } from './money'
 import type { InvoiceItem } from '../types'
 
-// Storage boundaries, not a replacement for the exact-money work in package 05.
+// Preserve the full canonical decimal precision of existing JSON prices.
 export const MIN_QUANTITY = 0.01
 export const MAX_QUANTITY = 99.99
 export const QUANTITY_INCREMENT = 0.25
@@ -23,7 +24,7 @@ export function parseDecimalInput(raw: string): number | null {
   if (!/^\d+(?:[.,]\d+)?$/.test(text)) return null
   const value = Number(text.replace(',', '.'))
   if (!Number.isFinite(value) || (value === 0 && /[1-9]/.test(text))) return null
-  return value
+  try { return sameDecimal(text.replace(',', '.'), value) ? value : null } catch { return null }
 }
 
 export function parseQuantityInput(raw: string): number | null {
@@ -50,3 +51,4 @@ export function parsePaymentTermInput(raw: string): number | null {
   const value = Number(raw)
   return Number.isSafeInteger(value) && value >= 0 ? value : null
 }
+

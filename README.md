@@ -181,3 +181,17 @@ Paket 04 prüft zusätzlich echte Chromium-PDFs anhand ihres Textinhalts. Synthe
 PDFs und Browsernachweise stehen sieben Tage als CI-Artefakt `browser-evidence`
 bereit. Native Druckdialoge, Drucklayout-Matrix und Banking-App-Scans sind separate
 Abnahmen; die automatisierte PDF-Prüfung ersetzt sie nicht.
+
+
+### Dezimalbeträge und Kalenderdaten (Paket 05)
+
+Neue Positionen werden vor der Multiplikation dezimal exakt ausgewertet,
+positionsweise kaufmännisch auf Cent gerundet und als Centbeträge addiert.
+Mengen erlauben 0,01–99,99 mit zwei Nachkommastellen; Untercentpreise bleiben
+verlustfrei erhalten. Neue Rechnungen sind auf 999.999.999,99 EUR begrenzt.
+Schema 5 bewahrt bereits gesicherte Originalbeträge. Geänderte Altentwurfsbeträge
+werden beim Umstieg und im Editor angezeigt. Vor Übernahme bleibt das Original
+mit Migrationsbericht im Wiederherstellungsarchiv; alte Tabs vorher schließen.
+Rechnungs- und Leistungstage verwenden lokale Kalenderdaten; Monatskopien
+begrenzen etwa den 31. Januar auf den 28./29. Februar. Details und Nachweise:
+[Produktentscheidungen](docs/product-decisions.md), [Umsetzungsstatus](docs/implementation-status.md).

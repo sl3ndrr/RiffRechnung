@@ -1,3 +1,5 @@
+import { calendarParts } from './calendar'
+import { itemTotalCents, moneyErrors, sumCents } from './money'
 import { canonical } from './envelope'
 import { documentContent } from './documents'
 import type { AppState } from '../types'
@@ -154,9 +156,9 @@ function validateSettings(value: unknown): void {
   backupBoolean(settings.reducedMotion, 'settings.reducedMotion')
 }
 
-function validateState(value: unknown, schema: 2 | 3 | 4, localItemIds: boolean): void {
+function validateState(value: unknown, schema: 2 | 3 | 4 | 5, localItemIds: boolean): void {
   const legacy = schema === 2
-  const versioned = schema === 4
+  const versioned = schema >= 4
   const data = backupObject(value, 'data')
   knownKeys(data, 'data', 'schemaVersion guardians students invoices voidedInvoiceNumbers settings counters nextStudentCodeIndex audit updatedAt' + (versioned ? ' documentVersions invoiceAdministration payments historicalSnapshotCorrections' : ''))
   if (data.schemaVersion !== schema) throw new Error('Die Datei hat kein unterstütztes Backup-Format.')
@@ -207,7 +209,7 @@ function validateState(value: unknown, schema: 2 | 3 | 4, localItemIds: boolean)
   backupArray(data.invoices, 'invoices').forEach((entry, index) => {
     const path = `invoices[${index}]`
     const invoice = backupObject(entry, path)
-    knownKeys(invoice, path, 'id number sequence year invoiceDate dueDate period status guardianIds studentIds recipientStrategy items introText freeText legalText snapshot paidAt sentAt createdAt updatedAt' + (versioned ? ' versionId correction' : ''))
+    knownKeys(invoice, path, 'id number sequence year invoiceDate dueDate period status guardianIds studentIds recipientStrategy items introText freeText legalText snapshot paidAt sentAt createdAt updatedAt' + (versioned ? ' versionId correction' : '') + (schema === 5 ? ' calculation' : ''))
     registerId(invoice.id, `${path}.id`, invoiceIds)
     const number = invoice.number === null ? null : backupString(invoice.number, `${path}.number`, true)
     if (number !== null) {
@@ -259,6 +261,7 @@ function validateState(value: unknown, schema: 2 | 3 | 4, localItemIds: boolean)
     // Only the explicit legacy repair preflight uses invoice-local item IDs.
     // Future document versions require their own reference scope (package 04).
     const invoiceItemIds = localItemIds ? new Set<string>() : itemIds
+    if (invoice.calculation !== undefined) backupEnum(invoice.calculation, `${path}.calculation`, ['decimal-v1'])
     let totalCents = 0
     backupArray(invoice.items, `${path}.items`).forEach((itemValue, itemIndex) => {
       const itemPath = `${path}.items[${itemIndex}]`
@@ -276,13 +279,18 @@ function validateState(value: unknown, schema: 2 | 3 | 4, localItemIds: boolean)
       backupEnum(item.unit, `${itemPath}.unit`, ITEM_UNITS)
       const price = backupNumber(item.unitPrice, `${itemPath}.unitPrice`)
       if (!validPrice(price)) invalidBackup(`${itemPath}.unitPrice`, 'muss ein Preis ab 0 im sicheren Zahlenbereich sein')
-      totalCents += Math.round(quantity * price * 100)
+      // Old storage acceptance remains frozen; issued originals are not recalculated.
+      totalCents += invoice.calculation === 'decimal-v1' ? itemTotalCents({ quantity, unitPrice: price }) : Math.round(quantity * price * 100)
       if (!Number.isSafeInteger(totalCents)) invalidBackup(`${itemPath}.unitPrice`, 'überschreitet den sicheren Gesamtbetrag')
     })
     backupString(invoice.introText, `${path}.introText`)
     backupString(invoice.freeText, `${path}.freeText`)
     backupString(invoice.legalText, `${path}.legalText`)
-    if (invoice.paidAt !== undefined) backupTimestamp(invoice.paidAt, `${path}.paidAt`)
+    if (invoice.paidAt !== undefined) validatePaymentDay(invoice.paidAt, `${path}.paidAt`, schema === 5)
+    if (invoice.status === 'draft' && invoice.calculation === 'decimal-v1') {
+      const errors = moneyErrors(invoice as unknown as AppState['invoices'][number])
+      if (errors.length) invalidBackup(path, errors.join(' '))
+    }
     if (invoice.sentAt !== undefined) backupTimestamp(invoice.sentAt, `${path}.sentAt`)
     backupTimestamp(invoice.createdAt, `${path}.createdAt`)
     backupTimestamp(invoice.updatedAt, `${path}.updatedAt`)
@@ -353,7 +361,7 @@ function validateEmail(value: unknown, path: string, historical = false): void {
 }
 
 export function validateBackupState(value: unknown): asserts value is AppState {
-  validateState(value, 4, false)
+  validateState(value, 5, false)
 }
 
 // Never used by the ordinary validator. Must be followed by lineage checks,
@@ -365,6 +373,10 @@ export function validateLegacyV2Structure(value: unknown): void {
 export function knownKeys(value: Record<string, unknown>, path: string, keys: string): void {
   const allowed = new Set(keys.split(' '))
   for (const key of Object.keys(value)) if (!allowed.has(key)) invalidBackup(`${path}.${key}`, 'ist in diesem Format nicht unterstützt')
+}
+
+export function validateLegacyV4Structure(value: unknown): void {
+  validateState(value, 4, false)
 }
 
 export function validateLegacyV3Structure(value: unknown): void {
@@ -394,12 +406,15 @@ function validateDocuments(state: AppState): void {
     const itemCents = backupArray(amounts.itemCents, `${path}.amounts.itemCents`).map((amount, i) => backupInteger(amount, `${path}.amounts.itemCents[${i}]`, 0))
     const total = backupInteger(amounts.totalCents, `${path}.amounts.totalCents`, 0)
     const calculated = backupInteger(amounts.legacyCalculatedTotalCents, `${path}.amounts.legacyCalculatedTotalCents`, 0)
-    if (itemCents.length !== invoice.items.length || itemCents.reduce((sum, amount) => sum + amount, 0) !== calculated) invalidBackup(`${path}.amounts`, 'muss vollständige, konsistente gesicherte Positionsbeträge enthalten')
-    backupEnum(amounts.source, `${path}.amounts.source`, ['legacy-output', 'number-register'])
-    backupEnum(amounts.calculation, `${path}.amounts.calculation`, ['legacy-v1'])
+    if (itemCents.length !== invoice.items.length || sumCents(itemCents) !== calculated) invalidBackup(`${path}.amounts`, 'muss vollständige, konsistente gesicherte Positionsbeträge enthalten')
+    backupEnum(amounts.source, `${path}.amounts.source`, ['legacy-output', 'number-register', ...(state.schemaVersion === 5 ? ['decimal-output'] : [])])
+    backupEnum(amounts.calculation, `${path}.amounts.calculation`, ['legacy-v1', ...(state.schemaVersion === 5 ? ['decimal-v1'] : [])])
+    if (amounts.calculation === 'decimal-v1') {
+      if (amounts.source !== 'decimal-output' || invoice.calculation !== 'decimal-v1' || itemCents.some((cents, i) => cents !== itemTotalCents(invoice.items[i]))) invalidBackup(`${path}.amounts`, 'widerspricht der exakten Dezimalberechnung')
+    } else if (amounts.source === 'decimal-output') invalidBackup(`${path}.amounts`, 'hat eine widersprüchliche Berechnungsversion')
     const registers = backupArray(v.registerEntries, `${path}.registerEntries`)
     if (registers.length > 1 || registers.some((record) => !state.voidedInvoiceNumbers.some((known) => canonical(known) === canonical(record) && known.number === invoice.number))) invalidBackup(`${path}.registerEntries`, 'muss den unveränderten zugehörigen Registereintrag enthalten')
-    if (amounts.source === 'legacy-output' ? total !== calculated : !registers.length || total !== Math.round(state.voidedInvoiceNumbers.find((record) => record.number === invoice.number)!.amount * 100)) invalidBackup(`${path}.amounts.totalCents`, 'widerspricht der angegebenen historischen Betragsquelle')
+    if (amounts.source !== 'number-register' ? total !== calculated : !registers.length || total !== Math.round(state.voidedInvoiceNumbers.find((record) => record.number === invoice.number)!.amount * 100)) invalidBackup(`${path}.amounts.totalCents`, 'widerspricht der angegebenen historischen Betragsquelle')
     backupArray(v.conflicts, `${path}.conflicts`).forEach((value, i) => {
       const p = `${path}.conflicts[${i}]`; const conflict = backupObject(value, p)
       knownKeys(conflict, p, 'path message values')
@@ -469,7 +484,7 @@ function validateDocuments(state: AppState): void {
     const source = state.documentVersions.find((version) => version.id === payment.sourceVersionId)
     if (!source) invalidBackup(`${path}.sourceVersionId`, 'verweist auf einen unbekannten Ursprungsbeleg')
     backupInteger(payment.amountCents, `${path}.amountCents`, 0)
-    if (payment.paidAt !== null) backupTimestamp(payment.paidAt, `${path}.paidAt`)
+    if (payment.paidAt !== null) validatePaymentDay(payment.paidAt, `${path}.paidAt`, state.schemaVersion === 5)
     backupTimestamp(payment.recordedAt, `${path}.recordedAt`)
     backupEnum(payment.provenance, `${path}.provenance`, ['recorded', 'legacy-status'])
     const allocations = backupArray(payment.allocations, `${path}.allocations`)
@@ -487,4 +502,11 @@ function validateDocuments(state: AppState): void {
     if (version.amounts.totalCents > 0 && (invoice.status === 'paid') !== (assigned >= version.amounts.totalCents)) invalidBackup('payments', 'Zahlungszuordnung und Vollzahlungsstatus widersprechen sich')
   }
 
+}
+
+
+function validatePaymentDay(value: unknown, path: string, allowCalendar: boolean): void {
+  if (allowCalendar && typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    try { calendarParts(value) } catch { invalidBackup(path, 'muss ein gültiger Kalendertag sein') }
+  } else backupTimestamp(value, path)
 }

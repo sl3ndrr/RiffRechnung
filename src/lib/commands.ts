@@ -1,3 +1,4 @@
+import { localToday, shiftCalendarMonths } from './calendar'
 import type { AppState, Guardian, InvoiceDraft, Settings, Student } from '../types'
 import { createEmptyInvoiceDraft } from './defaults'
 import { saveInvoiceDraft } from './invoiceActions'
@@ -60,15 +61,13 @@ export function prepareInvoiceCopy(state: AppState, invoiceId: string, targetDat
       || invoice.studentIds.some((id) => !state.students.some((student) => student.id === id))) {
       throw new Error('Kopieren gesperrt: Historische Personen oder Kinder fehlen in den aktuellen Stammdaten. Die Zuordnung muss ausdrücklich geklärt werden; keine Position oder Referenz wurde entfernt.')
     }
-    // Retain the existing month-shift semantics; calendar corrections are P05.
+    // Shift service days relative to the invoice month; clamp month ends.
     const sourceDate = parseDate(invoice.invoiceDate)
     const monthDelta = (targetDate.getFullYear() - sourceDate.getFullYear()) * 12 + targetDate.getMonth() - sourceDate.getMonth()
     const items = copyItemsWithFreshIds(invoice.items, new Set(state.invoices.flatMap((entry) => entry.items.map((item) => item.id))), createId).map((item) => {
-      const date = parseDate(item.serviceDate)
-      date.setMonth(date.getMonth() + monthDelta)
-      return { ...item, serviceDate: date.toISOString().slice(0, 10) }
+      return { ...item, serviceDate: shiftCalendarMonths(item.serviceDate, monthDelta) }
     })
-    const invoiceDate = targetDate.toISOString().slice(0, 10)
+    const invoiceDate = localToday(targetDate)
     const draft: InvoiceDraft = {
       invoiceDate, dueDate: calculateDueDate(invoiceDate, state.settings.paymentTermDays),
       period: billingPeriodFromItems(items, invoiceDate), guardianIds: [...invoice.guardianIds], studentIds: [...invoice.studentIds],
@@ -112,3 +111,4 @@ export function deleteStudentState(state: AppState, id: string): CommandResult<A
 export function recordActivity(state: AppState, event: AppState['audit'][number]): AppState {
   return { ...state, updatedAt: event.at, audit: [event, ...state.audit].slice(0, 200) }
 }
+

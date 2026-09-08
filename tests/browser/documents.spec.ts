@@ -47,7 +47,7 @@ test('P04 Browser/PDF: finalisieren, Personen löschen, Original drucken, korrig
   const original = originalState.invoices[0]
   const first = await pdfText(page, originalState, original.id)
   expect(first.text).toContain('Empfaenger A')
-  expect(first.text).toContain('7,57')
+  expect(first.text).toContain('7,58')
   await testInfo.attach('original.pdf', { body: first.pdf, contentType: 'application/pdf' })
   await page.getByRole('button', { name: 'Familien', exact: true }).first().click()
   await page.getByRole('button', { name: 'Testkind A löschen', exact: true }).click()
@@ -166,7 +166,7 @@ test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unverändert
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
   await page.reload()
   const state = await stateOf(page)
-  expect(state.schemaVersion).toBe(4)
+  expect(state.schemaVersion).toBe(5)
   expect(state.documentVersions[0].provenance).toBe('oldest-available')
   await invoices(page)
   await page.getByRole('button', { name: '2026-a-0001', exact: true }).click()
@@ -187,3 +187,4 @@ test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unverändert
   expect(archives[0].sourceRaw).toBe(raw)
   expect(archives[0].previousRaw).toBe(raw)
 })
+
