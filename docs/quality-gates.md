@@ -469,3 +469,14 @@ Positionen, nannte den zugeordneten Kindesnamen aber nicht. Die Vorlage wurde um
 die aus dem jeweiligen Snapshot abgeleitete Zeile „Unterricht für“ ergänzt; die
 Prüferwartung bleibt unverändert. Umgebung: Ubuntu 24.04, Node 22.23.2, npm 10.9.8,
 Python 3.12.3, Chromium 153.0.8010.12. Artefakt `browser-evidence` ID 10059343469.
+
+Korrekturlauf [34235461660](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34235461660)
+auf `670ce56a0edde9029990b9fd596c5e4f9ae76d16`: alle Schranken erfolgreich;
+**130/130 Fachtests und 14/14 Browserprüfungen**, 0 fehlgeschlagen/übersprungen.
+Die beiden echten Ergebnis-PDFs enthalten jeweils Empfänger, ausschließlich das
+zugeordnete Kind, die passende Position und 30,00 EUR; die Gesamtsumme im
+Bestätigungsdialog beträgt 60,00 EUR. Umgebung: Ubuntu 24.04, Node 22.23.2,
+npm 10.9.8, Python 3.12.3, Chromium 153.0.8010.12. Synthetisches Artefakt
+`browser-evidence` ID 10059733856, kein Pages-Artefakt und kein Deployment.
+Der abschließende reine Nachweis ergänzt die zweite identische PDF-Ausgabe samt
+unverändertem Storage und durchläuft dieselben Schranken erneut.

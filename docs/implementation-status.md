@@ -193,17 +193,20 @@ Nächstes vorgesehenes Paket: **07 – Rechnungsprofil, deutsche IBAN und Zahlun
   `4929c80758b1d77286eed17cbb38643c9a70ee88`. Lokal Node 24.19.0/npm 11.9.0
   statt Node 22; `npm ci` scheiterte an Registry-E403 (`yocto-queue`). Syntaxprüfung
   der geänderten `.ts`-Dateien und `git diff --check` erfolgreich, kein Ersatz für
-  Lint/Test/Typecheck/Build. Vollständiger Node-22-PR-Lauf wird dem Ergebniscommit
-  in `quality-gates.md` zugeordnet. Der erste Lauf 34234548343 bestand Installation,
+  Lint/Test/Typecheck/Build. Node-22-Lauf
+  [34235461660](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34235461660)
+  auf `670ce56a0edde9029990b9fd596c5e4f9ae76d16` bestand npm ci, Lint, 130/130
+  Fachtests, Test-Typecheck, Build und 14/14 Chromium-/PDF-Prüfungen. Der erste Lauf
+  34234548343 bestand Installation,
   Lint, 130/130 Fachtests, Test-Typecheck und Build; 13/14 Browserprüfungen. Der
   fehlende Kindesname in Einzelkind-PDFs wurde als Implementierungsbefund korrigiert.
 
 | Abnahme Paket 06 | Ergebnis |
 | --- | --- |
-| Zwei Familien, je 30 EUR, zwei Belege und 60 EUR gesamt; nur passendes Kind in Snapshot/PDF | Implementiert; CI-Ausführung ausstehend |
-| Gemeinsame Eltern, getrennte Haushalte, Geschwister, Mehrfachberechtigte, zwei/drei Empfänger, Mehrdeutigkeit | Implementiert; CI-Ausführung ausstehend |
-| Belegkopien ohne neue Forderung; bestätigte Teilbeträge summengleich und sichtbar | Implementiert; CI-Ausführung ausstehend |
-| Entwurf/Finalisierung nach Export–Import und Speichern–Reload; Nummern/IDs | Implementiert; CI-Ausführung ausstehend |
+| Zwei Familien, je 30 EUR, zwei Belege und 60 EUR gesamt; nur passendes Kind in Snapshot/PDF | Bestanden, Fach- und echter Chromium-/PDF-Ablauf |
+| Gemeinsame Eltern, getrennte Haushalte, Geschwister, Mehrfachberechtigte, zwei/drei Empfänger, Mehrdeutigkeit | Bestanden, Fachprüfungen |
+| Belegkopien ohne neue Forderung; bestätigte Teilbeträge summengleich und sichtbar | Bestanden, Fachprüfung; wiederholte PDF-Ausgabe im Abschlusslauf |
+| Entwurf/Finalisierung nach Export–Import und Speichern–Reload; Nummern/IDs | Bestanden, Fach- und Browserprüfung |
 | Native Druckdialoge/Dateirechte, Banking-App-Scan | Nicht geprüft; nicht Gegenstand dieses Pakets |
 
 R02 und die R01-Aufteilungsintegration sind im Paketumfang implementiert; R24 wird
