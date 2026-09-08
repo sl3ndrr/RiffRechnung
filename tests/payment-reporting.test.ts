@@ -104,7 +104,9 @@ test('P08: Schema 6 übernimmt Vollzahlungen mit unbekanntem Zahlungstag einmali
 
   const reloaded = parseBackup(serializeBackup(preview.value.state))
   assert.equal(reloaded.schemaVersion, 7)
-  assert.equal(inspectImport(serializeBackup(reloaded)).ok && inspectImport(serializeBackup(reloaded)).value.report, null)
+  const repeatImport = inspectImport(serializeBackup(reloaded))
+  assert.ok(repeatImport.ok)
+  if (repeatImport.ok) assert.equal(repeatImport.value.report, null)
   assert.equal(reloaded.payments[0].legacyPaymentDay, '2026-01-03')
 })
 

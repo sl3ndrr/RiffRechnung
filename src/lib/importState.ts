@@ -294,10 +294,11 @@ export function captureLegacyDocuments(legacy: LegacyState): AppState {
     state.invoiceAdministration.push({ versionId: version.id, archived: false, events: [{ at: invoice.updatedAt, status: invoice.status, kind: 'imported', reason: 'Ältester verfügbarer Verwaltungsstand; frühere Versand-/Statusereignisse unbekannt.' }], resolutions: [] })
     if (invoice.status === 'paid' || invoice.paidAt) state.payments.push({
       id: `payment-v4-${index}`, sourceVersionId: version.id, amountCents: version.amounts.totalCents,
-      paidAt: invoice.paidAt ?? null, recordedAt: invoice.updatedAt, provenance: 'legacy-status',
+      paidAt: null, paymentDayStatus: 'unknown',
+      ...(invoice.paidAt ? { legacyPaymentDay: invoice.paidAt } : {}),
+      recordedAt: invoice.updatedAt, provenance: 'legacy-status',
       allocations: [{ versionId: invoice.status === 'paid' ? version.id : null, at: invoice.updatedAt, reason: 'Aus historischem Vollzahlungsstatus übernommen; Zahlungsdatum bleibt unbekannt, wenn es nicht gespeichert war.' }],
     })
   })
   return upgradeToV7(state)
 }
-
