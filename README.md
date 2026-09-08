@@ -5,7 +5,7 @@ Eine vollständig clientseitige Web-App für Rechnungen rund um Gitarrenunterric
 ## Funktionsumfang
 
 - Kinder und mehrere Erziehungsberechtigte verwalten, filtern, sortieren und miteinander verknüpfen
-- gemeinsame Rechnungen erstellen; getrennte Empfängerrechnungen bleiben bis Paket 06 gesperrt
+- gemeinsame Rechnungen erstellen oder Positionen nach ausdrücklicher Empfänger-/Centzuordnung atomar in mehrere Rechnungen aufteilen
 - mehrere Kinder und automatisch berechnete Zwischensummen auf einer Rechnung
 - frei definierbare Positionen, Zahlungsziel und Textbausteine
 - Entwurf, versendet, bezahlt und automatisch erkanntes „überfällig“; verknüpfte Korrekturentwürfe erhalten den vollständigen Originalbeleg

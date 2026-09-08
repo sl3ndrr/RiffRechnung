@@ -2,7 +2,7 @@ import { deleteGuardianState, deleteStudentState, recordActivity } from './lib/c
 import { allocatePayment, archiveInvoice, createCorrectionDraft, resolveDocumentConflicts, selectInvoice } from './lib/documents'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BarChart3, BookUser, Download, FilePlus2, LayoutDashboard, Menu, MessageSquareText, Moon, Palette, ReceiptText, Search, Settings as SettingsIcon, Sun, Upload, UserRound, X } from 'lucide-react'
-import type { AppState, AuditEvent, Guardian, Invoice, InvoiceDraft, InvoiceStatus, PageKey, Settings as SettingsType, Student, ToastMessage } from './types'
+import type { AppState, AuditEvent, Guardian, Invoice, InvoiceDraft, InvoiceItemAllocation, InvoiceStatus, PageKey, Settings as SettingsType, Student, ToastMessage } from './types'
 import { Dashboard } from './views/Dashboard'
 import { Invoices } from './views/Invoices'
 import { InvoiceEditor } from './views/InvoiceEditor'
@@ -14,7 +14,7 @@ import { StorageRecovery } from './views/StorageRecovery'
 import { ImportReview, type ImportReviewData } from './views/ImportReview'
 import { inspectImportBytes, type ImportPreview } from './lib/importState'
 import { requireSuccess } from './lib/result'
-import { prepareInvoiceCopy, prepareNewInvoice, saveGuardianState, saveInvoiceState, saveSettingsState, saveStudentState } from './lib/commands'
+import { prepareInvoiceCopy, prepareNewInvoice, saveGuardianState, saveInvoiceState, saveSettingsState, saveStudentState, splitInvoiceState } from './lib/commands'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { ChangelogModal } from './components/ChangelogModal'
 import { ToastRegion } from './components/ToastRegion'
@@ -244,18 +244,23 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     })
   }
 
-  const saveInvoice = async (draft: InvoiceDraft, finalize: boolean) => {
-    let savedId: string | null = null
+  const saveInvoice = async (draft: InvoiceDraft, finalize: boolean, allocations?: InvoiceItemAllocation[]) => {
+    let savedIds: string[] = []
     const saved = await commit((current) => {
+      if (allocations) {
+        const split = requireSuccess(splitInvoiceState(current, draft, allocations, finalize))
+        savedIds = split.invoiceIds
+        return split.state
+      }
       const next = requireSuccess(saveInvoiceState(current, draft, finalize))
-      savedId = next.invoices.at(-1)?.id ?? null
+      savedIds = next.invoices.at(-1)?.id ? [next.invoices.at(-1)!.id] : []
       return next
-    }, finalize ? 'Rechnung finalisiert' : 'Rechnungsentwurf gespeichert', 'invoice', draft.id)
+    }, allocations ? finalize ? 'Aufgeteilte Rechnungen gemeinsam finalisiert' : 'Aufgeteilte Rechnungsentwürfe angelegt' : finalize ? 'Rechnung finalisiert' : 'Rechnungsentwurf gespeichert', 'invoice', draft.id)
     if (!saved) return
     setEditor((current) => ({ ...current, open: false }))
     setPage('invoices')
-    setSelectedInvoiceId(savedId)
-    toast(finalize ? 'Rechnung finalisiert.' : 'Entwurf gespeichert.', 'success')
+    setSelectedInvoiceId(savedIds[0] ?? null)
+    toast(allocations ? `${savedIds.length} ${finalize ? 'Rechnungen finalisiert' : 'Entwürfe angelegt'}.` : finalize ? 'Rechnung finalisiert.' : 'Entwurf gespeichert.', 'success')
   }
 
   const startCorrection = async (invoice: Invoice, reason: string) => {

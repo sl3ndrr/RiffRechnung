@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises'
 import type { AppState } from '../../src/types'
 import { documentDraft, documentFamily, documentAt, legacyFixture } from '../documentFixtures'
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
+import { emptyState } from '../../src/lib/defaults'
 import { parseBackup, serializeBackup, STORAGE_KEY } from '../../src/lib/storage'
 
 async function stateOf(page: Page): Promise<AppState> {
@@ -146,6 +147,64 @@ test('P04 Browser: Zahlungen manuell zuordnen, archivieren und vollständiges Ba
     await next.reload()
     expect(await stateOf(next)).toEqual(before)
   } finally { await destination.close() }
+})
+
+test('P06 Browser/PDF: zwei Familien explizit zuordnen, gemeinsam vorschauen und atomar finalisieren', async ({ page }, testInfo) => {
+  const state = emptyState()
+  state.updatedAt = documentAt
+  state.settings = { ...state.settings, issuer: { name: 'Testunterricht', street: 'Musikweg 1', postalCode: '50667', city: 'Köln', email: 'rechnung@example.de', phone: '' }, accountHolder: 'Testunterricht', iban: 'DE89370400440532013000' }
+  state.guardians = [
+    { id: 'g-familie-a', name: 'Familie A', email: 'a@example.de', phone: '', address: { street: 'A-Straße 1', postalCode: '50667', city: 'Köln' }, iban: '', paymentNote: '', createdAt: documentAt, updatedAt: documentAt },
+    { id: 'g-familie-b', name: 'Familie B', email: 'b@example.de', phone: '', address: { street: 'B-Straße 2', postalCode: '50668', city: 'Köln' }, iban: '', paymentNote: '', createdAt: documentAt, updatedAt: documentAt },
+  ]
+  state.students = [
+    { id: 's-kind-a', name: 'Kind A', billingCode: 'a', guardianIds: ['g-familie-a'], note: '', active: true, createdAt: documentAt, updatedAt: documentAt },
+    { id: 's-kind-b', name: 'Kind B', billingCode: 'b', guardianIds: ['g-familie-b'], note: '', active: true, createdAt: documentAt, updatedAt: documentAt },
+  ]
+  state.nextStudentCodeIndex = 2
+  state.invoices = [{ id: 'split-source', number: null, sequence: null, year: 2026, invoiceDate: '2026-09-01', dueDate: '2026-09-15', period: 'September 2026', status: 'draft', guardianIds: ['g-familie-a', 'g-familie-b'], studentIds: ['s-kind-a', 's-kind-b'], recipientStrategy: 'joint', calculation: 'decimal-v1', items: [
+    { id: 'split-source-a', studentId: 's-kind-a', serviceDate: '2026-09-01', lessonType: 'solo', description: 'Unterricht A', quantity: 1, unit: 'Std.', unitPrice: 30 },
+    { id: 'split-source-b', studentId: 's-kind-b', serviceDate: '2026-09-02', lessonType: 'solo', description: 'Unterricht B', quantity: 1, unit: 'Std.', unitPrice: 30 },
+  ], introText: 'Zugeordneter Unterricht', freeText: '', legalText: state.settings.defaultLegalText, createdAt: documentAt, updatedAt: documentAt }]
+  await seed(page, state)
+  await invoices(page)
+  await page.getByRole('button', { name: 'Entwurf', exact: true }).click()
+  await page.locator('.invoice-detail').getByRole('button', { name: 'Bearbeiten', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Entwurf bearbeiten' })
+  await dialog.getByRole('radio', { name: 'Nach Empfänger:innen aufteilen' }).check()
+  await dialog.getByLabel('Zuordnung für Position 1').selectOption('g-familie-a')
+  await dialog.getByLabel('Zuordnung für Position 2').selectOption('g-familie-b')
+  await dialog.getByRole('button', { name: 'Aufteilung prüfen', exact: true }).click()
+  const preview = dialog.getByLabel('Geprüfte Aufteilungsvorschau')
+  await expect(preview).toContainText('Familie A')
+  await expect(preview).toContainText('Kind A')
+  await expect(preview).toContainText('Familie B')
+  await expect(preview).toContainText('Kind B')
+  await expect(preview).toContainText('Gesamtsumme aller Forderungen')
+  await expect(preview).toContainText('60,00')
+  await preview.getByRole('button', { name: 'Alle Rechnungen finalisieren', exact: true }).click()
+  await expect(dialog).not.toBeVisible()
+  await page.reload()
+  const finalized = await stateOf(page)
+  expect(finalized.invoices).toHaveLength(2)
+  expect(finalized.invoices.map((invoice) => invoice.snapshot!.students.map((student) => student.name))).toEqual([['Kind A'], ['Kind B']])
+  expect(finalized.invoices.map((invoice) => invoice.snapshot!.guardians.map((guardian) => guardian.name))).toEqual([['Familie A'], ['Familie B']])
+  expect(new Set(finalized.invoices.flatMap((invoice) => invoice.items.map((item) => item.id))).size).toBe(2)
+  const pdfA = await pdfText(page, finalized, finalized.invoices[0].id)
+  const pdfB = await pdfText(page, finalized, finalized.invoices[1].id)
+  const pdfACopy = await pdfText(page, finalized, finalized.invoices[0].id)
+  expect(pdfA.text).toContain('Familie A')
+  expect(pdfA.text).toContain('Kind A')
+  expect(pdfA.text).not.toContain('Familie B')
+  expect(pdfA.text).not.toContain('Kind B')
+  expect(pdfB.text).toContain('Familie B')
+  expect(pdfB.text).toContain('Kind B')
+  expect(pdfB.text).not.toContain('Familie A')
+  expect(pdfB.text).not.toContain('Kind A')
+  expect(pdfACopy.text).toBe(pdfA.text)
+  expect(await stateOf(page)).toEqual(finalized)
+  await testInfo.attach('aufteilung-familie-a.pdf', { body: pdfA.pdf, contentType: 'application/pdf' })
+  await testInfo.attach('aufteilung-familie-b.pdf', { body: pdfB.pdf, contentType: 'application/pdf' })
 })
 
 test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unveränderten Eingangsbytes', async ({ page }, testInfo) => {

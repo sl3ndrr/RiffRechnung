@@ -3,6 +3,7 @@ import { outputItemTotal } from '../lib/utils'
 import { DocumentHistory, HistoricalSnapshotEvidence, type DocumentHistoryActions } from '../components/DocumentHistory'
 import { activeInvoices, isActiveClaim, openCents, selectedInvoices } from '../lib/documents'
 import { commandResult } from '../lib/result'
+import { needsHistoricalSplitReview } from '../lib/invoiceSplit'
 import { FINALIZED_INVOICE_BLOCKED, isFinalizedInvoice } from '../lib/safety'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -275,6 +276,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
       </div>
 
       <DocumentHistory key={invoice.id} state={state} invoice={invoice} onSelect={onSelect} onCorrection={onCorrection} onAllocatePayment={onAllocatePayment} onResolveConflicts={onResolveConflicts} />
+      {needsHistoricalSplitReview(state, invoice) && <p className="notice" role="status">Historische Aufteilung ungeklärt: Dieser übernommene Beleg wird nicht automatisch zusammengelegt oder umgeschrieben. Prüfe Empfänger, Kind, Positionen und Betrag; notwendige Änderungen erfolgen über den Korrekturweg.</p>}
       {isFinalizedInvoice(invoice) && <p className="field-hint" role="status">{FINALIZED_INVOICE_BLOCKED}</p>}
 
       {canRemind && (
@@ -296,4 +298,3 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
     </aside>
   )
 }
-

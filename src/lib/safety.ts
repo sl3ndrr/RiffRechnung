@@ -1,6 +1,5 @@
 import type { AppState, Invoice } from '../types'
 
-export const SPLIT_INVOICE_BLOCKED = 'Getrennte Rechnungen sind vorübergehend gesperrt: Die bisherige Aufteilung könnte fremde Kinddaten weitergeben und Leistungen mehrfach berechnen. Eine gemeinsame Rechnung ist nur mit Empfängern möglich, die allen ausgewählten Kindern zugeordnet sind.'
 export const FINALIZED_INVOICE_BLOCKED = 'Finalisierte Belege bleiben unverändert erhalten. Inhaltliche Änderungen benötigen einen verknüpften Korrekturentwurf mit Grund. Zahlungs- und Versanddaten werden getrennt verwaltet.'
 
 export function isFinalizedInvoice(invoice: Invoice): boolean {
