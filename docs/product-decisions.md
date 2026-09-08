@@ -1,6 +1,6 @@
 # Produktentscheidungen
 
-Stand: Pakete 00–07, 2026-09-08. Quelle: beauftragter Umsetzungsplan zur Analyse von
+Stand: Pakete 00–08, 2026-09-08. Quelle: beauftragter Umsetzungsplan zur Analyse von
 `ba7857fd9180fa392c42a0235643e478e5077ee5`. Diese Regeln sind verbindliche Ziele;
 ihre technische Umsetzung wird pro Paket im [Umsetzungsstatus](implementation-status.md) belegt.
 

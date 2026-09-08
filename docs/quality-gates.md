@@ -525,3 +525,27 @@ Keine Tests wurden gelöscht, übersprungen oder abgeschwächt.
 - Der Node-22-Workflow des Ergebniscommits muss `npm ci`, Lint, Fachtests,
   Typecheck einschließlich Tests, Build sowie die Chromium-/PDF-Prüfungen
   ausweisen. Kein Test wurde gelöscht, übersprungen oder abgeschwächt.
+- [34276880945](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34276880945)
+  auf `189b2cee89f8d57aca5baba8b208d4f681a1196a`: `npm ci` erfolgreich;
+  Lint stoppte ausschließlich zwei ungenutzte Destrukturierungsvariablen im
+  Schema-4-Testfixture. Es wurden keine Fachtests ausgeführt.
+- [34277110428](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34277110428)
+  auf `7964cb94472a858cd52452c246fce16fd7dcc765`: Lint erfolgreich;
+  eine Zahlungstagskorrektur war noch vom Originalschutz gesperrt. Der folgende
+  Übergang erlaubt ausschließlich Geschäftsdatum/Status `unknown → confirmed`;
+  Betrag, Herkunft, Erfassungszeitpunkt und bisherige Zuordnungen bleiben geschützt.
+- [34277324886](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34277324886)
+  auf `09060bbeb8c87abb9b63e3135ad3863914ec3d1f`: Lint und 142/142 Fachtests
+  erfolgreich; Typecheck fand den alten internen Legacy-Zwischentyp sowie eine
+  nicht eingegrenzte Testunion. Beide wurden ohne Verhaltensänderung korrigiert.
+- [34277602963](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34277602963)
+  auf `1f19e1b026f0ea0186c73c71ec4cbcf3a27159cc`: `npm ci`, Lint, 142/142
+  Fachtests, Test-Typecheck, Build und Browserinstallation erfolgreich; 13/14
+  Browserprüfungen. Der verbleibende Test suchte die absichtlich ersetzte
+  Kennzahl „Offener Betrag“; er prüft nun den fachlich präzisen Stichtagstext.
+- [34278036194](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34278036194)
+  auf `f71d73311fb0559a6438464a007985b6a87f73a6`: alle Schranken erfolgreich:
+  `npm ci`, Lint, 142/142 Fachtests, Typecheck einschließlich Tests, Build sowie
+  14/14 Chromium-/PDF-Prüfungen. Ubuntu 24.04.4, Node 22.23.2/npm 10.9.8,
+  Python 3.12.3, Chromium 153.0.8010.12; keine fehlgeschlagenen oder
+  übersprungenen Tests.
