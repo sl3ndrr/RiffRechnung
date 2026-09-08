@@ -152,7 +152,7 @@ test('P04 Browser: Zahlungen manuell zuordnen, archivieren und vollständiges Ba
 test('P06 Browser/PDF: zwei Familien explizit zuordnen, gemeinsam vorschauen und atomar finalisieren', async ({ page }, testInfo) => {
   const state = emptyState()
   state.updatedAt = documentAt
-  state.settings = { ...state.settings, issuer: { name: 'Testunterricht', street: 'Musikweg 1', postalCode: '50667', city: 'Köln', email: 'rechnung@example.de', phone: '' }, accountHolder: 'Testunterricht', iban: 'DE89370400440532013000' }
+  state.settings = { ...state.settings, issuer: { name: 'Testunterricht', street: 'Musikweg 1', postalCode: '50667', city: 'Köln', email: 'rechnung@example.de', phone: '' }, accountHolder: 'Testunterricht', iban: 'DE89370400440532013000', invoiceProfile: 'small-business', taxIdentifier: { kind: 'tax-number', value: '12/345/67890' } }
   state.guardians = [
     { id: 'g-familie-a', name: 'Familie A', email: 'a@example.de', phone: '', address: { street: 'A-Straße 1', postalCode: '50667', city: 'Köln' }, iban: '', paymentNote: '', createdAt: documentAt, updatedAt: documentAt },
     { id: 'g-familie-b', name: 'Familie B', email: 'b@example.de', phone: '', address: { street: 'B-Straße 2', postalCode: '50668', city: 'Köln' }, iban: '', paymentNote: '', createdAt: documentAt, updatedAt: documentAt },
