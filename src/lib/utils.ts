@@ -3,7 +3,8 @@ import { decimalInputText, invoiceTotalCents, itemTotalCents, moneyErrors } from
 import { buildMailto } from './mailbox'
 import { validId, validPrice, validQuantity } from './values'
 import { assertInvoiceEditable } from './safety'
-import { cleanIban, germanIbanError, isValidGermanIban, paymentDataErrors, paymentDataForInvoice } from './paymentData'
+import { cleanIban, paymentDataErrors, paymentDataForInvoice } from './paymentData'
+import { invoiceProfileErrors, invoiceSetupErrors } from './invoiceProfile'
 import type { AppState, Guardian, Invoice, InvoiceItem, InvoiceStatus, LessonType, Settings, Student } from '../types'
 
 export const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
@@ -27,13 +28,15 @@ export function limitFooterText(value: string): string {
 
 type InvoiceFinalizationCandidate = Pick<Invoice, 'guardianIds' | 'studentIds' | 'invoiceDate' | 'dueDate' | 'items' | 'legalText'> & Partial<Pick<Invoice, 'recipientStrategy'>>
 
-export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 'students'>, invoice: InvoiceFinalizationCandidate): string[] {
+export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 'students' | 'settings'>, invoice: InvoiceFinalizationCandidate): string[] {
   const errors: string[] = [...moneyErrors(invoice)]
   if (invoice.recipientStrategy === 'separate' && invoice.guardianIds.length > 1) errors.push('Die gemeinsame Aufteilung muss zuerst mit vollständiger Positionszuordnung geprüft werden.')
   const guardianIds = new Set(state.guardians.map((guardian) => guardian.id))
   const studentIds = new Set(state.students.map((student) => student.id))
   const selectedStudentIds = new Set(invoice.studentIds)
   const selectedStudents = state.students.filter((student) => selectedStudentIds.has(student.id))
+  const selectedGuardians = state.guardians.filter((guardian) => invoice.guardianIds.includes(guardian.id))
+  errors.push(...invoiceProfileErrors(state.settings, selectedGuardians).map((error) => error.message))
 
   if (!invoice.guardianIds.length) errors.push('Mindestens eine empfangende Person auswählen.')
   else if (invoice.guardianIds.some((id) => !guardianIds.has(id))) errors.push('Alle empfangenden Personen müssen in den aktuellen Stammdaten vorhanden sein.')
@@ -379,8 +382,8 @@ export function uid(prefix: string): string {
 
 export { cleanIban, formatIban, germanIbanError, isValidGermanIban as isValidIban } from './paymentData'
 
-export function isInvoiceSetupComplete(settings: Pick<Settings, 'issuer' | 'accountHolder' | 'iban' | 'bic'>): boolean {
-  return Boolean(settings.issuer.name.trim()) && paymentDataErrors(settings).length === 0
+export function isInvoiceSetupComplete(settings: Settings): boolean {
+  return invoiceSetupErrors(settings).length === 0
 }
 
 function sanitizeEpc(value: string, maxLength: number): string {

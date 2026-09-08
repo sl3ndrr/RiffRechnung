@@ -3,6 +3,13 @@ export type PageKey = 'dashboard' | 'invoices' | 'people' | 'reports' | 'about' 
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue'
 export type RecipientStrategy = 'joint' | 'separate'
 export type LessonType = 'solo' | 'duo'
+export type InvoiceProfile = 'unconfigured' | 'small-business'
+export type TaxIdentifierKind = 'tax-number' | 'vat-id' | 'small-business-id'
+
+export interface TaxIdentifier {
+  kind: TaxIdentifierKind
+  value: string
+}
 
 export interface Address {
   street: string
@@ -70,6 +77,10 @@ export interface InvoiceSnapshot {
   bic: string
   bankName: string
   legalText: string
+  /** Absent on historical snapshots; never filled from current settings. */
+  invoiceProfile?: InvoiceProfile
+  /** Absent on historical snapshots; never filled from current settings. */
+  taxIdentifier?: TaxIdentifier
 }
 
 export interface Invoice {
@@ -161,6 +172,8 @@ export interface Settings {
   iban: string
   bic: string
   bankName: string
+  invoiceProfile: InvoiceProfile
+  taxIdentifier: TaxIdentifier
   privateRate: number
   duoRate: number
   numberPattern: string
@@ -195,7 +208,7 @@ export interface VoidedInvoiceNumber {
 }
 
 export interface AppState {
-  schemaVersion: 5
+  schemaVersion: 6
   guardians: Guardian[]
   students: Student[]
   invoices: Invoice[]

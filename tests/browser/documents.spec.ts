@@ -225,7 +225,7 @@ test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unverändert
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
   await page.reload()
   const state = await stateOf(page)
-  expect(state.schemaVersion).toBe(5)
+  expect(state.schemaVersion).toBe(6)
   expect(state.documentVersions[0].provenance).toBe('oldest-available')
   await invoices(page)
   await page.getByRole('button', { name: '2026-a-0001', exact: true }).click()

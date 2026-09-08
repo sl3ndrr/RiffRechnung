@@ -4,6 +4,7 @@ import QRCode from 'qrcode'
 import type { Guardian, Invoice, Settings, Student } from '../types'
 import { billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, euro, footerTextForPrint, formatDateLong, formatIban, groupItemsByStudent, invoiceTotal, outputItemTotal, outputItemCents, outputUnitPrice, number, parseDate } from '../lib/utils'
 import { germanIbanError, paymentDataForInvoice } from '../lib/paymentData'
+import { SMALL_BUSINESS_TAX_NOTICE, TAX_IDENTIFIER_LABELS, taxDataForInvoice } from '../lib/invoiceProfile'
 
 interface InvoicePrintProps {
   invoice: Invoice | null
@@ -31,6 +32,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
   const pageStyle = invoice ? buildInvoicePrintPageStyle(footerText, invoice.number) : ''
   const issuer = source?.issuer ?? settings.issuer
   const account = invoice ? paymentDataForInvoice(invoice, settings) : { accountHolder: '', iban: '', bic: '', bankName: '' }
+  const taxData = invoice ? taxDataForInvoice(invoice, settings) : { invoiceProfile: null, taxIdentifier: null }
   const recipientList = useMemo(() => {
     if (!invoice) return []
     if (source) return source.guardians
@@ -169,6 +171,8 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
             </tr>
           </tbody>
         </table>
+
+        {taxData.invoiceProfile === 'small-business' && taxData.taxIdentifier?.value && <section className="invoice-tax-data" aria-label="Steuerliche Angaben"><p><strong>{TAX_IDENTIFIER_LABELS[taxData.taxIdentifier.kind]}:</strong> {taxData.taxIdentifier.value}</p><p>{SMALL_BUSINESS_TAX_NOTICE}</p></section>}
 
         <div className="invoice-payment-block">
           <section className="invoice-payment-copy">

@@ -77,7 +77,7 @@ function v4Fixture() {
   return { ...captured, schemaVersion: 4 }
 }
 
-test('P05: Schema 4 → 5 bewahrt Originale; Entwürfe zeigen Änderungen, Import/Reload sind idempotent', async () => {
+test('P05: Schema 4 → 6 bewahrt Originale; Entwürfe zeigen Änderungen, Import/Reload sind idempotent', async () => {
   const old = v4Fixture()
   const draft = { ...structuredClone(old.invoices[0]), id: 'old-draft', status: 'draft' as const, number: null, sequence: null, items: [line(.75, 10.1)] }
   delete draft.versionId; delete draft.snapshot
@@ -87,7 +87,7 @@ test('P05: Schema 4 → 5 bewahrt Originale; Entwürfe zeigen Änderungen, Impor
   const preview = requireSuccess(inspectImport(raw))
   assert.equal(preview.rawData, raw)
   assert.equal(preview.report?.fromSchema, 4)
-  assert.equal(preview.report?.toSchema, 5)
+  assert.equal(preview.report?.toSchema, 6)
   assert.ok(preview.report?.changes.some((change) => change.path.endsWith('amountReview') && change.before === 757 && change.after === 758))
   assert.deepEqual(preview.state.documentVersions, old.documentVersions)
   assert.equal(invoiceTotal(selectInvoice(preview.state, preview.state.invoices[0])), 7.57)

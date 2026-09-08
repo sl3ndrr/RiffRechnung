@@ -9,7 +9,6 @@ import type { AppState, Guardian, InvoiceDraft, InvoiceItemAllocation, InvoiceSp
 import { FINALIZED_INVOICE_BLOCKED } from '../lib/safety'
 import { Modal } from '../components/Modal'
 import { applyLessonType, billingPeriodFromItems, calculateDueDate, createLessonItem, euro, invoiceFinalizationErrors, isFooterTextWithinLimit, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH } from '../lib/utils'
-import { paymentDataErrors } from '../lib/paymentData'
 
 const INVOICE_EDITOR_FORM_ID = 'invoice-editor-form'
 interface InvoiceEditorProps {
@@ -123,8 +122,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
     if (invalidNumbers) nextErrors.push('Bitte die Preise und Mengen vervollständigen. Ungültige Zwischenwerte werden nicht gespeichert.')
     if (finalize) {
       nextErrors.push(...correctionErrors(state, form))
-      nextErrors.push(...invoiceFinalizationErrors({ guardians, students }, form))
-      nextErrors.push(...paymentDataErrors(settings).map((error) => error.message))
+      nextErrors.push(...invoiceFinalizationErrors({ guardians, students, settings }, form))
     }
     setErrors(nextErrors)
     if (!nextErrors.length) {
@@ -174,7 +172,6 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
         ...form, guardianIds: [result.guardianId], studentIds: result.studentIds, items: result.items, recipientStrategy: 'separate',
       })) : []
       if (finalize) {
-        finalizationErrors.push(...paymentDataErrors(settings).map((error) => error.message))
       }
       if (finalizationErrors.length) { setErrors([...new Set(finalizationErrors)]); return }
       onSave({ ...form, period: calculatedPeriod, legalText: limitFooterText(form.legalText) }, finalize, parsed.allocations)

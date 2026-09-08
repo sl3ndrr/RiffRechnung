@@ -23,7 +23,7 @@ const at = '2026-09-06T12:00:00.000Z'
 function family(count = 1): AppState {
   let state = emptyState()
   state.updatedAt = at
-  state = requireSuccess(saveSettingsState(state, { ...state.settings, issuer: { ...state.settings.issuer, name: 'Synthetisches Teststudio', email: 'studio+test@example.org' }, accountHolder: 'Teststudio', iban: 'DE02120300000000202051' }))
+  state = requireSuccess(saveSettingsState(state, { ...state.settings, issuer: { ...state.settings.issuer, name: 'Synthetisches Teststudio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', email: 'studio+test@example.org' }, accountHolder: 'Teststudio', iban: 'DE02120300000000202051', invoiceProfile: 'small-business', taxIdentifier: { kind: 'tax-number', value: '12/345/67890' } }))
   for (let index = 0; index < count; index++) state = requireSuccess(saveGuardianState(state, {
     id: `g${index}`, name: `Testperson ${index}`, email: `test${index}@example.org`, phone: '', address: { street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }, iban: '', paymentNote: '', createdAt: at, updatedAt: at,
   }))

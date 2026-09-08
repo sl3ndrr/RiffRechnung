@@ -1,6 +1,7 @@
 import './money-calendar.test'
 import './invoice-split.test'
 import './payment-data.test'
+import './invoice-profile.test'
 import { legacyFixture } from './documentFixtures'
 import { captureLegacyDocuments } from '../src/lib/importState'
 import { seedState, sharedLock, fakeDirectory } from './storageHarness'
@@ -563,7 +564,7 @@ test('vollständiges Backup lässt sich wiederherstellen', () => {
     },
   })
   const restored = parseBackup(serializeBackup(state))
-  assert.equal(restored.schemaVersion, 5)
+  assert.equal(restored.schemaVersion, 6)
   assert.equal(restored.settings.issuer.name, 'Test Unterricht')
   assert.equal(restored.students[0]?.billingCode, 'a')
   assert.equal(restored.voidedInvoiceNumbers[0]?.number, '2026-a-0004')
@@ -722,6 +723,7 @@ test('beschädigte lokale Daten bleiben für die Wiederherstellung unangetastet'
 
 test('Entwürfe lassen sich aus der Detailansicht nur mit vollständigen aktuellen Daten finalisieren', () => {
   const state = validImportState()
+  state.settings = { ...state.settings, issuer: { ...state.settings.issuer, name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }, accountHolder: 'Synthetisches Studio', iban: 'DE02120300000000202051', invoiceProfile: 'small-business', taxIdentifier: { kind: 'tax-number', value: '12/345/67890' } }
   const draft = invoice({
     number: null,
     sequence: null,
@@ -779,7 +781,7 @@ test('Editor-Finalisierung wird vor Nummern- und Snapshot-Vergabe zentral validi
 
   assert.deepEqual(invoiceFinalizationErrors(state, validDraft), [])
   scenarios.forEach(({ name, draft, expected, guardians = state.guardians }) => {
-    assert.match(invoiceFinalizationErrors({ guardians, students: state.students }, draft).join(' '), expected, name)
+    assert.match(invoiceFinalizationErrors({ guardians, students: state.students, settings: state.settings }, draft).join(' '), expected, name)
   })
 
   state.settings.iban = 'DE02120300000000202051'
