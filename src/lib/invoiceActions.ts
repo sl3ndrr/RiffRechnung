@@ -18,7 +18,7 @@ function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatu
   if (!invoice.calculation && draftAmountChange(invoice).changed) throw new Error('Die Betragsberechnung hat sich geändert. Bitte den Entwurf im Editor prüfen und speichern.')
   const allocation = nextInvoiceAllocation(state, invoice.invoiceDate, invoice.studentIds)
   const finalized: Invoice = {
-    ...invoice, number: allocation.number, sequence: allocation.sequence, status,
+    ...invoice, calculation: 'decimal-v1', number: allocation.number, sequence: allocation.sequence, status,
     snapshot: snapshotFor(state, invoice), sentAt: at, updatedAt: at,
     ...(status === 'paid' ? { paidAt: localToday(new Date(at)) } : {}),
   }

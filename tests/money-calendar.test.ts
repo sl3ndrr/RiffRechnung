@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { execFileSync } from 'node:child_process'
-import { createElement } from 'react'
-import { renderToStaticMarkup } from 'react-dom/server'
 import { decimalInputText, draftAmountChange, invoiceTotalCents, itemTotalCents, MAX_NEW_CENTS, moneyErrors, sumCents } from '../src/lib/money'
 import { addCalendarDays, calendarParts, localToday, shiftCalendarMonths } from '../src/lib/calendar'
 import { itemNumberInput, parseDecimalInput } from '../src/lib/values'
@@ -17,7 +15,6 @@ import { requireSuccess } from '../src/lib/result'
 import { serializeBackup, StorageSession, STORAGE_KEY } from '../src/lib/storage'
 import { documentAt, documentDraft, documentFamily, legacyFixture } from './documentFixtures'
 import { memoryStorage, sharedLock } from './storageHarness'
-import { InvoiceEditor } from '../src/views/InvoiceEditor'
 
 const line = (quantity: number, unitPrice: number) => ({ ...documentDraft().items[0], quantity, unitPrice })
 
@@ -62,7 +59,7 @@ test('P05: Grenzen/Überläufe liefern Fehler; JSON und Eingaben verlieren keine
   }
   assert.equal(parseDecimalInput('0.1234567890123456789'), null)
   assert.equal(parseDecimalInput('1e-7'), null)
-  assert.equal(parseDecimalInput('0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001'), null)
+  assert.equal(parseDecimalInput('0.' + '0'.repeat(324) + '1'), null)
   const draft = documentDraft(); draft.items = [line(99.99, Number.MAX_SAFE_INTEGER / 100)]
   const state = documentFamily(), before = JSON.stringify(state)
   assert.equal(saveInvoiceState(state, draft, true, documentAt).ok, false)
@@ -92,8 +89,7 @@ test('P05: Schema 4 → 5 bewahrt Originale; Entwürfe zeigen Änderungen, Impor
   assert.equal(invoiceTotal(selectInvoice(preview.state, preview.state.invoices[0])), 7.57)
   assert.equal(invoiceTotal(preview.state.invoices[1]), 7.58)
   assert.throws(() => changeInvoiceStatus(preview.state, draft.id, 'sent', documentAt), /Editor/)
-  const html = renderToStaticMarkup(createElement(InvoiceEditor, { state: preview.state, draft: { ...draft }, open: true, editing: true, finalized: false, settings: preview.state.settings, guardians: preview.state.guardians, students: preview.state.students, onClose() {}, onSave() {} }))
-  assert.match(html, /Dezimalberechnung prüfen/); assert.match(html, /7,57/); assert.match(html, /7,58/)
+  // Actual review text/amounts are asserted in the P05 Chromium test (Modal uses a portal).
   const accepted = saveInvoiceDraft(preview.state, { ...draft }, true, documentAt)
   assert.equal(accepted.documentVersions[1].amounts.totalCents, 758)
   assert.equal(accepted.documentVersions[1].amounts.calculation, 'decimal-v1')

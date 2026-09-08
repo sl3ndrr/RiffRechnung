@@ -1,4 +1,4 @@
-import { draftAmountChange } from './money'
+import { draftAmountChange, legacyItemCents, itemTotalCents } from './money'
 import { captureDocument } from './documents'
 import { validateEnvelope, type StorageEnvelope } from './envelope'
 import type { AppState, Invoice, InvoiceItem, Student } from '../types'
@@ -198,6 +198,10 @@ export function inspectImport(rawData: string): CommandResult<ImportPreview> {
       for (const invoice of state.invoices.filter((entry) => entry.status === 'draft')) {
         const change = draftAmountChange(invoice)
         if (change.changed) report.changes.push({ path: `invoices.${invoice.id}.amountReview`, before: change.before, after: change.after, reason: 'Centvergleich Altberechnung/exakte Dezimalberechnung; Originalwerte unverändert. Vor Finalisierung im Editor prüfen. Kein gespeicherter historischer Belegbetrag.' })
+        if (change.changed && change.after !== null) invoice.items.forEach((item, index) => {
+          const before = legacyItemCents(item), after = itemTotalCents(item)
+          if (before !== after) report!.changes.push({ path: `invoices.${invoice.id}.items[${index}].amountReview`, before, after, reason: 'Positionsbetrag in Cent: Altalgorithmus → kaufmännische exakte Dezimalrundung; Eingaben bleiben erhalten' })
+        })
       }
       validateBackupState(state)
     }

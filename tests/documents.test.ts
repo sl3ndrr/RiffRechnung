@@ -211,8 +211,8 @@ test('P04: Betragsdifferenz bleibt als Restforderung oder Überzahlung sichtbar,
     const last = state.invoices.at(-1)!
     state = allocatePayment(state, state.payments[0].id, last.versionId!, 'Alte Vollzahlung auf Korrektur anrechnen; Differenz separat klären', at)
     assert.equal(state.payments.length, 1)
-    assert.equal(openCents(state, last), price === 20 ? 743 : 0)
-    assert.equal(state.documentVersions.at(-1)!.amounts.totalCents - allocatedCents(state, last.versionId!), price === 20 ? 743 : -382)
+    assert.equal(openCents(state, last), price === 20 ? 742 : 0)
+    assert.equal(state.documentVersions.at(-1)!.amounts.totalCents - allocatedCents(state, last.versionId!), price === 20 ? 742 : -383)
     await persistReload(state)
   }
 })
