@@ -94,7 +94,7 @@ test('P05: Schema 4 → 6 bewahrt Originale; Entwürfe zeigen Änderungen, Impor
   assert.deepEqual(preview.state.documentVersions, old.documentVersions)
   assert.equal(invoiceTotal(selectInvoice(preview.state, preview.state.invoices[0])), 7.57)
   assert.equal(invoiceTotal(preview.state.invoices[1]), 7.58)
-  preview.state.settings.taxIdentifier = { kind: 'tax-number', value: '12/345/67890' }
+  preview.state.settings = { ...preview.state.settings, invoiceProfile: 'small-business', taxIdentifier: { kind: 'tax-number', value: '12/345/67890' } }
   assert.throws(() => changeInvoiceStatus(preview.state, draft.id, 'sent', documentAt), /Editor/)
   // Actual review text/amounts are asserted in the P05 Chromium test (Modal uses a portal).
   const accepted = saveInvoiceDraft(preview.state, { ...draft }, true, documentAt)

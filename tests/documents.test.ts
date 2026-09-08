@@ -95,6 +95,7 @@ test('P04: Empfaenger A/B und leere historische Kontofelder sind für alle Ausga
   assert.match(markup, /Empfaenger A/); assert.doesNotMatch(markup, /HEUTIGES KONTO|MARKDEF1100/)
   const epc = buildEpcPayload(invoice, state.settings, invoiceTotal(invoice)).split('\n')
   assert.equal(epc[4], ''); assert.equal(epc[5], 'HISTORISCHES KONTO'); assert.equal(epc[6], 'DE02120300000000202051')
+  state.settings.taxIdentifier = { kind: 'tax-number', value: '12/345/67890' }
   state = createCorrectionDraft(state, invoice.id, 'Empfaenger B bestätigen', at)
   assert.throws(() => changeInvoiceStatus(state, state.invoices.at(-1)!.id, 'sent', at), /Abweichungen/)
   state = resolveDocumentConflicts(state, version.id, 'Snapshot zeigt A. Neue Rechnung ausdrücklich an B; keine Änderung des alten Snapshots.', at)
