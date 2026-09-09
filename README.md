@@ -23,7 +23,7 @@ Eine vollständig clientseitige Web-App für Rechnungen rund um Gitarrenunterric
 
 **Vite + React + TypeScript** ist hier bewusst schlanker als ein Full-Stack-Framework: GitHub Pages liefert ausschließlich statische Dateien aus, React eignet sich gut für den zustandsreichen Rechnungseditor, und TypeScript schützt das Daten- und Backup-Format. Die Inter-Schrift (`@fontsource-variable/inter`), Lucide-Symbole und die QR-Bibliothek werden beim Build lokal gebündelt. Zur Laufzeit werden keine CDN-Ressourcen geladen.
 
-Die Daten liegen in `localStorage`; nur die optionale Referenz auf einen freigegebenen Backup-Ordner wird über IndexedDB gespeichert. Es werden keine personenbezogenen Daten automatisch an einen Dienst übertragen.
+Die Daten liegen im `localStorage` des verwendeten Browserprofils; nur die optionale Referenz auf einen freigegebenen Backup-Ordner wird über IndexedDB gespeichert. Die App selbst sendet keine personenbezogenen Daten an einen Dienst. Das ist keine Verschlüsselung: Wer Zugriff auf das Gerät oder Browserprofil hat, kann auch auf diese Daten zugreifen.
 
 ## Lokal starten
 
@@ -132,9 +132,11 @@ Demo-Änderungen gehen beim Verlassen verloren.
 
 ## Datenschutz und Grenzen
 
-- Browserdaten sind an das jeweilige Browserprofil und die konkrete GitHub-Pages-Adresse gebunden. Regelmäßige JSON-Backups werden empfohlen.
-- Inkognito-Modus, das Löschen von Website-Daten oder ein Geräteverlust können lokale Daten entfernen.
-- Rechnungsnummern sind innerhalb jedes Kinderkennzeichens monoton und eindeutig. Das erste angelegte Kind erhält `a`, das zweite `b`; kombinierte Rechnungen verwenden beispielsweise `ab`. Parallel genutzte Browserprofile/Geräte teilen keinen Nummernkreis; für einen lückenlosen gemeinsamen Nummernkreis darf nur ein führender Datenbestand verwendet werden.
+- Rechnungen, Einstellungen und Historie liegen im verwendeten Browserprofil. Ein Geräteschutz, ein gesperrtes Benutzerkonto und ein geschütztes Browserprofil sind deshalb Teil des Schutzmodells. Inkognito-Modus, das Löschen von Website-Daten oder ein Geräteverlust können lokale Daten entfernen.
+- Browser-Speicher ist an den **Origin** (Schema, Host und Port), nicht an den Repository-Unterpfad gebunden. Die konfigurierte GitHub-Pages-Auslieferung hat ohne `CNAME` den Origin `https://sl3ndrr.github.io`; RiffRechnung liegt darunter unter `/RiffRechnung/`. Andere dort ausgelieferte Projekte teilen den Origin und sind kein getrenntes Speicher-Sicherheitsgebiet. Die im Eigentümerkonto vorhandenen weiteren Repositories belegen nicht, dass sie auch dort ausgeliefert werden; das konnte aus der Repository-Konfiguration nicht abschließend festgestellt werden. Wenn nicht vertrauenswürdige Anwendungen unter diesem Origin betrieben werden sollen, ist ein separater Origin eine Betriebsoption.
+- JSON-Exports und Ordner-Backups sind normale Klartextdateien. Sie enthalten Familien-/Kontaktangaben, Rechnungen, Einstellungen, Freitexte und Notizen, vollständige Belegversionen sowie Änderungs- und Zahlungszuordnungshistorie. Sicherungen nur geschützt ablegen und vor dem Weitergeben prüfen.
+- Die App nutzt keine Cloud-API. Wird ein lokal synchronisierter Ordner gewählt, kann dessen installierte Desktop-Synchronisation die Klartextdateien an den jeweiligen Dienst übertragen; dessen Datenschutz- und Freigaberegeln gelten zusätzlich.
+- Rechnungsnummern sind innerhalb jedes Kinderkennzeichens monoton und eindeutig. Das erste angelegte Kind erhält `a`, das zweite `b`; eine gemeinsame Rechnung für beide verwendet `a+b`. `ab` kann dagegen das Kennzeichen eines einzelnen später angelegten Kindes sein. Parallel genutzte Browserprofile/Geräte teilen keinen Nummernkreis; für einen lückenlosen gemeinsamen Nummernkreis darf nur ein führender Datenbestand verwendet werden.
 - Finalisierte Rechnungen bleiben erhalten; inhaltliche Änderungen erzeugen Korrekturen. Archivierung und Zahlungs-/Versandverwaltung ändern den gesicherten Inhalt nicht. Originalnummern und frühere Registereinträge bleiben dauerhaft reserviert.
 - Ein migrierter Beleg ist nur der älteste verfügbare Stand. Fehlende frühere Versionen werden nicht rekonstruiert. Lokale Versionierung garantiert weder Manipulationssicherheit noch automatische GoBD-Konformität.
 - Für neue Rechnungen ist nach ausdrücklicher Produktentscheidung das Kleinunternehmerprofil nach § 19 UStG vorgesehen. Vor Finalisierung sind vollständige Aussteller-/Empfängeranschriften und eine ausdrücklich typisierte Steuerkennung erforderlich. Andere Steuerprofile oder Ausnahmen werden nicht automatisch angenommen. Die App ersetzt keine Steuer- oder Rechtsberatung.

@@ -16,6 +16,11 @@ interface ChangelogModalProps {
 
 const changelog: ChangelogEntry[] = changelogData
 
+function formatChangelogDate(value: string) {
+  const [year, month, day] = value.split('-')
+  return year && month && day ? `${day}.${month}.${year}` : value
+}
+
 export function ChangelogModal({ open, onClose }: ChangelogModalProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
 
@@ -53,7 +58,7 @@ export function ChangelogModal({ open, onClose }: ChangelogModalProps) {
         <header className="changelog-entry__header">
           <span className="changelog-entry__icon" aria-hidden="true"><History /></span>
           <h3>Version {entry.version}</h3>
-          <p>Veröffentlicht am {entry.date}</p>
+          <p>Veröffentlicht am <time dateTime={entry.date}>{formatChangelogDate(entry.date)}</time></p>
         </header>
         <ul className="changelog-entry__changes">
           {entry.changes.map((change) => <li key={change}>{change}</li>)}

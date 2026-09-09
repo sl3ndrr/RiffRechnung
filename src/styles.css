@@ -374,6 +374,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .reminder-panel > div:first-child { display: flex; gap: 10px; }
 .reminder-panel p { margin: 3px 0 9px; font-size: 10px; line-height: 1.5; opacity: .8; }
 .reminder-panel .button { min-height: 34px; color: inherit; font-size: 10px; }
+.reminder-copy-fallback { display: grid; gap: 8px; margin-top: 12px; }
+.reminder-copy-fallback p { margin: 0; }
+.reminder-copy-fallback textarea { width: 100%; min-height: 10rem; resize: vertical; padding: 10px; border: 1px solid currentColor; border-radius: var(--radius-sm); background: var(--surface-container-lowest); color: var(--on-surface); font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .position-summary { margin-top: 24px; }
 .position-summary h3 { font-size: 13px; }
 .position-summary > div { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 11px 0; border-bottom: 1px solid var(--outline-variant); font-size: 11px; }

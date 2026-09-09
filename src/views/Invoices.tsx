@@ -269,6 +269,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
   const canRemind = (status === 'sent' || status === 'overdue') && isActiveClaim(state, invoice) && openCents(state, invoice) === invoiceTotalCents(invoice) && !state.payments.some((payment) => state.documentVersions.find((version) => version.id === payment.sourceVersionId)?.originalId === state.documentVersions.find((version) => version.id === invoice.versionId)?.originalId && payment.allocations.at(-1)?.versionId !== invoice.versionId)
   const payment = state.payments.find((entry) => entry.allocations.at(-1)?.versionId === invoice.versionId && entry.amountCents === invoiceTotalCents(invoice))
   const [paymentDay, setPaymentDay] = useState('')
+  const [manualReminderCopy, setManualReminderCopy] = useState(false)
 
   useEffect(() => {
     setPaymentDay(payment?.paymentDayStatus === 'confirmed' ? payment.paidAt ?? '' : '')
@@ -279,8 +280,14 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
   }, [invoice.id])
 
   const copyReminder = async () => {
-    await navigator.clipboard.writeText(`${reminder.subject}\n\n${reminder.body}`)
-    onToast('Erinnerungstext kopiert.', 'success')
+    try {
+      await navigator.clipboard.writeText(`${reminder.subject}\n\n${reminder.body}`)
+      setManualReminderCopy(false)
+      onToast('Erinnerungstext kopiert.', 'success')
+    } catch {
+      setManualReminderCopy(true)
+      onToast('Kopieren wurde vom Browser abgelehnt. Der Erinnerungstext steht zum manuellen Kopieren bereit.', 'error')
+    }
   }
 
   return (
@@ -329,6 +336,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
         <section className="reminder-panel">
           <div><Mail aria-hidden="true" /><div><strong>Zahlungserinnerung</strong><p>Fertig formuliert, ohne automatischen Versand.</p></div></div>
           <div className="button-row">{mailto.ok ? <a className="button button--text" href={mailto.value}><Mail aria-hidden="true" /> E-Mail öffnen</a> : <p role="alert">{mailto.errors.map((error) => error.message).join(' ')}</p>}<button className="button button--text" onClick={copyReminder}><Copy aria-hidden="true" /> Text kopieren</button></div>
+          {manualReminderCopy && <div className="reminder-copy-fallback" role="status"><p>Der Browser hat den Zugriff auf die Zwischenablage nicht erlaubt. Text markieren und selbst kopieren:</p><textarea aria-label="Zahlungserinnerung zum manuellen Kopieren" readOnly rows={9} value={`${reminder.subject}\n\n${reminder.body}`} onFocus={(event) => event.currentTarget.select()} /></div>}
         </section>
       )}
 

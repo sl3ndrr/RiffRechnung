@@ -418,3 +418,28 @@ und [Bundesbank-IBAN-Regeln](https://www.bundesbank.de/de/aufgaben/unbarer-zahlu
 - **Kontrast:** Für normalen und kleinen Text gilt WCAG 2.2 AA (mindestens
   4,5:1). `#ffb4ab` erhält `#690005`; kleine Versions-/Backuptexte verwenden
   `--on-surface-variant`. Automatische Kontrastwerte werden visuell ergänzt.
+
+## Paket 11 – Schutzmodell und Komfort
+
+- **Lokale Datenhaltung:** Die App überträgt keine Rechnungsdaten an eine eigene
+  Cloud-API. Sie speichert sie jedoch unverschlüsselt im verwendeten
+  Browserprofil; Geräteschutz und der Zugriff auf dieses Profil liegen außerhalb
+  der App. JSON-Export und Ordner-Backup sind Klartext und enthalten neben
+  Stammdaten/Rechnungen auch Freitexte und Notizen, vollständige Belegversionen,
+  Änderungsverlauf und Zahlungszuordnungen.
+- **Origin:** Web Storage ist nach Schema, Host und Port isoliert, nicht nach
+  Repositorypfad. Der in diesem Repository konfigurierte GitHub-Pages-Standard
+  verwendet mangels `CNAME` `https://sl3ndrr.github.io` mit dem Anwendungspfad
+  `/RiffRechnung/`. Weitere Anwendungen, die tatsächlich unter diesem Origin
+  ausgeliefert werden, teilen den Speicher-Sicherheitsbereich. Die vorhandenen
+  anderen Repositories belegen keine Auslieferung; eine Trennung auf einen
+  separaten Origin ist bei nicht vertrauenswürdigen weiteren Apps eine
+  Betriebsentscheidung, nicht Teil dieses Pakets.
+- **Synchronisierte Ordner:** Ein gewählter Ordner wird nur über die lokale
+  Browser-Ordnerfreigabe beschrieben. Synchronisiert eine installierte
+  Desktop-Anwendung ihn, kann diese die Klartextdateien an ihren Dienst
+  übertragen. Das ist keine Cloud-Anbindung der App und muss bei Ablage,
+  Freigabe und Wiederherstellung berücksichtigt werden.
+- **Kombinationskennzeichen:** Mehrkindrechnungen verwenden die segmentierte
+  Schlüsselbildung `a+b`; `ab` bleibt als mögliches Kennzeichen eines einzelnen
+  Kindes davon verschieden.
