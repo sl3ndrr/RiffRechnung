@@ -391,3 +391,21 @@ und [Bundesbank-IBAN-Regeln](https://www.bundesbank.de/de/aufgaben/unbarer-zahlu
   Firefox und Safari werden für Text/PDF ohne Zusage dynamischer Randboxen
   eingeschränkt unterstützt; für vollständige Seitenzahlen ist Chromium 153 die
   erprobte Alternative. Banking-App-Scans sind eine separate manuelle Abnahme.
+
+## Paket 10 – Tastatur, Dialoge und Kontrast
+
+- **Modale Grundlage:** Die App verwendet native `dialog.showModal()`-Dialoge.
+  Hintergrund und Tabreihenfolge sind modal; Escape schließt nur den obersten
+  Dialog. Der Stapel erhält beim Schließen einer Bestätigung die Scrollsperre
+  des darunterliegenden Dialogs. Bestätigungen fokussieren die am wenigsten
+  zerstörerische Aktion.
+- **Editor-Verwerfen:** Ein verändertes Formular wird beim Schließen oder
+  Seitenwechsel nie still verworfen. „Weiter bearbeiten“ hält lokalen
+  Formularzustand; „Verwerfen“ schließt ohne fachlichen Speicherbefehl und
+  verändert keinen gespeicherten Beleg oder Snapshot.
+- **Responsive Bedienung:** Navigationselemente behalten programmatische Namen.
+  Die mobile Seitenleiste ist geschlossen `inert`; ihr Schließen gibt Fokus an
+  den Öffnen-Auslöser zurück.
+- **Kontrast:** Für normalen und kleinen Text gilt WCAG 2.2 AA (mindestens
+  4,5:1). `#ffb4ab` erhält `#690005`; kleine Versions-/Backuptexte verwenden
+  `--on-surface-variant`. Automatische Kontrastwerte werden visuell ergänzt.
