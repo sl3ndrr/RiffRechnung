@@ -1,7 +1,8 @@
 import { createRoot } from 'react-dom/client'
 import type { AppState, Guardian, Invoice, Settings, Student } from '../../src/types'
 import { selectInvoice } from '../../src/lib/documents'
-import { InvoicePrint, type GiroCodeEncoder } from '../../src/components/InvoicePrint'
+import { InvoicePrint } from '../../src/components/InvoicePrint'
+import type { GiroCodeEncoder } from '../../src/lib/printJob'
 
 interface MountOptions {
   rejectGiroCode?: boolean
