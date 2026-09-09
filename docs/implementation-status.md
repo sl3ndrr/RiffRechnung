@@ -424,9 +424,14 @@ Nächstes vorgesehenes Paket: **09 – Druck und GiroCode zuverlässig ausgeben*
   (ID 10103670631, sieben Tage Aufbewahrung).
   Lokal sind Node 24.19.0/npm 11.9.0 statt Node 22 vorhanden; `npm ci` war mit
   E403 bei `yocto-queue`, ein späterer Playwright-Abruf ebenfalls mit E403
-  blockiert. Screenreader-Abnahme: NVDA+Firefox oder
-  VoiceOver+Safari für Nummer, Dialogtitel/Schließen, Bestätigung, Changelog und
-  Fokusrückgabe manuell prüfen.
+  blockiert. **Screenreader-Abnahme offen:** Mit synthetischem Entwurf in
+  NVDA+Firefox oder VoiceOver+Safari (1) Rechnungsnummer als „Schaltfläche“ ansagen,
+  Details öffnen und Status/Erinnerung erreichen; (2) Editor samt Titel als
+  Dialog ansagen, nach Änderung per Escape das beschriebene `alertdialog` mit
+  initialem „Weiter bearbeiten“ prüfen und nach erneutem Escape Feldwert/Fokus
+  bestätigen; (3) Changelogtitel und Seitenwechsel ansagen und Fokus nach Escape
+  am Auslöser prüfen; (4) bei 390 px geschlossene Navigation aus dem Lesebaum
+  ausschließen sowie Öffnen, Schließen und Fokusrückgabe protokollieren.
 
 | Abnahme Paket 10 | Ergebnis |
 | --- | --- |
