@@ -76,6 +76,28 @@ for (const width of [390, 900, 1280]) {
   })
 }
 
+test('P11 Browser: abgelehnte Zwischenablage bietet Erinnerungstext zum manuellen Kopieren', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: () => Promise.reject(new DOMException('Nicht erlaubt', 'NotAllowedError')) },
+    })
+  })
+  const state = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
+  await seed(page, state)
+  await invoices(page)
+  await page.getByRole('button', { name: '2026-a-0001', exact: true }).click()
+  await page.getByRole('button', { name: 'Überfällig', exact: true }).click()
+  await page.getByRole('button', { name: 'Text kopieren', exact: true }).click()
+  const fallback = page.getByRole('textbox', { name: 'Zahlungserinnerung zum manuellen Kopieren' })
+  await expect(fallback).toBeVisible()
+  await expect(fallback).toHaveValue(/Zahlungserinnerung zur Rechnung 2026-a-0001/)
+  await expect(page.getByText('Erinnerungstext kopiert.', { exact: true })).toHaveCount(0)
+  await fallback.focus()
+  await expect(fallback).toBeFocused()
+  expect(await fallback.evaluate((element) => (element as HTMLTextAreaElement).selectionStart === 0 && (element as HTMLTextAreaElement).selectionEnd === (element as HTMLTextAreaElement).value.length)).toBe(true)
+})
+
 test('P10 Browser: Rechnungsnummer auf der Übersicht ist ein Tastaturauslöser', async ({ page }) => {
   const state = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
   await seed(page, state)
