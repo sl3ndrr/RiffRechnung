@@ -388,9 +388,10 @@ Nächstes vorgesehenes Paket: **09 – Druck und GiroCode zuverlässig ausgeben*
   an den Auslöser zurück. Status und Erinnerung sind damit per Tastatur erreichbar.
 - **Dialoge:** `Modal`, Bestätigungen und Changelog verwenden native
   `dialog.showModal()`-Dialoge. Hintergrund, Tabreihenfolge, initialer Fokus,
-  sichtbares Schließen und Fokusrückgabe folgen dem W3C-Dialogmuster. Ein Stapel
-  akzeptiert Escape nur oben; der Scrollsperrenzähler bleibt bei geschachtelten
-  Bestätigungen aktiv.
+  sichtbares Schließen und Fokusrückgabe folgen dem W3C-Dialogmuster. Für einen
+  Chromium-inkonsistenten zweiten nativen Top-Layer bleibt der äußere Dialog
+  modal und wird `inert`; die obere Bestätigung trappt Tab/Escape selbst. Der
+  Stapel akzeptiert Escape nur oben; der Scrollsperrenzähler bleibt aktiv.
 - **Navigation / Verwerfen:** Kompakte Navigation und Neue Rechnung haben
   dauerhafte zugängliche Namen. Geschlossene mobile Navigation ist `inert`;
   Öffnen fokussiert Schließen, Schließen den Auslöser. Geänderte Editorformulare
