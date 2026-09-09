@@ -409,6 +409,9 @@ und [Bundesbank-IBAN-Regeln](https://www.bundesbank.de/de/aufgaben/unbarer-zahlu
   Seitenwechsel nie still verworfen. „Weiter bearbeiten“ hält lokalen
   Formularzustand; „Verwerfen“ schließt ohne fachlichen Speicherbefehl und
   verändert keinen gespeicherten Beleg oder Snapshot.
+- **Entwurfszugang:** Ein Beleg mit Status `draft` bleibt im Editor erreichbar,
+  auch wenn ein historisches Ausgabefeld vorhanden ist. Der fachliche
+  Schreibbefehl schützt weiterhin alle tatsächlich ausgestellten Belege.
 - **Responsive Bedienung:** Navigationselemente behalten programmatische Namen.
   Die mobile Seitenleiste ist geschlossen `inert`; ihr Schließen gibt Fokus an
   den Öffnen-Auslöser zurück.
