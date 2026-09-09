@@ -41,9 +41,21 @@ jobs:
         # Tests download pinned Playwright browsers. The runner's unrelated
         # Chrome mirror returned inconsistent package hashes in P12 CI.
         run: |
-          if [ -f /etc/apt/sources.list.d/google-chrome.list ]; then
-            sudo mv /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.list.disabled
-          fi
+          sudo python3 - <<'PY'
+          from pathlib import Path
+          import re
+          for path in Path('/etc/apt/sources.list.d').iterdir():
+              if path.suffix not in ('.list', '.sources'):
+                  continue
+              active = '\n'.join(line for line in path.read_text().splitlines() if not line.lstrip().startswith('#'))
+              if 'dl.google.com/linux/chrome-stable/deb' not in active:
+                  continue
+              urls = re.findall(r'https?://[^\s]+', active)
+              if any(not url.startswith('https://dl.google.com/linux/chrome-stable/deb') for url in urls):
+                  raise SystemExit(f'Refusing to disable mixed APT source: {path}')
+              path.rename(path.with_suffix(path.suffix + '.disabled'))
+              print(f'Disabled unrelated runner Chrome source: {path.name}')
+          PY
       - run: npx playwright install --with-deps chromium firefox webkit
       - name: Install PDF text verification
         run: sudo apt-get install -y poppler-utils
