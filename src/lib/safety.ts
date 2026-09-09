@@ -57,7 +57,7 @@ export function assertOriginalsPreserved(current: AppState, next: AppState): voi
 }
 
 export function assertReplacementAllowed(state: AppState): void {
-  if (state.invoices.some(isFinalizedInvoice) || state.voidedInvoiceNumbers.length) {
-    throw new Error('Ein vollständiger Austausch oder das Zurücksetzen dieses Bestands ist vorübergehend gesperrt, um ausgestellte Belege und reservierte Nummern zu erhalten. Ein separater JSON-Export bleibt möglich.')
+  if (state.invoices.some(isFinalizedInvoice) || state.voidedInvoiceNumbers.length || state.documentVersions.length || state.historicalSnapshotCorrections.length || state.payments.length) {
+    throw new Error('Zurücksetzen ist für Bestände mit ausgestellten Belegen, historischer Dokumentation oder reservierten Nummern nicht verfügbar. Nutze Archivierung oder eine geprüfte Wiederherstellung; Originale und Nummern bleiben erhalten.')
   }
 }

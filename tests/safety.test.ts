@@ -154,7 +154,7 @@ test('P01: historische Belege ohne Stammdaten bleiben samt Betrag, Snapshot und 
     assert.throws(() => assertOriginalsPreserved(state, altered), /Finalisierte Belege/)
   }
   assert.throws(() => assertOriginalsPreserved(state, { ...state, invoices: [] }), /Finalisierte Belege/)
-  assert.throws(() => assertReplacementAllowed(state), /Austausch/)
+  assert.throws(() => assertReplacementAllowed(state), /Zurücksetzen.*nicht verfügbar/)
   assert.deepEqual(state, original)
   for (const status of ['paid', 'sent', 'overdue'] as const) {
     state = roundTrip(changeInvoiceStatus(state, invoice.id, status, at, status === 'paid' ? '2026-09-05' : undefined))
