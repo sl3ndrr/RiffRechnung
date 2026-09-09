@@ -39,14 +39,15 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
 
     previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const nestedParent = dialogStack.at(-1) ?? null
-    if (nestedParent) {
-      // Chromium does not consistently activate a second native modal dialog.
-      // The outer native dialog remains modal; making it inert gives this top
-      // stack entry the same effective modality until it is closed again.
-      nestedParent.inert = true
+    let inertSiblings: HTMLElement[] = []
+    try { dialog.showModal() } catch {
+      if (!nestedParent) return
+      // Chromium may reject a second native modal top-layer. This fallback is
+      // rendered inside the existing modal dialog, so the document background
+      // remains inert. Only the outer dialog's other content is disabled.
+      inertSiblings = [...nestedParent.children].filter((child): child is HTMLElement => child instanceof HTMLElement && child !== dialog)
+      inertSiblings.forEach((element) => { element.inert = true })
       dialog.show()
-    } else {
-      try { dialog.showModal() } catch { /* Already open during a development effect re-run. */ }
     }
     dialogStack.push(dialog)
     lockDocumentScroll()
@@ -57,7 +58,7 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
       const index = dialogStack.lastIndexOf(dialog)
       if (index >= 0) dialogStack.splice(index, 1)
       if (dialog.open) dialog.close()
-      if (nestedParent) nestedParent.inert = false
+      inertSiblings.forEach((element) => { element.inert = false })
       unlockDocumentScroll()
       previousFocus.current?.focus()
     }
@@ -65,6 +66,7 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
 
   if (!open) return null
 
+  const portalHost = dialogStack.at(-1) ?? document.body
   return createPortal(
     <dialog
       ref={dialogRef}
@@ -108,6 +110,6 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
         {footer && <footer className="modal__footer">{footer}</footer>}
       </section>
     </dialog>,
-    document.body,
+    portalHost,
   )
 }
