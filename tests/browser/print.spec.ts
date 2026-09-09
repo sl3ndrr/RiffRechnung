@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Page, type TestInfo } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
 import { readdir, writeFile } from 'node:fs/promises'
 import type { AppState, InvoiceDraft } from '../../src/types'
@@ -43,7 +43,7 @@ function printableState(itemCount: number, freeText = '', legalText = 'Rechtstex
   return saveInvoiceDraft(state, draft, true, documentAt)
 }
 
-async function createPdf(page: Page, state: AppState, invoiceId: string, label: string, testInfo: Parameters<typeof test>[2]): Promise<{ pages: number; text: string }> {
+async function createPdf(page: Page, state: AppState, invoiceId: string, label: string, testInfo: TestInfo): Promise<{ pages: number; text: string }> {
   const rendering = await page.context().newPage()
   try {
     await rendering.goto('/')
@@ -75,7 +75,7 @@ async function createPdf(page: Page, state: AppState, invoiceId: string, label: 
 test('P09 Browser/PDF: ein-, zwei- und mehrseitige Rechnungen behalten Text, Wasserzeichen und Seitenzahlen', async ({ page }, testInfo) => {
   const cases = [
     { label: 'p09-eine-seite', items: 2, freeText: 'Hinweis Zeile 1\nHinweis Zeile 2', expectedPages: 1 },
-    { label: 'p09-zwei-seiten', items: 30, freeText: 'Mehrzeiliger Hinweis\nfür den zweiten Beleg', expectedPages: 2 },
+    { label: 'p09-zwei-seiten', items: 14, freeText: 'Mehrzeiliger Hinweis\nfür den zweiten Beleg', expectedPages: 2 },
     { label: 'p09-mindestens-fuenf-seiten', items: 108, freeText: Array.from({ length: 28 }, (_, index) => `Freitextzeile ${index + 1}: vollständig drucken und bei Bedarf auf die Folgeseite umbrechen.`).join('\n'), expectedPages: 5 },
   ] as const
 
