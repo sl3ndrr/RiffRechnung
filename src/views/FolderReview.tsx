@@ -13,7 +13,7 @@ export function FolderReview({ review, current, onClose, onChoose, onConnect, on
 }) {
   if (!review) return null
   const { inspection } = review
-  return <Modal open title="Backup-Ordner prüfen" eyebrow={review.handle.name} onClose={onClose} size="large">
+  return <Modal open title="Backup-Ordner prüfen" eyebrow={review.handle.name} onClose={onClose} size="large" initialFocus="title">
     <p>Lokaler Bestand: {current ? `${current.datasetId}, Revision ${current.revision}` : 'noch kein zugeordneter Bestand'}. Beim Auswählen wurde nichts geschrieben.</p>
     {inspection.conflict && <p role="alert">{inspection.conflict}</p>}
     {inspection.entries.length === 0 ? <p>Dieser Ordner enthält noch keine JSON-Sicherungen.</p> : <ul>{inspection.entries.map((entry) => <li key={entry.name}>

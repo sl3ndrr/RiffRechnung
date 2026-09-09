@@ -36,6 +36,7 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
   const [menu, setMenu] = useState<{ invoiceId: string; trigger: HTMLButtonElement } | null>(null)
   const [menuPosition, setMenuPosition] = useState<InvoiceMenuPosition | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const detailTriggerRef = useRef<HTMLElement | null>(null)
   const selected = invoices.find((invoice) => invoice.id === selectedId) ?? null
   const menuInvoice = menu ? invoices.find((invoice) => invoice.id === menu.invoiceId) ?? null : null
   const years = [...new Set(state.invoices.map((invoice) => String(invoice.year)))].sort().reverse()
@@ -120,6 +121,26 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
     runInvoiceMenuAction(action, invoice, { onEdit, onPrint, onDuplicate, onDelete })
   }
 
+  const openDetails = useCallback((invoice: Invoice, trigger?: HTMLElement) => {
+    detailTriggerRef.current = trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null)
+    onSelect(invoice.id)
+  }, [onSelect])
+  const closeDetails = useCallback(() => {
+    onSelect(null)
+    requestAnimationFrame(() => detailTriggerRef.current?.focus())
+  }, [onSelect])
+
+  useEffect(() => {
+    if (!selected) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.key !== 'Escape' || menu) return
+      event.preventDefault()
+      closeDetails()
+    }
+    document.addEventListener('keydown', closeOnEscape)
+    return () => document.removeEventListener('keydown', closeOnEscape)
+  }, [closeDetails, menu, selected])
+
   return (
     <div className="page invoice-page">
       <header className="page-header">
@@ -152,8 +173,8 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
                   const actualStatus = effectiveStatus(invoice)
                   const period = invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate)
                   return (
-                    <tr className={invoice.id === selectedId ? 'is-selected' : ''} key={invoice.id} onClick={() => onSelect(invoice.id)}>
-                      <td><button className="button button--text" onClick={() => onSelect(invoice.id)}>{invoice.number ?? 'Entwurf'}</button>{invoice.versionId && !isActiveClaim(state, invoice) && <small>Ersetzt</small>}<small>{formatDate(invoice.invoiceDate)}</small></td>
+                    <tr className={invoice.id === selectedId ? 'is-selected' : ''} key={invoice.id} onClick={() => openDetails(invoice)}>
+                      <td><button ref={(node) => { if (node && invoice.id === selectedId && !detailTriggerRef.current) detailTriggerRef.current = node }} className="button button--text invoice-detail-link" type="button" onClick={(event) => { event.stopPropagation(); openDetails(invoice, event.currentTarget) }}>{invoice.number ?? 'Entwurf'}</button>{invoice.versionId && !isActiveClaim(state, invoice) && <small>Ersetzt</small>}<small>{formatDate(invoice.invoiceDate)}</small></td>
                       <td>{guardianName(invoice, state.guardians)}<small>{studentName(invoice, state.students)}</small></td>
                       <td>{period}</td>
                       <td><span className={`status-chip status-chip--${actualStatus}`}><i />{statusLabel[actualStatus]}</span></td>
@@ -175,7 +196,7 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
             <InvoiceDetail
               invoice={selected}
               state={state}
-              onClose={() => onSelect(null)}
+              onClose={closeDetails}
               onEdit={() => onEdit(selected)}
               onDuplicate={() => onDuplicate(selected)}
               onDelete={() => onDelete(selected)}
@@ -240,6 +261,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
   onPrint: () => void
   onToast: (message: string, tone?: 'success' | 'error' | 'info') => void
 }) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
   const status = effectiveStatus(invoice)
   const period = invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate)
   const reminder = createReminder(invoice, state.guardians, state.students)
@@ -252,6 +274,10 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
     setPaymentDay(payment?.paymentDayStatus === 'confirmed' ? payment.paidAt ?? '' : '')
   }, [invoice.id, payment?.id, payment?.paidAt, payment?.paymentDayStatus])
 
+  useEffect(() => {
+    closeButtonRef.current?.focus()
+  }, [invoice.id])
+
   const copyReminder = async () => {
     await navigator.clipboard.writeText(`${reminder.subject}\n\n${reminder.body}`)
     onToast('Erinnerungstext kopiert.', 'success')
@@ -261,7 +287,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
     <aside className="surface invoice-detail" aria-label={`Details zu ${invoice.number ?? 'Entwurf'}`}>
       <header className="invoice-detail__header">
         <div><p className="eyebrow">Rechnung</p><h2>{invoice.number ?? 'Entwurf'}</h2><p>{guardianName(invoice, state.guardians)}</p></div>
-        <button className="icon-button" type="button" onClick={onClose} aria-label="Detailansicht schließen">×</button>
+        <button ref={closeButtonRef} className="icon-button" type="button" onClick={onClose} aria-label="Detailansicht schließen">×</button>
       </header>
       <div className="invoice-detail__amount"><strong>{euro.format(invoiceTotal(invoice))}</strong><span className={`status-chip status-chip--${status}`}><i />{statusLabel[status]}</span></div>
       <dl className="detail-list">
@@ -274,16 +300,16 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
 
       <div className="detail-actions">
         {invoice.status === 'draft' ? (
-          <><button className="button button--primary" onClick={() => onSetStatus('sent')}><Send aria-hidden="true" /> Finalisieren</button><button className="button button--tonal" onClick={onPrint}><Printer aria-hidden="true" /> Vorschau</button><button className="button button--text" onClick={onEdit}><Edit3 aria-hidden="true" /> Bearbeiten</button></>
+          <><button className="button button--primary" type="button" onClick={() => onSetStatus('sent')}><Send aria-hidden="true" /> Finalisieren</button><button className="button button--tonal" type="button" onClick={onPrint}><Printer aria-hidden="true" /> Vorschau</button><button className="button button--text" type="button" onClick={onEdit}><Edit3 aria-hidden="true" /> Bearbeiten</button></>
         ) : (
           <><button className="button button--primary" onClick={onPrint}><Printer aria-hidden="true" /> PDF / Drucken</button><button className="button button--tonal" onClick={onEdit} disabled><Edit3 aria-hidden="true" /> Rechnung bearbeiten</button></>
         )}
         {invoice.status !== 'draft' && <div className="status-editor">
-          <label htmlFor={`invoice-status-${invoice.id}`}>Forderungsstatus</label>
-          <div><select id={`invoice-status-${invoice.id}`} value={status} onChange={(event) => {
-            const next = event.target.value as InvoiceStatus
-            if (next !== 'paid') onSetStatus(next)
-          }}><option value="sent">Versendet / offen</option><option value="paid">Bezahlt (Vollzahlung)</option><option value="overdue">Überfällig</option></select><ChevronDown aria-hidden="true" /></div>
+          <span className="status-editor__label" id={`invoice-status-${invoice.id}`}>Forderungsstatus</span>
+          <div className="status-editor__choices" role="group" aria-labelledby={`invoice-status-${invoice.id}`}>
+            <button className="button button--tonal" type="button" aria-pressed={status === 'sent'} onClick={() => onSetStatus('sent')}>Versendet / offen</button>
+            <button className="button button--tonal" type="button" aria-pressed={status === 'overdue'} onClick={() => onSetStatus('overdue')}>Überfällig</button>
+          </div>
           <div className="payment-day-editor">
             <label htmlFor={`payment-day-${invoice.id}`}>Tatsächlicher Zahlungstag</label>
             <input id={`payment-day-${invoice.id}`} type="date" value={paymentDay} onChange={(event) => setPaymentDay(event.target.value)} />

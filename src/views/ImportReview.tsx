@@ -16,7 +16,7 @@ export function ImportReview({ review, onClose, onApply }: {
 }) {
   if (!review) return null
   return (
-    <Modal open onClose={onClose} title="Import und Reparatur prüfen" eyebrow="Datensicherung" size="large" footer={<button className="button button--text" onClick={onClose}>Schließen</button>}>
+    <Modal open onClose={onClose} title="Import und Reparatur prüfen" eyebrow="Datensicherung" size="large" initialFocus="title" footer={<button className="button button--text" onClick={onClose}>Schließen</button>}>
       <ImportReviewContent review={review} onApply={onApply} />
     </Modal>
   )
