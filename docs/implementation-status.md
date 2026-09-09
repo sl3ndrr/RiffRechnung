@@ -386,8 +386,8 @@ Nächstes vorgesehenes Paket: **09 – Druck und GiroCode zuverlässig ausgeben*
   nachvollziehbar. Rechnungsnummern sind echte Buttons und öffnen Details mit
   Fokus auf deren Schließen-Aktion; Escape schließt Details und gibt den Fokus
   an den Auslöser zurück. Status und Erinnerung sind damit per Tastatur erreichbar.
-- **Dialoge:** `Modal`, Bestätigungen und Changelog verwenden native
-  `<dialog>`-Elemente mit explizitem `inert`-Stapel. Hintergrund,
+- **Dialoge:** `Modal`, Bestätigungen und Changelog verwenden die vorhandene
+  Dialoggrundlage mit explizitem `inert`-Stapel. Hintergrund,
   Tabreihenfolge, initialer Fokus, sichtbares Schließen und Fokusrückgabe folgen dem
   [W3C-Dialogmuster](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/).
   Verschachtelte Bestätigungen werden bewusst ohne zweiten nativen Top-Layer im
