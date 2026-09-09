@@ -394,7 +394,8 @@ und [Bundesbank-IBAN-Regeln](https://www.bundesbank.de/de/aufgaben/unbarer-zahlu
 
 ## Paket 10 – Tastatur, Dialoge und Kontrast
 
-- **Modale Grundlage:** Die App verwendet native `dialog.showModal()`-Dialoge.
+- **Modale Grundlage:** Die App verwendet native `<dialog>`-Elemente mit einem
+  expliziten `inert`-Stapel statt eines verschachtelten Browser-Top-Layers.
   Hintergrund und Tabreihenfolge sind modal; Escape schließt nur den obersten
   Dialog. Das Verhalten folgt dem
   [W3C-Dialogmuster](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/).
