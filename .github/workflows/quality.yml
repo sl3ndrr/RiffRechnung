@@ -37,6 +37,13 @@ jobs:
       - run: npm test
       - run: npm run typecheck
       - run: npm run build
+      - name: Disable unused runner Chrome APT source
+        # Tests download pinned Playwright browsers. The runner's unrelated
+        # Chrome mirror returned inconsistent package hashes in P12 CI.
+        run: |
+          if [ -f /etc/apt/sources.list.d/google-chrome.list ]; then
+            sudo mv /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.list.disabled
+          fi
       - run: npx playwright install --with-deps chromium firefox webkit
       - name: Install PDF text verification
         run: sudo apt-get install -y poppler-utils

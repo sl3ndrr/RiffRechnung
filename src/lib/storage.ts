@@ -138,12 +138,18 @@ export class StorageSession {
     const raw = JSON.stringify(envelope)
     this.checkCurrent()
     if (preview) {
-      const archive = JSON.stringify({ version: 1, at: envelope.savedAt, previousRaw: this.token, legacyRaw: this.legacy, sourceRaw: preview.rawData, report: preview.report, storageMigration: { algorithm: 'riffrechnung-storage-v4', version: 1, fromStorageVersion: preview.envelope?.storageVersion ?? null, toStorageVersion: 4, datasetId: envelope.datasetId, identity: base ? 'existing-identity' : 'explicit-new-assignment', revision: envelope.revision }, reservations: { before: preview.state.counters, after: next.counters, voidedNumbersBefore: preview.state.voidedInvoiceNumbers, voidedNumbersAfter: next.voidedInvoiceNumbers } })
-      this.storage.setItem(`${STORAGE_KEY}-recovery-${envelope.commitId}`, archive)
+      const archive = { version: 1, at: envelope.savedAt, previousRaw: this.token, legacyRaw: this.legacy, sourceRaw: preview.rawData, report: preview.report, storageMigration: { algorithm: 'riffrechnung-storage-v4', version: 1, fromStorageVersion: preview.envelope?.storageVersion ?? null, toStorageVersion: 4, datasetId: envelope.datasetId, identity: base ? 'existing-identity' : 'explicit-new-assignment', revision: envelope.revision }, reservations: { before: preview.state.counters, after: next.counters, voidedNumbersBefore: preview.state.voidedInvoiceNumbers, voidedNumbersAfter: next.voidedInvoiceNumbers } }
+      // A valid previous copy may be the recovery basis behind a damaged main
+      // copy. Preserve its exact input too, using the existing archive format.
+      if (localRecovery && ![this.token, this.legacy, preview.rawData].includes(localRecovery.rawData)) {
+        this.storage.setItem(`${STORAGE_KEY}-recovery-${envelope.commitId}-fallback`, JSON.stringify({ ...archive, previousRaw: localRecovery.rawData, report: localRecovery.report }))
+      }
+      this.storage.setItem(`${STORAGE_KEY}-recovery-${envelope.commitId}`, JSON.stringify(archive))
     }
     // Each individual setItem is atomic. A failed prerequisite aborts the write;
     // the current copy is never removed, including Quota/Security failures.
-    if (previous && this.token !== null) this.storage.setItem(PREVIOUS_STORAGE_KEY, this.token)
+    const previousRaw = localRecovery?.rawData ?? this.token
+    if (previous && previousRaw !== null) this.storage.setItem(PREVIOUS_STORAGE_KEY, previousRaw)
     if (this.storage.getItem(LEGACY_GUARD_KEY) === null) this.storage.setItem(LEGACY_GUARD_KEY, JSON.stringify(this.legacy))
     this.storage.setItem(STORAGE_KEY, raw)
     this.token = raw
@@ -173,10 +179,12 @@ export class StorageSession {
       // legacy key. Recovery's empty UI state must never erase its protections.
       // Invalid raw data cannot supply invented originals or lineage; it is archived.
       let localRecovery: ImportPreview | undefined
-      const localRaw = this.token ?? this.legacy
-      if (this.recovery && localRaw !== null) {
-        const inspectedLocal = inspectImport(localRaw)
-        if (inspectedLocal.ok) localRecovery = inspectedLocal.value
+      if (this.recovery) {
+        for (const localRaw of [this.token, this.previousRaw(), this.legacy]) {
+          if (localRaw === null) continue
+          const inspectedLocal = inspectImport(localRaw)
+          if (inspectedLocal.ok) { localRecovery = inspectedLocal.value; break }
+        }
       }
       const current = localRecovery?.state ?? this.current
       assertOriginalsPreserved(current, preview.state)

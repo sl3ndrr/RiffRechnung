@@ -41,18 +41,23 @@ test('P12: beschädigter Hauptschlüssel verdeckt keinen gültigen lokalen Rück
     await assert.rejects(session.restore(serializeBackup(emptyState())), /Finalisierte|Belegversionen/)
     assert.equal(storage.getItem(STORAGE_KEY), damaged)
     assert.equal(storage.getItem(fallbackKey), known)
-    await session.restore(known)
+    const next = requireSuccess(inspectImport(known)).state
+    next.settings.privateRate = 42
+    await session.restore(serializeBackup(next))
     assert.equal(storage.getItem(fallbackKey), known)
-    assert.deepEqual(session.state, requireSuccess(inspectImport(known)).state)
+    assert.deepEqual(session.state, next)
     if (fallbackKey === PREVIOUS_STORAGE_KEY) {
       assert.equal(session.revision!.datasetId, source.revision!.datasetId)
       assert.equal(session.revision!.revision, source.revision!.revision + 1)
     }
-    const archive = JSON.parse(JSON.parse(session.exportRecoveryArchive()).recoveries.at(-1).raw)
-    assert.equal(archive.previousRaw, damaged)
+    const archives = JSON.parse(session.exportRecoveryArchive()).recoveries.map((entry: { raw: string }) => JSON.parse(entry.raw))
+    assert.ok(archives.some((archive: { previousRaw: string }) => archive.previousRaw === damaged))
+    assert.ok(archives.some((archive: { previousRaw: string; legacyRaw: string }) => [archive.previousRaw, archive.legacyRaw].includes(known)))
     const reloaded = new StorageSession({ storage, lock: sharedLock() })
     assert.equal(reloaded.initial.status, 'ready')
     assert.deepEqual(reloaded.state, session.state)
+    await reloaded.change((state) => ({ ...state, settings: { ...state.settings, duoRate: 24 } }))
+    assert.deepEqual(JSON.parse(reloaded.exportRecoveryArchive()).recoveries.map((entry: { raw: string }) => JSON.parse(entry.raw)), archives)
   }
 })
 
