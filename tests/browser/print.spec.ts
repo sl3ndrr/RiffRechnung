@@ -10,7 +10,8 @@ import { buildEpcPayload, invoiceTotal } from '../../src/lib/utils'
 async function seed(page: Page, state: AppState) {
   await page.goto('/')
   await page.evaluate(async (raw) => {
-    const { StorageSession } = await import('/src/lib/storage.ts')
+    const storageModule = '/src/lib/storage.ts'
+    const { StorageSession } = await import(storageModule)
     await new StorageSession().restore(raw)
   }, serializeBackup(state))
   await page.reload()
@@ -48,7 +49,8 @@ async function createPdf(page: Page, state: AppState, invoiceId: string, label: 
   try {
     await rendering.goto('/')
     await rendering.evaluate(async ({ state, invoiceId }) => {
-      const { mountDocument } = await import('/tests/browser/documentPrintHarness.tsx')
+      const harnessModule = '/tests/browser/documentPrintHarness.tsx'
+      const { mountDocument } = await import(harnessModule)
       mountDocument(state, invoiceId)
       await document.fonts.ready
     }, { state, invoiceId })
@@ -108,7 +110,8 @@ test('P09 Browser: abgelehnte QR-Erzeugung und ein verspäteter früherer Auftra
   try {
     await rendering.goto('/')
     await rendering.evaluate(async ({ state, invoiceId }) => {
-      const { mountDocument } = await import('/tests/browser/documentPrintHarness.tsx')
+      const harnessModule = '/tests/browser/documentPrintHarness.tsx'
+      const { mountDocument } = await import(harnessModule)
       mountDocument(state, invoiceId, { rejectGiroCode: true })
     }, { state: single, invoiceId: single.invoices[0].id })
     await expect.poll(() => rendering.evaluate(() => document.documentElement.dataset.documentError)).toMatch(/Synthetische QR-Erzeugung abgelehnt/)
@@ -132,7 +135,8 @@ test('P09 Browser: abgelehnte QR-Erzeugung und ein verspäteter früherer Auftra
   try {
     await race.goto('/')
     await race.evaluate(async ({ state, firstId, secondId }) => {
-      const { mountDocumentRace } = await import('/tests/browser/documentPrintHarness.tsx')
+      const harnessModule = '/tests/browser/documentPrintHarness.tsx'
+      const { mountDocumentRace } = await import(harnessModule)
       mountDocumentRace(state, firstId, secondId)
     }, { state: pair, firstId: pair.invoices[0].id, secondId: second.id })
     await expect.poll(() => race.evaluate(() => document.documentElement.dataset.documentReady)).toBe(second.id)
