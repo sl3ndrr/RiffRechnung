@@ -21,7 +21,7 @@ export function ConfirmDialog({ open, title, message, cancelLabel = 'Abbrechen',
       size="small"
       footer={
         <>
-          <button className="button button--text" type="button" data-dialog-initial-focus onClick={onCancel}>{cancelLabel}</button>
+          <button className="button button--text" type="button" autoFocus data-dialog-initial-focus onClick={onCancel}>{cancelLabel}</button>
           <button className={`button ${danger ? 'button--danger' : 'button--primary'}`} type="button" onClick={onConfirm}>{confirmLabel}</button>
         </>
       }
