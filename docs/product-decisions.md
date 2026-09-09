@@ -398,12 +398,12 @@ und [Bundesbank-IBAN-Regeln](https://www.bundesbank.de/de/aufgaben/unbarer-zahlu
   Hintergrund und Tabreihenfolge sind modal; Escape schließt nur den obersten
   Dialog. Das Verhalten folgt dem
   [W3C-Dialogmuster](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/).
-  Verschachtelte Bestätigungen werden im bestehenden Dialog gerendert. Falls
-  Chromium keinen zweiten nativen Top-Layer annimmt, bleibt der äußere Dialog
-  modal und nur dessen Geschwister werden `inert`; die obere Bestätigung begrenzt
-  Tab/Escape selbst. Der Stapel erhält beim Schließen einer Bestätigung die
-  Scrollsperre des darunterliegenden Dialogs. Bestätigungen fokussieren die am
-  wenigsten zerstörerische Aktion.
+  Verschachtelte Bestätigungen werden bewusst ohne zweiten nativen Top-Layer im
+  bestehenden Dialog gerendert. Der äußere Dialog bleibt modal und nur dessen
+  Geschwister werden `inert`; die obere Bestätigung begrenzt Tab/Escape selbst.
+  Der Stapel erhält beim Schließen einer Bestätigung die Scrollsperre des
+  darunterliegenden Dialogs. Bestätigungen fokussieren die am wenigsten
+  zerstörerische Aktion.
 - **Editor-Verwerfen:** Ein verändertes Formular wird beim Schließen oder
   Seitenwechsel nie still verworfen. „Weiter bearbeiten“ hält lokalen
   Formularzustand; „Verwerfen“ schließt ohne fachlichen Speicherbefehl und
