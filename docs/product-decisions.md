@@ -396,9 +396,11 @@ und [Bundesbank-IBAN-Regeln](https://www.bundesbank.de/de/aufgaben/unbarer-zahlu
 
 - **Modale Grundlage:** Die App verwendet native `dialog.showModal()`-Dialoge.
   Hintergrund und Tabreihenfolge sind modal; Escape schließt nur den obersten
-  Dialog. Der Stapel erhält beim Schließen einer Bestätigung die Scrollsperre
-  des darunterliegenden Dialogs. Bestätigungen fokussieren die am wenigsten
-  zerstörerische Aktion.
+  Dialog. Für den in Chromium nicht zuverlässig aktivierten zweiten nativen
+  Top-Layer bleibt der äußere Dialog modal und wird `inert`; die obere
+  Bestätigung begrenzt Tab/Escape selbst. Der Stapel erhält beim Schließen einer
+  Bestätigung die Scrollsperre des darunterliegenden Dialogs. Bestätigungen
+  fokussieren die am wenigsten zerstörerische Aktion.
 - **Editor-Verwerfen:** Ein verändertes Formular wird beim Schließen oder
   Seitenwechsel nie still verworfen. „Weiter bearbeiten“ hält lokalen
   Formularzustand; „Verwerfen“ schließt ohne fachlichen Speicherbefehl und
