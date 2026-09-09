@@ -250,7 +250,7 @@ test('P10 Browser: Datei-, Chip- und Theme-Eingaben markieren das sichtbare Bedi
   const state = saveInvoiceDraft(documentFamily(), documentDraft(), false, documentAt)
   await seed(page, state)
   await page.getByRole('button', { name: 'Einstellungen', exact: true }).click()
-  const themeInput = page.getByRole('radio', { name: 'Hell', exact: true })
+  const themeInput = page.getByRole('radio', { checked: true })
   await tabTo(page, themeInput)
   expect(await outline(themeInput.locator('xpath=..'))).toBe(true)
   const fileInput = page.locator('#backup input[type=file]')
