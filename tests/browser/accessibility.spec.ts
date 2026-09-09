@@ -14,8 +14,9 @@ async function seed(page: Page, state: AppState) {
   await page.reload()
 }
 
-async function invoices(page: Page) {
-  await page.getByRole('button', { name: /^Rechnungen(?:\s*\d+)?$/ }).first().click()
+async function invoices(page: Page, mobile = false) {
+  const navigation = mobile ? page.locator('.mobile-bottom-nav') : page.locator('.sidebar')
+  await navigation.getByRole('button', { name: /^Rechnungen(?:\s*\d+)?$/ }).click()
 }
 
 function contrast(foreground: string, background: string) {
@@ -36,7 +37,7 @@ test('P10 Browser: Rechnungsdetails, Status und Rückkehr funktionieren mit Tast
   for (const width of [390, 900, 1280]) {
     await page.setViewportSize({ width, height: 900 })
     await seed(page, state)
-    await invoices(page)
+    await invoices(page, width === 390)
     const opener = page.getByRole('button', { name: '2026-a-0001', exact: true })
     await opener.focus()
     await page.keyboard.press('Enter')
@@ -90,7 +91,7 @@ test('P10 Browser: mobile Navigation ist geschlossen inert und stellt Fokus wied
   await expect(page.locator('#mobile-sidebar')).toHaveAttribute('inert', '')
   await trigger.focus()
   await page.keyboard.press('Enter')
-  const close = page.getByRole('button', { name: 'Navigation schließen' })
+  const close = page.locator('#mobile-sidebar').getByRole('button', { name: 'Navigation schließen' })
   await expect(close).toBeFocused()
   await page.keyboard.press('Enter')
   await expect(trigger).toBeFocused()
@@ -108,12 +109,19 @@ test('P10 Browser: relevante Textkontraste erreichen in beiden Themes AA', async
       const version = document.querySelector<HTMLElement>('.sidebar__version')!
       const backup = document.querySelector<HTMLElement>('.backup-indicator')!
       document.body.append(danger)
+      const surface = document.createElement('div')
+      surface.style.background = 'var(--surface)'
+      const sidebarSurface = document.createElement('div')
+      sidebarSurface.style.background = 'var(--surface-container-low)'
+      document.body.append(surface, sidebarSurface)
       const result = [
         [getComputedStyle(danger).color, getComputedStyle(danger).backgroundColor],
-        [getComputedStyle(version).color, getComputedStyle(document.querySelector('.sidebar')!).backgroundColor],
-        [getComputedStyle(backup).color, getComputedStyle(document.querySelector('.topbar')!).backgroundColor],
+        [getComputedStyle(version).color, getComputedStyle(sidebarSurface).backgroundColor],
+        [getComputedStyle(backup).color, getComputedStyle(surface).backgroundColor],
       ]
       danger.remove()
+      surface.remove()
+      sidebarSurface.remove()
       return result
     })
     for (const [foreground, background] of pairs) expect(contrast(foreground, background)).toBeGreaterThanOrEqual(4.5)
