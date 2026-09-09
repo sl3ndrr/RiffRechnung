@@ -2,9 +2,10 @@ import { sumCents } from '../lib/money'
 import { useEffect, useMemo, useState } from 'react'
 import QRCode from 'qrcode'
 import type { Guardian, Invoice, Settings, Student } from '../types'
-import { billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, euro, footerTextForPrint, formatDateLong, formatIban, groupItemsByStudent, invoiceTotal, outputItemTotal, outputItemCents, outputUnitPrice, number, parseDate } from '../lib/utils'
-import { germanIbanError, paymentDataForInvoice } from '../lib/paymentData'
+import { billingPeriodFromItems, buildInvoicePrintPageStyle, euro, footerTextForPrint, formatDateLong, formatIban, groupItemsByStudent, invoiceTotal, outputItemTotal, outputItemCents, outputUnitPrice, number, parseDate } from '../lib/utils'
+import { paymentDataForInvoice } from '../lib/paymentData'
 import { SMALL_BUSINESS_TAX_NOTICE, TAX_IDENTIFIER_LABELS, taxDataForInvoice } from '../lib/invoiceProfile'
+import { generateGiroCode, resolveGiroCode, type GiroCodeEncoder } from '../lib/printJob'
 
 interface InvoicePrintProps {
   invoice: Invoice | null
@@ -12,8 +13,12 @@ interface InvoicePrintProps {
   students: Student[]
   settings: Settings
   requestId?: string
+  includeGiroCode?: boolean
+  giroCodeFallbackReason?: string
   onPrintReady?: (requestId: string, invoiceId: string, payload: string | null) => void
   onPrintError?: (requestId: string, invoiceId: string, message: string) => void
+  /** Test seam for a real rejection path; production uses the bundled QR encoder. */
+  qrEncoder?: GiroCodeEncoder
 }
 
 interface GeneratedQrCode {
@@ -23,7 +28,22 @@ interface GeneratedQrCode {
   url: string
 }
 
-export function InvoicePrint({ invoice, guardians, students, settings, requestId, onPrintReady, onPrintError }: InvoicePrintProps) {
+
+function defaultQrEncoder(payload: string): Promise<string> {
+  return QRCode.toDataURL(payload, {
+    errorCorrectionLevel: 'M',
+    margin: 4,
+    width: 420,
+    color: { dark: '#111827', light: '#ffffff' },
+  })
+}
+
+async function waitForPrintFonts(): Promise<void> {
+  if (typeof document === 'undefined' || !document.fonts) return
+  try { await document.fonts.ready } catch { /* A fallback font is still printable. */ }
+}
+
+export function InvoicePrint({ invoice, guardians, students, settings, requestId, includeGiroCode = true, giroCodeFallbackReason, onPrintReady, onPrintError, qrEncoder }: InvoicePrintProps) {
   const [qrCode, setQrCode] = useState<GeneratedQrCode | null>(null)
   const total = invoice ? invoiceTotal(invoice) : 0
   const period = invoice ? invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate) : ''
@@ -71,49 +91,58 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
     })
   }, [invoice, period, studentList])
 
-  const qrRequest = useMemo<{ payload: string | null; error: string | null }>(() => {
-    if (!invoice || !invoice.number || germanIbanError(account.iban) || !account.accountHolder || total <= 0) {
-      return { payload: null, error: null }
-    }
-    try {
-      return { payload: buildEpcPayload(invoice, settings, total), error: null }
-    } catch (error) {
-      return { payload: null, error: error instanceof Error ? error.message : 'GiroCode konnte nicht erzeugt werden.' }
-    }
-  }, [account.accountHolder, account.iban, invoice, settings, total])
+  const giroCode = useMemo(() => invoice
+    ? resolveGiroCode(invoice, settings, includeGiroCode)
+    : { kind: 'unavailable' as const, reason: 'Keine Rechnung ausgewählt.' },
+  [includeGiroCode, invoice, settings])
 
   useEffect(() => {
     setQrCode(null)
     const invoiceId = invoice?.id
     if (!invoiceId || !requestId) return
-    if (qrRequest.error) {
-      onPrintError?.(requestId, invoiceId, qrRequest.error)
-      return
-    }
-    if (qrRequest.payload === null) {
-      onPrintReady?.(requestId, invoiceId, null)
-      return
-    }
-    const payload = qrRequest.payload
     let cancelled = false
-    QRCode.toDataURL(payload, {
-      errorCorrectionLevel: 'M',
-      margin: 4,
-      width: 420,
-      color: { dark: '#111827', light: '#ffffff' },
-    }).then((url) => !cancelled && setQrCode({ requestId, invoiceId, payload, url }))
-      .catch(() => !cancelled && onPrintError?.(requestId, invoiceId, 'GiroCode konnte nicht erzeugt werden.'))
+    const readyWithoutQr = () => {
+      void waitForPrintFonts().then(() => {
+        if (!cancelled) onPrintReady?.(requestId, invoiceId, null)
+      })
+    }
+
+    if (giroCode.kind === 'error') {
+      onPrintError?.(requestId, invoiceId, giroCode.reason)
+      return () => { cancelled = true }
+    }
+    if (giroCode.kind !== 'ready') {
+      readyWithoutQr()
+      return () => { cancelled = true }
+    }
+
+    const payload = giroCode.payload
+    void generateGiroCode(payload, qrEncoder ?? defaultQrEncoder).then((url) => {
+      if (!cancelled) setQrCode({ requestId, invoiceId, payload, url })
+    }).catch((error) => {
+      if (!cancelled) onPrintError?.(requestId, invoiceId, error instanceof Error ? error.message : 'GiroCode konnte nicht erzeugt werden.')
+    })
     return () => { cancelled = true }
-  }, [invoice?.id, onPrintError, onPrintReady, qrRequest.error, qrRequest.payload, requestId])
+  }, [giroCode, invoice?.id, onPrintError, onPrintReady, qrEncoder, requestId])
 
   if (!invoice) return null
-  const visibleQrCode = qrCode
+  const visibleQrCode = giroCode.kind === 'ready'
+    && qrCode
     && qrCode.requestId === requestId
     && qrCode.invoiceId === invoice.id
-    && qrCode.payload === qrRequest.payload
+    && qrCode.payload === giroCode.payload
     ? qrCode
     : null
   const salutation = recipientList.map((item) => item.name).join(' und ') || 'Damen und Herren'
+  const giroCodeNotice = giroCode.kind === 'ready'
+    ? null
+    : giroCode.kind === 'disabled'
+      ? giroCodeFallbackReason
+        ? `Ohne GiroCode gedruckt: ${giroCodeFallbackReason}`
+        : giroCode.reason
+      : giroCode.kind === 'unavailable'
+        ? `Kein GiroCode: ${giroCode.reason}`
+        : `GiroCode nicht verfügbar: ${giroCode.reason}`
 
   return (
     <article className="invoice-paper" aria-label={`Rechnung ${invoice.number ?? 'Entwurf'}`}>
@@ -127,7 +156,8 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
             {recipientList.map((recipient) => (
               <div className="invoice-address" key={recipient.id}>
                 <strong>{recipient.name}</strong>
-                <span>{recipient.street}, {recipient.postalCode} {recipient.city}</span>
+                <span>{recipient.street}</span>
+                <span>{recipient.postalCode} {recipient.city}</span>
                 <small>{recipient.email}</small>
               </div>
             ))}
@@ -174,12 +204,12 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
 
         {taxData.invoiceProfile === 'small-business' && taxData.taxIdentifier?.value && <section className="invoice-tax-data" aria-label="Steuerliche Angaben"><p><strong>{TAX_IDENTIFIER_LABELS[taxData.taxIdentifier.kind]}:</strong> {taxData.taxIdentifier.value}</p><p>{SMALL_BUSINESS_TAX_NOTICE}</p></section>}
 
-        <div className="invoice-payment-block">
+        <section className="invoice-payment-block">
           <section className="invoice-payment-copy">
             <p>Bitte überweisen Sie den Gesamtbetrag von <strong>{euro.format(total)}</strong> bis zum <strong>{formatDateLong(invoice.dueDate)}</strong> auf das folgende Konto:</p>
           </section>
 
-          <section className="invoice-payment">
+          <section className={visibleQrCode ? 'invoice-payment' : 'invoice-payment invoice-payment--without-qr'}>
             <dl>
               <dt>Kontoinhaber:</dt><dd><strong>{account.accountHolder || '–'}</strong></dd>
               <dt>IBAN:</dt><dd className="mono">{formatIban(account.iban) || '–'}</dd>
@@ -187,21 +217,22 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
               <dt>Bank:</dt><dd>{account.bankName || '–'}</dd>
               <dt>Verwendungszweck:</dt><dd><strong>Rechnung {invoice.number ?? 'Entwurf'}</strong></dd>
             </dl>
-            <div className="invoice-qr">
-              {visibleQrCode ? <img src={visibleQrCode.url} alt="EPC-QR-Code für die SEPA-Überweisung" onLoad={() => onPrintReady?.(visibleQrCode.requestId, visibleQrCode.invoiceId, visibleQrCode.payload)} onError={() => onPrintError?.(visibleQrCode.requestId, visibleQrCode.invoiceId, 'GiroCode konnte nicht geladen werden.')} /> : <span>GiroCode nach Finalisierung und mit gültiger IBAN</span>}
+            {visibleQrCode && <div className="invoice-qr">
+              <img src={visibleQrCode.url} alt="EPC-QR-Code für die SEPA-Überweisung" onLoad={() => { void waitForPrintFonts().then(() => onPrintReady?.(visibleQrCode.requestId, visibleQrCode.invoiceId, visibleQrCode.payload)) }} onError={() => onPrintError?.(visibleQrCode.requestId, visibleQrCode.invoiceId, 'GiroCode konnte nicht geladen werden.')} />
               <p>Mit Banking-App scannen</p>
-            </div>
+            </div>}
           </section>
 
+          {giroCodeNotice && <p className="invoice-girocode-notice">{giroCodeNotice}</p>}
           {invoice.freeText && <p className="invoice-free-text">{invoice.freeText}</p>}
-          <div className="invoice-closing">
-            <section className="invoice-thanks"><p>Vielen Dank</p><strong>{issuer.name}</strong></section>
+          <section className="invoice-closing">
+            <div className="invoice-thanks"><p>Vielen Dank</p><strong>{issuer.name}</strong></div>
             <footer className="invoice-footer">
               <div className="invoice-footer__rule" />
-              <div className="invoice-footer__content"><p>{footerText}</p><span className="invoice-footer__page" aria-hidden="true">Seite …</span></div>
+              <div className="invoice-footer__content"><p>{footerText}</p><span className="invoice-footer__reference">Rechnung {invoice.number ?? 'Entwurf'} · Seitenzahl im Seitenrand</span></div>
             </footer>
-          </div>
-        </div>
+          </section>
+        </section>
       </div>
     </article>
   )

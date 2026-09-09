@@ -8,7 +8,7 @@ import { Calendar, CircleDollarSign, FileCheck2, Minus, Plus, Save, Send, Trash2
 import type { AppState, Guardian, InvoiceDraft, InvoiceItemAllocation, InvoiceSplitPreview, LessonType, Settings, Student } from '../types'
 import { FINALIZED_INVOICE_BLOCKED } from '../lib/safety'
 import { Modal } from '../components/Modal'
-import { applyLessonType, billingPeriodFromItems, calculateDueDate, createLessonItem, euro, invoiceFinalizationErrors, isFooterTextWithinLimit, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH } from '../lib/utils'
+import { applyLessonType, billingPeriodFromItems, calculateDueDate, createLessonItem, euro, invoiceFinalizationErrors, isFooterTextWithinLimit, itemTotal, MAX_FOOTER_TEXT_LENGTH } from '../lib/utils'
 
 const INVOICE_EDITOR_FORM_ID = 'invoice-editor-form'
 interface InvoiceEditorProps {
@@ -126,7 +126,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
     }
     setErrors(nextErrors)
     if (!nextErrors.length) {
-      const normalized = { ...form, period: calculatedPeriod, legalText: limitFooterText(form.legalText) }
+      const normalized = { ...form, period: calculatedPeriod, legalText: form.legalText }
       onSave(normalized, finalize)
     }
   }
@@ -172,7 +172,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
         ...form, guardianIds: [result.guardianId], studentIds: result.studentIds, items: result.items, recipientStrategy: 'separate',
       })) : []
       if (finalizationErrors.length) { setErrors([...new Set(finalizationErrors)]); return }
-      onSave({ ...form, period: calculatedPeriod, legalText: limitFooterText(form.legalText) }, finalize, parsed.allocations)
+      onSave({ ...form, period: calculatedPeriod, legalText: form.legalText }, finalize, parsed.allocations)
     } catch (error) {
       setErrors([error instanceof Error ? error.message : 'Die Aufteilung konnte nicht gespeichert werden.'])
     }

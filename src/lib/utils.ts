@@ -63,8 +63,9 @@ export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 's
   return errors
 }
 
+/** Historical legal text is output verbatim; only the editor limits new input explicitly. */
 export function footerTextForPrint(value: string): string {
-  return limitFooterText(value.replace(/\s+/g, ' ').trim())
+  return value.replace(/\r\n?/g, '\n').trim()
 }
 
 function cssContentString(value: string): string {
@@ -78,27 +79,12 @@ function cssContentString(value: string): string {
   return `"${escaped}"`
 }
 
-export function buildInvoicePrintPageStyle(footerText: string, invoiceNumber: string | null): string {
-  const footerContent = cssContentString(footerTextForPrint(footerText))
+export function buildInvoicePrintPageStyle(_footerText: string, invoiceNumber: string | null): string {
   const invoiceReference = invoiceNumber ? cssContentString(`Rechnung ${invoiceNumber}`) : '""'
+  // Margin boxes are only an enhancement. Essential legal and reference text is
+  // also present in the ordinary document flow in InvoicePrint.
   return `
 @page {
-  @bottom-left {
-    content: ${footerContent};
-    box-sizing: border-box;
-    width: 138mm;
-    height: 15.5mm;
-    overflow: hidden;
-    padding: 3pt 0 7mm;
-    border-top: .5pt solid rgb(30 90 160);
-    color: #666;
-    font-family: 'Inter Variable', Inter, Arial, sans-serif;
-    font-size: 6.8pt;
-    line-height: 1.35;
-    text-align: left;
-    vertical-align: bottom;
-    white-space: normal;
-  }
   @bottom-right {
     content: "Seite " counter(page) " von " counter(pages);
     box-sizing: border-box;

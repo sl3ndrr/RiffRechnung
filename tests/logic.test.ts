@@ -13,6 +13,7 @@ import './safety.test'
 import './commands.test'
 import './storage.test'
 import './documents.test'
+import './print-job.test'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -376,65 +377,32 @@ test('PDF-Titel enthält Rechnungsnummer und dateisicheren Kindesnamen', () => {
   assert.equal(invoicePdfTitle(testInvoice, [student('student-a', 'Lina / Winter', 'a')]), 'Rechnung 2026-b-0002 - Lina - Winter')
 })
 
-test('Fußzeilentext ist auf eine verlässliche zweizeilige Drucklänge begrenzt', () => {
+test('P09: Rechtstext und mehrzeiliger Freitext bleiben im Dokumentfluss vollständig erhalten', () => {
   assert.equal(MAX_FOOTER_TEXT_LENGTH, 120)
-  assert.equal(defaultSettings.defaultLegalText.startsWith('Privatrechnung |'), true)
   assert.equal(isFooterTextWithinLimit('x'.repeat(MAX_FOOTER_TEXT_LENGTH)), true)
   assert.equal(isFooterTextWithinLimit('x'.repeat(MAX_FOOTER_TEXT_LENGTH + 1)), false)
   assert.equal(limitFooterText('x'.repeat(MAX_FOOTER_TEXT_LENGTH + 1)).length, MAX_FOOTER_TEXT_LENGTH)
-  assert.equal(footerTextForPrint('  Privatrechnung\n   Test  '), 'Privatrechnung Test')
-})
+  assert.equal(footerTextForPrint('  Rechtstext\n  zweite Zeile  '), 'Rechtstext\n  zweite Zeile')
 
-test('Druckrechnungen unterschiedlicher Länge nutzen gemeinsame Seitenfuß- und Folgeseitenbereiche', () => {
-  const renderInvoice = (itemCount: number) => {
-    const items = Array.from({ length: itemCount }, (_, index) => createLessonItem(
-      'student-a',
-      index < Math.ceil(itemCount / 2)
-        ? `2026-08-${String(index % 28 + 1).padStart(2, '0')}`
-        : `2026-09-${String(index % 28 + 1).padStart(2, '0')}`,
-      defaultSettings,
-      `item-print-${itemCount}-${index}`,
-    ))
-    return renderToStaticMarkup(createElement(InvoicePrint, {
-      invoice: invoice({ items }),
-      guardians: [],
-      students: [student('student-a', 'Anna', 'a')],
-      settings: defaultSettings,
-    }))
-  }
+  const longFreeText = ['Erste wichtige Zeile', 'Zweite wichtige Zeile', 'Eine sehr lange ungetrennte Kontoreferenz '.repeat(8)].join('\n')
+  const markup = renderToStaticMarkup(createElement(InvoicePrint, {
+    invoice: invoice({ freeText: longFreeText, legalText: 'Rechtstext\nzweite Zeile' }),
+    guardians: [],
+    students: [student('student-a', 'Anna', 'a')],
+    settings: defaultSettings,
+    includeGiroCode: false,
+  }))
+  assert.match(markup, /Erste wichtige Zeile/)
+  assert.match(markup, /Zweite wichtige Zeile/)
+  assert.match(markup, /Rechtstext\nzweite Zeile/)
+  assert.match(markup, /class="invoice-footer"/)
+  assert.match(markup, /Seitenzahl im Seitenrand/)
 
-  const cases = [
-    { label: 'einseitig', itemCount: 6 },
-    { label: 'zweiseitig', itemCount: 24 },
-    { label: 'knapp dreiseitig', itemCount: 52 },
-  ]
-  cases.forEach(({ label, itemCount }) => {
-    const markup = renderInvoice(itemCount)
-    assert.equal(markup.match(/class="invoice-item-row(?:\s|")/g)?.length, itemCount, label)
-    assert.equal(markup.match(/class="invoice-footer"/g)?.length, 1, label)
-    assert.ok(markup.indexOf('invoice-closing') > markup.lastIndexOf('</table>'), label)
-    assert.ok(markup.indexOf('invoice-footer') > markup.indexOf('invoice-thanks'), label)
-    assert.doesNotMatch(markup, /Seite 1 von 1/, label)
-  })
-
-  const stylesheet = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8')
-  const componentSource = readFileSync(new URL('../src/components/InvoicePrint.tsx', import.meta.url), 'utf8')
-  const printStyles = stylesheet.slice(stylesheet.indexOf('@media print'))
   const pageStyle = buildInvoicePrintPageStyle('Rechtstext mit "Anführungszeichen" und </style>', '2026-a-0001')
-  assert.match(stylesheet, /\.invoice-table tr \{ break-inside: avoid; page-break-inside: avoid; \}/)
-  assert.match(printStyles, /@page \{[\s\S]*size: A4 portrait;[\s\S]*margin: 16mm 20mm 22mm;/)
-  assert.doesNotMatch(printStyles, /@bottom-right/)
-  assert.match(pageStyle, /@bottom-left \{[\s\S]*content: "Rechtstext/)
-  assert.match(pageStyle, /@bottom-right \{[\s\S]*content: "Seite " counter\(page\) " von " counter\(pages\);/)
-  assert.match(pageStyle, /@top-right \{[\s\S]*content: "Rechnung 2026-a-0001";/)
-  assert.match(pageStyle, /@page :first \{[\s\S]*@top-right \{ content: ""; \}/)
+  assert.match(pageStyle, /@bottom-right \{[\s\S]*Seite " counter\(page\) " von " counter\(pages\)/)
+  assert.match(pageStyle, /@top-right \{[\s\S]*Rechnung 2026-a-0001/)
+  assert.doesNotMatch(pageStyle, /@bottom-left/)
   assert.doesNotMatch(pageStyle, /<\/style>/)
-  assert.doesNotMatch(componentSource, /Privatrechnung/)
-  assert.match(stylesheet, /\.invoice-closing \{ break-inside: avoid; page-break-inside: avoid; \}/)
-  assert.match(stylesheet, /\.invoice-footer \{[^}]*text-align: left;/)
-  assert.match(stylesheet, /\.invoice-footer p \{[^}]*-webkit-line-clamp: 2;/)
-  assert.match(printStyles, /\.invoice-footer \{ display: none; \}/)
-  assert.doesNotMatch(printStyles, /page-break-after: always/)
 })
 
 test('Entwurfsdrucke tragen ein Wasserzeichen und nur Entwürfe zeigen Positionsdetails', () => {
@@ -453,23 +421,6 @@ test('Entwurfsdrucke tragen ein Wasserzeichen und nur Entwürfe zeigen Positions
   assert.match(stylesheet.slice(stylesheet.indexOf('@media print')), /\.invoice-draft-watermark \{ position: fixed;/)
   assert.match(source, /invoice\.status === 'draft' && <section className="position-summary">/)
   assert.doesNotMatch(source, /<Download/)
-})
-
-test('Druck wartet auf den QR-Code des konkreten Druckauftrags', () => {
-  const appSource = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
-  const printHandler = appSource.slice(appSource.indexOf('const print ='), appSource.indexOf('const exportBackup'))
-  const printSource = readFileSync(new URL('../src/components/InvoicePrint.tsx', import.meta.url), 'utf8')
-
-  assert.doesNotMatch(printHandler, /setTimeout/)
-  assert.match(printHandler, /printRequestRef/)
-  assert.match(appSource, /onPrintReady=\{handlePrintReady\}/)
-  assert.match(printSource, /setQrCode\(null\)/)
-  assert.match(printSource, /requestId: string/)
-  assert.match(printSource, /invoiceId: string/)
-  assert.match(printSource, /payload: string/)
-  assert.match(printSource, /qrCode\.invoiceId === invoice\.id/)
-  assert.match(printSource, /qrCode\.payload === qrRequest\.payload/)
-  assert.match(printSource, /onLoad=.*onPrintReady/)
 })
 
 test('alle Kebab-Menü-Aktionen werden an den vorgesehenen Handler weitergeleitet', () => {

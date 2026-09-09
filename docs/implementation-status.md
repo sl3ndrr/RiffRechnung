@@ -1,10 +1,9 @@
 # Umsetzungsstatus
 
-Stand: 2026-09-08, Paket 08. Zielbranch `main` zu Beginn vollständig geprüft:
-`3332222917daf6662b8e9639251fa7a22f1a4f85`, Tree
-`32d1e158591c8e59394c66acf19e21f9ed8dc1e0`. Pakete 00–07 sind gemergt.
+Stand: 2026-09-09, Paket 09. Zielbranch `main` zu Beginn vollständig geprüft:
+`1a7b65affe5f6017833a534e6ac2957c2d4e40c3`. Pakete 00–08 sind gemergt.
 Keine `AGENTS.md` im vollständigen Repository-Tree. Arbeitsbranch:
-`codex/paket-08-zahlungstag-berichte`, [PR #29](https://github.com/sl3ndrr/RiffRechnung/pull/29).
+`codex/paket-09-druck-girocode`, [PR #30](https://github.com/sl3ndrr/RiffRechnung/pull/30).
 Kein Merge oder Deployment in diesem Auftrag.
 
 ## Paketfolge
@@ -25,7 +24,7 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 | 06 | Aufteilung nach Empfängern | R02; Integration R01; schrittweise R24 | Implementiert; vollständiger CI-Nachweis unten |
 | 07 | Rechnungsprofil, deutsche IBAN, Zahlungsdaten | R07, R13 angepasst, R14 | Implementiert; vollständiger CI-Nachweis unten |
 | 08 | Zahlungstag und Berichte | R11, F02 (MVP); schrittweise R24 | Implementiert; vollständiger CI-Nachweis unten |
-| 09 | Druck und GiroCode | R16, R21, N03, N08 | Laut Analyse offen |
+| 09 | Druck und GiroCode | R16, R21, N03, N08 | Implementiert und CI-geprüft; native Druck-/Banking-Abnahme offen |
 | 10 | Tastatur, Dialoge, Navigation, Kontrast | R17–R20, N05, N07 | Laut Analyse offen |
 | 11 | Sicherheitstexte und Komfort | R26, N02, N04, N10 | Laut Analyse offen |
 | 12 | Zusammenhängende Abläufe und Freigabereife | R01–R26, N01–N10 | Laut Analyse offen; Pflichtabnahme |
@@ -337,3 +336,46 @@ Nächstes vorgesehenes Paket: **08 – Zahlungstag und Berichte**, im folgenden 
 | Native Bank-App-Scan, Druckdialoge und Dateirechte | Nicht geprüft; nicht Gegenstand dieses Pakets |
 
 Nächstes vorgesehenes Paket: **09 – Druck und GiroCode zuverlässig ausgeben**, nicht begonnen.
+
+
+## Paket 09 – Druck und GiroCode
+
+- **Ausgang / Ergebnis:** R16 (fehleranfälliger GiroCode), R21 (unzuverlässige
+  Mehrseitenausgabe), N03 (zu frühes Drucken) und N08 (Textverlust) am geprüften
+  Code bestätigt. Ein Druckauftrag enthält jetzt eine unveränderliche Kopie der
+  Belegversion, Personen und Einstellungen. Schriften und QR-Bild des *gleichen*
+  Auftrags müssen bereit sein; verspätete Ergebnisse werden verworfen.
+- **Fachregel:** Die Finalisierungsprüfung bleibt unverändert. Ein EPC-/QR-Fehler
+  zeigt seinen Grund und die bewusste Aktion **„Ohne GiroCode drucken“**. Dieser
+  Fallback rendert keinen alten oder fehlerhaften QR-Code. BIC-Formatfehler,
+  zu lange Payload und Encoder-Ablehnung sind separat regressionsgetestet.
+- **Ausgabe / Invarianten:** Rechtstext und Rechnungsreferenz stehen im normalen
+  Dokumentfluss; `@page` ergänzt nur Kopf/Seitenzahl. A4-Ränder sind 16/20/22 mm.
+  Lange Namen, Anschriften, Kontodaten und Freitexte umbrechen; Zeilenumbrüche
+  bleiben erhalten. Die sichtbare 120-Zeichen-Grenze für neue Rechtstexte wird
+  vor dem Speichern validiert, historische Texte werden ungekürzt ausgegeben.
+  Nummernkreise, Reservierungen, deutsche IBAN-Regel, Beträge/Snapshots,
+  CSV-Formelabwehr, Rohdatenschutz sowie Serialisierung/Import/Reload bleiben
+  unverändert geschützt.
+- **Migration:** Keine Formatänderung; Schema 7, Altformatunterstützung,
+  Wiederherstellungsweg und Schutz unbekannter neuer Formate bleiben unverändert.
+- **Prüfstand:** Implementierungscommit
+  `ee96e44bf56e1e0e0d98a9522bb993f8bb0265f0`,
+  [CI 34301220337](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34301220337):
+  npm ci, Lint, **143/143** Fachtests, Typecheck einschließlich Tests, Build und
+  **17/17** Chromium-Browserprüfungen bestanden. Ubuntu 24.04.5, Node 22.23.2,
+  npm 10.9.8, Python 3.12.3, Chromium **153.0.8010.12**. Die CI erzeugt und
+  liest synthetische PDFs mit einer, zwei und sieben Seiten; Artefakt
+  `browser-evidence` ist sieben Tage verfügbar. Erster sichtbarer Laufzeitfehler
+  der neuen Prüfung (CSS-Zeilenmarker) wurde vor diesem Lauf korrigiert; keine
+  Tests wurden gelöscht, übersprungen oder abgeschwächt. Lokal: Node 24.19.0/npm
+  11.9.0 statt Node 22; der Git-Checkout per `git clone` war in dieser Umgebung
+  mit 403 gesperrt. Daher wurden weder `npm ci` noch lokale Gates ausgeführt;
+  die CI ist der vollständige Nachweis.
+
+| Abnahme Paket 09 | Ergebnis |
+| --- | --- |
+| Synthetische PDFs: 1, 2, ≥5 Seiten, Wasserzeichen, Seitenzahlen, lokal gebündelte Schriften, vollständige Rechnungs-/Hinweistexte | Bestanden: echte Chromium-PDFs, Textauszug und visuelle Prüfung |
+| Ungültige BIC, überlange Payload, Encoder-Ablehnung, bewusster Druck ohne GiroCode; zwei überlappende Aufträge | Bestanden: Fach- und echter Browserablauf |
+| Export–Import–Reload und unveränderte Beleg-/Kontosnapshots | Bestehende Fach-/Browserregressionen bestanden; keine Migration dieses Pakets |
+| Nativer Druckdialog, Firefox/Safari-Ausgabe, Banking-App-Scan | Nicht geprüft. Manuell: PDF in Chromium 153 öffnen, QR mit Banking-App scannen und Empfänger, DE-IBAN, optionale BIC, Betrag und Rechnungsnummer gegen den Bankblock prüfen. |
