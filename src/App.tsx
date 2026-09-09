@@ -194,12 +194,12 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
 
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => {
-      if (!settingsDirty && saveStateLabel !== 'saving' && saveStateLabel !== 'error') return
+      if (!editorDirty && !settingsDirty && saveStateLabel !== 'saving' && saveStateLabel !== 'error') return
       event.preventDefault()
     }
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
-  }, [saveStateLabel, settingsDirty])
+  }, [editorDirty, saveStateLabel, settingsDirty])
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 820px)')

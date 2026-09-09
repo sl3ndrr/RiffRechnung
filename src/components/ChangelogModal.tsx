@@ -36,6 +36,7 @@ export function ChangelogModal({ open, onClose }: ChangelogModalProps) {
       title="Versionshistorie"
       eyebrow="RiffRechnung"
       size="small"
+      initialFocus="title"
       footer={
         <div className="changelog-navigation" aria-label="Changelog-Historie">
           <button className="changelog-navigation__button" type="button" disabled={!hasOlderEntry} onClick={() => setCurrentIndex((index) => Math.min(index + 1, changelog.length - 1))} aria-label="Ältere Version anzeigen" title="Ältere Version">

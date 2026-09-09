@@ -133,7 +133,7 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
   useEffect(() => {
     if (!selected) return
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || menu) return
+      if (event.defaultPrevented || event.key !== 'Escape' || menu) return
       event.preventDefault()
       closeDetails()
     }
@@ -305,11 +305,11 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
           <><button className="button button--primary" onClick={onPrint}><Printer aria-hidden="true" /> PDF / Drucken</button><button className="button button--tonal" onClick={onEdit} disabled><Edit3 aria-hidden="true" /> Rechnung bearbeiten</button></>
         )}
         {invoice.status !== 'draft' && <div className="status-editor">
-          <label htmlFor={`invoice-status-${invoice.id}`}>Forderungsstatus</label>
-          <div><select id={`invoice-status-${invoice.id}`} value={status} onChange={(event) => {
-            const next = event.target.value as InvoiceStatus
-            if (next !== 'paid') onSetStatus(next)
-          }}><option value="sent">Versendet / offen</option><option value="paid">Bezahlt (Vollzahlung)</option><option value="overdue">Überfällig</option></select><ChevronDown aria-hidden="true" /></div>
+          <span className="status-editor__label" id={`invoice-status-${invoice.id}`}>Forderungsstatus</span>
+          <div className="status-editor__choices" role="group" aria-labelledby={`invoice-status-${invoice.id}`}>
+            <button className="button button--tonal" type="button" aria-pressed={status === 'sent'} onClick={() => onSetStatus('sent')}>Versendet / offen</button>
+            <button className="button button--tonal" type="button" aria-pressed={status === 'overdue'} onClick={() => onSetStatus('overdue')}>Überfällig</button>
+          </div>
           <div className="payment-day-editor">
             <label htmlFor={`payment-day-${invoice.id}`}>Tatsächlicher Zahlungstag</label>
             <input id={`payment-day-${invoice.id}`} type="date" value={paymentDay} onChange={(event) => setPaymentDay(event.target.value)} />

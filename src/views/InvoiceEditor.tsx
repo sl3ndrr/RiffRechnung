@@ -189,6 +189,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
       title={finalized ? `Rechnung ${invoiceNumber ?? ''} bearbeiten` : form.correction ? 'Korrekturentwurf bearbeiten' : editing ? 'Entwurf bearbeiten' : 'Neue Rechnung'}
       eyebrow="Rechnungseditor"
       size="large"
+      initialFocus="title"
       footer={
         <>
           <div className="modal-total"><span>Gesamt</span><strong>{total === null ? 'Ungültiger Betrag' : euro.format(total)}</strong></div>
