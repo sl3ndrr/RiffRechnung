@@ -390,11 +390,10 @@ Nächstes vorgesehenes Paket: **09 – Druck und GiroCode zuverlässig ausgeben*
   `dialog.showModal()`-Dialoge. Hintergrund, Tabreihenfolge, initialer Fokus,
   sichtbares Schließen und Fokusrückgabe folgen dem
   [W3C-Dialogmuster](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/).
-  Verschachtelte Bestätigungen werden im bestehenden Editor-Dialog gerendert;
-  falls Chromium keinen zweiten nativen Top-Layer annimmt, bleibt der äußere
-  Dialog modal und nur dessen Geschwister werden für die obere Bestätigung
-  `inert`. Der Stapel akzeptiert Escape nur oben; der Scrollsperrenzähler bleibt
-  aktiv.
+  Verschachtelte Bestätigungen werden bewusst ohne zweiten nativen Top-Layer im
+  bestehenden Editor-Dialog gerendert. Der äußere Dialog bleibt modal, nur dessen
+  Geschwister werden für die obere Bestätigung `inert`. Der Stapel akzeptiert
+  Escape nur oben; der Scrollsperrenzähler bleibt aktiv.
 - **Navigation / Verwerfen:** Kompakte Navigation und Neue Rechnung haben
   dauerhafte zugängliche Namen. Geschlossene mobile Navigation ist `inert`;
   Öffnen fokussiert Schließen, Schließen den Auslöser. Geänderte Editorformulare
