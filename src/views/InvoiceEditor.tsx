@@ -22,12 +22,13 @@ interface InvoiceEditorProps {
   finalized: boolean
   invoiceNumber?: string | null
   onClose: () => void
+  onDirtyChange: (dirty: boolean) => void
   onSave: (draft: InvoiceDraft, finalize: boolean, allocations?: InvoiceItemAllocation[]) => void
 }
 
 type SplitInput = { mode: 'none' | 'whole' | 'parts'; guardianId: string; amounts: Record<string, string> }
 
-export function InvoiceEditor({ state, open, draft, guardians, students, settings, editing, finalized, invoiceNumber, onClose, onSave }: InvoiceEditorProps) {
+export function InvoiceEditor({ state, open, draft, guardians, students, settings, editing, finalized, invoiceNumber, onClose, onDirtyChange, onSave }: InvoiceEditorProps) {
   const [form, setForm] = useState<InvoiceDraft>(draft)
   const [numberInputs, setNumberInputs] = useState<Record<string, Partial<Record<'quantity' | 'unitPrice', string>>>>({})
   const [errors, setErrors] = useState<string[]>([])
@@ -49,8 +50,11 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
   const change = draftAmountChange(draft)
   const calculatedPeriod = billingPeriodFromItems(form.items, form.invoiceDate)
   const footerTextValid = isFooterTextWithinLimit(form.legalText)
+  const dirty = JSON.stringify(form) !== JSON.stringify(draft)
 
   useEffect(() => { setSplitPreview(null) }, [form, splitInputs])
+  useEffect(() => { onDirtyChange(open && !finalized && dirty) }, [dirty, finalized, onDirtyChange, open])
+  useEffect(() => () => onDirtyChange(false), [onDirtyChange])
 
   const selectStudent = (student: Student) => {
     setForm((current) => {
