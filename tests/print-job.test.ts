@@ -1,8 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import type { Invoice, Settings } from '../src/types'
-import { generateGiroCode } from '../src/components/InvoicePrint'
-import { isCurrentPrintRequest, resolveGiroCode, type PrintRequest } from '../src/lib/printJob'
+import { generateGiroCode, isCurrentPrintRequest, resolveGiroCode, type PrintRequest } from '../src/lib/printJob'
 import { defaultSettings } from '../src/lib/defaults'
 
 const settings: Settings = {
