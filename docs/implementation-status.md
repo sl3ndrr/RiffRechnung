@@ -1,9 +1,9 @@
 # Umsetzungsstatus
 
-Stand: 2026-09-09, Paket 10. Zielbranch `main` zu Beginn vollständig geprüft:
-`cacd7e4135ab37b57c7063777c4a836cf2fcd3a1`. Pakete 00–09 sind gemergt.
+Stand: 2026-09-09, Paket 11. Zielbranch `main` zu Beginn vollständig geprüft:
+`9d60044760bb349ad0284245052d7567f49cf041`. Pakete 00–10 sind gemergt.
 Keine `AGENTS.md` im vollständigen Repository-Tree. Arbeitsbranch:
-`codex/paket-10-tastatur-dialoge`, [PR #31](https://github.com/sl3ndrr/RiffRechnung/pull/31).
+`codex/paket-11-schutzmodell-komfort`.
 Kein Merge oder Deployment in diesem Auftrag.
 
 ## Paketfolge
@@ -26,7 +26,7 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 | 08 | Zahlungstag und Berichte | R11, F02 (MVP); schrittweise R24 | Implementiert; vollständiger CI-Nachweis unten |
 | 09 | Druck und GiroCode | R16, R21, N03, N08 | Implementiert und CI-geprüft; native Druck-/Banking-Abnahme offen |
 | 10 | Tastatur, Dialoge, Navigation, Kontrast | R17–R20, N05, N07 | Implementiert und CI-geprüft; manuelle Screenreader-Abnahme offen |
-| 11 | Sicherheitstexte und Komfort | R26, N02, N04, N10 | Laut Analyse offen |
+| 11 | Sicherheitstexte und Komfort | R26, N02, N04, N10 | Implementiert; CI-Nachweis nach PR-Lauf ergänzen |
 | 12 | Zusammenhängende Abläufe und Freigabereife | R01–R26, N01–N10 | Laut Analyse offen; Pflichtabnahme |
 | 13 | Wiederherstellung mit Versionsvergleich | F01 | Optional, laut Analyse offen |
 | 14 | Teilzahlungen und Zahlungskorrekturen | F02 (Ausbau) | Optional, laut Analyse offen |
@@ -440,4 +440,45 @@ Nächstes vorgesehenes Paket: **09 – Druck und GiroCode zuverlässig ausgeben*
 | Zugänglichkeitsbaum, sichtbarer Fokus, Kontrast beider Themes | Automatische Struktur/Werte und visuelle Chromium-Screenshots bestanden; echter Screenreader offen |
 | Unbestätigtes Schließen / bestätigtes Verwerfen, interne Navigation und Reload ohne Speicherstand | Bestanden; Local-Storage-Rohstand blieb bytegleich |
 
-Nächstes vorgesehenes Paket: **11 – Sicherheitstexte und Komfort**, nicht begonnen.
+## Paket 11 – Schutzmodell und Komfort
+
+- **Ausgang / Ergebnis:** R26 sowie N02, N04 und N10 waren bestätigt: Schutztexte
+  versprachen zu viel, die Kennzeichenbeispiele nutzten fälschlich `ab`, ein
+  Clipboard-Fehler blieb ungefangen und das Changelogdatum war kein `time`.
+- **Schutzmodell:** README, About und Backup-Hilfe benennen nun Browserprofil,
+  Geräteschutz, Klartextinhalt von JSON-Backups (einschließlich Notizen,
+  Belegversionen und Historie) sowie mögliche Übertragung durch lokale
+  Ordnersynchronisation. Browser-Speicher ist an Schema, Host und Port gebunden.
+  Aus Workflow und fehlender `CNAME`-Datei folgt für die GitHub-Pages-Standardadresse
+  der Origin `https://sl3ndrr.github.io`, Pfad `/RiffRechnung/`; weitere Projekte
+  auf diesem Origin wären kein getrennter Speicherbereich. Die öffentlichen
+  Repositories des Eigentümers wurden lesend geprüft, ihr tatsächlicher
+  Pages-Auslieferungsstatus ist aus dieser Repository-Konfiguration nicht belegbar.
+  Ein separater Origin bleibt daher eine dokumentierte Betriebsoption, kein Umbau.
+- **Bedienung:** Eine abgelehnte Clipboard-Schreiboperation zeigt die vollständige
+  Erinnerung in einem fokussier- und markierbaren schreibgeschützten Textfeld und
+  meldet keinen Erfolg. Es gibt keinen automatischen Versand. `a+b` bezeichnet
+  die segmentierte Kindkombination; `ab` kann ein einzelnes Kennzeichen sein.
+  Changelogdaten sind ISO-Kalenderdaten und werden als `<time datetime>` lesbar
+  ausgegeben. Die Versionsprüfung gegen den neuesten Changelog-Eintrag bleibt.
+- **Konsistenz:** `npm ci` bleibt die dokumentierte Installation, Druck-CSS und
+  README nennen oben 16 mm, links/rechts 20 mm und unten 22 mm; die mobile
+  Speicherrückmeldung sowie die ausschließliche DE-IBAN-Regel stimmen weiterhin
+  zwischen Oberfläche und README überein. Keine Datenformatänderung: Schema 7,
+  Altformatunterstützung, Rohdaten-/Snapshot-Schutz, Nummernreservierungen und
+  CSV-Formelabwehr bleiben unverändert.
+- **Nachweis:** Browserablauf mit synthetischem finalen Beleg simuliert eine
+  `NotAllowedError`-Clipboard-Ablehnung und prüft Fallback, vollständigen Text,
+  Fokus/Markierung und das Ausbleiben der Erfolgsmeldung. Lokale Node-22-Gates
+  können in dieser Umgebung wegen gesperrtem Git-Checkout/Registryzugriff nicht
+  ausgeführt werden; der Ergebniscommit und dessen PR-CI werden nach dem Lauf
+  dokumentiert.
+
+| Abnahme Paket 11 | Ergebnis |
+| --- | --- |
+| Schutztexte, Export-/Ordnerwege, Origin-Modell und keine pauschale Garantie | Implementiert; Sichtprüfung in Chromium-CI ausstehend |
+| `a+b`-Beispiele in README und Einstellungen | Implementiert; Sichtprüfung in Chromium-CI ausstehend |
+| Kontrollierte Clipboard-Ablehnung mit manuellem Weg, ohne falschen Erfolg | Browserablauf ergänzt; Chromium-CI ausstehend |
+| Semantisches Changelogdatum, Versionsprüfung unverändert | Implementiert; Typecheck-/CI-Nachweis ausstehend |
+
+Nächstes vorgesehenes Paket: **12 – Zusammenhängende Abläufe und Freigabereife**, nicht begonnen.
