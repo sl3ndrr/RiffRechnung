@@ -36,6 +36,7 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
   const [menu, setMenu] = useState<{ invoiceId: string; trigger: HTMLButtonElement } | null>(null)
   const [menuPosition, setMenuPosition] = useState<InvoiceMenuPosition | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const detailTriggerRef = useRef<HTMLElement | null>(null)
   const selected = invoices.find((invoice) => invoice.id === selectedId) ?? null
   const menuInvoice = menu ? invoices.find((invoice) => invoice.id === menu.invoiceId) ?? null : null
   const years = [...new Set(state.invoices.map((invoice) => String(invoice.year)))].sort().reverse()
@@ -120,6 +121,26 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
     runInvoiceMenuAction(action, invoice, { onEdit, onPrint, onDuplicate, onDelete })
   }
 
+  const openDetails = useCallback((invoice: Invoice, trigger?: HTMLElement) => {
+    detailTriggerRef.current = trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null)
+    onSelect(invoice.id)
+  }, [onSelect])
+  const closeDetails = useCallback(() => {
+    onSelect(null)
+    requestAnimationFrame(() => detailTriggerRef.current?.focus())
+  }, [onSelect])
+
+  useEffect(() => {
+    if (!selected) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || menu) return
+      event.preventDefault()
+      closeDetails()
+    }
+    document.addEventListener('keydown', closeOnEscape)
+    return () => document.removeEventListener('keydown', closeOnEscape)
+  }, [closeDetails, menu, selected])
+
   return (
     <div className="page invoice-page">
       <header className="page-header">
@@ -152,8 +173,8 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
                   const actualStatus = effectiveStatus(invoice)
                   const period = invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate)
                   return (
-                    <tr className={invoice.id === selectedId ? 'is-selected' : ''} key={invoice.id} onClick={() => onSelect(invoice.id)}>
-                      <td><button className="button button--text" onClick={() => onSelect(invoice.id)}>{invoice.number ?? 'Entwurf'}</button>{invoice.versionId && !isActiveClaim(state, invoice) && <small>Ersetzt</small>}<small>{formatDate(invoice.invoiceDate)}</small></td>
+                    <tr className={invoice.id === selectedId ? 'is-selected' : ''} key={invoice.id} onClick={() => openDetails(invoice)}>
+                      <td><button className="button button--text invoice-detail-link" type="button" onClick={(event) => { event.stopPropagation(); openDetails(invoice, event.currentTarget) }}>{invoice.number ?? 'Entwurf'}</button>{invoice.versionId && !isActiveClaim(state, invoice) && <small>Ersetzt</small>}<small>{formatDate(invoice.invoiceDate)}</small></td>
                       <td>{guardianName(invoice, state.guardians)}<small>{studentName(invoice, state.students)}</small></td>
                       <td>{period}</td>
                       <td><span className={`status-chip status-chip--${actualStatus}`}><i />{statusLabel[actualStatus]}</span></td>
@@ -175,7 +196,7 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
             <InvoiceDetail
               invoice={selected}
               state={state}
-              onClose={() => onSelect(null)}
+              onClose={closeDetails}
               onEdit={() => onEdit(selected)}
               onDuplicate={() => onDuplicate(selected)}
               onDelete={() => onDelete(selected)}
