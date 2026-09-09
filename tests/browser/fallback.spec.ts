@@ -20,6 +20,7 @@ async function restore(page: Page, buffer: Buffer) {
 }
 
 test('P12 Fallback: zwei Familien als JSON exportieren, in leerem Profil importieren und reload', async ({ page, context, browser, browserName }, testInfo) => {
+  const flowStarted = Date.now()
   console.log(`P12 JSON-Fallback: ${browserName} ${browser.version()}; Node ${process.version}; ${process.platform}`)
   await testInfo.attach('browser-version.txt', { body: `${browserName} ${browser.version()} / ${process.platform} / Node ${process.version}`, contentType: 'text/plain' })
   await withoutFolder(context, browserName)
@@ -54,5 +55,8 @@ test('P12 Fallback: zwei Familien als JSON exportieren, in leerem Profil importi
     expect(saved.invoices.map((invoice) => invoice.snapshot!.guardians.map((guardian) => guardian.id))).toEqual([['g-a'], ['g-b']])
     expect(saved.invoices.reduce((sum, invoice) => sum + invoiceTotalCents(invoice), 0)).toBe(6000)
     expect(new Set(saved.invoices.flatMap((invoice) => invoice.items.map((item) => item.id))).size).toBe(2)
-  } finally { await destination.close() }
+  } finally {
+    await destination.close()
+    console.log(`P12 JSON-Fallback UI-Ablauf: ${browserName} ${Date.now() - flowStarted} ms (ohne initiales Fixture-Setup)`)
+  }
 })

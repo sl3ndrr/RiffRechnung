@@ -618,3 +618,22 @@ Lösch-/Force-Push-Schutz und PR-Pflicht für den Defaultbranch, jedoch keinen
 `required_status_checks`-Eintrag. Ein schreibender Ruleset-Endpunkt ist nicht
 verfügbar. `Quality (Node 22)` ist vor Merge administrativ verbindlich einzurichten
 und zu prüfen. Merge/Deployment wurden nicht ausgelöst.
+
+### Abschließender WebKit-Setupbefund
+
+[CI 34385945859](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34385945859)
+auf `e52c015258fd03623e7a0d1aa9be0d2e7c865f84`: 150 Fachtests, Lint, Typecheck
+und Build erfolgreich; 40/41 Browserprüfungen. Der WebKit-Test dauerte insgesamt
+30,2 s, erreichte seine erste Zeile aber erst 6,4 s vor dem Timeout:
+ca. 24 s entfielen auf Fixture-Setup. Der gleiche unveränderte Ablauf hatte zuvor
+im vollständigen Lauf 34384827205 bestanden. Ein grüner Alt-Lauf ersetzt den
+abschließenden Nachweis nicht.
+
+Nur das WebKit-Projekt erhält daher 60 s Gesamtbudget einschließlich Fixtures.
+Einzelne UI-Aktionen werden zusätzlich auf 10 s begrenzt; Assertions behalten
+ihre 5 s. Alle Ergebnisprüfungen, die nativen APIs und `retries: 0` bleiben erhalten.
+Die Ablaufdauer ohne initiale Fixtures wird nun mitprotokolliert. Keine
+Force-Clicks, Testauslassungen oder schwächeren Datenvergleiche. Grundlage:
+[Playwright-Testzeitbudgets](https://playwright.dev/docs/test-timeouts) schließen
+Fixture-Setup ein und sind vom Assertion-Zeitbudget getrennt. Der neue Ergebnis-
+Commit wird vollständig geprüft und im PR mit exakter SHA/CI-Lauf verknüpft.
