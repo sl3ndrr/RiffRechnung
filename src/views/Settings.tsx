@@ -4,7 +4,7 @@ import { parsePaymentTermInput } from '../lib/values'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArchiveRestore, CheckCircle2, CloudOff, Download, FileJson, FolderSync, HardDrive, History, Moon, Palette, Save, ShieldCheck, Sun, Upload } from 'lucide-react'
 import type { AppState, Settings as SettingsType, ThemeMode } from '../types'
-import { formatInvoiceNumber, formatIban, isFooterTextWithinLimit, germanIbanError, limitFooterText, MAX_FOOTER_TEXT_LENGTH } from '../lib/utils'
+import { formatInvoiceNumber, formatIban, isFooterTextWithinLimit, germanIbanError, MAX_FOOTER_TEXT_LENGTH } from '../lib/utils'
 
 import { applyStandardRateInput, parseStandardRate, settingsChangeErrors, STANDARD_RATE_ERROR } from '../lib/settings'
 import { isFinalizedInvoice } from '../lib/safety'
@@ -57,11 +57,11 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
   }
 
   const validRef = useRef(true)
-  validRef.current = !invalidRateInput && !paymentTermError && !emailError && !settingsChangeErrors(state.settings, form).length
+  validRef.current = !invalidRateInput && !paymentTermError && !emailError && footerTextValid && !settingsChangeErrors(state.settings, form).length
   buffer.update(form, validRef.current)
 
   const persist = useCallback(async () => {
-    buffer.update({ ...formRef.current, defaultLegalText: limitFooterText(formRef.current.defaultLegalText) }, validRef.current)
+    buffer.update(formRef.current, validRef.current)
     setSaveStatus(buffer.dirty ? 'pending' : 'saved')
     const saved = await buffer.flush(onSave)
     setSaveStatus(saved ? 'saved' : 'invalid')
@@ -88,7 +88,7 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
     <div className="page settings-page">
       <header className="page-header">
         <div><p className="eyebrow">Konfiguration</p><h1>Einstellungen</h1><p>Absender, Konto, Nummernkreis, Darstellung und Datensicherung.</p></div>
-        <button className={`button ${saveStatus === 'saved' ? 'button--success' : 'button--primary'} button--large`} onClick={() => void persist()} disabled={saveStatus === 'saved' && !buffer.dirty} aria-live="polite">{saveStatus === 'saved' ? <CheckCircle2 aria-hidden="true" /> : <Save aria-hidden="true" />}{invalidRateInput || paymentTermError || emailError || saveStatus === 'invalid' ? 'Eingabe prüfen' : saveStatus === 'saved' ? 'Lokal gespeichert' : 'Jetzt speichern'}</button>
+        <button className={`button ${saveStatus === 'saved' ? 'button--success' : 'button--primary'} button--large`} onClick={() => void persist()} disabled={saveStatus === 'saved' && !buffer.dirty} aria-live="polite">{saveStatus === 'saved' ? <CheckCircle2 aria-hidden="true" /> : <Save aria-hidden="true" />}{invalidRateInput || paymentTermError || emailError || !footerTextValid || saveStatus === 'invalid' ? 'Eingabe prüfen' : saveStatus === 'saved' ? 'Lokal gespeichert' : 'Jetzt speichern'}</button>
       </header>
 
       <div className="settings-layout">
@@ -130,7 +130,7 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
               <label className="field"><span>Standardpreis Solo</span><div className="input-with-suffix"><input type="text" inputMode="decimal" value={rateInputs.privateRate} onChange={(event) => setRate('privateRate', event.target.value)} aria-invalid={parseStandardRate(rateInputs.privateRate) === null} aria-describedby="privateRate-error" /><span>€</span></div><small>Je Einheit/Stunde für neue Positionen</small>{parseStandardRate(rateInputs.privateRate) === null && <small id="privateRate-error" className="field-error" role="alert">{STANDARD_RATE_ERROR}</small>}</label>
               <label className="field"><span>Standardpreis Duo</span><div className="input-with-suffix"><input type="text" inputMode="decimal" value={rateInputs.duoRate} onChange={(event) => setRate('duoRate', event.target.value)} aria-invalid={parseStandardRate(rateInputs.duoRate) === null} aria-describedby="duoRate-error" /><span>€</span></div><small>Je Einheit/Stunde für neue Positionen</small>{parseStandardRate(rateInputs.duoRate) === null && <small id="duoRate-error" className="field-error" role="alert">{STANDARD_RATE_ERROR}</small>}</label>
               <label className="switch-row switch-row--compact"><span><strong>Jährlich neu zählen</strong><small>Je Kalenderjahr bei 1 beginnen</small></span><input type="checkbox" checked={form.resetNumberAnnually} onChange={(event) => setForm({ ...form, resetNumberAnnually: event.target.checked })} /><i /></label>
-              <label className="field field--full"><span>Standard-Fußzeile / Rechtstext</span><textarea rows={3} maxLength={MAX_FOOTER_TEXT_LENGTH} value={form.defaultLegalText} onChange={(event) => setForm({ ...form, defaultLegalText: event.target.value })} aria-invalid={!footerTextValid} aria-describedby="footer-text-help footer-text-count" /><small id="footer-text-help">Der Text erscheint links neben der Seitenzahl und darf höchstens zwei Zeilen belegen. „Privatrechnung“ ist frei editierbar; bitte die Formulierung an deine steuerliche Situation anpassen.</small><small className="field-counter" id="footer-text-count">{form.defaultLegalText.length} / {MAX_FOOTER_TEXT_LENGTH} Zeichen</small>{footerTextLimitReached && <small className="field-warning" role="status">Zeichenlimit erreicht. Für längere oder individuelle Texte nutze in der Rechnung das Feld „Freitext / Hinweis“.</small>}</label>
+              <label className="field field--full"><span>Standard-Fußzeile / Rechtstext</span><textarea rows={3} maxLength={MAX_FOOTER_TEXT_LENGTH} value={form.defaultLegalText} onChange={(event) => setForm({ ...form, defaultLegalText: event.target.value })} aria-invalid={!footerTextValid} aria-describedby="footer-text-help footer-text-count" /><small id="footer-text-help">Der Text wird zusätzlich im Dokument selbst gedruckt und darf höchstens zwei Zeilen umfassen. Änderungen über dieser Grenze werden nicht gespeichert oder gekürzt; nutze für längere Hinweise den Freitext der Rechnung.</small><small className="field-counter" id="footer-text-count">{form.defaultLegalText.length} / {MAX_FOOTER_TEXT_LENGTH} Zeichen</small>{footerTextLimitReached && <small className="field-warning" role="status">Zeichenlimit erreicht. Für längere oder individuelle Texte nutze in der Rechnung das Feld „Freitext / Hinweis“.</small>}</label>
             </div>
             <div className="info-banner"><FileJson aria-hidden="true" /><p>Das erste angelegte Kind erhält <strong>a</strong>, das zweite <strong>b</strong> usw. Bei einer gemeinsamen Rechnung für mehrere Kinder werden die Kennzeichen kombiniert, zum Beispiel <strong>ab</strong>. Das Kennzeichen wird beim Löschen oder Bearbeiten nicht verschoben.</p></div>
           </section>
