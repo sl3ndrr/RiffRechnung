@@ -12,9 +12,9 @@ interface ModalProps {
   size?: 'small' | 'medium' | 'large'
 }
 
-// Native dialog elements with an explicit inert stack provide the W3C modal
-// contract without relying on Chromium's inconsistent nested top layer.
-const dialogStack: HTMLDialogElement[] = []
+// The existing dialog foundation uses an explicit inert stack so it follows
+// the W3C modal contract without Chromium's nested native-top-layer issue.
+const dialogStack: HTMLDivElement[] = []
 let scrollLockCount = 0
 
 function lockDocumentScroll() {
@@ -28,7 +28,7 @@ function unlockDocumentScroll() {
 }
 
 export function Modal({ open, title, eyebrow, onClose, children, footer, size = 'medium' }: ModalProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
   const titleId = useId()
 
@@ -71,9 +71,8 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
 
   const portalHost = dialogStack.at(-1) ?? document.body
   return createPortal(
-    <dialog
+    <div
       ref={dialogRef}
-      open={open}
       className="modal-layer"
       role="dialog"
       aria-labelledby={titleId}
@@ -93,10 +92,6 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
         if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
       }}
-      onCancel={(event) => {
-        event.preventDefault()
-        if (dialogStack.at(-1) === event.currentTarget) onClose()
-      }}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && dialogStack.at(-1) === event.currentTarget) onClose()
       }}
@@ -114,7 +109,7 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
         <div className="modal__body">{children}</div>
         {footer && <footer className="modal__footer">{footer}</footer>}
       </section>
-    </dialog>,
+    </div>,
     portalHost,
   )
 }
