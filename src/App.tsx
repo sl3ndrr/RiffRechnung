@@ -234,7 +234,10 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   }, [toast])
 
   const editInvoice = (invoice: Invoice) => {
-    if (isFinalizedInvoice(invoice)) return toast(FINALIZED_INVOICE_BLOCKED, 'error')
+    // The editor is available for every draft. A legacy/output snapshot alone
+    // must not hide a still editable draft; the domain command remains the
+    // final guard against changes to issued documents.
+    if (invoice.status !== 'draft') return toast(FINALIZED_INVOICE_BLOCKED, 'error')
     setEditor({
       open: true,
       editing: true,
