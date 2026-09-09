@@ -1,10 +1,13 @@
-import type { Invoice, Settings } from '../types'
+import type { Guardian, Invoice, Settings, Student } from '../types'
 import { buildEpcPayload, invoiceTotal } from './utils'
 import { paymentDataForInvoice } from './paymentData'
 
 export interface PrintRequest {
   id: string
   invoice: Invoice
+  guardians: Guardian[]
+  students: Student[]
+  settings: Settings
   includeGiroCode: boolean
   giroCodeFallbackReason?: string
 }
