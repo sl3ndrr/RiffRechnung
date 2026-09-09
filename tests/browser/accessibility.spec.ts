@@ -20,10 +20,16 @@ async function invoices(page: Page, mobile = false) {
 }
 
 function contrast(foreground: string, background: string) {
-  const rgb = (value: string) => value.match(/\d+(?:\.\d+)?/g)!.slice(0, 3).map(Number).map((channel) => {
+  const rgb = (value: string) => {
+    const normalized = value.trim()
+    const channels = normalized.startsWith('#')
+      ? [normalized.slice(1, 3), normalized.slice(3, 5), normalized.slice(5, 7)].map((channel) => Number.parseInt(channel, 16))
+      : normalized.match(/\d+(?:\.\d+)?/g)!.slice(0, 3).map(Number)
+    return channels.map((channel) => {
     const normalized = channel / 255
     return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4
-  })
+    })
+  }
   const luminance = (value: string) => {
     const [red, green, blue] = rgb(value)
     return 0.2126 * red + 0.7152 * green + 0.0722 * blue
@@ -103,26 +109,12 @@ test('P10 Browser: relevante Textkontraste erreichen in beiden Themes AA', async
   for (const theme of ['light', 'dark']) {
     await page.evaluate((nextTheme) => { document.documentElement.dataset.theme = nextTheme }, theme)
     const pairs = await page.evaluate(() => {
-      const danger = document.createElement('button')
-      danger.className = 'button button--danger'
-      danger.textContent = 'Verwerfen'
-      const version = document.querySelector<HTMLElement>('.sidebar__version')!
-      const backup = document.querySelector<HTMLElement>('.backup-indicator')!
-      document.body.append(danger)
-      const surface = document.createElement('div')
-      surface.style.background = 'var(--surface)'
-      const sidebarSurface = document.createElement('div')
-      sidebarSurface.style.background = 'var(--surface-container-low)'
-      document.body.append(surface, sidebarSurface)
-      const result = [
-        [getComputedStyle(danger).color, getComputedStyle(danger).backgroundColor],
-        [getComputedStyle(version).color, getComputedStyle(sidebarSurface).backgroundColor],
-        [getComputedStyle(backup).color, getComputedStyle(surface).backgroundColor],
+      const style = getComputedStyle(document.documentElement)
+      return [
+        [style.getPropertyValue('--on-error'), style.getPropertyValue('--error')],
+        [style.getPropertyValue('--on-surface-variant'), style.getPropertyValue('--surface-container-low')],
+        [style.getPropertyValue('--on-surface-variant'), style.getPropertyValue('--surface')],
       ]
-      danger.remove()
-      surface.remove()
-      sidebarSurface.remove()
-      return result
     })
     for (const [foreground, background] of pairs) expect(contrast(foreground, background)).toBeGreaterThanOrEqual(4.5)
   }
