@@ -185,7 +185,7 @@ test('P01: verdeckte Empfängerabweichungen und Verlust ungesicherter historisch
 test('P01: reservierte Nummern bleiben nach abgewiesenem Austausch und Reload belegt', async () => withStorage(() => {
   const state = families(1)
   state.voidedInvoiceNumbers = [{ number: '2026-a-0001', sequence: 1, year: 2026, invoiceDate: '2026-08-01', deletedAt: at, reason: 'reopened', amount: 30, recipient: 'Historische Testfamilie' }]
-  assert.throws(() => assertReplacementAllowed(state), /reservierte Nummern/)
+  assert.throws(() => assertReplacementAllowed(state), /reservierten Nummern/)
   assert.equal(nextInvoiceAllocation(roundTrip(state), '2026-08-01', ['s0']).number, '2026-a-0002')
   assert.doesNotThrow(() => assertReplacementAllowed(emptyState()))
 }))

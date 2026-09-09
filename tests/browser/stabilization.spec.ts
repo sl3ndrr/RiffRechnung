@@ -209,3 +209,54 @@ test('P12 Browser ergänzt Quellmuster: Footer-Submit, Kindaktivierung und Rechn
   expect(state.invoices[0].freeText).toBe('Zeile eins\nZeile zwei')
   expect(state.students.find((entry) => entry.id === 's-a')!.active).toBe(false)
 })
+
+test('P12 Browser: lokale Mitternacht in Berlin erzeugt den richtigen Rechnungstag', async ({ browser }) => {
+  const context = await browser.newContext({ baseURL: 'http://127.0.0.1:4173', timezoneId: 'Europe/Berlin' })
+  try {
+    const page = await context.newPage()
+    await page.clock.install({ time: new Date('2026-08-31T22:30:00.000Z') })
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Neue Rechnung erstellen', exact: true }).click()
+    await expect(page.getByRole('dialog').getByLabel('Rechnungsdatum', { exact: true })).toHaveValue('2026-09-01')
+  } finally { await context.close() }
+})
+
+test('P12 echter OPFS: leerer Bestand liest vorhandenes Backup; Restore und parallele Sicherungen erhalten Dateien', async ({ playwright }, testInfo) => {
+  // Real Chromium file APIs in a synthetic persistent profile. This does not
+  // exercise the OS picker/permission UI or cross-device synchronization.
+  const context = await playwright.chromium.launchPersistentContext(testInfo.outputPath('opfs-profile'), { channel: 'chromium', headless: true, baseURL: 'http://127.0.0.1:4173' })
+  try {
+    const page = await context.newPage()
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const storagePath = '/src/lib/storage.ts', defaultsPath = '/src/lib/defaults.ts'
+      const { StorageSession, STORAGE_KEY, LEGACY_GUARD_KEY, PREVIOUS_STORAGE_KEY, inspectBackupDirectory } = await import(storagePath)
+      const { emptyState } = await import(defaultsPath)
+      const source = new StorageSession()
+      await source.restore(JSON.stringify(emptyState()))
+      const handle = await (await navigator.storage.getDirectory()).getDirectoryHandle('p12-synthetic-backup', { create: true })
+      const binding = { handle, datasetId: source.revision.datasetId, legacyFiles: [] }
+      await source.connect(binding)
+      await source.backup()
+      const before = await inspectBackupDirectory(handle)
+      for (const key of [STORAGE_KEY, LEGACY_GUARD_KEY, PREVIOUS_STORAGE_KEY]) localStorage.removeItem(key)
+      const empty = new StorageSession()
+      let blocked = ''
+      try { await empty.connect(binding) } catch (error) { blocked = String(error) }
+      const inspected = await inspectBackupDirectory(handle)
+      await empty.restore(inspected.entries[0].raw)
+      await empty.connect(binding)
+      await Promise.all([empty.backup(), empty.backup()])
+      const after = await inspectBackupDirectory(handle)
+      return { blocked, before: before.entries.map((entry: { name: string; raw: string }) => [entry.name, entry.raw]), inspected: inspected.entries.map((entry: { name: string; raw: string }) => [entry.name, entry.raw]), after: after.entries.map((entry: { name: string; raw: string }) => [entry.name, entry.raw]), conflict: after.conflict, state: empty.state, revision: empty.revision.revision }
+    })
+    expect(result.blocked).toContain('Zuerst den lokalen Bestand speichern')
+    expect(result.inspected).toEqual(result.before)
+    expect(result.after).toHaveLength(2)
+    for (const entry of result.before) expect(result.after).toContainEqual(entry)
+    expect(result.conflict).toBeNull()
+    expect(result.revision).toBe(2)
+    await page.reload()
+    expect(await stateOf(page)).toEqual(result.state)
+  } finally { await context.close() }
+})
