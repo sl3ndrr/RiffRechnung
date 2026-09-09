@@ -3,7 +3,7 @@
 Stand: 2026-09-09, Paket 10. Zielbranch `main` zu Beginn vollständig geprüft:
 `cacd7e4135ab37b57c7063777c4a836cf2fcd3a1`. Pakete 00–09 sind gemergt.
 Keine `AGENTS.md` im vollständigen Repository-Tree. Arbeitsbranch:
-`codex/paket-10-tastatur-dialoge`.
+`codex/paket-10-tastatur-dialoge`, [PR #31](https://github.com/sl3ndrr/RiffRechnung/pull/31).
 Kein Merge oder Deployment in diesem Auftrag.
 
 ## Paketfolge
@@ -25,7 +25,7 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 | 07 | Rechnungsprofil, deutsche IBAN, Zahlungsdaten | R07, R13 angepasst, R14 | Implementiert; vollständiger CI-Nachweis unten |
 | 08 | Zahlungstag und Berichte | R11, F02 (MVP); schrittweise R24 | Implementiert; vollständiger CI-Nachweis unten |
 | 09 | Druck und GiroCode | R16, R21, N03, N08 | Implementiert und CI-geprüft; native Druck-/Banking-Abnahme offen |
-| 10 | Tastatur, Dialoge, Navigation, Kontrast | R17–R20, N05, N07 | Implementiert; CI- und manuelle Screenreader-Abnahme offen |
+| 10 | Tastatur, Dialoge, Navigation, Kontrast | R17–R20, N05, N07 | Implementiert und CI-geprüft; manuelle Screenreader-Abnahme offen |
 | 11 | Sicherheitstexte und Komfort | R26, N02, N04, N10 | Laut Analyse offen |
 | 12 | Zusammenhängende Abläufe und Freigabereife | R01–R26, N01–N10 | Laut Analyse offen; Pflichtabnahme |
 | 13 | Wiederherstellung mit Versionsvergleich | F01 | Optional, laut Analyse offen |
@@ -396,7 +396,8 @@ Nächstes vorgesehenes Paket: **09 – Druck und GiroCode zuverlässig ausgeben*
   Escape nur oben; der Scrollsperrenzähler bleibt aktiv.
 - **Navigation / Verwerfen:** Kompakte Navigation und Neue Rechnung haben
   dauerhafte zugängliche Namen. Geschlossene mobile Navigation ist `inert`;
-  Öffnen fokussiert Schließen, Schließen den Auslöser. Geänderte Editorformulare
+  Öffnen fokussiert Schließen, Enter oder Escape geben den Fokus an den Auslöser
+  zurück. Geänderte Editorformulare
   fragen beim Schließen/Seitenwechsel; Weiterbearbeiten behält Werte, Verwerfen
   speichert keinen Beleg. Ein `draft` bleibt trotz historischer Ausgabefelder
   editierbar; der Fachbefehl sperrt weiterhin ausgestellte Belege.
@@ -405,20 +406,33 @@ Nächstes vorgesehenes Paket: **09 – Druck und GiroCode zuverlässig ausgeben*
   Sekundärtext. Datei-, Chip- und Theme-Eingaben zeichnen den sichtbaren Träger
   bei Tastaturfokus aus. Keine Formatänderung: Schema 7, Altformat-/Rohdaten-
   schutz, Nummern, DE-IBAN, CSV-Schutz und Snapshots bleiben unverändert.
-- **Nachweis / offen:** Neue Chromium-Ablaufprüfungen decken 390/900/1280 px,
+- **Nachweis:** Neue Chromium-Ablaufprüfungen decken 390/900/1280 px,
   Nummer → Status → Erinnerung → Escape, verschachtelte Dialoge, Scrollsperre,
-  Verwerfen/Reload, mobile `inert`-Navigation und Kontrastwerte ab. Lokal sind
-  Node 24.19.0 statt Node 22 und `npm ci` mit E403 bei `yocto-queue` blockiert;
-  CI-Commit/-Lauf wird nach PR ergänzt. Sichtbarer Fokus und Kontraste brauchen
-  zusätzlich visuelle Kontrolle. Screenreader-Abnahme: NVDA+Firefox oder
+  Verwerfen/Reload, mobile `inert`-Navigation, sichtbare Fokusflächen und
+  Kontrastwerte ab. Prüfcommit `ac1aefac2118cb7ada8bc2faf0a895ba10c4811f`,
+  [CI 34350632312](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34350632312):
+  npm ci, Lint, **143/143** Fachtests, Typecheck einschließlich Tests, Build und
+  **28/28** Chromium-Browserprüfungen bestanden. Ubuntu 24.04.5, Node 22.23.2,
+  npm 10.9.8, Python 3.12.3, Chromium 153.0.8010.12. Der PR-Lauf war dem
+  Head-Commit zugeordnet und prüfte GitHubs temporären Merge-Commit
+  `66c83791897f405c78364297b6d102684114a5b1` gegen den unveränderten Ausgang.
+  Automatisch gemessene Mindestwerte: Fehlerpaar hell 6,46:1, dunkel 7,72:1;
+  Versions-/Backuptexte hell 8,46/8,91:1, dunkel 10,12/10,94:1. Vier
+  Kontrast-Screenshots beider Themes wurden nach Ende aller Übergänge separat
+  visuell geprüft. Die drei Fokus-Screenshots zeigen den 3-px-Rahmen jeweils am
+  sichtbaren Theme-Träger, Datei-Button und Chip; Artefakt `browser-evidence`
+  (ID 10103670631, sieben Tage Aufbewahrung).
+  Lokal sind Node 24.19.0/npm 11.9.0 statt Node 22 vorhanden; `npm ci` war mit
+  E403 bei `yocto-queue`, ein späterer Playwright-Abruf ebenfalls mit E403
+  blockiert. Screenreader-Abnahme: NVDA+Firefox oder
   VoiceOver+Safari für Nummer, Dialogtitel/Schließen, Bestätigung, Changelog und
   Fokusrückgabe manuell prüfen.
 
 | Abnahme Paket 10 | Ergebnis |
 | --- | --- |
-| 390, 900, 1280 px: Tab/Enter/Escape, Detail, Status, Erinnerung, Rückkehr | Automatisiert implementiert; CI offen |
-| Editor + Bestätigung + Changelog: Fokus, Escape-Stapel, Hintergrund/Scrollsperre | Automatisiert implementiert; CI offen |
-| Zugänglichkeitsbaum, sichtbarer Fokus, Kontrast beider Themes | Struktur/automatische Werte implementiert; visuelle und Screenreader-Abnahme offen |
-| Unbestätigtes Schließen / bestätigtes Verwerfen, Reload ohne Speicherstand | Automatisiert implementiert; CI offen |
+| 390, 900, 1280 px: Tab/Enter/Escape, Detail, Status, Erinnerung, Rückkehr | Bestanden: drei getrennte echte Chromium-Abläufe |
+| Editor + Bestätigung + Changelog: Fokus, Escape-Stapel, Hintergrund/Scrollsperre | Bestanden: echter Chromium-Ablauf und ARIA-Snapshot |
+| Zugänglichkeitsbaum, sichtbarer Fokus, Kontrast beider Themes | Automatische Struktur/Werte und visuelle Chromium-Screenshots bestanden; echter Screenreader offen |
+| Unbestätigtes Schließen / bestätigtes Verwerfen, interne Navigation und Reload ohne Speicherstand | Bestanden; Local-Storage-Rohstand blieb bytegleich |
 
 Nächstes vorgesehenes Paket: **11 – Sicherheitstexte und Komfort**, nicht begonnen.
