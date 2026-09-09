@@ -1,9 +1,9 @@
 # Umsetzungsstatus
 
-Stand: 2026-09-09, Paket 09. Zielbranch `main` zu Beginn vollständig geprüft:
-`1a7b65affe5f6017833a534e6ac2957c2d4e40c3`. Pakete 00–08 sind gemergt.
+Stand: 2026-09-09, Paket 10. Zielbranch `main` zu Beginn vollständig geprüft:
+`cacd7e4135ab37b57c7063777c4a836cf2fcd3a1`. Pakete 00–09 sind gemergt.
 Keine `AGENTS.md` im vollständigen Repository-Tree. Arbeitsbranch:
-`codex/paket-09-druck-girocode`, [PR #30](https://github.com/sl3ndrr/RiffRechnung/pull/30).
+`codex/paket-10-tastatur-dialoge`.
 Kein Merge oder Deployment in diesem Auftrag.
 
 ## Paketfolge
@@ -25,7 +25,7 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 | 07 | Rechnungsprofil, deutsche IBAN, Zahlungsdaten | R07, R13 angepasst, R14 | Implementiert; vollständiger CI-Nachweis unten |
 | 08 | Zahlungstag und Berichte | R11, F02 (MVP); schrittweise R24 | Implementiert; vollständiger CI-Nachweis unten |
 | 09 | Druck und GiroCode | R16, R21, N03, N08 | Implementiert und CI-geprüft; native Druck-/Banking-Abnahme offen |
-| 10 | Tastatur, Dialoge, Navigation, Kontrast | R17–R20, N05, N07 | Laut Analyse offen |
+| 10 | Tastatur, Dialoge, Navigation, Kontrast | R17–R20, N05, N07 | Implementiert; CI- und manuelle Screenreader-Abnahme offen |
 | 11 | Sicherheitstexte und Komfort | R26, N02, N04, N10 | Laut Analyse offen |
 | 12 | Zusammenhängende Abläufe und Freigabereife | R01–R26, N01–N10 | Laut Analyse offen; Pflichtabnahme |
 | 13 | Wiederherstellung mit Versionsvergleich | F01 | Optional, laut Analyse offen |
@@ -379,3 +379,42 @@ Nächstes vorgesehenes Paket: **09 – Druck und GiroCode zuverlässig ausgeben*
 | Ungültige BIC, überlange Payload, Encoder-Ablehnung, bewusster Druck ohne GiroCode; zwei überlappende Aufträge | Bestanden: Fach- und echter Browserablauf |
 | Export–Import–Reload und unveränderte Beleg-/Kontosnapshots | Bestehende Fach-/Browserregressionen bestanden; keine Migration dieses Pakets |
 | Nativer Druckdialog, Firefox/Safari-Ausgabe, Banking-App-Scan | Nicht geprüft. Manuell: PDF in Chromium 153 öffnen, QR mit Banking-App scannen und Empfänger, DE-IBAN, optionale BIC, Betrag und Rechnungsnummer gegen den Bankblock prüfen. |
+
+## Paket 10 – Tastatur, Dialoge, Navigation und Kontrast
+
+- **Ausgang / Ergebnis:** R17–R20, N05 und N07 waren am aktuellen Stand
+  nachvollziehbar. Rechnungsnummern sind echte Buttons und öffnen Details mit
+  Fokus auf deren Schließen-Aktion; Escape schließt Details und gibt den Fokus
+  an den Auslöser zurück. Status und Erinnerung sind damit per Tastatur erreichbar.
+- **Dialoge:** `Modal`, Bestätigungen und Changelog verwenden native
+  `dialog.showModal()`-Dialoge. Hintergrund, Tabreihenfolge, initialer Fokus,
+  sichtbares Schließen und Fokusrückgabe folgen dem W3C-Dialogmuster. Ein Stapel
+  akzeptiert Escape nur oben; der Scrollsperrenzähler bleibt bei geschachtelten
+  Bestätigungen aktiv.
+- **Navigation / Verwerfen:** Kompakte Navigation und Neue Rechnung haben
+  dauerhafte zugängliche Namen. Geschlossene mobile Navigation ist `inert`;
+  Öffnen fokussiert Schließen, Schließen den Auslöser. Geänderte Editorformulare
+  fragen beim Schließen/Seitenwechsel; Weiterbearbeiten behält Werte, Verwerfen
+  speichert keinen Beleg.
+- **Kontrast / Fokus:** Fehlerbuttons verwenden im Dark Theme `#690005` statt
+  Weiß auf `#ffb4ab`; kleine Versions-/Backuptexte verwenden stärkeren
+  Sekundärtext. Datei-, Chip- und Theme-Eingaben zeichnen den sichtbaren Träger
+  bei Tastaturfokus aus. Keine Formatänderung: Schema 7, Altformat-/Rohdaten-
+  schutz, Nummern, DE-IBAN, CSV-Schutz und Snapshots bleiben unverändert.
+- **Nachweis / offen:** Neue Chromium-Ablaufprüfungen decken 390/900/1280 px,
+  Nummer → Status → Erinnerung → Escape, verschachtelte Dialoge, Scrollsperre,
+  Verwerfen/Reload, mobile `inert`-Navigation und Kontrastwerte ab. Lokal sind
+  Node 24.19.0 statt Node 22 und `npm ci` mit E403 bei `yocto-queue` blockiert;
+  CI-Commit/-Lauf wird nach PR ergänzt. Sichtbarer Fokus und Kontraste brauchen
+  zusätzlich visuelle Kontrolle. Screenreader-Abnahme: NVDA+Firefox oder
+  VoiceOver+Safari für Nummer, Dialogtitel/Schließen, Bestätigung, Changelog und
+  Fokusrückgabe manuell prüfen.
+
+| Abnahme Paket 10 | Ergebnis |
+| --- | --- |
+| 390, 900, 1280 px: Tab/Enter/Escape, Detail, Status, Erinnerung, Rückkehr | Automatisiert implementiert; CI offen |
+| Editor + Bestätigung + Changelog: Fokus, Escape-Stapel, Hintergrund/Scrollsperre | Automatisiert implementiert; CI offen |
+| Zugänglichkeitsbaum, sichtbarer Fokus, Kontrast beider Themes | Struktur/automatische Werte implementiert; visuelle und Screenreader-Abnahme offen |
+| Unbestätigtes Schließen / bestätigtes Verwerfen, Reload ohne Speicherstand | Automatisiert implementiert; CI offen |
+
+Nächstes vorgesehenes Paket: **11 – Sicherheitstexte und Komfort**, nicht begonnen.
