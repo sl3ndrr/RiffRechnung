@@ -1,21 +1,21 @@
 [
   {
     "version": "1.1.3",
-    "date": "28.08.2026",
+    "date": "2026-08-28",
     "changes": [
       "Mehrere technische potenzielle Fehlerquellen wurden entfernt"
     ]
   },
   {
     "version": "1.1.2",
-    "date": "21.08.2026",
+    "date": "2026-08-21",
     "changes": [
       "Zahlungshinweis, Kontodaten, optionaler Hinweistext und Schlussgruß werden im PDF-Druck nun als ein zusammenhängender Block behandelt und nicht mehr durch einen Seitenumbruch getrennt"
     ]
   },
   {
     "version": "1.1.1",
-    "date": "20.08.2026",
+    "date": "2026-08-20",
     "changes": [
       "Der Aktiv-Filter in der Familienansicht verwendet wieder die unveränderte, appweit einheitliche Schaltergeometrie",
       "Die Ersteinrichtung führt jetzt zuerst durch Absender und Konto und anschließend zur ersten Familie",
@@ -25,7 +25,7 @@
   },
   {
     "version": "1.1.0",
-    "date": "20.08.2026",
+    "date": "2026-08-20",
     "changes": [
       "System-, Hell- und Dunkelmodus lassen sich jetzt direkt in der Kopfleiste durchschalten",
       "Einstellungen werden automatisch und gebündelt gespeichert",
@@ -38,7 +38,7 @@
   },
   {
     "version": "1.0.3",
-    "date": "20.08.2026",
+    "date": "2026-08-20",
     "changes": [
       "PDF-Drucklayout mit kollisionsfreien Fußzeilen auf jeder Rechnungsseite korrigiert",
       "Automatische Seitenangabe mit aktueller und gesamter Seitenzahl ergänzt",
@@ -49,7 +49,7 @@
   },
   {
     "version": "1.0.2",
-    "date": "20.08.2026",
+    "date": "2026-08-20",
     "changes": [
       "Konfigurierbare Solo- und Duo-Preise für Rechnungspositionen ergänzt",
       "Automatische Abrechnungszeiträume, Fälligkeiten und Backup-Hinweise integriert",
@@ -58,14 +58,14 @@
   },
   {
     "version": "1.0.1",
-    "date": "19.08.2026",
+    "date": "2026-08-19",
     "changes": [
       "Schnelle Behebung erster Kinderkrankheiten und kleinerer Fehler nach dem Release"
     ]
   },
   {
     "version": "1.0.0",
-    "date": "19.08.2026",
+    "date": "2026-08-19",
     "changes": [
       "Erstveröffentlichung des Projekts als voll funktionsfähige Version",
       "Start der Systemumstellung auf die eigene Software und Fehlersuche im täglichen Arbeitseinsatz"
