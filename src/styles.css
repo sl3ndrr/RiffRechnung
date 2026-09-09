@@ -696,15 +696,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .invoice-payment-block { break-inside: auto; page-break-inside: auto; }
 .invoice-payment-copy { margin-top: 7mm; break-inside: avoid; page-break-inside: avoid; }
 .invoice-payment-copy p { margin: 0; }
-.invoice-payment { display: grid; grid-template-columns: minmax(0, 1fr) 34mm; gap: 10mm; align-items: start; margin-top: 4mm; break-inside: auto; page-break-inside: auto; }\n.invoice-payment--without-qr { grid-template-columns: minmax(0, 1fr); }
+.invoice-payment { display: grid; grid-template-columns: minmax(0, 1fr) 34mm; gap: 10mm; align-items: start; margin-top: 4mm; break-inside: auto; page-break-inside: auto; }
+.invoice-payment--without-qr { grid-template-columns: minmax(0, 1fr); }
 .invoice-payment dl { display: grid; grid-template-columns: max-content 1fr; gap: 4pt 8pt; margin: 0; font-size: 8.5pt; }
 .invoice-payment dt { color: #666; }
-.invoice-payment dd { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }\n.invoice-payment dl, .invoice-qr { break-inside: avoid; page-break-inside: avoid; }
+.invoice-payment dd { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.invoice-payment dl, .invoice-qr { break-inside: avoid; page-break-inside: avoid; }
 .invoice-qr { display: grid; justify-items: center; text-align: center; }
 .invoice-qr img { width: 30mm; height: 30mm; image-rendering: crisp-edges; }
 .invoice-qr > span { display: grid; width: 30mm; height: 30mm; place-items: center; padding: 3mm; border: .5pt solid #bbb; color: #777; font-size: 6.5pt; }
 .invoice-qr p { margin: 1.5pt 0 0; color: #666; font-size: 6.5pt; }
-.invoice-girocode-notice { margin: 4mm 0 0; padding: 2.5mm 3mm; border-left: 1mm solid rgb(30 90 160); background: rgb(242 245 250); font-size: 8pt; line-height: 1.45; overflow-wrap: anywhere; white-space: pre-wrap; break-inside: auto; page-break-inside: auto; }\n.invoice-free-text { margin: 5mm 0 0; padding: 3mm; background: rgb(242 245 250); font-size: 8pt; line-height: 1.45; overflow-wrap: anywhere; white-space: pre-wrap; break-inside: auto; page-break-inside: auto; }
+.invoice-girocode-notice { margin: 4mm 0 0; padding: 2.5mm 3mm; border-left: 1mm solid rgb(30 90 160); background: rgb(242 245 250); font-size: 8pt; line-height: 1.45; overflow-wrap: anywhere; white-space: pre-wrap; break-inside: auto; page-break-inside: auto; }
+.invoice-free-text { margin: 5mm 0 0; padding: 3mm; background: rgb(242 245 250); font-size: 8pt; line-height: 1.45; overflow-wrap: anywhere; white-space: pre-wrap; break-inside: auto; page-break-inside: auto; }
 .invoice-closing { break-inside: auto; page-break-inside: auto; }
 .invoice-thanks { margin-top: 7mm; }
 .invoice-thanks p { margin: 0 0 2pt; }
@@ -870,7 +873,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .invoice-group-heading { break-after: avoid; page-break-after: avoid; }
   .invoice-payment-block { break-inside: auto; page-break-inside: auto; }
   .invoice-payment-copy { break-after: avoid; page-break-after: avoid; }
-  .invoice-payment { break-inside: auto; page-break-inside: auto; }\n  .invoice-payment dl, .invoice-qr { break-inside: avoid; page-break-inside: avoid; }\n  .invoice-free-text, .invoice-girocode-notice, .invoice-closing, .invoice-footer { break-inside: auto; page-break-inside: auto; }
+  .invoice-payment { break-inside: auto; page-break-inside: auto; }
+  .invoice-payment dl, .invoice-qr { break-inside: avoid; page-break-inside: avoid; }
+  .invoice-free-text, .invoice-girocode-notice, .invoice-closing, .invoice-footer { break-inside: auto; page-break-inside: auto; }
   .invoice-footer { display: block; }
 }
 
