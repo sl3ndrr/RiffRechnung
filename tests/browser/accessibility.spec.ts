@@ -283,7 +283,7 @@ test('P10 Browser: relevante Textkontraste erreichen in beiden Themes AA', async
   }
 })
 
-test('P10 Browser: Datei-, Chip- und Theme-Eingaben markieren das sichtbare Bedienelement', async ({ page }) => {
+test('P10 Browser: Datei-, Chip- und Theme-Eingaben markieren das sichtbare Bedienelement', async ({ page }, testInfo) => {
   const outline = async (locator: Locator) => locator.evaluate((element) => getComputedStyle(element).outlineStyle !== 'none' && Number.parseFloat(getComputedStyle(element).outlineWidth) >= 3)
   const state = saveInvoiceDraft(documentFamily(), documentDraft(), false, documentAt)
   await seed(page, state)
@@ -291,13 +291,18 @@ test('P10 Browser: Datei-, Chip- und Theme-Eingaben markieren das sichtbare Bedi
   const themeInput = page.getByRole('radio', { checked: true })
   await tabTo(page, themeInput)
   expect(await outline(themeInput.locator('xpath=..'))).toBe(true)
+  await finishAnimations(page)
+  await page.screenshot({ path: testInfo.outputPath('fokus-theme.png'), fullPage: false })
   const fileInput = page.locator('#backup input[type=file]')
   await tabTo(page, fileInput)
   expect(await outline(fileInput.locator('xpath=..'))).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('fokus-datei.png'), fullPage: false })
   await invoices(page)
   await page.getByRole('button', { name: 'Entwurf', exact: true }).click()
   await page.getByRole('button', { name: 'Bearbeiten', exact: true }).click()
   const chipInput = page.locator('.choice-chip input').first()
   await tabTo(page, chipInput)
   expect(await outline(chipInput.locator('xpath=..'))).toBe(true)
+  await finishAnimations(page)
+  await page.screenshot({ path: testInfo.outputPath('fokus-chip.png'), fullPage: false })
 })
