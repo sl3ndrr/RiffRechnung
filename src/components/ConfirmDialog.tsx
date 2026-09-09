@@ -5,13 +5,14 @@ interface ConfirmDialogProps {
   open: boolean
   title: string
   message: string
+  cancelLabel?: string
   confirmLabel?: string
   danger?: boolean
   onCancel: () => void
   onConfirm: () => void
 }
 
-export function ConfirmDialog({ open, title, message, confirmLabel = 'Bestätigen', danger = false, onCancel, onConfirm }: ConfirmDialogProps) {
+export function ConfirmDialog({ open, title, message, cancelLabel = 'Abbrechen', confirmLabel = 'Bestätigen', danger = false, onCancel, onConfirm }: ConfirmDialogProps) {
   return (
     <Modal
       open={open}
@@ -20,7 +21,7 @@ export function ConfirmDialog({ open, title, message, confirmLabel = 'Bestätige
       size="small"
       footer={
         <>
-          <button className="button button--text" type="button" onClick={onCancel}>Abbrechen</button>
+          <button className="button button--text" type="button" data-dialog-initial-focus onClick={onCancel}>{cancelLabel}</button>
           <button className={`button ${danger ? 'button--danger' : 'button--primary'}`} type="button" onClick={onConfirm}>{confirmLabel}</button>
         </>
       }
