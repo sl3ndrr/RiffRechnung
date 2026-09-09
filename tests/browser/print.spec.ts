@@ -94,6 +94,7 @@ test('P09 Browser/PDF: ein-, zwei- und mehrseitige Rechnungen behalten Text, Was
     expect(pdf.text).toContain('Rechtstext für die vollständige PDF-Ausgabe')
     expect(pdf.text).toContain('Unterrichtsposition 1')
     expect(normalizedPdfText).toContain(example.freeText.split('\n').at(-1)!)
+    if (example.label === 'p09-eine-seite') expect(pdf.text).toMatch(/Hinweis Zeile 1\s*\n\s*Hinweis Zeile 2/)
     for (let pageNumber = 1; pageNumber <= pdf.pages; pageNumber++) {
       expect(pdf.text).toContain(`Seite ${pageNumber} von ${pdf.pages}`)
     }
