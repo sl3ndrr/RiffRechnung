@@ -38,7 +38,16 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
     if (!open || !dialog) return
 
     previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    try { dialog.showModal() } catch { /* Already open during a development effect re-run. */ }
+    const nestedParent = dialogStack.at(-1) ?? null
+    if (nestedParent) {
+      // Chromium does not consistently activate a second native modal dialog.
+      // The outer native dialog remains modal; making it inert gives this top
+      // stack entry the same effective modality until it is closed again.
+      nestedParent.inert = true
+      dialog.show()
+    } else {
+      try { dialog.showModal() } catch { /* Already open during a development effect re-run. */ }
+    }
     dialogStack.push(dialog)
     lockDocumentScroll()
     const target = dialog.querySelector<HTMLElement>('[data-dialog-initial-focus], [autofocus], input:not([type="hidden"]), select, textarea, button:not([disabled]), [href]')
@@ -48,6 +57,7 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
       const index = dialogStack.lastIndexOf(dialog)
       if (index >= 0) dialogStack.splice(index, 1)
       if (dialog.open) dialog.close()
+      if (nestedParent) nestedParent.inert = false
       unlockDocumentScroll()
       previousFocus.current?.focus()
     }
@@ -60,6 +70,22 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
       ref={dialogRef}
       className="modal-layer"
       aria-labelledby={titleId}
+      aria-modal="true"
+      onKeyDown={(event) => {
+        if (dialogStack.at(-1) !== event.currentTarget) return
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          onClose()
+          return
+        }
+        if (event.key !== 'Tab') return
+        const focusable = [...event.currentTarget.querySelectorAll<HTMLElement>('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [href]')]
+        const first = focusable.at(0)
+        const last = focusable.at(-1)
+        if (!first || !last) return
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+        if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+      }}
       onCancel={(event) => {
         event.preventDefault()
         if (dialogStack.at(-1) === event.currentTarget) onClose()
