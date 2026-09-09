@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { useId, useLayoutEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
@@ -33,7 +33,7 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
   const previousFocus = useRef<HTMLElement | null>(null)
   const titleId = useId()
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const dialog = dialogRef.current
     if (!open || !dialog) return
 
@@ -41,13 +41,10 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
     try { dialog.showModal() } catch { /* Already open during a development effect re-run. */ }
     dialogStack.push(dialog)
     lockDocumentScroll()
-    const frame = requestAnimationFrame(() => {
-      const target = dialog.querySelector<HTMLElement>('[data-dialog-initial-focus], [autofocus], input:not([type="hidden"]), select, textarea, button:not([disabled]), [href]')
-      target?.focus()
-    })
+    const target = dialog.querySelector<HTMLElement>('[data-dialog-initial-focus], [autofocus], input:not([type="hidden"]), select, textarea, button:not([disabled]), [href]')
+    target?.focus()
 
     return () => {
-      cancelAnimationFrame(frame)
       const index = dialogStack.lastIndexOf(dialog)
       if (index >= 0) dialogStack.splice(index, 1)
       if (dialog.open) dialog.close()
