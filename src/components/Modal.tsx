@@ -53,7 +53,6 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
         inertSiblings = [appRoot]
       }
     }
-    dialog.show()
     dialogStack.push(dialog)
     lockDocumentScroll()
     const target = dialog.querySelector<HTMLElement>('[data-dialog-initial-focus], [autofocus], input:not([type="hidden"]), select, textarea, button:not([disabled]), [href]')
@@ -62,7 +61,6 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
     return () => {
       const index = dialogStack.lastIndexOf(dialog)
       if (index >= 0) dialogStack.splice(index, 1)
-      if (dialog.open) dialog.close()
       inertSiblings.forEach((element) => { element.inert = false })
       unlockDocumentScroll()
       previousFocus.current?.focus()
@@ -75,6 +73,7 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
   return createPortal(
     <dialog
       ref={dialogRef}
+      open={open}
       className="modal-layer"
       aria-labelledby={titleId}
       aria-modal="true"
