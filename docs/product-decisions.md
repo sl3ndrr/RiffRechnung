@@ -1,6 +1,6 @@
 # Produktentscheidungen
 
-Stand: Pakete 00–08, 2026-09-08. Quelle: beauftragter Umsetzungsplan zur Analyse von
+Stand: Pakete 00–09, 2026-09-09. Quelle: beauftragter Umsetzungsplan zur Analyse von
 `ba7857fd9180fa392c42a0235643e478e5077ee5`. Diese Regeln sind verbindliche Ziele;
 ihre technische Umsetzung wird pro Paket im [Umsetzungsstatus](implementation-status.md) belegt.
 
@@ -17,7 +17,7 @@ ihre technische Umsetzung wird pro Paket im [Umsetzungsstatus](implementation-st
 | Zahlungen | Zunächst Vollzahlung mit tatsächlichem Zahlungstag. Fehlende historische Zahlungstage bleiben unbekannt. Teilzahlungen später separat. | Paket 08 (F02-MVP) umgesetzt, optional Paket 14. |
 | Datenformate | Änderungen versionieren; Altformate definieren, unveränderte Eingangsdaten schützen, Migrationsbericht und Wiederherstellung vorsehen. Laden/Importieren muss idempotent sein. Unbekannte neuere Formate nicht überschreiben; ausgestellte Beträge/Snapshots nicht still ändern. | Pakete 02–05 und spätere Formatänderungen; Paket 00 ohne Migration. |
 | Steuerliches Profil | Kleinunternehmer nach § 19 UStG für neue Rechnungen; keine automatische Kleinbetrags- oder andere Ausnahme. | Vom Nutzer ausdrücklich für Paket 07 gewählt. Profil, vollständige Anschriften und eine typisierte zulässige Steuerkennung sind vor Finalisierung erforderlich. |
-| Zielbrowser | README nennt Chromium ab 131 für Druck und Chromium für Ordnerzugriff. Das ist keine verifizierte Freigabeliste. Nur tatsächlich geprüfte Browser/Versionen freigeben. | Verbindliche Betrieb-/Druckmatrix in Paketen 09/12 festlegen. |
+| Zielbrowser | Nur tatsächlich geprüfte Browser/Versionen freigeben. | Druck geprüft: Chromium 153.0.8010.12 unter Ubuntu 24.04.5. Firefox/Safari ohne zuverlässige `@page`-Randboxen: Inhalt ja, dynamische Seitenzahl nein; geprüfte Alternative ist Chromium 153. |
 | Freigabe | Jedes Paket separat beauftragen. PR/Commits sind Teil des Pakets; Merge und produktives Deployment brauchen einen separaten Auftrag. Nur synthetische Testdaten verwenden. | Paket 00 endet vor Merge/Deployment. |
 
 Zusätzliche technische Annahmen für Paket 00: `.nvmrc` bleibt bei Node 22;
@@ -366,3 +366,28 @@ und [Bundesbank-IBAN-Regeln](https://www.bundesbank.de/de/aufgaben/unbarer-zahlu
   Unbekannte Zahlungstage bilden eine sichtbare, jahrlose Menge. Sie erscheinen
   in jedem Jahres-CSV als „Zahlung ohne Kalenderjahr“, damit kein Export ihnen
   stillschweigend ein Jahr zuordnet.
+
+
+## Paket 09 – Druck und GiroCode
+
+- **Optionaler GiroCode:** Ein Fehler in EPC-Payload, QR-Encoder oder Bildladen
+  ist kein Fachfehler der vollständigen Rechnung. Die UI nennt den Grund und
+  verlangt die explizite Wahl **„Ohne GiroCode drucken“**. Dabei darf kein
+  früheres oder fehlerhaftes QR-Bild im Dokument verbleiben.
+- **Auftragsbindung:** Druck startet erst nach den Schriften und den für genau
+  diesen Auftrag erzeugten Ausgabeinformationen. Beleg, Personen, Einstellungen,
+  Betrag und EPC-Payload werden pro Auftrag kopiert; ein verspätetes Resultat eines
+  anderen Auftrags wird ignoriert.
+- **Robuster Druckbereich:** Rechtstext und Referenz stehen zusätzlich im
+  normalen Dokumentfluss. `@page` ist nur eine Chromium-Ergänzung für
+  Seitenzahlen und Folgekopf. Die dokumentierten A4-Ränder betragen oben 16 mm,
+  links/rechts 20 mm und unten 22 mm.
+- **Textgrenzen:** Neue Rechtstexte haben die sichtbare, vor dem Speichern
+  validierte 120-Zeichen-Grenze. Bereits gespeicherte Texte werden weder beim
+  Laden noch beim Drucken gekürzt. Neue und historische Freitexte erhalten ihre
+  Zeilenumbrüche und bleiben umbruchfähig.
+- **Druckfreigabe:** Automatisiert geprüft ist ausschließlich Chromium
+  153.0.8010.12 unter Ubuntu 24.04.5 (PDF-Engine, nicht nativer OS-Druckdialog).
+  Firefox und Safari werden für Text/PDF ohne Zusage dynamischer Randboxen
+  eingeschränkt unterstützt; für vollständige Seitenzahlen ist Chromium 153 die
+  erprobte Alternative. Banking-App-Scans sind eine separate manuelle Abnahme.
