@@ -369,8 +369,9 @@ Nächstes vorgesehenes Paket: **09 – Druck und GiroCode zuverlässig ausgeben*
   `browser-evidence` ist sieben Tage verfügbar. Erster sichtbarer Laufzeitfehler
   der neuen Prüfung (CSS-Zeilenmarker) wurde vor diesem Lauf korrigiert; keine
   Tests wurden gelöscht, übersprungen oder abgeschwächt. Lokal: Node 24.19.0/npm
-  11.9.0 statt Node 22; `npm ci` blieb wegen Registry-E403 bei `yocto-queue`
-  blockiert, daher kein lokaler Ersatznachweis.
+  11.9.0 statt Node 22; der Git-Checkout per `git clone` war in dieser Umgebung
+  mit 403 gesperrt. Daher wurden weder `npm ci` noch lokale Gates ausgeführt;
+  die CI ist der vollständige Nachweis.
 
 | Abnahme Paket 09 | Ergebnis |
 | --- | --- |
