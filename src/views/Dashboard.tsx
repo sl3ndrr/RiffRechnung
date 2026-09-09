@@ -159,7 +159,7 @@ export function Dashboard({ state, onNavigate, onNewInvoice, onLoadDemo, demoBlo
               const status = effectiveStatus(invoice)
               return (
                 <tr key={invoice.id} onClick={() => onOpenInvoice(invoice.id)}>
-                  <td><strong>{invoice.number ?? 'Entwurf'}</strong><small>{formatDate(invoice.invoiceDate)}</small></td>
+                  <td><button className="button button--text invoice-detail-link" type="button" onClick={(event) => { event.stopPropagation(); onOpenInvoice(invoice.id) }}>{invoice.number ?? 'Entwurf'}</button><small>{formatDate(invoice.invoiceDate)}</small></td>
                   <td>{guardianName(invoice, state.guardians)}<small>{studentName(invoice, state.students)}</small></td>
                   <td>{invoice.period}</td>
                   <td><span className={`status-chip status-chip--${status}`}><i />{statusLabel[status]}</span></td>

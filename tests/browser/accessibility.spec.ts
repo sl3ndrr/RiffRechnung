@@ -65,6 +65,18 @@ test('P10 Browser: Rechnungsdetails, Status, Erinnerung und Rückkehr funktionie
   }
 })
 
+test('P10 Browser: Rechnungsnummer auf der Übersicht ist ein Tastaturauslöser', async ({ page }) => {
+  const state = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
+  await seed(page, state)
+  const dashboardOpener = page.locator('.recent-card').getByRole('button', { name: '2026-a-0001', exact: true })
+  await dashboardOpener.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.invoice-detail')).toBeVisible()
+  const listOpener = page.locator('.invoice-list-table').getByRole('button', { name: '2026-a-0001', exact: true })
+  await page.keyboard.press('Escape')
+  await expect(listOpener).toBeFocused()
+})
+
 test('P10 Browser: verschachtelte Dialoge halten Fokus, Modalität und Scrollsperre', async ({ page }) => {
   const state = saveInvoiceDraft(documentFamily(), documentDraft(), false, documentAt)
   await seed(page, state)
@@ -78,6 +90,12 @@ test('P10 Browser: verschachtelte Dialoge halten Fokus, Modalität und Scrollspe
   const confirmation = page.getByRole('alertdialog', { name: 'Ungespeicherte Rechnungsänderungen verwerfen?' })
   await expect(confirmation).toBeVisible()
   await expect(confirmation.getByRole('button', { name: 'Weiter bearbeiten' })).toBeFocused()
+  await expect(confirmation).toHaveAccessibleName('Ungespeicherte Rechnungsänderungen verwerfen?')
+  await expect(confirmation).toHaveAccessibleDescription('Die Eingaben wurden noch nicht gespeichert oder finalisiert. „Weiter bearbeiten“ erhält alle Formularwerte. „Verwerfen“ ändert keinen gespeicherten Beleg.')
+  const accessibilityTree = await confirmation.ariaSnapshot()
+  expect(accessibilityTree).toContain('alertdialog "Ungespeicherte Rechnungsänderungen verwerfen?"')
+  expect(accessibilityTree).toContain('button "Weiter bearbeiten"')
+  expect(accessibilityTree).toContain('button "Verwerfen"')
   await expect(editor).toHaveAttribute('inert', '')
   await expect(page.locator('#root')).toHaveAttribute('inert', '')
   await expect(page.locator('body')).toHaveClass(/modal-open/)
@@ -171,9 +189,12 @@ test('P10 Browser: mobile Navigation ist geschlossen inert und stellt Fokus wied
   await page.keyboard.press('Enter')
   const close = page.locator('#mobile-sidebar').getByRole('button', { name: 'Navigation schließen' })
   await expect(close).toBeFocused()
+  await expect(page.locator('.app-main')).toHaveAttribute('inert', '')
+  await expect(page.locator('.mobile-bottom-nav')).toHaveAttribute('inert', '')
   await page.keyboard.press('Enter')
   await expect(trigger).toBeFocused()
   await expect(page.locator('#mobile-sidebar')).toHaveAttribute('inert', '')
+  await expect(page.locator('.app-main')).not.toHaveAttribute('inert', '')
 })
 
 test('P10 Browser: relevante Textkontraste erreichen in beiden Themes AA', async ({ page }, testInfo) => {

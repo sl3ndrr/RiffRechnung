@@ -174,7 +174,7 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
                   const period = invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate)
                   return (
                     <tr className={invoice.id === selectedId ? 'is-selected' : ''} key={invoice.id} onClick={() => openDetails(invoice)}>
-                      <td><button className="button button--text invoice-detail-link" type="button" onClick={(event) => { event.stopPropagation(); openDetails(invoice, event.currentTarget) }}>{invoice.number ?? 'Entwurf'}</button>{invoice.versionId && !isActiveClaim(state, invoice) && <small>Ersetzt</small>}<small>{formatDate(invoice.invoiceDate)}</small></td>
+                      <td><button ref={(node) => { if (node && invoice.id === selectedId && !detailTriggerRef.current) detailTriggerRef.current = node }} className="button button--text invoice-detail-link" type="button" onClick={(event) => { event.stopPropagation(); openDetails(invoice, event.currentTarget) }}>{invoice.number ?? 'Entwurf'}</button>{invoice.versionId && !isActiveClaim(state, invoice) && <small>Ersetzt</small>}<small>{formatDate(invoice.invoiceDate)}</small></td>
                       <td>{guardianName(invoice, state.guardians)}<small>{studentName(invoice, state.students)}</small></td>
                       <td>{period}</td>
                       <td><span className={`status-chip status-chip--${actualStatus}`}><i />{statusLabel[actualStatus]}</span></td>
