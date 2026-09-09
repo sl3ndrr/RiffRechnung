@@ -12,9 +12,8 @@ interface ModalProps {
   size?: 'small' | 'medium' | 'large'
 }
 
-// Native modal dialogs provide the inert background and focus containment from
-// the W3C dialog pattern. The stack keeps Escape and scroll locking stable when
-// a confirmation is displayed above another dialog.
+// Native dialog elements with an explicit inert stack provide the W3C modal
+// contract without relying on Chromium's inconsistent nested top layer.
 const dialogStack: HTMLDialogElement[] = []
 let scrollLockCount = 0
 
@@ -41,27 +40,20 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
     const nestedParent = dialogStack.at(-1) ?? null
     let inertSiblings: HTMLElement[] = []
     if (nestedParent) {
-      // A second native top-layer can make the parent dialog inaccessible in
-      // Chromium. The nested dialog instead lives inside the already modal
-      // parent; its siblings become inert until it closes.
+      // The nested dialog lives inside the active dialog. Its siblings cannot
+      // receive pointer or keyboard input until the top stack entry closes.
       inertSiblings = [...nestedParent.children].filter((child): child is HTMLElement => child instanceof HTMLElement && child !== dialog)
       inertSiblings.forEach((element) => { element.inert = true })
-      dialog.show()
     } else {
-      try {
-        dialog.showModal()
-      } catch {
-        // A browser without an available top layer still gets a functional
-        // dialog. Only the application root is disabled; the portal stays
-        // reachable and cleanup restores the exact prior state.
-        const appRoot = document.getElementById('root')
-        if (appRoot) {
-          appRoot.inert = true
-          inertSiblings = [appRoot]
-        }
-        dialog.show()
+      // The portal is outside #root, so the dialog itself remains reachable
+      // while the complete application background is inactive.
+      const appRoot = document.getElementById('root')
+      if (appRoot) {
+        appRoot.inert = true
+        inertSiblings = [appRoot]
       }
     }
+    dialog.show()
     dialogStack.push(dialog)
     lockDocumentScroll()
     const target = dialog.querySelector<HTMLElement>('[data-dialog-initial-focus], [autofocus], input:not([type="hidden"]), select, textarea, button:not([disabled]), [href]')
