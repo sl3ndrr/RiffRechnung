@@ -21,6 +21,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .nvmrc
@@ -36,10 +37,34 @@ jobs:
       - run: npm test
       - run: npm run typecheck
       - run: npm run build
-      - run: npx playwright install --with-deps chromium
+      - name: Disable unused runner Chrome APT source
+        # Tests download pinned Playwright browsers. The runner's unrelated
+        # Chrome mirror returned inconsistent package hashes in P12 CI.
+        run: |
+          sudo python3 - <<'PY'
+          from pathlib import Path
+          import re
+          for path in Path('/etc/apt/sources.list.d').iterdir():
+              if path.suffix not in ('.list', '.sources'):
+                  continue
+              active = '\n'.join(line for line in path.read_text().splitlines() if not line.lstrip().startswith('#'))
+              if 'dl.google.com/linux/chrome-stable/deb' not in active:
+                  continue
+              urls = re.findall(r'https?://[^\s]+', active)
+              if any(not url.startswith('https://dl.google.com/linux/chrome-stable/deb') for url in urls):
+                  raise SystemExit(f'Refusing to disable mixed APT source: {path}')
+              path.rename(path.with_suffix(path.suffix + '.disabled'))
+              print(f'Disabled unrelated runner Chrome source: {path.name}')
+          PY
+      - run: npx playwright install --with-deps chromium firefox webkit
       - name: Install PDF text verification
         run: sudo apt-get install -y poppler-utils
       - run: npm run test:browser
+      - name: Audit all locked dependencies
+        shell: bash
+        run: |
+          mkdir -p test-results
+          npm audit --json | tee test-results/npm-audit.json
       - name: Browser failure context
         if: failure()
         run: |
@@ -62,4 +87,3 @@ jobs:
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: dist
-

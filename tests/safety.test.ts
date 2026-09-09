@@ -154,7 +154,7 @@ test('P01: historische Belege ohne Stammdaten bleiben samt Betrag, Snapshot und 
     assert.throws(() => assertOriginalsPreserved(state, altered), /Finalisierte Belege/)
   }
   assert.throws(() => assertOriginalsPreserved(state, { ...state, invoices: [] }), /Finalisierte Belege/)
-  assert.throws(() => assertReplacementAllowed(state), /Austausch/)
+  assert.throws(() => assertReplacementAllowed(state), /Zurücksetzen.*nicht verfügbar/)
   assert.deepEqual(state, original)
   for (const status of ['paid', 'sent', 'overdue'] as const) {
     state = roundTrip(changeInvoiceStatus(state, invoice.id, status, at, status === 'paid' ? '2026-09-05' : undefined))
@@ -185,7 +185,7 @@ test('P01: verdeckte Empfängerabweichungen und Verlust ungesicherter historisch
 test('P01: reservierte Nummern bleiben nach abgewiesenem Austausch und Reload belegt', async () => withStorage(() => {
   const state = families(1)
   state.voidedInvoiceNumbers = [{ number: '2026-a-0001', sequence: 1, year: 2026, invoiceDate: '2026-08-01', deletedAt: at, reason: 'reopened', amount: 30, recipient: 'Historische Testfamilie' }]
-  assert.throws(() => assertReplacementAllowed(state), /reservierte Nummern/)
+  assert.throws(() => assertReplacementAllowed(state), /reservierten Nummern/)
   assert.equal(nextInvoiceAllocation(roundTrip(state), '2026-08-01', ['s0']).number, '2026-a-0002')
   assert.doesNotThrow(() => assertReplacementAllowed(emptyState()))
 }))

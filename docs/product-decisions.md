@@ -1,6 +1,6 @@
 # Produktentscheidungen
 
-Stand: Pakete 00–09, 2026-09-09. Quelle: beauftragter Umsetzungsplan zur Analyse von
+Stand: Pakete 00–12, 2026-09-09. Quelle: beauftragter Umsetzungsplan zur Analyse von
 `ba7857fd9180fa392c42a0235643e478e5077ee5`. Diese Regeln sind verbindliche Ziele;
 ihre technische Umsetzung wird pro Paket im [Umsetzungsstatus](implementation-status.md) belegt.
 
@@ -17,14 +17,15 @@ ihre technische Umsetzung wird pro Paket im [Umsetzungsstatus](implementation-st
 | Zahlungen | Zunächst Vollzahlung mit tatsächlichem Zahlungstag. Fehlende historische Zahlungstage bleiben unbekannt. Teilzahlungen später separat. | Paket 08 (F02-MVP) umgesetzt, optional Paket 14. |
 | Datenformate | Änderungen versionieren; Altformate definieren, unveränderte Eingangsdaten schützen, Migrationsbericht und Wiederherstellung vorsehen. Laden/Importieren muss idempotent sein. Unbekannte neuere Formate nicht überschreiben; ausgestellte Beträge/Snapshots nicht still ändern. | Pakete 02–05 und spätere Formatänderungen; Paket 00 ohne Migration. |
 | Steuerliches Profil | Kleinunternehmer nach § 19 UStG für neue Rechnungen; keine automatische Kleinbetrags- oder andere Ausnahme. | Vom Nutzer ausdrücklich für Paket 07 gewählt. Profil, vollständige Anschriften und eine typisierte zulässige Steuerkennung sind vor Finalisierung erforderlich. |
-| Zielbrowser | Nur tatsächlich geprüfte Browser/Versionen freigeben. | Druck geprüft: Chromium 153.0.8010.12 unter Ubuntu 24.04.5. Firefox/Safari ohne zuverlässige `@page`-Randboxen: Inhalt ja, dynamische Seitenzahl nein; geprüfte Alternative ist Chromium 153. |
+| Zielbrowser | Nur tatsächlich geprüfte Browser/Versionen freigeben. | Verbindliche Versions-/Nachweismatrix in [release-readiness.md](release-readiness.md). Chromium-PDF und JSON-Fallback getrennt prüfen; Linux-WebKit belegt weder Safari/macOS noch dessen Druckdialog. |
 | Freigabe | Jedes Paket separat beauftragen. PR/Commits sind Teil des Pakets; Merge und produktives Deployment brauchen einen separaten Auftrag. Nur synthetische Testdaten verwenden. | Paket 00 endet vor Merge/Deployment. |
 
 Zusätzliche technische Annahmen für Paket 00: `.nvmrc` bleibt bei Node 22;
 Prüfungen verwenden das mitgelieferte npm auf `ubuntu-24.04`. Die Node-24-Laufzeit
 der GitHub Actions ist unabhängig von der Node-22-Laufzeit der Projektbefehle.
-PRs prüfen GitHubs Merge-Stand; Pages prüft und veröffentlicht den auslösenden
-`main`-Commit und dessen Artefakt im selben Workflow-Lauf.
+Seit Paket 12 prüfen PRs ausdrücklich ihren vollständigen Head-Commit; Pages
+prüft den auslösenden `main`-Commit und dessen Artefakt im selben Workflow-Lauf.
+Merge und Auslieferung bleiben separate Aufträge.
 
 ## Vorläufige Regeln für Paket 01
 
@@ -388,9 +389,10 @@ und [Bundesbank-IBAN-Regeln](https://www.bundesbank.de/de/aufgaben/unbarer-zahlu
   Zeilenumbrüche und bleiben umbruchfähig.
 - **Druckfreigabe:** Automatisiert geprüft ist ausschließlich Chromium
   153.0.8010.12 unter Ubuntu 24.04.5 (PDF-Engine, nicht nativer OS-Druckdialog).
-  Firefox und Safari werden für Text/PDF ohne Zusage dynamischer Randboxen
-  eingeschränkt unterstützt; für vollständige Seitenzahlen ist Chromium 153 die
-  erprobte Alternative. Banking-App-Scans sind eine separate manuelle Abnahme.
+  Der normale Dokumentfluss ist der vorgesehene Firefox-/Safari-Fallback;
+  deren Text/PDF-Ausgabe und dynamische Randboxen sind nicht abgenommen.
+  Für vollständige Seitenzahlen ist Chromium 153 automatisch geprüft.
+  Banking-App-Scans sind eine separate manuelle Abnahme.
 
 ## Paket 10 – Tastatur, Dialoge und Kontrast
 
@@ -443,3 +445,24 @@ und [Bundesbank-IBAN-Regeln](https://www.bundesbank.de/de/aufgaben/unbarer-zahlu
 - **Kombinationskennzeichen:** Mehrkindrechnungen verwenden die segmentierte
   Schlüsselbildung `a+b`; `ab` bleibt als mögliches Kennzeichen eines einzelnen
   Kindes davon verschieden.
+
+## Paket 12 – Abschlussumfang und Recovery
+
+- Ein vollständig validierter lokaler Altbestand bleibt im Recoverymodus bekannt:
+  Originale, Historie, Nummern, Kinderkennzeichenzähler sowie vorhandene Bestands-ID
+  und Revision sind zu erhalten. Bei beschädigtem Hauptschlüssel wird zuerst die
+  vorige lokale Kopie, danach der bisherige Legacy-Schlüssel vollständig geprüft.
+  Der erste gültige Stand bildet die Schutzbasis. Beschädigte Daten begründen keine
+  erfundene Historie. Ein zusätzlicher Rückfall-Rohtext erhält bei Bedarf einen
+  weiteren Eintrag im bestehenden Archivformat 1, bevor geschrieben wird.
+- Komplett-Zurücksetzen bleibt ausschließlich ohne ausgestellte Belege, historische
+  Dokumentation und reservierte Nummern verfügbar. Bei belegtem Bestand dienen
+  Archivierung und geprüfte Wiederherstellung dem vorgesehenen Umgang mit Daten.
+  Dies ist endgültiger MVP-Umfang, keine verbliebene P01-Sperre.
+- Schema 7 und Speicherprotokoll 4 bleiben unverändert. Rückkehr zu einem früheren
+  Datenformat nur mit unabhängiger Sicherung von vor der Migration, passendem Code
+  und separatem Browserprofil ohne bestehenden Backup-Handle. Seit der Migration
+  erfasste Änderungen werden dabei nicht rückkonvertiert.
+- Die Safari-Fallbackabsicht bleibt JSON-Download/-Import ohne Ordner-API.
+  Linux-WebKit gibt Safari/macOS nicht frei. Native Datei-/Druck-, Banking-App-,
+  visuelle PDF-/Theme- und Screenreaderabnahmen bleiben vor Produktfreigabe offen.

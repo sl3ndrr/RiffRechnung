@@ -6,6 +6,14 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: [['list'], ['json', { outputFile: 'test-results/browser-results.json' }]],
-  use: { baseURL: 'http://127.0.0.1:4173', browserName: 'chromium', channel: 'chromium', trace: 'retain-on-failure', screenshot: 'only-on-failure' },
+  use: { baseURL: 'http://127.0.0.1:4173', trace: 'retain-on-failure', screenshot: 'only-on-failure' },
+  projects: [
+    { name: 'chromium', testIgnore: '**/fallback.spec.ts', use: { browserName: 'chromium', channel: 'chromium' } },
+    { name: 'chromium-json', testMatch: '**/fallback.spec.ts', use: { browserName: 'chromium', channel: 'chromium' } },
+    { name: 'firefox-json', testMatch: '**/fallback.spec.ts', use: { browserName: 'firefox' } },
+    // Fixture setup consumed ~24s of the former 30s budget in CI 34385945859.
+    // Keep all assertions (default 5s) and bound individual UI actions to 10s.
+    { name: 'webkit-json', testMatch: '**/fallback.spec.ts', timeout: 60_000, use: { browserName: 'webkit', actionTimeout: 10_000 } },
+  ],
   webServer: { command: 'npm run dev -- --host 127.0.0.1 --port 4173 --strictPort', url: 'http://127.0.0.1:4173', reuseExistingServer: false },
 })

@@ -143,14 +143,18 @@ export function archiveInvoice(state: AppState, invoiceId: string, archived = tr
   validateBackupState(state)
   const invoice = state.invoices.find((entry) => entry.id === invoiceId)
   if (!invoice?.versionId) throw new Error('Nur finalisierte Belege können archiviert werden.')
-  return { ...state, invoiceAdministration: state.invoiceAdministration.map((admin) => admin.versionId === invoice.versionId ? { ...admin, archived } : admin) }
+  const next = { ...state, invoiceAdministration: state.invoiceAdministration.map((admin) => admin.versionId === invoice.versionId ? { ...admin, archived } : admin) }
+  validateBackupState(next)
+  return next
 }
 
 export function resolveDocumentConflicts(state: AppState, versionId: string, reason: string, at = new Date().toISOString()): AppState {
   validateBackupState(state)
   if (!reason.trim()) throw new Error('Bitte das Ergebnis der Klärung dokumentieren. Die gesicherten Angaben bleiben unverändert.')
   if (!state.documentVersions.some((version) => version.id === versionId)) throw new Error('Der Beleg fehlt.')
-  return { ...state, invoiceAdministration: state.invoiceAdministration.map((admin) => admin.versionId === versionId ? { ...admin, resolutions: [...admin.resolutions, { at, reason: reason.trim() }] } : admin) }
+  const next = { ...state, invoiceAdministration: state.invoiceAdministration.map((admin) => admin.versionId === versionId ? { ...admin, resolutions: [...admin.resolutions, { at, reason: reason.trim() }] } : admin) }
+  validateBackupState(next)
+  return next
 }
 
 export function syncPaymentStatus(state: AppState, versionId: string, at: string, reason: string): AppState {
@@ -199,4 +203,3 @@ export function persistentInvoice(invoice: Invoice): Invoice {
   for (const [key, value] of Object.entries(result)) if (value === undefined) Reflect.deleteProperty(result, key)
   return result
 }
-

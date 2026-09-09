@@ -41,8 +41,9 @@ npm run lint
 npm test
 npm run typecheck
 npm run build
-npx playwright install --with-deps chromium
+npx playwright install --with-deps chromium firefox webkit
 npm run test:browser
+npm audit --json
 npm run preview
 ```
 
@@ -53,7 +54,7 @@ Ubuntu-CI-Job installiert es mit `sudo apt-get install -y poppler-utils`.
 
 1. Änderungen als Pull Request gegen `main` prüfen lassen und erst nach Freigabe übernehmen.
 2. Im Repository unter **Settings → Pages → Build and deployment** als Quelle **GitHub Actions** wählen.
-3. `.github/workflows/quality.yml` prüft Pull Requests mit Node 22, `npm ci`, Lint, Tests, Typecheck einschließlich Testdateien, Build und echte Chromium-Abläufe.
+3. `.github/workflows/quality.yml` prüft den konkreten PR-Head mit Node 22, `npm ci`, Lint, Tests, Typecheck einschließlich Testdateien, Build, echte Chromium-Abläufe, JSON-Fallbacks in Firefox/WebKit und ein vollständiges Dependency-Audit.
 4. `.github/workflows/deploy.yml` verwendet bei Push auf `main` dieselben Prüfungen. Erst nach deren Erfolg wird das in demselben Lauf erzeugte Artefakt veröffentlicht. Manuelle Läufe anderer Branches veröffentlichen nichts.
 
 Die verpflichtenden Statuschecks müssen zusätzlich in den Branch-Regeln eingerichtet werden; eine Workflow-Datei erzwingt sie nicht. Nachweise, geprüfte Action-Versionen und offene administrative Einstellungen stehen in [docs/quality-gates.md](docs/quality-gates.md); Paketfolge und Produktregeln in [docs/implementation-status.md](docs/implementation-status.md) und [docs/product-decisions.md](docs/product-decisions.md).
@@ -66,7 +67,7 @@ Vite verwendet für den Produktions-Build relative Asset-Pfade. Dadurch funktion
 
 Der GiroCode füllt Empfänger, deutsche IBAN, optional eingegebene BIC, Betrag und Rechnungsnummer aus derselben gebundenen Belegversion in unterstützten Banking-Apps aus. Bei einer fehlerhaften EPC-Payload oder abgelehnter QR-Erzeugung erklärt die App den Grund und bietet ausdrücklich **„Ohne GiroCode drucken“** an; das fehlerhafte Bild wird nicht übernommen. Das ändert weder die Finalisierungsprüfung noch Rechnungsdaten. Für neue Verwendung werden ausschließlich deutsche Empfänger-IBANs unterstützt. IBAN-Prüfsumme und BIC-Format bestätigen weder Kontoinhaber noch Erreichbarkeit. Der EPC-Standard selbst kann keine Echtzeitüberweisung erzwingen; diese Option wird – sofern verfügbar – in der Banking-App ausgewählt.
 
-Tatsächlich geprüft ist **Chromium 153.0.8010.12 unter Ubuntu 24.04.5** in CI, einschließlich echter PDF-Erzeugung; ein nativer Betriebssystem-Druckdialog war nicht Teil der Prüfung. Firefox und Safari bleiben für die Inhaltsausgabe eingeschränkt: Rechtstext und Bankblock werden im normalen Dokumentfluss gedruckt, dynamische `@page`-Seitenzahlen sind dort jedoch nicht zugesichert. Die erprobte Alternative für vollständige Seitenzahlen ist Chromium 153. Chrome und Edge werden in diesem Paket nicht als eigene Versionen freigegeben. Banking-App-Scans bleiben eine manuelle Abnahme: eine synthetische, finale PDF öffnen bzw. den QR-Code mit einer unterstützten Banking-App scannen und Empfänger, DE-IBAN, optionale BIC, Betrag sowie Rechnungsnummer gegen den Bankblock prüfen.
+Automatisch geprüft ist **Chromium 153.0.8010.12 unter Ubuntu 24.04** in CI, einschließlich echter PDF-Erzeugung und Textprüfung. Native Druckdialoge und die visuelle Druckabnahme bleiben offen. Der normale Dokumentfluss ist der vorgesehene Druckfallback für Firefox/Safari; deren PDF-Ausgabe und dynamische `@page`-Seitenzahlen wurden nicht abgenommen. Chrome und Edge werden nicht als eigene Versionen freigegeben. Banking-App-Scans bleiben manuell: eine synthetische finale PDF öffnen bzw. den QR-Code scannen und Empfänger, DE-IBAN, optionale BIC, Betrag sowie Rechnungsnummer gegen den Bankblock prüfen, ohne eine Überweisung auszulösen. Die [Freigabematrix](docs/release-readiness.md) hält Versionen und offene Prüfungen fest.
 
 ## Originale, Korrekturen und Zahlungen
 
@@ -87,8 +88,8 @@ Vorhandene Zahlungen bleiben zunächst beim ursprünglichen Beleg. Unter
 **Zahlungszuordnung** den korrigierten Beleg wählen und die Zuordnung begründen.
 Die Zahlung wird weder kopiert noch gelöscht; Herkunft, Datum und bisherige
 Zuordnungen bleiben sichtbar. Abweichende Beträge erscheinen als Restforderung
-oder Überzahlung. Neue Teilzahlungen, Erstattungen und ein frei wählbarer
-Zahlungstag folgen in ihren vorgesehenen Paketen. Bei ungeklärten Zuordnungen oder
+oder Überzahlung. Vollzahlungen haben einen bestätigten Zahlungstag; neue
+Teilzahlungen und Erstattungen bleiben optionales Paket 14. Bei ungeklärten Zuordnungen oder
 Restbeträgen ist die bisherige Erinnerung über den vollen Betrag gesperrt.
 
 Finalisierte Belege lassen sich **archivieren** und über **Archivierte anzeigen**
@@ -97,6 +98,8 @@ Nur echte Entwürfe können gelöscht werden. Die Aktivitätsliste ist auf 200 E
 begrenzt; vollständige Versionen, Zahlungszuordnungen und vorhandene historische
 Snapshot-Differenzen werden unabhängig davon aufbewahrt. JSON-Backups enthalten
 alle Versionen; CSV kennzeichnet ersetzte und archivierte Belege ausdrücklich.
+Komplett-Zurücksetzen ist nur ohne ausgestellte Belege, historische Dokumentation
+und reservierte Nummern verfügbar; dies ist bewusster Produktumfang.
 
 ## Backup und Restore
 
@@ -129,6 +132,17 @@ prüfen und einen anderen Zielort wählen. Eine Cloud-Anbindung enthält die App
 Die **Demo** läuft ausschließlich im Arbeitsspeicher einer eigenen Sitzung.
 Einstieg/Ausstieg erhalten den realen Bestand, seine Ordnerverbindung und Dateien.
 Demo-Änderungen gehen beim Verlassen verloren.
+
+JSON-Export, Import in ein leeres Profil und Reload ohne Ordner-API werden in
+Chromium 153.0.8010.12, Firefox 155.0 und Playwright-WebKit 26.6 unter Linux
+geprüft. WebKit/Linux ist kein Nachweis für Safari auf macOS/iOS. Der dort
+vorgesehene JSON-Fallback bleibt eine offene native Abnahme.
+
+Vor einem Formatumstieg eine unabhängige Originaldatei außerhalb des automatischen
+Backup-Ordners sichern. Rückkehr zu früherem Code nur mit dieser passenden alten
+Datei in einem getrennten Profil; neue Formate werden nicht zurückkonvertiert.
+Die geprüfte [Umstiegs- und Rückkehranleitung](docs/release-readiness.md#umstieg-und-rückkehr)
+beschreibt Migration, Wiederholung nach Fehlern und Kontrolle nach Reload.
 
 ## Datenschutz und Grenzen
 

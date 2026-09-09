@@ -1,4 +1,4 @@
-import { deleteGuardianState, deleteStudentState, recordActivity } from './lib/commands'
+import { deleteGuardianState, deleteStudentState, deleteInvoiceDraftState, resetUnissuedState, recordActivity } from './lib/commands'
 import { allocatePayment, archiveInvoice, createCorrectionDraft, resolveDocumentConflicts, selectInvoice } from './lib/documents'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BarChart3, BookUser, Download, FilePlus2, LayoutDashboard, Menu, MessageSquareText, Moon, Palette, ReceiptText, Search, Settings as SettingsIcon, Sun, Upload, UserRound, X } from 'lucide-react'
@@ -19,7 +19,7 @@ import { ConfirmDialog } from './components/ConfirmDialog'
 import { ChangelogModal } from './components/ChangelogModal'
 import { ToastRegion } from './components/ToastRegion'
 import { InvoicePrint } from './components/InvoicePrint'
-import { createEmptyInvoiceDraft, emptyState } from './lib/defaults'
+import { createEmptyInvoiceDraft } from './lib/defaults'
 import { clearDirectoryHandle, ensureWritePermission, inspectBackupDirectory, loadLastBackupAt, StorageSession, StorageConflict, readDirectoryHandle, recordBackupExport, STORAGE_KEY, LEGACY_STORAGE_KEY, storeDirectoryHandle, type StorageRecoveryState } from './lib/storage'
 import type { DirectoryInspection, DirectoryBinding } from './lib/backupDirectory'
 import { FolderReview } from './views/FolderReview'
@@ -316,7 +316,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       message: 'Der Entwurf und seine Positionen werden dauerhaft aus diesem Browser entfernt. Es wurde noch keine Rechnungsnummer verbraucht.',
       label: 'Entwurf löschen', danger: true,
       action: async () => {
-        if (!await commit((current) => ({ ...current, invoices: current.invoices.filter((item) => item.id !== invoice.id) }), 'Rechnungsentwurf gelöscht', 'invoice', invoice.id)) return
+        if (!await commit((current) => requireSuccess(deleteInvoiceDraftState(current, invoice.id)), 'Rechnungsentwurf gelöscht', 'invoice', invoice.id)) return
         setSelectedInvoiceId(null)
         toast('Entwurf gelöscht.', 'success')
       },
@@ -576,7 +576,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         session.disconnect()
         folderHandle.current = null
         setFolderConnected(false)
-        const next = await session.change(() => emptyState(), 'reset')
+        const next = await session.change((current) => requireSuccess(resetUnissuedState(current)), 'reset')
         setState(next)
         setSettingsEpoch((value) => value + 1)
         stateRef.current = next

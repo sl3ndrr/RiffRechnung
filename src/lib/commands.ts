@@ -1,6 +1,7 @@
 import { localToday, shiftCalendarMonths } from './calendar'
 import type { AppState, Guardian, InvoiceDraft, InvoiceItemAllocation, Settings, Student } from '../types'
-import { createEmptyInvoiceDraft } from './defaults'
+import { createEmptyInvoiceDraft, emptyState } from './defaults'
+import { assertInvoiceEditable, assertReplacementAllowed } from './safety'
 import { saveInvoiceDraft } from './invoiceActions'
 import { splitInvoiceDraft } from './invoiceSplit'
 import { copyItemsWithFreshIds } from './identities'
@@ -115,4 +116,26 @@ export function deleteStudentState(state: AppState, id: string): CommandResult<A
 
 export function recordActivity(state: AppState, event: AppState['audit'][number]): AppState {
   return { ...state, updatedAt: event.at, audit: [event, ...state.audit].slice(0, 200) }
+}
+
+export function deleteInvoiceDraftState(state: AppState, invoiceId: string): CommandResult<AppState> {
+  return commandResult(() => {
+    validateBackupState(state)
+    const invoice = state.invoices.find((entry) => entry.id === invoiceId)
+    if (!invoice) throw new Error('Der Entwurf ist nicht mehr vorhanden. Bitte neu laden.')
+    assertInvoiceEditable(invoice)
+    const next = { ...state, invoices: state.invoices.filter((entry) => entry.id !== invoiceId) }
+    validateBackupState(next)
+    return next
+  })
+}
+
+export function resetUnissuedState(state: AppState): CommandResult<AppState> {
+  return commandResult(() => {
+    validateBackupState(state)
+    assertReplacementAllowed(state)
+    const next = emptyState()
+    validateBackupState(next)
+    return next
+  })
 }

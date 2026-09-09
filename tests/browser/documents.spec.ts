@@ -206,6 +206,23 @@ test('P06 Browser/PDF: zwei Familien explizit zuordnen, gemeinsam vorschauen und
   expect(await stateOf(page)).toEqual(finalized)
   await testInfo.attach('aufteilung-familie-a.pdf', { body: pdfA.pdf, contentType: 'application/pdf' })
   await testInfo.attach('aufteilung-familie-b.pdf', { body: pdfB.pdf, contentType: 'application/pdf' })
+  await page.getByRole('button', { name: 'Einstellungen', exact: true }).click()
+  const downloading = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'JSON exportieren', exact: true }).click()
+  const buffer = await readFile((await (await downloading).path())!)
+  expect(parseBackup(buffer.toString())).toEqual(finalized)
+  const destination = await page.context().browser()!.newContext({ baseURL: 'http://127.0.0.1:4173' })
+  try {
+    const imported = await destination.newPage()
+    await imported.goto('/')
+    await imported.getByRole('button', { name: 'Einstellungen', exact: true }).click()
+    await imported.locator('#backup input[type=file]').setInputFiles({ name: 'zwei-familien.json', mimeType: 'application/json', buffer })
+    await imported.getByRole('button', { name: 'Wiederherstellung vorbereiten', exact: true }).click()
+    await imported.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
+    await expect(imported.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
+    await imported.reload()
+    expect(await stateOf(imported)).toEqual(finalized)
+  } finally { await destination.close() }
 })
 
 test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unveränderten Eingangsbytes', async ({ page }, testInfo) => {

@@ -110,14 +110,14 @@ export class StorageSession {
     if (actualLegacy !== this.legacy || (guard !== null && guard !== JSON.stringify(actualLegacy))) throw new StorageConflict('Eine alte Anwendungsversion hat den bisherigen Speicher geändert. Alte Tabs schließen; beide Stände separat sichern und bewusst prüfen.')
   }
 
-  private async write(next: AppState, operation: StorageEnvelope['operation'], preview?: ImportPreview): Promise<AppState> {
+  private async write(next: AppState, operation: StorageEnvelope['operation'], preview?: ImportPreview, localRecovery?: ImportPreview): Promise<AppState> {
     validateBackupState(next)
     if (this.mode === 'demo') { this.current = structuredClone(next); return this.state }
     this.checkCurrent()
     if (!this.storage) throw new Error('Lokaler Speicher nicht verfügbar.')
     if (this.recovery && !preview) throw new Error('Geschützte Rohdaten: bitte eine Wiederherstellung prüfen und bestätigen.')
     if (this.recovery?.readOnly || newerFormat(this.token ?? this.legacy ?? '')) throw new Error('Unbekannte neuere Formate bleiben schreibgeschützt. Bitte eine passende Anwendungsversion verwenden.')
-    const previous = this.envelope
+    const previous = this.envelope ?? localRecovery?.envelope ?? null
     const source = preview?.envelope ?? null
     // An empty/recovery profile can adopt a known source identity. A populated
     // valid profile keeps its identity; foreign backups then require a new folder.
@@ -138,12 +138,18 @@ export class StorageSession {
     const raw = JSON.stringify(envelope)
     this.checkCurrent()
     if (preview) {
-      const archive = JSON.stringify({ version: 1, at: envelope.savedAt, previousRaw: this.token, legacyRaw: this.legacy, sourceRaw: preview.rawData, report: preview.report, storageMigration: { algorithm: 'riffrechnung-storage-v4', version: 1, fromStorageVersion: preview.envelope?.storageVersion ?? null, toStorageVersion: 4, datasetId: envelope.datasetId, identity: base ? 'existing-identity' : 'explicit-new-assignment', revision: envelope.revision }, reservations: { before: preview.state.counters, after: next.counters, voidedNumbersBefore: preview.state.voidedInvoiceNumbers, voidedNumbersAfter: next.voidedInvoiceNumbers } })
-      this.storage.setItem(`${STORAGE_KEY}-recovery-${envelope.commitId}`, archive)
+      const archive = { version: 1, at: envelope.savedAt, previousRaw: this.token, legacyRaw: this.legacy, sourceRaw: preview.rawData, report: preview.report, storageMigration: { algorithm: 'riffrechnung-storage-v4', version: 1, fromStorageVersion: preview.envelope?.storageVersion ?? null, toStorageVersion: 4, datasetId: envelope.datasetId, identity: base ? 'existing-identity' : 'explicit-new-assignment', revision: envelope.revision }, reservations: { before: preview.state.counters, after: next.counters, voidedNumbersBefore: preview.state.voidedInvoiceNumbers, voidedNumbersAfter: next.voidedInvoiceNumbers } }
+      // A valid previous copy may be the recovery basis behind a damaged main
+      // copy. Preserve its exact input too, using the existing archive format.
+      if (localRecovery && ![this.token, this.legacy, preview.rawData].includes(localRecovery.rawData)) {
+        this.storage.setItem(`${STORAGE_KEY}-recovery-${envelope.commitId}-fallback`, JSON.stringify({ ...archive, previousRaw: localRecovery.rawData, report: localRecovery.report }))
+      }
+      this.storage.setItem(`${STORAGE_KEY}-recovery-${envelope.commitId}`, JSON.stringify(archive))
     }
     // Each individual setItem is atomic. A failed prerequisite aborts the write;
     // the current copy is never removed, including Quota/Security failures.
-    if (this.envelope && this.token !== null) this.storage.setItem(PREVIOUS_STORAGE_KEY, this.token)
+    const previousRaw = localRecovery?.rawData ?? this.token
+    if (previous && previousRaw !== null) this.storage.setItem(PREVIOUS_STORAGE_KEY, previousRaw)
     if (this.storage.getItem(LEGACY_GUARD_KEY) === null) this.storage.setItem(LEGACY_GUARD_KEY, JSON.stringify(this.legacy))
     this.storage.setItem(STORAGE_KEY, raw)
     this.token = raw
@@ -169,19 +175,25 @@ export class StorageSession {
       const inspected = inspectImport(rawData)
       if (!inspected.ok) throw new Error(inspected.errors.map((error) => error.message).join(' '))
       const preview = inspected.value
-      // Original-content protection from package 01 remains valid for known local
-      // issued records. A damaged source is archived, never silently repaired here.
-      if (this.recovery && this.token) {
-        const current = inspectImport(this.token)
-        if (current.ok) assertOriginalsPreserved(current.value.state, preview.state)
+      // A validated older local format is still a known stock, including the
+      // legacy key. Recovery's empty UI state must never erase its protections.
+      // Invalid raw data cannot supply invented originals or lineage; it is archived.
+      let localRecovery: ImportPreview | undefined
+      if (this.recovery) {
+        for (const localRaw of [this.token, this.previousRaw(), this.legacy]) {
+          if (localRaw === null) continue
+          const inspectedLocal = inspectImport(localRaw)
+          if (inspectedLocal.ok) { localRecovery = inspectedLocal.value; break }
+        }
       }
-      if (!this.recovery) assertOriginalsPreserved(this.current, preview.state)
+      const current = localRecovery?.state ?? this.current
+      assertOriginalsPreserved(current, preview.state)
       const next = structuredClone(preview.state)
       // Reserve known counters/numbers even when an older backup is restored.
-      for (const [key, count] of Object.entries(this.current.counters)) next.counters[key] = Math.max(count, next.counters[key] ?? 0)
-      next.voidedInvoiceNumbers = [...new Map([...next.voidedInvoiceNumbers, ...this.current.voidedInvoiceNumbers].map((entry) => [entry.number, entry])).values()]
-      next.nextStudentCodeIndex = Math.max(next.nextStudentCodeIndex, this.current.nextStudentCodeIndex)
-      return this.write(next, this.token === null && this.legacy !== null ? 'adopt' : 'restore', preview)
+      for (const [key, count] of Object.entries(current.counters)) next.counters[key] = Math.max(count, next.counters[key] ?? 0)
+      next.voidedInvoiceNumbers = [...new Map([...next.voidedInvoiceNumbers, ...current.voidedInvoiceNumbers].map((entry) => [entry.number, entry])).values()]
+      next.nextStudentCodeIndex = Math.max(next.nextStudentCodeIndex, current.nextStudentCodeIndex)
+      return this.write(next, this.token === null && this.legacy !== null ? 'adopt' : 'restore', preview, localRecovery)
     })
   }
 
@@ -245,4 +257,3 @@ export function recordBackupExport(at = new Date()): string {
 }
 
 export { inspectBackupDirectory as inspectDirectory }
-
