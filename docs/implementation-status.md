@@ -398,7 +398,8 @@ Nächstes vorgesehenes Paket: **09 – Druck und GiroCode zuverlässig ausgeben*
   dauerhafte zugängliche Namen. Geschlossene mobile Navigation ist `inert`;
   Öffnen fokussiert Schließen, Schließen den Auslöser. Geänderte Editorformulare
   fragen beim Schließen/Seitenwechsel; Weiterbearbeiten behält Werte, Verwerfen
-  speichert keinen Beleg.
+  speichert keinen Beleg. Ein `draft` bleibt trotz historischer Ausgabefelder
+  editierbar; der Fachbefehl sperrt weiterhin ausgestellte Belege.
 - **Kontrast / Fokus:** Fehlerbuttons verwenden im Dark Theme `#690005` statt
   Weiß auf `#ffb4ab`; kleine Versions-/Backuptexte verwenden stärkeren
   Sekundärtext. Datei-, Chip- und Theme-Eingaben zeichnen den sichtbaren Träger
