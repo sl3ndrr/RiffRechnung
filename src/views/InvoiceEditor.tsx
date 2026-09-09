@@ -8,7 +8,7 @@ import { Calendar, CircleDollarSign, FileCheck2, Minus, Plus, Save, Send, Trash2
 import type { AppState, Guardian, InvoiceDraft, InvoiceItemAllocation, InvoiceSplitPreview, LessonType, Settings, Student } from '../types'
 import { FINALIZED_INVOICE_BLOCKED } from '../lib/safety'
 import { Modal } from '../components/Modal'
-import { applyLessonType, billingPeriodFromItems, calculateDueDate, createLessonItem, euro, invoiceFinalizationErrors, isFooterTextWithinLimit, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH } from '../lib/utils'
+import { applyLessonType, billingPeriodFromItems, calculateDueDate, createLessonItem, euro, invoiceFinalizationErrors, isFooterTextWithinLimit, itemTotal, MAX_FOOTER_TEXT_LENGTH } from '../lib/utils'
 
 const INVOICE_EDITOR_FORM_ID = 'invoice-editor-form'
 interface InvoiceEditorProps {
