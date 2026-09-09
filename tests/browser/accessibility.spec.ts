@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { documentAt, documentDraft, documentFamily } from '../documentFixtures'
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
-import { serializeBackup, STORAGE_KEY } from '../../src/lib/storage'
+import { serializeBackup } from '../../src/lib/storage'
 import type { AppState } from '../../src/types'
 
 async function seed(page: Page, state: AppState) {
