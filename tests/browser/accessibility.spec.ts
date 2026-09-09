@@ -1,7 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { documentAt, documentDraft, documentFamily } from '../documentFixtures'
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
-import { serializeBackup } from '../../src/lib/storage'
+import { serializeBackup, STORAGE_KEY } from '../../src/lib/storage'
 import type { AppState } from '../../src/types'
 
 async function seed(page: Page, state: AppState) {
@@ -139,6 +139,34 @@ test('P10 Browser: verschachtelte Dialoge halten Fokus, Modalität und Scrollspe
   await page.getByRole('button', { name: 'Entwurf', exact: true }).press('Enter')
   await page.getByRole('button', { name: 'Bearbeiten', exact: true }).click()
   await expect(editor.getByLabel('Einleitung', { exact: true })).not.toHaveValue('Noch nicht gespeichert')
+})
+
+test('P10 Browser: interne Navigation schützt alle Editorwerte und Verwerfen speichert nichts', async ({ page }) => {
+  const state = saveInvoiceDraft(documentFamily(), documentDraft(), false, documentAt)
+  await seed(page, state)
+  const storedBefore = await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)
+  await invoices(page)
+  await page.getByRole('button', { name: 'Entwurf', exact: true }).press('Enter')
+  await page.getByRole('button', { name: 'Bearbeiten', exact: true }).click()
+  const editor = page.getByRole('dialog', { name: 'Entwurf bearbeiten' })
+  await editor.getByLabel('Einleitung', { exact: true }).fill('Ungespeicherte Einleitung')
+  await editor.getByLabel('Freitext / Hinweis', { exact: true }).fill('Ungespeicherter Freitext')
+  const overview = page.locator('.sidebar nav button').filter({ hasText: 'Übersicht' })
+  await overview.evaluate((element) => (element as HTMLButtonElement).click())
+  const confirmation = page.getByRole('alertdialog', { name: 'Ungespeicherte Rechnungsänderungen verwerfen?' })
+  await confirmation.getByRole('button', { name: 'Weiter bearbeiten' }).click()
+  await expect(editor.getByLabel('Einleitung', { exact: true })).toHaveValue('Ungespeicherte Einleitung')
+  await expect(editor.getByLabel('Freitext / Hinweis', { exact: true })).toHaveValue('Ungespeicherter Freitext')
+  await overview.evaluate((element) => (element as HTMLButtonElement).click())
+  await confirmation.getByRole('button', { name: 'Verwerfen' }).click()
+  await expect(page.getByRole('heading', { name: /Guten Tag/ })).toBeVisible()
+  expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(storedBefore)
+  await page.reload()
+  await invoices(page)
+  await page.getByRole('button', { name: 'Entwurf', exact: true }).press('Enter')
+  await page.getByRole('button', { name: 'Bearbeiten', exact: true }).click()
+  await expect(editor.getByLabel('Einleitung', { exact: true })).not.toHaveValue('Ungespeicherte Einleitung')
+  await expect(editor.getByLabel('Freitext / Hinweis', { exact: true })).not.toHaveValue('Ungespeicherter Freitext')
 })
 
 test('P10 Browser: Changelog bleibt bei Navigation modal und gibt den Fokus zurück', async ({ page }) => {
