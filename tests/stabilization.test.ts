@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { StorageSession, STORAGE_KEY, LEGACY_STORAGE_KEY, serializeBackup } from '../src/lib/storage'
+import { StorageSession, STORAGE_KEY, LEGACY_STORAGE_KEY, PREVIOUS_STORAGE_KEY, serializeBackup } from '../src/lib/storage'
 import { emptyState } from '../src/lib/defaults'
 import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { documentFamily, documentDraft, documentAt, legacyFixture, editable } from './documentFixtures'
@@ -25,6 +25,35 @@ test('P12: Recovery sch체tzt bekannte Originale auch im bisherigen Speicherschl�
   await session.restore(raw)
   assert.deepEqual(session.state, requireSuccess(inspectImport(raw)).state)
   assert.equal(new StorageSession({ storage, lock: sharedLock() }).initial.status, 'ready')
+})
+
+test('P12: besch채digter Hauptschl체ssel verdeckt keinen g체ltigen lokalen R체ckfallstand', async () => {
+  for (const fallbackKey of [PREVIOUS_STORAGE_KEY, LEGACY_STORAGE_KEY]) {
+    const storage = memoryStorage()
+    const issued = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
+    const source = new StorageSession({ storage: memoryStorage(), lock: sharedLock() })
+    await source.restore(serializeBackup(issued))
+    const known = fallbackKey === PREVIOUS_STORAGE_KEY ? source.export() : JSON.stringify(legacyFixture(issued))
+    const damaged = '{"unterbrochener synthetischer Hauptstand":'
+    storage.setItem(fallbackKey, known)
+    storage.setItem(STORAGE_KEY, damaged)
+    const session = new StorageSession({ storage, lock: sharedLock() })
+    await assert.rejects(session.restore(serializeBackup(emptyState())), /Finalisierte|Belegversionen/)
+    assert.equal(storage.getItem(STORAGE_KEY), damaged)
+    assert.equal(storage.getItem(fallbackKey), known)
+    await session.restore(known)
+    assert.equal(storage.getItem(fallbackKey), known)
+    assert.deepEqual(session.state, requireSuccess(inspectImport(known)).state)
+    if (fallbackKey === PREVIOUS_STORAGE_KEY) {
+      assert.equal(session.revision!.datasetId, source.revision!.datasetId)
+      assert.equal(session.revision!.revision, source.revision!.revision + 1)
+    }
+    const archive = JSON.parse(JSON.parse(session.exportRecoveryArchive()).recoveries.at(-1).raw)
+    assert.equal(archive.previousRaw, damaged)
+    const reloaded = new StorageSession({ storage, lock: sharedLock() })
+    assert.equal(reloaded.initial.status, 'ready')
+    assert.deepEqual(reloaded.state, session.state)
+  }
 })
 
 for (const key of [LEGACY_STORAGE_KEY, STORAGE_KEY]) test(`P12: Recovery erh채lt Reservierungen und Bestandsidentit채t aus ${key}`, async () => {
