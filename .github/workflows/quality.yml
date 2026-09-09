@@ -21,6 +21,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .nvmrc
@@ -40,6 +41,8 @@ jobs:
       - name: Install PDF text verification
         run: sudo apt-get install -y poppler-utils
       - run: npm run test:browser
+      - name: Audit all locked dependencies
+        run: npm audit --json | tee test-results/npm-audit.json
       - name: Browser failure context
         if: failure()
         run: |
@@ -62,4 +65,3 @@ jobs:
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: dist
-
