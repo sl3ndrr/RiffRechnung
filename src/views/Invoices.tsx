@@ -261,6 +261,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
   onPrint: () => void
   onToast: (message: string, tone?: 'success' | 'error' | 'info') => void
 }) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
   const status = effectiveStatus(invoice)
   const period = invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate)
   const reminder = createReminder(invoice, state.guardians, state.students)
@@ -273,6 +274,10 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
     setPaymentDay(payment?.paymentDayStatus === 'confirmed' ? payment.paidAt ?? '' : '')
   }, [invoice.id, payment?.id, payment?.paidAt, payment?.paymentDayStatus])
 
+  useEffect(() => {
+    closeButtonRef.current?.focus()
+  }, [invoice.id])
+
   const copyReminder = async () => {
     await navigator.clipboard.writeText(`${reminder.subject}\n\n${reminder.body}`)
     onToast('Erinnerungstext kopiert.', 'success')
@@ -282,7 +287,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
     <aside className="surface invoice-detail" aria-label={`Details zu ${invoice.number ?? 'Entwurf'}`}>
       <header className="invoice-detail__header">
         <div><p className="eyebrow">Rechnung</p><h2>{invoice.number ?? 'Entwurf'}</h2><p>{guardianName(invoice, state.guardians)}</p></div>
-        <button className="icon-button" type="button" onClick={onClose} aria-label="Detailansicht schließen">×</button>
+        <button ref={closeButtonRef} className="icon-button" type="button" onClick={onClose} aria-label="Detailansicht schließen">×</button>
       </header>
       <div className="invoice-detail__amount"><strong>{euro.format(invoiceTotal(invoice))}</strong><span className={`status-chip status-chip--${status}`}><i />{statusLabel[status]}</span></div>
       <dl className="detail-list">
