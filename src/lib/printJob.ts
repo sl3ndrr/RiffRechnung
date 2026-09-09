@@ -20,6 +20,18 @@ export type GiroCodeResolution =
 
 export type EpcPayloadBuilder = (invoice: Invoice, settings: Settings, amount: number) => string
 
+export type GiroCodeEncoder = (payload: string) => Promise<string>
+
+/** Normalises encoder rejections so the UI can offer the explicit no-code fallback. */
+export async function generateGiroCode(payload: string, encoder: GiroCodeEncoder): Promise<string> {
+  try {
+    return await encoder(payload)
+  } catch (error) {
+    const reason = error instanceof Error && error.message ? `: ${error.message}` : ''
+    throw new Error(`GiroCode konnte nicht erzeugt werden${reason}`)
+  }
+}
+
 /**
  * Determines whether the optional GiroCode can accompany this exact invoice output.
  * It never changes the invoice or weakens the finalisation rules.
