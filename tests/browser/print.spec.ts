@@ -161,7 +161,7 @@ test('P09 Browser: ungültige historische BIC bietet den bewussten Druck ohne Gi
   await page.getByRole('button', { name: /^Rechnungen/ }).first().click()
   await page.getByRole('button', { name: state.invoices[0].number!, exact: true }).click()
   await page.getByRole('button', { name: 'PDF / Drucken', exact: true }).click()
-  const dialog = page.getByRole('dialog', { name: 'GiroCode nicht verfügbar' })
+  const dialog = page.getByRole('alertdialog', { name: 'GiroCode nicht verfügbar' })
   await expect(dialog).toContainText('BIC')
   await dialog.getByRole('button', { name: 'Ohne GiroCode drucken', exact: true }).click()
   await expect(page.locator('.print-root .invoice-girocode-notice')).toContainText('Ohne GiroCode gedruckt')
