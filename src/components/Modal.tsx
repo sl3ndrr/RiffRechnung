@@ -40,14 +40,15 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
     previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const nestedParent = dialogStack.at(-1) ?? null
     let inertSiblings: HTMLElement[] = []
-    try { dialog.showModal() } catch {
-      if (!nestedParent) return
-      // Chromium may reject a second native modal top-layer. This fallback is
-      // rendered inside the existing modal dialog, so the document background
-      // remains inert. Only the outer dialog's other content is disabled.
+    if (nestedParent) {
+      // A second native top-layer can make the parent dialog inaccessible in
+      // Chromium. The nested dialog instead lives inside the already modal
+      // parent; its siblings become inert until it closes.
       inertSiblings = [...nestedParent.children].filter((child): child is HTMLElement => child instanceof HTMLElement && child !== dialog)
       inertSiblings.forEach((element) => { element.inert = true })
       dialog.show()
+    } else {
+      try { dialog.showModal() } catch { return }
     }
     dialogStack.push(dialog)
     lockDocumentScroll()
