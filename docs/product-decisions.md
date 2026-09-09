@@ -413,8 +413,8 @@ und [Bundesbank-IBAN-Regeln](https://www.bundesbank.de/de/aufgaben/unbarer-zahlu
   auch wenn ein historisches Ausgabefeld vorhanden ist. Der fachliche
   Schreibbefehl schützt weiterhin alle tatsächlich ausgestellten Belege.
 - **Responsive Bedienung:** Navigationselemente behalten programmatische Namen.
-  Die mobile Seitenleiste ist geschlossen `inert`; ihr Schließen gibt Fokus an
-  den Öffnen-Auslöser zurück.
+  Die mobile Seitenleiste ist geschlossen `inert`; Enter und Escape schließen
+  sie und geben Fokus an den Öffnen-Auslöser zurück.
 - **Kontrast:** Für normalen und kleinen Text gilt WCAG 2.2 AA (mindestens
   4,5:1). `#ffb4ab` erhält `#690005`; kleine Versions-/Backuptexte verwenden
   `--on-surface-variant`. Automatische Kontrastwerte werden visuell ergänzt.
