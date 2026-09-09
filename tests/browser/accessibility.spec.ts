@@ -26,6 +26,14 @@ async function tabTo(page: Page, target: Locator, maximumTabs = 80) {
   await expect(target).toBeFocused()
 }
 
+async function finishAnimations(page: Page) {
+  await page.evaluate(() => {
+    for (const animation of document.getAnimations()) {
+      try { animation.finish() } catch { /* Endlose Statusanimationen bleiben für den Screenshot unbeachtet. */ }
+    }
+  })
+}
+
 function contrast(foreground: string, background: string) {
   const rgb = (value: string) => {
     const normalized = value.trim()
@@ -225,6 +233,7 @@ test('P10 Browser: relevante Textkontraste erreichen in beiden Themes AA', async
       ]
     })
     for (const [foreground, background] of pairs) expect(contrast(foreground, background)).toBeGreaterThanOrEqual(4.5)
+    await finishAnimations(page)
     await page.screenshot({ path: testInfo.outputPath(`kontrast-${theme}-kleine-texte.png`), fullPage: false })
     await invoices(page)
     await page.getByRole('button', { name: 'Entwurf', exact: true }).click()
@@ -239,6 +248,7 @@ test('P10 Browser: relevante Textkontraste erreichen in beiden Themes AA', async
       return [style.color, style.backgroundColor]
     })
     expect(contrast(actualPair[0], actualPair[1])).toBeGreaterThanOrEqual(4.5)
+    await finishAnimations(page)
     await page.screenshot({ path: testInfo.outputPath(`kontrast-${theme}-fehlerdialog.png`), fullPage: false })
     await danger.click()
     await page.getByRole('button', { name: 'Übersicht', exact: true }).first().click()
