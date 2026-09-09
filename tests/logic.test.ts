@@ -1,4 +1,5 @@
 import './money-calendar.test'
+import './stabilization.test'
 import './invoice-split.test'
 import './payment-data.test'
 import './payment-reporting.test'
