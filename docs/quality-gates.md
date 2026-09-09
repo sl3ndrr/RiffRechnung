@@ -1,4 +1,7 @@
-# Qualitätsschranken und Nachweise – Paket 00
+# Qualitätsschranken und Nachweise
+
+Aktueller Stand: [Paket 12](#paket-12--integrierter-prüfstand-und-fehlerzuordnung),
+[Freigabematrix](release-readiness.md). Die folgenden früheren Abschnitte sind historische Nachweise.
 
 Stand: 2026-09-06. Ausgangscommit: `ba7857fd9180fa392c42a0235643e478e5077ee5`.
 
@@ -549,3 +552,69 @@ Keine Tests wurden gelöscht, übersprungen oder abgeschwächt.
   14/14 Chromium-/PDF-Prüfungen. Ubuntu 24.04.4, Node 22.23.2/npm 10.9.8,
   Python 3.12.3, Chromium 153.0.8010.12; keine fehlgeschlagenen oder
   übersprungenen Tests.
+
+## Paket 12 – integrierter Prüfstand und Fehlerzuordnung
+
+Ausgang ist `main` auf `95d7370dbe5931c6ab0373bc070db2ad8763cb93` (00–11
+integriert). Die [Freigabematrix](release-readiness.md) erfasst alle R-/F-/N-Punkte
+und offenen nativen Abnahmen. Keine Freigabe durch ältere grüne Commits.
+
+| Commit | CI-Lauf | Ergebnis / Einordnung |
+| --- | --- | --- |
+| `95d7370dbe5931c6ab0373bc070db2ad8763cb93` | [34374453731](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34374453731) | Integrierte Basis: 143 Fachtests, 29 Browserprüfungen bestanden; Installation meldet bereits ein High-Advisory |
+| `eb53211f43294a8fd5b9ba62f67a1c4a4f4fbd63` | [34375494258](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34375494258) | 143/29 bestanden; voller Audit bestätigt js-yaml 4.3.1, High. Damalige tee-Pipeline war noch keine sichere Fehlerschranke |
+| `8e85d58ed1464f49b7745f0ee45b96da0b74805d` | [34375782770](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34375782770) | 143 bisherige Fachtests bestanden, drei neue Recovery-Regressionen fehlgeschlagen: bestätigter Original-/Reservierungs-/Identitätsverlust |
+| `6034ac2b88c4bd2eb1175018c5dbe953821e0757` | [34376119557](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34376119557) | Temporärer Job 102549236782 regeneriert allein den js-yaml-Lockeintrag mit Node 22; regulärer Job zeigt die drei bekannten Regressionen |
+| `8bb85c6586aa1a0ab46c325a6362af5b6ba3a761` | [34382244936](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34382244936) | 148/149 Fachtests; ein Textselektor erwartete die alte grammatische Form. Fachliche Assertions erhalten |
+| `06071aa04950e1555f151cd7ac510e0bf765f325` | [34382549725](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34382549725) | 149 Fachtests/Typecheck/Build bestanden; 38/41 Browserprüfungen. Drei Selektorfehler (erweiterte Feldnamen, doppeltes Legacy-Importfeld); Firefox-/WebKit-JSON bestanden |
+| `dda2c4a79334bf061494a54e23576a6d689a6d2f` | [34383657801](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34383657801) | 149 Fachtests/Typecheck/Build bestanden; Browserinstallation am Google-Chrome-APT-Hashfehler des Runners gescheitert |
+| `121f8f44a06be93995bebb1a542574f0a1414123` | [34383904868](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34383904868) | Audit mit explizitem Bash-pipefail; 149 Fachtests/Typecheck/Build bestanden, gleicher APT-Infrastrukturfehler |
+| `06d2dc1bfab12ac32f01b509688abe9ff63d37c3` | [34384119389](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34384119389) | 149 bestanden, neue Regression zum verdeckten gültigen Rückfallstand fehlgeschlagen: „Missing expected rejection“ |
+| `ced0e4a63ab35e8d5ed6293ef97c5f8dd85dbeb3` | [34384472673](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34384472673) | 150 Fachtests/Typecheck/Build bestanden; Chrome-APT-Quelle nicht unter angenommenem .list-Namen, gleicher Hashfehler |
+| `72515209ac123cdd079e730e77686435668827bf` | [34384827205](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34384827205) | **Alle Schranken erfolgreich:** 150/150 Fachtests, 41/41 Browserprüfungen, Lint, Test-Typecheck, Build, vollständiges Audit mit 0 Schwachstellen |
+
+Umgebung des erfolgreichen Laufs: Ubuntu 24.04, Node 22.23.2/npm 10.9.8,
+Python 3.12.3, Chromium 153.0.8010.12, Firefox 155.0, WebKit 26.6 (Linux).
+Befehle: `npm ci`, `npm run lint`, `npm test`, `npm run typecheck`,
+`npm run build`, `npx playwright install --with-deps chromium firefox webkit`,
+`sudo apt-get install -y poppler-utils`, `npm run test:browser`, `npm audit --json`.
+Der Auditbericht nennt 256 Lockfile-Abhängigkeiten und 0 bekannte Schwachstellen.
+Testdateien sind in TypeScript enthalten. Keine Tests gelöscht, übersprungen,
+abgeschwächt oder mit Playwright-Retries verdeckt. Die Browserabläufe ersetzen
+keine native Freigabe. Ergebnis-SHA und abschließender Dokumentations-CI-Lauf
+werden im [PR #33](https://github.com/sl3ndrr/RiffRechnung/pull/33) festgehalten.
+
+Die unbenötigte Google-Chrome-APT-Quelle liegt im Runner als `google-chrome.sources`
+vor. Der Workflow berücksichtigt `.list`/`.sources`, deaktiviert ausschließlich
+diese Quelle im temporären Runner und weist gemischte Quellen ab. Ubuntu-Quellen,
+Hash- und Signaturprüfungen bleiben aktiv. Browser kommen aus gelocktem Playwright.
+
+**Dependency-Advisory:** Vollständiges `npm audit --json` umfasst direkte und
+transitive Produktions-/Entwicklungspakete. Bestätigt wurde
+[GHSA-2883-xcg3-v3hh](https://github.com/nodeca/js-yaml/security/advisories/GHSA-2883-xcg3-v3hh),
+ein CPU-DoS im Merge-Budget von js-yaml; laut Maintainer behoben in
+[4.3.2](https://github.com/nodeca/js-yaml/releases/tag/4.3.2). Hier transitiv über
+die Entwicklungsabhängigkeit ESLint. Die mit Node 22 ausgeführte Regenerierung
+`npm update js-yaml --package-lock-only --ignore-scripts --no-audit --no-fund`
+änderte exakt Version, URL und Integrität dieses Lockeintrags; `package.json`
+blieb unverändert. Temporärer Job entfernt. Audit mit `shell: bash` (pipefail)
+als Pflichtschranke und JSON-Bericht im Artefakt. Der frühere esbuild-Einzelfix
+ersetzt keine Vollprüfung; ein Audit ist eine zeitgebundene Advisory-Abfrage.
+
+**Lokale Grenzen tatsächlich geprüft:** Node 24.19.0/npm 11.9.0 statt Node 22.
+Terminal-Clone und `npm ci --fetch-retries=0 --fetch-timeout=20000`: HTTP/E403.
+`npm view node@22 version --json --fetch-retries=0 --fetch-timeout=20000`: E403.
+`npm audit --json --fetch-retries=0 --fetch-timeout=20000`: Registry-Timeout.
+Lokale Lint/Test/Typecheck/Build-Aufrufe wurden vor Prozessstart abgebrochen;
+keine lokalen Gate-Ergebnisse behauptet. `git diff --check` und vollständige
+Git-Blob-/Tree-Vergleiche waren bis zum späteren Laufzeit-Verbindungsabbruch
+ausführbar. Die Dokumentation wurde danach über GitHub vervollständigt.
+GitHub-Schreibfunktionen sind durch Arbeitsbranch, Commits und PR belegt;
+kein Patch-Fallback nötig. Artefakt-Download zur PDF-Sichtprüfung: HTTP 403.
+Automatische PDF-Textprüfungen sind kein visueller Layoutnachweis.
+
+**R23 administrativ offen:** Am 2026-09-09 enthalten Rulesets 21096773/21137022
+Lösch-/Force-Push-Schutz und PR-Pflicht für den Defaultbranch, jedoch keinen
+`required_status_checks`-Eintrag. Ein schreibender Ruleset-Endpunkt ist nicht
+verfügbar. `Quality (Node 22)` ist vor Merge administrativ verbindlich einzurichten
+und zu prüfen. Merge/Deployment wurden nicht ausgelöst.
