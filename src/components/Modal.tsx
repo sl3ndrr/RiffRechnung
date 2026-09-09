@@ -12,22 +12,46 @@ interface ModalProps {
   size?: 'small' | 'medium' | 'large'
 }
 
+// Native modal dialogs provide the inert background and focus containment from
+// the W3C dialog pattern. The stack keeps Escape and scroll locking stable when
+// a confirmation is displayed above another dialog.
+const dialogStack: HTMLDialogElement[] = []
+let scrollLockCount = 0
+
+function lockDocumentScroll() {
+  scrollLockCount += 1
+  document.body.classList.add('modal-open')
+}
+
+function unlockDocumentScroll() {
+  scrollLockCount = Math.max(0, scrollLockCount - 1)
+  if (scrollLockCount === 0) document.body.classList.remove('modal-open')
+}
+
 export function Modal({ open, title, eyebrow, onClose, children, footer, size = 'medium' }: ModalProps) {
-  const dialogRef = useRef<HTMLDivElement>(null)
+  const dialogRef = useRef<HTMLDialogElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
   const titleId = useId()
 
   useEffect(() => {
-    if (!open) return
-    previousFocus.current = document.activeElement as HTMLElement
+    const dialog = dialogRef.current
+    if (!open || !dialog) return
+
+    previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    try { dialog.showModal() } catch { /* Already open during a development effect re-run. */ }
+    dialogStack.push(dialog)
+    lockDocumentScroll()
     const frame = requestAnimationFrame(() => {
-      const focusTarget = dialogRef.current?.querySelector<HTMLElement>('[autofocus], input, select, textarea, button')
-      focusTarget?.focus()
+      const target = dialog.querySelector<HTMLElement>('[data-dialog-initial-focus], [autofocus], input:not([type="hidden"]), select, textarea, button:not([disabled]), [href]')
+      target?.focus()
     })
-    document.body.classList.add('modal-open')
+
     return () => {
       cancelAnimationFrame(frame)
-      document.body.classList.remove('modal-open')
+      const index = dialogStack.lastIndexOf(dialog)
+      if (index >= 0) dialogStack.splice(index, 1)
+      if (dialog.open) dialog.close()
+      unlockDocumentScroll()
       previousFocus.current?.focus()
     }
   }, [open])
@@ -35,8 +59,19 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
   if (!open) return null
 
   return createPortal(
-    <div className="modal-layer" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <div ref={dialogRef} className={`modal modal--${size}`} role="dialog" aria-modal="true" aria-labelledby={titleId}>
+    <dialog
+      ref={dialogRef}
+      className="modal-layer"
+      aria-labelledby={titleId}
+      onCancel={(event) => {
+        event.preventDefault()
+        if (dialogStack.at(-1) === event.currentTarget) onClose()
+      }}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && dialogStack.at(-1) === event.currentTarget) onClose()
+      }}
+    >
+      <section className={`modal modal--${size}`} role="document">
         <header className="modal__header">
           <div>
             {eyebrow && <p className="eyebrow">{eyebrow}</p>}
@@ -48,8 +83,8 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
         </header>
         <div className="modal__body">{children}</div>
         {footer && <footer className="modal__footer">{footer}</footer>}
-      </div>
-    </div>,
+      </section>
+    </dialog>,
     document.body,
   )
 }
