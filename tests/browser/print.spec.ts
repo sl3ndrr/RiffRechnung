@@ -4,7 +4,7 @@ import { readdir, writeFile } from 'node:fs/promises'
 import type { AppState, InvoiceDraft } from '../../src/types'
 import { documentAt, documentDraft, documentFamily } from '../documentFixtures'
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
-import { parseBackup, serializeBackup, STORAGE_KEY } from '../../src/lib/storage'
+import { serializeBackup } from '../../src/lib/storage'
 import { buildEpcPayload, invoiceTotal } from '../../src/lib/utils'
 
 async function seed(page: Page, state: AppState) {
@@ -17,7 +17,7 @@ async function seed(page: Page, state: AppState) {
 }
 
 function printableState(itemCount: number, freeText = '', legalText = 'Rechtstext für die vollständige PDF-Ausgabe'): AppState {
-  let state = documentFamily()
+  const state = documentFamily()
   state.guardians[0] = {
     ...state.guardians[0],
     name: 'Familie mit einem außergewöhnlich langen, mehrteiligen Namen für den echten Seitenumbruch',
