@@ -26,7 +26,7 @@ gewählten Erweiterung wird Paket 12 wiederholt.
 | 08 | Zahlungstag und Berichte | R11, F02 (MVP); schrittweise R24 | Implementiert; vollständiger CI-Nachweis unten |
 | 09 | Druck und GiroCode | R16, R21, N03, N08 | Implementiert und CI-geprüft; native Druck-/Banking-Abnahme offen |
 | 10 | Tastatur, Dialoge, Navigation, Kontrast | R17–R20, N05, N07 | Implementiert und CI-geprüft; manuelle Screenreader-Abnahme offen |
-| 11 | Sicherheitstexte und Komfort | R26, N02, N04, N10 | Implementiert; CI-Nachweis nach PR-Lauf ergänzen |
+| 11 | Sicherheitstexte und Komfort | R26, N02, N04, N10 | Implementiert und CI-geprüft; keine Datenformatänderung |
 | 12 | Zusammenhängende Abläufe und Freigabereife | R01–R26, N01–N10 | Laut Analyse offen; Pflichtabnahme |
 | 13 | Wiederherstellung mit Versionsvergleich | F01 | Optional, laut Analyse offen |
 | 14 | Teilzahlungen und Zahlungskorrekturen | F02 (Ausbau) | Optional, laut Analyse offen |
@@ -469,16 +469,21 @@ Nächstes vorgesehenes Paket: **09 – Druck und GiroCode zuverlässig ausgeben*
   CSV-Formelabwehr bleiben unverändert.
 - **Nachweis:** Browserablauf mit synthetischem finalen Beleg simuliert eine
   `NotAllowedError`-Clipboard-Ablehnung und prüft Fallback, vollständigen Text,
-  Fokus/Markierung und das Ausbleiben der Erfolgsmeldung. Lokale Node-22-Gates
-  können in dieser Umgebung wegen gesperrtem Git-Checkout/Registryzugriff nicht
-  ausgeführt werden; der Ergebniscommit und dessen PR-CI werden nach dem Lauf
-  dokumentiert.
+  Fokus/Markierung und das Ausbleiben der Erfolgsmeldung. Auf
+  [CI 34371349114](https://github.com/sl3ndrr/RiffRechnung/actions/runs/34371349114)
+  für `7dcf4edf365c4c422e28461df2537a9e82d4dacb` bestanden `npm ci`, Lint,
+  143/143 Fachtests, Typecheck einschließlich Tests, Build sowie 29/29
+  Chromium-/PDF-Browserabläufe. Umgebung: Ubuntu 24.04, Node 22.23.2,
+  npm 10.9.8, Python 3.12.3 und Chromium 153.0.8010.12. Das Artefakt
+  `browser-evidence` (ID 10112185376) enthält die synthetischen Nachweise.
+  Lokal fehlen Node 22 und ein erlaubter Git-/Registryzugriff; der Checkout
+  beziehungsweise `npm ci` sind dort mit HTTP 403 blockiert.
 
 | Abnahme Paket 11 | Ergebnis |
 | --- | --- |
-| Schutztexte, Export-/Ordnerwege, Origin-Modell und keine pauschale Garantie | Implementiert; Sichtprüfung in Chromium-CI ausstehend |
-| `a+b`-Beispiele in README und Einstellungen | Implementiert; Sichtprüfung in Chromium-CI ausstehend |
-| Kontrollierte Clipboard-Ablehnung mit manuellem Weg, ohne falschen Erfolg | Browserablauf ergänzt; Chromium-CI ausstehend |
-| Semantisches Changelogdatum, Versionsprüfung unverändert | Implementiert; Typecheck-/CI-Nachweis ausstehend |
+| Schutztexte, Export-/Ordnerwege, Origin-Modell und keine pauschale Garantie | Bestanden: in README, About, Einstellungen und Produktentscheidung geprüft |
+| `a+b`-Beispiele in README und Einstellungen | Bestanden: segmentierte Kombination und Einzelkennzeichen erläutert |
+| Kontrollierte Clipboard-Ablehnung mit manuellem Weg, ohne falschen Erfolg | Bestanden: echter Chromium-Ablauf mit `NotAllowedError` |
+| Semantisches Changelogdatum, Versionsprüfung unverändert | Bestanden: CI-Typecheck/Fachtest; `time datetime` im Changelogdialog |
 
 Nächstes vorgesehenes Paket: **12 – Zusammenhängende Abläufe und Freigabereife**, nicht begonnen.
