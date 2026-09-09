@@ -632,14 +632,24 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     setMobileNav(false)
     if (isMobile && mobileNav) requestAnimationFrame(() => mainContentRef.current?.focus())
   }
-  const openMobileNav = () => {
+  const openMobileNav = useCallback(() => {
     setMobileNav(true)
     requestAnimationFrame(() => mobileCloseButtonRef.current?.focus())
-  }
-  const closeMobileNav = () => {
+  }, [])
+  const closeMobileNav = useCallback(() => {
     setMobileNav(false)
     requestAnimationFrame(() => mobileMenuButtonRef.current?.focus())
-  }
+  }, [])
+  useEffect(() => {
+    if (!mobileNav) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.key !== 'Escape') return
+      event.preventDefault()
+      closeMobileNav()
+    }
+    document.addEventListener('keydown', closeOnEscape)
+    return () => document.removeEventListener('keydown', closeOnEscape)
+  }, [closeMobileNav, mobileNav])
   const nextTheme = state.settings.theme === 'system' ? 'light' : state.settings.theme === 'light' ? 'dark' : 'system'
   const toggleTheme = async () => {
     if (settingsFlush.current && !await settingsFlush.current()) return
