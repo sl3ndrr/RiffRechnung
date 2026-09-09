@@ -48,7 +48,19 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
       inertSiblings.forEach((element) => { element.inert = true })
       dialog.show()
     } else {
-      try { dialog.showModal() } catch { return }
+      try {
+        dialog.showModal()
+      } catch {
+        // A browser without an available top layer still gets a functional
+        // dialog. Only the application root is disabled; the portal stays
+        // reachable and cleanup restores the exact prior state.
+        const appRoot = document.getElementById('root')
+        if (appRoot) {
+          appRoot.inert = true
+          inertSiblings = [appRoot]
+        }
+        dialog.show()
+      }
     }
     dialogStack.push(dialog)
     lockDocumentScroll()
