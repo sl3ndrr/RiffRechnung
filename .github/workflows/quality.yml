@@ -42,7 +42,10 @@ jobs:
         run: sudo apt-get install -y poppler-utils
       - run: npm run test:browser
       - name: Audit all locked dependencies
-        run: npm audit --json | tee test-results/npm-audit.json
+        shell: bash
+        run: |
+          mkdir -p test-results
+          npm audit --json | tee test-results/npm-audit.json
       - name: Browser failure context
         if: failure()
         run: |
