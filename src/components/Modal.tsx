@@ -75,6 +75,7 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
       ref={dialogRef}
       open={open}
       className="modal-layer"
+      role="dialog"
       aria-labelledby={titleId}
       aria-modal="true"
       onKeyDown={(event) => {
