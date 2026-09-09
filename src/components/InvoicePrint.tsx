@@ -5,7 +5,7 @@ import type { Guardian, Invoice, Settings, Student } from '../types'
 import { billingPeriodFromItems, buildInvoicePrintPageStyle, euro, footerTextForPrint, formatDateLong, formatIban, groupItemsByStudent, invoiceTotal, outputItemTotal, outputItemCents, outputUnitPrice, number, parseDate } from '../lib/utils'
 import { paymentDataForInvoice } from '../lib/paymentData'
 import { SMALL_BUSINESS_TAX_NOTICE, TAX_IDENTIFIER_LABELS, taxDataForInvoice } from '../lib/invoiceProfile'
-import { resolveGiroCode } from '../lib/printJob'
+import { generateGiroCode, resolveGiroCode, type GiroCodeEncoder } from '../lib/printJob'
 
 interface InvoicePrintProps {
   invoice: Invoice | null
@@ -28,7 +28,6 @@ interface GeneratedQrCode {
   url: string
 }
 
-export type GiroCodeEncoder = (payload: string) => Promise<string>
 
 function defaultQrEncoder(payload: string): Promise<string> {
   return QRCode.toDataURL(payload, {
@@ -37,15 +36,6 @@ function defaultQrEncoder(payload: string): Promise<string> {
     width: 420,
     color: { dark: '#111827', light: '#ffffff' },
   })
-}
-
-export async function generateGiroCode(payload: string, encoder: GiroCodeEncoder = defaultQrEncoder): Promise<string> {
-  try {
-    return await encoder(payload)
-  } catch (error) {
-    const reason = error instanceof Error && error.message ? `: ${error.message}` : ''
-    throw new Error(`GiroCode konnte nicht erzeugt werden${reason}`)
-  }
 }
 
 async function waitForPrintFonts(): Promise<void> {
@@ -127,7 +117,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
     }
 
     const payload = giroCode.payload
-    void generateGiroCode(payload, qrEncoder).then((url) => {
+    void generateGiroCode(payload, qrEncoder ?? defaultQrEncoder).then((url) => {
       if (!cancelled) setQrCode({ requestId, invoiceId, payload, url })
     }).catch((error) => {
       if (!cancelled) onPrintError?.(requestId, invoiceId, error instanceof Error ? error.message : 'GiroCode konnte nicht erzeugt werden.')
