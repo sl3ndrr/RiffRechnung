@@ -51,7 +51,10 @@ export function resolveGiroCode(
   }
 
   try {
-    return { kind: 'ready', payload: payloadBuilder(invoice, settings, amount) }
+    const payload = payloadBuilder(invoice, settings, amount)
+    const byteLength = new TextEncoder().encode(payload).byteLength
+    if (byteLength > 331) throw new Error(`EPC-GiroCode: Die Payload überschreitet mit ${byteLength} Byte das Maximum von 331 Byte.`)
+    return { kind: 'ready', payload }
   } catch (error) {
     return { kind: 'error', reason: error instanceof Error ? error.message : 'GiroCode konnte nicht erzeugt werden.' }
   }
