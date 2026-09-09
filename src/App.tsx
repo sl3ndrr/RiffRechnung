@@ -27,6 +27,7 @@ import { downloadText, invoicePdfTitle, statusLabel, uid } from './lib/utils'
 import { changeInvoiceStatus } from './lib/invoiceActions'
 import { assertOriginalsPreserved, assertReplacementAllowed, FINALIZED_INVOICE_BLOCKED, isFinalizedInvoice } from './lib/safety'
 import { APP_VERSION } from './version'
+import { isCurrentPrintRequest, type PrintRequest } from './lib/printJob'
 
 const navItems: Array<{ key: PageKey; label: string; icon: typeof LayoutDashboard }> = [
   { key: 'dashboard', label: 'Übersicht', icon: LayoutDashboard },
@@ -53,11 +54,6 @@ interface InvoiceEditorState {
   editing: boolean
   finalized: boolean
   invoiceNumber: string | null
-}
-
-interface PrintRequest {
-  id: string
-  invoice: Invoice
 }
 
 function App() {
@@ -341,21 +337,36 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   })
 
   const print = (invoice: Invoice) => {
-    const request = { id: uid('print'), invoice: selectInvoice(stateRef.current, stateRef.current.invoices.find((entry) => entry.id === invoice.id) ?? invoice) }
+    const current = stateRef.current
+    const request: PrintRequest = {
+      id: uid('print'),
+      invoice: selectInvoice(current, current.invoices.find((entry) => entry.id === invoice.id) ?? invoice),
+      guardians: structuredClone(current.guardians),
+      students: structuredClone(current.students),
+      settings: structuredClone(current.settings),
+      includeGiroCode: true,
+    }
     printRequestRef.current = request
     setPrintRequest(request)
   }
 
-  const handlePrintReady = useCallback((requestId: string, invoiceId: string) => {
+  const handlePrintReady = useCallback(async (requestId: string, invoiceId: string) => {
     const request = printRequestRef.current
-    if (!request || request.id !== requestId || request.invoice.id !== invoiceId) return
+    if (!isCurrentPrintRequest(request, requestId, invoiceId)) return
+    try {
+      await document.fonts?.ready
+    } catch {
+      // A printable fallback font is still better than crossing into another job.
+    }
+    if (!isCurrentPrintRequest(printRequestRef.current, requestId, invoiceId)) return
+
     printRequestRef.current = null
     const previousTitle = document.title
     const restoreTitle = () => {
       document.title = previousTitle
       setPrintRequest((current) => current?.id === requestId ? null : current)
     }
-    document.title = invoicePdfTitle(request.invoice, state.students)
+    document.title = invoicePdfTitle(request.invoice, request.students)
     window.addEventListener('afterprint', restoreTitle, { once: true })
     try {
       window.print()
@@ -364,15 +375,24 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       restoreTitle()
       toast('Druckdialog konnte nicht geöffnet werden.', 'error')
     }
-  }, [state.students, toast])
+  }, [toast])
 
   const handlePrintError = useCallback((requestId: string, invoiceId: string, message: string) => {
     const request = printRequestRef.current
-    if (!request || request.id !== requestId || request.invoice.id !== invoiceId) return
-    printRequestRef.current = null
-    setPrintRequest((current) => current?.id === requestId ? null : current)
-    toast(message, 'error')
-  }, [toast])
+    if (!isCurrentPrintRequest(request, requestId, invoiceId)) return
+    setConfirmation({
+      title: 'GiroCode nicht verfügbar',
+      message: `${message} Die Rechnung selbst ist vollständig und kann bewusst ohne GiroCode gedruckt werden. Bankdaten, Betrag und Verwendungszweck bleiben unverändert aus diesem Druckauftrag.`,
+      label: 'Ohne GiroCode drucken',
+      action: () => {
+        const pending = printRequestRef.current
+        if (!isCurrentPrintRequest(pending, requestId, invoiceId)) return
+        const fallback = { ...pending, includeGiroCode: false, giroCodeFallbackReason: message }
+        printRequestRef.current = fallback
+        setPrintRequest(fallback)
+      },
+    })
+  }, [])
 
   const exportBackup = () => {
     downloadText(`riffrechnung-backup-${new Date().toISOString().slice(0, 10)}.json`, session.export())
@@ -630,7 +650,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       <ChangelogModal open={changelogOpen} onClose={() => setChangelogOpen(false)} />
       <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />
       <ToastRegion messages={toasts} onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))} />
-      <div className="print-root"><InvoicePrint invoice={printRequest?.invoice ?? null} guardians={state.guardians} students={state.students} settings={state.settings} requestId={printRequest?.id} onPrintReady={handlePrintReady} onPrintError={handlePrintError} /></div>
+      <div className="print-root"><InvoicePrint invoice={printRequest?.invoice ?? null} guardians={printRequest?.guardians ?? []} students={printRequest?.students ?? []} settings={printRequest?.settings ?? state.settings} requestId={printRequest?.id} includeGiroCode={printRequest?.includeGiroCode} giroCodeFallbackReason={printRequest?.giroCodeFallbackReason} onPrintReady={handlePrintReady} onPrintError={handlePrintError} /></div>
     </div>
   )
 }
