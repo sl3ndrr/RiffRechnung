@@ -85,6 +85,7 @@ test('P09 Browser/PDF: ein-, zwei- und mehrseitige Rechnungen behalten Text, Was
     const state = printableState(example.items, example.freeText)
     const invoice = state.invoices[0]
     const pdf = await createPdf(page, state, invoice.id, example.label, testInfo)
+    const normalizedPdfText = pdf.text.replace(/\s+/g, ' ').trim()
     expect(pdf.pages).toBeGreaterThanOrEqual(example.expectedPages)
     if (example.expectedPages < 5) expect(pdf.pages).toBe(example.expectedPages)
     expect(pdf.text).toContain(invoice.number!)
@@ -92,7 +93,7 @@ test('P09 Browser/PDF: ein-, zwei- und mehrseitige Rechnungen behalten Text, Was
     expect(pdf.text).toContain('DE02 1203 0000 0000 2020 51')
     expect(pdf.text).toContain('Rechtstext für die vollständige PDF-Ausgabe')
     expect(pdf.text).toContain('Unterrichtsposition 1')
-    expect(pdf.text).toContain(example.freeText.split('\n').at(-1)!)
+    expect(normalizedPdfText).toContain(example.freeText.split('\n').at(-1)!)
     for (let pageNumber = 1; pageNumber <= pdf.pages; pageNumber++) {
       expect(pdf.text).toContain(`Seite ${pageNumber} von ${pdf.pages}`)
     }
