@@ -7,7 +7,8 @@ import type { AppState } from '../../src/types'
 async function seed(page: Page, state: AppState) {
   await page.goto('/')
   await page.evaluate(async (raw) => {
-    const { StorageSession } = await import('/src/lib/storage.ts')
+    const path = '/src/lib/storage.ts'
+    const { StorageSession } = await import(path)
     await new StorageSession().restore(raw)
   }, serializeBackup(state))
   await page.reload()
