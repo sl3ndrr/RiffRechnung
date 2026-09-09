@@ -44,6 +44,7 @@ interface Confirmation {
   title: string
   message: string
   label: string
+  cancelLabel?: string
   danger?: boolean
   action: () => void | Promise<void>
 }
@@ -75,8 +76,10 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const settingsFlush = useRef<(() => Promise<boolean>) | null>(null)
   const [page, setPage] = useState<PageKey>('dashboard')
   const [mobileNav, setMobileNav] = useState(false)
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 820px)').matches)
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
   const [editor, setEditor] = useState<InvoiceEditorState>({ open: false, draft: createEmptyInvoiceDraft(state.settings), editing: false, finalized: false, invoiceNumber: null })
+  const [editorDirty, setEditorDirty] = useState(false)
   const [printRequest, setPrintRequest] = useState<PrintRequest | null>(null)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
@@ -95,6 +98,9 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const [folderReview, setFolderReview] = useState<{ handle: FileSystemDirectoryHandle; inspection: DirectoryInspection } | null>(null)
   const backupImportInput = useRef<HTMLInputElement | null>(null)
   const printRequestRef = useRef<PrintRequest | null>(null)
+  const mobileMenuButtonRef = useRef<HTMLButtonElement | null>(null)
+  const mobileCloseButtonRef = useRef<HTMLButtonElement | null>(null)
+  const mainContentRef = useRef<HTMLElement | null>(null)
 
   const toast = useCallback((message: string, tone: ToastMessage['tone'] = 'info') => {
     const id = uid('toast')
@@ -196,6 +202,17 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   }, [saveStateLabel, settingsDirty])
 
   useEffect(() => {
+    const media = window.matchMedia('(max-width: 820px)')
+    const update = () => {
+      setIsMobile(media.matches)
+      if (!media.matches) setMobileNav(false)
+    }
+    update()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+
+  useEffect(() => {
     const root = document.documentElement
     const apply = () => {
       const dark = state.settings.theme === 'dark' || (state.settings.theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
@@ -254,6 +271,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     }, allocations ? finalize ? 'Aufgeteilte Rechnungen gemeinsam finalisiert' : 'Aufgeteilte Rechnungsentwürfe angelegt' : finalize ? 'Rechnung finalisiert' : 'Rechnungsentwurf gespeichert', 'invoice', draft.id)
     if (!saved) return
     setEditor((current) => ({ ...current, open: false }))
+    setEditorDirty(false)
     setPage('invoices')
     setSelectedInvoiceId(savedIds[0] ?? null)
     toast(allocations ? `${savedIds.length} ${finalize ? 'Rechnungen finalisiert' : 'Entwürfe angelegt'}.` : finalize ? 'Rechnung finalisiert.' : 'Entwurf gespeichert.', 'success')
@@ -573,11 +591,51 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     onModeChange(mode === 'real' ? 'demo' : 'real')
   }
   const loadDemo = () => { void switchMode() }
+  const closeEditor = () => {
+    setEditor((current) => ({ ...current, open: false }))
+    setEditorDirty(false)
+  }
+  const requestCloseEditor = () => {
+    if (!editor.open || !editorDirty) return closeEditor()
+    setConfirmation({
+      title: 'Ungespeicherte Rechnungsänderungen verwerfen?',
+      message: 'Die Eingaben wurden noch nicht gespeichert oder finalisiert. „Weiter bearbeiten“ erhält alle Formularwerte. „Verwerfen“ ändert keinen gespeicherten Beleg.',
+      label: 'Verwerfen',
+      cancelLabel: 'Weiter bearbeiten',
+      danger: true,
+      action: closeEditor,
+    })
+  }
   const openInvoice = (id: string) => { setSelectedInvoiceId(id); void setCurrentPage('invoices') }
   const setCurrentPage = async (next: PageKey) => {
+    if (editor.open && editorDirty && next !== page) {
+      setConfirmation({
+        title: 'Ungespeicherte Rechnungsänderungen verwerfen?',
+        message: 'Die Eingaben wurden noch nicht gespeichert oder finalisiert. „Weiter bearbeiten“ erhält alle Formularwerte. „Verwerfen“ ändert keinen gespeicherten Beleg.',
+        label: 'Verwerfen',
+        cancelLabel: 'Weiter bearbeiten',
+        danger: true,
+        action: () => {
+          closeEditor()
+          setPage(next)
+          setMobileNav(false)
+          requestAnimationFrame(() => mainContentRef.current?.focus())
+        },
+      })
+      return
+    }
     if (page === 'settings' && settingsFlush.current && !await settingsFlush.current()) return
     setPage(next)
     setMobileNav(false)
+    if (isMobile && mobileNav) requestAnimationFrame(() => mainContentRef.current?.focus())
+  }
+  const openMobileNav = () => {
+    setMobileNav(true)
+    requestAnimationFrame(() => mobileCloseButtonRef.current?.focus())
+  }
+  const closeMobileNav = () => {
+    setMobileNav(false)
+    requestAnimationFrame(() => mobileMenuButtonRef.current?.focus())
   }
   const nextTheme = state.settings.theme === 'system' ? 'light' : state.settings.theme === 'light' ? 'dark' : 'system'
   const toggleTheme = async () => {
@@ -598,7 +656,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       {localSaveError && <p role="alert">{localSaveError}</p>}
       <StorageRecovery recovery={recovery} onExport={exportRecoveryData} onImport={importBackup} onReview={reviewRecovery} onPrevious={reviewPrevious} onArchive={exportRecoveryArchive} />
       <ImportReview review={importReview} onClose={() => setImportReview(null)} onApply={recovery.readOnly ? undefined : confirmImport} />
-      <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />
+      <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} cancelLabel={confirmation?.cancelLabel} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />
       <ToastRegion messages={toasts} onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))} />
     </>
   )
@@ -607,9 +665,9 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     <div className="app-shell">
       {mode === 'demo' && <section className="demo-banner" role="status">Demo – nur in dieser Sitzung. <button className="button button--tonal" onClick={() => void switchMode()}>Demo verlassen</button></section>}
       <a href="#main-content" className="skip-link">Zum Inhalt springen</a>
-      <aside className={`sidebar ${mobileNav ? 'sidebar--open' : ''}`}>
-        <div className="brand"><span className="brand__mark" aria-hidden="true">🧾</span><div><strong>RiffRechnung</strong><small>Rechnungen</small></div><button className="icon-button mobile-only" onClick={() => setMobileNav(false)} aria-label="Navigation schließen"><X aria-hidden="true" /></button></div>
-        <nav aria-label="Hauptnavigation">{navItems.map(({ key, label, icon: Icon }) => <button className={page === key ? 'is-active' : ''} aria-current={page === key ? 'page' : undefined} key={key} onClick={() => setCurrentPage(key)}><Icon aria-hidden="true" /><span>{label}</span>{key === 'invoices' && state.invoices.filter((invoice) => invoice.status === 'draft').length > 0 && <b>{state.invoices.filter((invoice) => invoice.status === 'draft').length}</b>}</button>)}</nav>
+      <aside id="mobile-sidebar" className={`sidebar ${mobileNav ? 'sidebar--open' : ''}`} inert={isMobile && !mobileNav}>
+        <div className="brand"><span className="brand__mark" aria-hidden="true">🧾</span><div><strong>RiffRechnung</strong><small>Rechnungen</small></div><button ref={mobileCloseButtonRef} className="icon-button mobile-only" onClick={closeMobileNav} aria-label="Navigation schließen"><X aria-hidden="true" /></button></div>
+        <nav aria-label="Hauptnavigation">{navItems.map(({ key, label, icon: Icon }) => <button className={page === key ? 'is-active' : ''} aria-current={page === key ? 'page' : undefined} aria-label={label} key={key} onClick={() => setCurrentPage(key)}><Icon aria-hidden="true" /><span>{label}</span>{key === 'invoices' && state.invoices.filter((invoice) => invoice.status === 'draft').length > 0 && <b>{state.invoices.filter((invoice) => invoice.status === 'draft').length}</b>}</button>)}</nav>
         <div className="sidebar__privacy"><span><ShieldDot /></span><div><strong>Nur auf diesem Gerät</strong><small>Keine automatische Cloud-Übertragung</small></div></div>
         <button className="sidebar__version" type="button" onClick={() => setChangelogOpen(true)} aria-label={`Versionshistorie öffnen, aktuelle Version ${APP_VERSION}`}>Version {APP_VERSION}</button>
         <div className="sidebar__secondary-actions">
@@ -620,19 +678,19 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
           <input ref={backupImportInput} type="file" accept=".json,application/json" hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void importBackup(file) }} />
         </div>
       </aside>
-      {mobileNav && <button className="nav-scrim" aria-label="Navigation schließen" onClick={() => setMobileNav(false)} />}
+      {mobileNav && <button className="nav-scrim" aria-label="Navigation schließen" onClick={closeMobileNav} />}
 
       <div className="app-main">
         <header className="topbar">
-          <button className="icon-button mobile-only" onClick={() => setMobileNav(true)} aria-label="Navigation öffnen"><Menu aria-hidden="true" /></button>
+          <button ref={mobileMenuButtonRef} className="icon-button mobile-only" onClick={openMobileNav} aria-label="Navigation öffnen" aria-controls="mobile-sidebar" aria-expanded={mobileNav}><Menu aria-hidden="true" /></button>
           <button className="topbar-search" onClick={async () => { await setCurrentPage('invoices'); requestAnimationFrame(() => document.querySelector<HTMLInputElement>('#invoice-search')?.focus()) }}><Search aria-hidden="true" /><span>Rechnungen durchsuchen</span></button>
-          <div className="topbar__end"><div className="topbar__storage-status" role="status" aria-live="polite"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : saveStateLabel === 'error' ? 'is-error' : ''}`}><i />{mode === 'demo' ? 'Demo – nur in dieser Sitzung' : externalChangeDetected ? 'Speicherkonflikt' : settingsDirty || saveStateLabel === 'saving' ? 'Ungespeicherte Änderungen …' : saveStateLabel === 'error' ? 'Lokal nicht gespeichert' : !session.revision ? 'Noch nichts lokal gespeichert' : `Lokal gespeichert ${savedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`}</span><span className={`backup-indicator ${fileBackupStatus === 'error' || fileBackupStatus === 'conflict' ? 'is-error' : ''}`}>{fileBackupLabel}</span></div><button className="icon-button" onClick={toggleTheme} aria-label={themeToggleLabel} title={themeToggleLabel}><ThemeToggleIcon aria-hidden="true" /></button><button className="button button--primary topbar-new" onClick={openNewInvoice}><FilePlus2 aria-hidden="true" /><span>Neue Rechnung</span></button></div>
+          <div className="topbar__end"><div className="topbar__storage-status" role="status" aria-live="polite"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : saveStateLabel === 'error' ? 'is-error' : ''}`}><i />{mode === 'demo' ? 'Demo – nur in dieser Sitzung' : externalChangeDetected ? 'Speicherkonflikt' : settingsDirty || saveStateLabel === 'saving' ? 'Ungespeicherte Änderungen …' : saveStateLabel === 'error' ? 'Lokal nicht gespeichert' : !session.revision ? 'Noch nichts lokal gespeichert' : `Lokal gespeichert ${savedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`}</span><span className={`backup-indicator ${fileBackupStatus === 'error' || fileBackupStatus === 'conflict' ? 'is-error' : ''}`}>{fileBackupLabel}</span></div><button className="icon-button" onClick={toggleTheme} aria-label={themeToggleLabel} title={themeToggleLabel}><ThemeToggleIcon aria-hidden="true" /></button><button className="button button--primary topbar-new" onClick={openNewInvoice} aria-label="Neue Rechnung erstellen"><FilePlus2 aria-hidden="true" /><span>Neue Rechnung</span></button></div>
         </header>
 
         {externalChangeDetected && <section className="external-update" role="alert"><div><strong>Änderungen in einem anderen Tab erkannt</strong><p>Dieser Tab zeigt nicht mehr den aktuellen Datenstand. Lade neu, bevor du weiterarbeitest.</p></div><button className="button button--tonal" type="button" onClick={() => window.location.reload()}>Aktuellen Stand neu laden</button></section>}
         {persistenceErrorText && <section className="persistence-error" role="alert"><div><strong>Speichern fehlgeschlagen</strong><p>{persistenceErrorText}</p></div><div className="button-row"><button className="button button--tonal" type="button" onClick={async () => { if (settingsFlush.current) await settingsFlush.current(); await backupNow() }}>Erneut versuchen</button><button className="button button--text" type="button" onClick={exportBackup}>JSON-Backup exportieren</button></div></section>}
 
-        <main id="main-content" tabIndex={-1}>
+        <main ref={mainContentRef} id="main-content" tabIndex={-1}>
           {page === 'dashboard' && <Dashboard state={state} onNavigate={setCurrentPage} onNewInvoice={openNewInvoice} onLoadDemo={loadDemo} demoBlockedReason={mode === 'demo' ? 'Du bist bereits in der isolierten Demo.' : null} onOpenInvoice={openInvoice} />}
           {page === 'invoices' && <Invoices state={state} selectedId={selectedInvoiceId} onSelect={setSelectedInvoiceId} onNew={openNewInvoice} onEdit={editInvoice} onDuplicate={duplicateInvoice} onDelete={requestDeleteInvoice} onSetStatus={setInvoiceStatus} onCorrection={startCorrection} onAllocatePayment={(paymentId, versionId, reason) => { void commit((current) => allocatePayment(current, paymentId, versionId, reason), 'Zahlung manuell zugeordnet', 'invoice') }} onResolveConflicts={(versionId, reason) => { void commit((current) => resolveDocumentConflicts(current, versionId, reason), 'Historische Abweichung geklärt', 'invoice') }} onPrint={print} onToast={toast} />}
           {page === 'people' && <People state={state} onSaveGuardian={saveGuardian} onSaveStudent={saveStudent} onDeleteGuardian={deleteGuardian} onDeleteStudent={deleteStudent} />}
@@ -646,9 +704,9 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
 
       <FolderReview review={folderReview} current={session.revision} onClose={() => setFolderReview(null)} onChoose={connectFolder} onConnect={() => void acceptFolder()} onRestore={(preview) => setConfirmation({ title: 'Sicherung zuordnen und wiederherstellen?', message: 'Mit der Bestätigung wird die gewählte Sicherung als neuer lokaler Stand eingeführt. Altbackups ohne Bestands-ID werden ausdrücklich zugeordnet; eine gemeinsame Herkunft wird nicht behauptet. Vorhandene Originale und Rohdaten bleiben geschützt.', label: 'Zuordnung und Wiederherstellung bestätigen', action: async () => { await acceptFolder(preview) } })} />
       <ImportReview review={importReview} onClose={() => setImportReview(null)} onApply={confirmImport} />
-      <InvoiceEditor state={state} open={editor.open} draft={editor.draft} editing={editor.editing} finalized={editor.finalized} invoiceNumber={editor.invoiceNumber} guardians={state.guardians} students={state.students} settings={state.settings} onClose={() => setEditor((current) => ({ ...current, open: false }))} onSave={saveInvoice} />
+      <InvoiceEditor state={state} open={editor.open} draft={editor.draft} editing={editor.editing} finalized={editor.finalized} invoiceNumber={editor.invoiceNumber} guardians={state.guardians} students={state.students} settings={state.settings} onClose={requestCloseEditor} onDirtyChange={setEditorDirty} onSave={saveInvoice} />
       <ChangelogModal open={changelogOpen} onClose={() => setChangelogOpen(false)} />
-      <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />
+      <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} cancelLabel={confirmation?.cancelLabel} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />
       <ToastRegion messages={toasts} onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))} />
       <div className="print-root"><InvoicePrint invoice={printRequest?.invoice ?? null} guardians={printRequest?.guardians ?? []} students={printRequest?.students ?? []} settings={printRequest?.settings ?? state.settings} requestId={printRequest?.id} includeGiroCode={printRequest?.includeGiroCode} giroCodeFallbackReason={printRequest?.giroCodeFallbackReason} onPrintReady={handlePrintReady} onPrintError={handlePrintError} /></div>
     </div>
