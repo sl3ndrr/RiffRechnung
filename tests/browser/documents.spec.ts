@@ -4,7 +4,6 @@ import { readFile } from 'node:fs/promises'
 import type { AppState } from '../../src/types'
 import { documentDraft, documentFamily, documentAt, legacyFixture } from '../documentFixtures'
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
-import { emptyState } from '../../src/lib/defaults'
 import { parseBackup, serializeBackup, STORAGE_KEY } from '../../src/lib/storage'
 
 async function stateOf(page: Page): Promise<AppState> {
