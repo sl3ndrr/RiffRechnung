@@ -89,10 +89,10 @@ test('AP1: beide Altentwurfsformen bleiben bis zur bestätigten atomaren Umwandl
   for (const [state, id, guardians] of [[one, 'legacy-one', ['g-a']], [two, 'legacy-two', ['g-a', 'g-b']]] as const) {
     const before = structuredClone(reload(state))
     const draft = editable(state.invoices[0])
-    assert.equal(convertLegacyDraftState(state, id, [], guardians, draft, documentAt).ok, false)
+    assert.equal(convertLegacyDraftState(state, id, [], [...guardians], draft, documentAt).ok, false)
     assert.equal(convertLegacyDraftState(state, id, LEGACY_REVIEW_FIELDS, [], draft, documentAt).ok, false)
     assert.deepEqual(state, before)
-    const result = requireSuccess(convertLegacyDraftState(state, id, LEGACY_REVIEW_FIELDS, guardians, draft, documentAt))
+    const result = requireSuccess(convertLegacyDraftState(state, id, LEGACY_REVIEW_FIELDS, [...guardians], draft, documentAt))
     assert.equal(result.invoices.length, 1)
     assert.equal(result.invoices[0].recipientStrategy, 'joint')
     assert.deepEqual(result.invoices[0].guardianIds, guardians)

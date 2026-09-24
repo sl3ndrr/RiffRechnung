@@ -199,7 +199,7 @@ test('AP1 Browser: ein offener Altentwurf verlangt sichtbare Prüfung und ausdr�
   await expect(page.getByText(/Historischer Aufteilungsentwurf: Bitte öffnen/)).toBeVisible()
   await page.locator('.invoice-detail').getByRole('button', { name: 'Bearbeiten', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Entwurf bearbeiten' })
-  await expect(dialog.getByText('Originaler Unterricht')).toBeVisible()
+  await expect(dialog.getByRole('textbox', { name: 'Beschreibung' })).toHaveValue('Originaler Unterricht')
   await expect(dialog.getByText('Nach Empfänger:innen aufteilen')).toHaveCount(0)
   await dialog.getByRole('button', { name: 'Als gemeinsamen Entwurf übernehmen' }).click()
   await expect(dialog.getByRole('alert')).toContainText('alle fünf Angaben')
