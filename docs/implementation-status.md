@@ -1,6 +1,6 @@
 # AP1 – Neue Rechnungsaufteilung entfernen
 
-Stand 2026-09-24: Arbeitsbranch `codex/ap1-remove-invoice-split`, Ausgang `main` 1449d596e6538d32f4c22ef3a0b2f845ef1aed71. AP2–AP5 noch nicht integriert. Lokal war kein Git-Checkout verfügbar; die Auditdateien wurden über den verbundenen GitHub-Zugriff bereitgestellt.
+Stand 2026-09-24: Arbeitsbranch `codex/ap1-remove-invoice-split`, Ausgang `main` 1449d596e6538d32f4c22ef3a0b2f845ef1aed71. AP2–AP5 noch nicht integriert. [PR #36](https://github.com/sl3ndrr/RiffRechnung/pull/36): Implementierungscommit `02e712c519d4f833552837a66b63bad06fd73ad9`; [CI 36063143264](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36063143264) mit 148 Fach- und 43 Browserprüfungen, Lint, Typecheck, Build und Audit erfolgreich. Lokal war kein Git-Checkout verfügbar; die Auditdateien wurden über den verbundenen GitHub-Zugriff bereitgestellt.
 
 AP1 entfernt die neue Empfänger-/Centaufteilung samt UI, Vorschau und Mehrfach-Speicherbefehl. Neue `separate`-Entwürfe und direkte Abschlüsse sind gesperrt. Historische Ausgaben und Korrekturen bleiben erhalten; Kopien von aufgeteilten Belegen sind gesperrt. Einzel- und Mehrpersonenrechnungen nutzen `joint`. Offene Altentwürfe werden nach ausdrücklicher Prüfung atomar übernommen. Kein Schemawechsel (7), keine stille Korrektur historischer Angaben.
 

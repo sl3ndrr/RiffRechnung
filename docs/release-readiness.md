@@ -1,6 +1,8 @@
 # AP1 – Prüfstand (2026-09-24)
 
-Die folgenden Paket-12-Nachweise sind historische Ergebnisse vor AP1. AP1 ersetzt die Empfängeraufteilung durch gemeinsame Rechnungen und die bestätigte Umwandlung offener Altentwürfe. Vor einer Freigabe müssen die aktualisierten Fach- und Browserprüfungen auf Node 22 und den drei Playwright-Browsern erfolgreich laufen. Lokales `npm ci` erhielt HTTP 403; die bisherigen P12-Ergebnisse gelten nicht als AP1-Nachweis. Keine Freigabe, kein Merge und kein Deployment.
+Die folgenden Paket-12-Nachweise sind historische Ergebnisse vor AP1. AP1 ersetzt die Empfängeraufteilung durch gemeinsame Rechnungen und die bestätigte Umwandlung offener Altentwürfe. [PR #36](https://github.com/sl3ndrr/RiffRechnung/pull/36), Implementierungscommit `02e712c519d4f833552837a66b63bad06fd73ad9`, [CI 36063143264](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36063143264): Node 22.23.2, `npm ci`, Lint, 148/148 Fachtests, Typecheck, Build, 43/43 Browserprüfungen (Chromium sowie JSON-Fallback in Firefox/WebKit) und Dependency-Audit erfolgreich. Der letzte Dokumentationscommit wird gesondert geprüft.
+
+Lokales `npm ci` erhielt HTTP 403; die lokale Node-Version ist 24.19.0. Native Druckdialoge und Dateiberechtigungen, visuelle PDF-Abnahme, Banking-Scans, Screenreader und Safari/macOS sind weiterhin offen. Keine Freigabe, kein Merge und kein Deployment.
 
 # Paket 12 – Freigabereife
 

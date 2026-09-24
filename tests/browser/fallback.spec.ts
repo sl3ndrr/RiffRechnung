@@ -19,7 +19,7 @@ async function restore(page: Page, buffer: Buffer) {
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
 }
 
-test('P12 Fallback: zwei Familien als JSON exportieren, in leerem Profil importieren und reload', async ({ page, context, browser, browserName }, testInfo) => {
+test('AP1 Fallback: gemeinsame Rechnung an zwei Personen als JSON exportieren, importieren und reload', async ({ page, context, browser, browserName }, testInfo) => {
   const flowStarted = Date.now()
   console.log(`P12 JSON-Fallback: ${browserName} ${browser.version()}; Node ${process.version}; ${process.platform}`)
   await testInfo.attach('browser-version.txt', { body: `${browserName} ${browser.version()} / ${process.platform} / Node ${process.version}`, contentType: 'text/plain' })
