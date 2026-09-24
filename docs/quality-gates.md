@@ -1,3 +1,9 @@
+## AP1 – Nachweis (2026-09-24)
+
+[PR #36](https://github.com/sl3ndrr/RiffRechnung/pull/36), Implementierungscommit `02e712c519d4f833552837a66b63bad06fd73ad9`: [CI 36063143264](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36063143264) unter Node 22.23.2 / npm 10.9.8. `npm ci`, `npm run lint`, `npm test` (148/148; die AP1-Testnamen sind im Protokoll und die Testdatei ist in `tests/logic.test.ts` importiert), `npm run typecheck`, `npm run build`, Installation aller Playwright-Browser und `pdftotext`, `npm run test:browser` (43/43) sowie vollständiges Dependency-Audit erfolgreich. Der abschließende Dokumentationscommit benötigt einen eigenen CI-Lauf.
+
+Vorherige CI-Läufe zeigten einen ungenutzten Testimport, zwei schreibgeschützte Test-Tuples und einen Browserklick auf das verdeckte Checkbox-Element. Die jeweils gezielt korrigierten Nachweise liefen danach vollständig grün; kein Test wurde abgeschwächt oder ersatzlos gelöscht. Lokale Node-Version 24.19.0; `npm ci` scheiterte dort an HTTP 403, nachfolgende npm-Befehle hatten keine installierten Binaries. Der lokale Browserlauf konnte den historischen Commit mangels origin-Zugriff nicht holen. Diese lokalen Versuche gelten nicht als bestandene Gates.
+
 # Qualitätsschranken und Nachweise
 
 Aktueller Stand: [Paket 12](#paket-12--integrierter-prüfstand-und-fehlerzuordnung),
@@ -637,3 +643,4 @@ Force-Clicks, Testauslassungen oder schwächeren Datenvergleiche. Grundlage:
 [Playwright-Testzeitbudgets](https://playwright.dev/docs/test-timeouts) schließen
 Fixture-Setup ein und sind vom Assertion-Zeitbudget getrennt. Der neue Ergebnis-
 Commit wird vollständig geprüft und im PR mit exakter SHA/CI-Lauf verknüpft.
+

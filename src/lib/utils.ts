@@ -30,7 +30,7 @@ type InvoiceFinalizationCandidate = Pick<Invoice, 'guardianIds' | 'studentIds' |
 
 export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 'students' | 'settings'>, invoice: InvoiceFinalizationCandidate): string[] {
   const errors: string[] = [...moneyErrors(invoice)]
-  if (invoice.recipientStrategy === 'separate' && invoice.guardianIds.length > 1) errors.push('Die gemeinsame Aufteilung muss zuerst mit vollständiger Positionszuordnung geprüft werden.')
+  if (invoice.recipientStrategy === 'separate' && !('correction' in invoice && invoice.correction)) errors.push('Neue getrennte Rechnungen sind nicht zulässig. Historische Entwürfe ausdrücklich als gemeinsame Rechnung übernehmen.')
   const guardianIds = new Set(state.guardians.map((guardian) => guardian.id))
   const studentIds = new Set(state.students.map((student) => student.id))
   const selectedStudentIds = new Set(invoice.studentIds)

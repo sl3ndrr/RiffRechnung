@@ -22,6 +22,10 @@ function paymentForFullClaim(state: AppState, versionId: string): { id: string; 
 }
 
 function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatus, at: string, createId: (prefix: string) => string, paymentDay?: string): AppState {
+  if (invoice.recipientStrategy === 'separate' && (!invoice.correction ||
+    state.documentVersions.find((version) => version.id === invoice.correction?.replacesId)?.content.recipientStrategy !== 'separate')) {
+    throw new Error('Historische getrennte Entwürfe dürfen nicht finalisiert werden. Bitte ausdrücklich in einen gemeinsamen Entwurf umwandeln.')
+  }
   const errors = [...invoiceFinalizationErrors(state, invoice), ...correctionErrors(state, invoice)]
   if (errors.length) throw new Error(`Finalisieren nicht möglich: ${errors.join(' ')}`)
   if (status === 'paid' && invoice.correction && state.payments.some((payment) => state.documentVersions.find((entry) => entry.id === payment.sourceVersionId)?.originalId === state.documentVersions.find((entry) => entry.id === invoice.correction?.replacesId)?.originalId)) throw new Error('Vorhandene Zahlungen müssen nach der Korrektur manuell zugeordnet werden; eine neue Vollzahlung wird nicht erzeugt.')
@@ -55,6 +59,10 @@ export function saveInvoiceDraft(state: AppState, draft: InvoiceDraft, finalize:
   if (draft.id && !existing) throw new Error('Der Entwurf ist nicht mehr vorhanden. Bitte neu laden.')
   assertInvoiceEditable(existing)
   if (existing?.correction?.replacesId !== draft.correction?.replacesId && existing) throw new Error('Der Korrekturverweis eines gespeicherten Entwurfs bleibt erhalten.')
+  if (draft.recipientStrategy === 'separate' && (!existing?.correction || !draft.correction ||
+    state.documentVersions.find((version) => version.id === draft.correction?.replacesId)?.content.recipientStrategy !== 'separate')) {
+    throw new Error('Getrennte Rechnungen sind nur als Korrektur eines historischen aufgeteilten Belegs zulässig. Bitte den Altentwurf ausdrücklich in einen gemeinsamen Entwurf umwandeln.')
+  }
   const errors = [...moneyErrors(draft), ...(finalize ? invoiceFinalizationErrors(state, draft) : draftAudienceErrors(state, draft))]
   if (errors.length) throw new Error(errors.join(' '))
   const saved: Invoice = {
@@ -125,7 +133,6 @@ export function changeInvoiceStatus(state: AppState, invoiceId: string, status: 
 }
 
 function draftAudienceErrors(state: AppState, draft: InvoiceDraft): string[] {
-  if (draft.recipientStrategy === 'separate' && draft.guardianIds.length > 1) return ['Die gemeinsame Aufteilung muss zuerst mit vollständiger Positionszuordnung geprüft werden.']
   if (draft.studentIds.length && draft.guardianIds.some((id) => draft.studentIds.some((studentId) => {
     if (draft.correction && !state.guardians.some((guardian) => guardian.id === id)) return false
     const student = state.students.find((entry) => entry.id === studentId)

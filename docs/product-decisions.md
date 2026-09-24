@@ -9,8 +9,8 @@ ihre technische Umsetzung wird pro Paket im [Umsetzungsstatus](implementation-st
 | Architektur | Statische React-/TypeScript-App, lokale Datenhaltung, deutsche Oberfläche; kein zusätzliches Backend. | In allen Paketen erhalten. |
 | IBAN | Ausschließlich deutsche IBANs für neue/geänderte Kontoeinstellungen und neue Finalisierungen. Keine Ausweitung auf weitere SEPA-Länder. | In Paket 07 zentral normalisiert und nach DE-Struktur, 22 Stellen und Modulo-97 geprüft; Nicht-DE erhält eine eigene Fehlermeldung. |
 | Historische Kontodaten | Alte Belege originalgetreu lesen; fremde oder leere Kontofelder weder löschen noch umschreiben noch durch aktuelle Kontodaten ersetzen. | In 04 erhalten; Profil-/EPC-Ausbau in 07. |
-| Getrennte Rechnungen | Jede Leistung pro Aufteilung insgesamt genau einmal berechnen; Empfänger erhalten nur zugeordnete Kinder/Positionen. Keine angenommene 50/50-Aufteilung. | In Paket 06 als expliziter, atomarer Zuordnungsübergang umgesetzt. |
-| Rechnungskopien | Weitere Ausgabe desselben Belegs erzeugt weder neue Forderung noch zweiten Umsatz. Getrennte Forderungen brauchen getrennte Leistungen oder ausdrücklich bestätigte Anteile. | Paket 06 legt nur Forderungsrechnungen an; wiederholte Ausgabe bleibt eine Aktion am selben Beleg. Berichtsprüfung folgt zusätzlich in 08. |
+| Getrennte Rechnungen | AP1 entfernt die Neuanlage getrennter Rechnungen. Eine Rechnung kann einen oder mehrere berechtigte Empfänger haben; sie erzeugt eine Nummer und eine Forderung. Historische `separate`-Belege bleiben originalgetreu. | Die frühere Zuordnung aus Paket 06 ist ausschließlich historisch dokumentiert und aus UI und Fachbefehlen entfernt. |
+| Rechnungskopien | Weitere Ausgabe desselben Belegs erzeugt weder neue Forderung noch zweiten Umsatz. | AP1 sperrt Kopien historischer `separate`-Belege wegen möglicher Teilbetragspositionen und gemeinsamer Texte; Korrekturen desselben Vorgangs bleiben möglich. |
 | Finalisierte Belege | Originalinhalt erhalten; Änderungen über verknüpften Korrekturentwurf mit neuer Nummer. Zahlungs- und Versandstatus separat pflegen. Fehlende Historie nicht erfinden. | In 04 umgesetzt; Details unten. |
 | Nummern und Export | Getrennte Nummernkreise, dauerhaft reservierte Nummern und CSV-Formelabwehr erhalten. | In allen betroffenen Paketen prüfen. |
 | Backup-Ordner | Ein Ordner gehört zu einem führenden Datenbestand. Abweichende Bestände erkennen; kein stilles Zusammenführen oder Überschreiben. | Konservative Regel übernommen, Paket 03. |
@@ -31,8 +31,8 @@ Merge und Auslieferung bleiben separate Aufträge.
 
 Datei-/Demo-Sperren und die pauschale Importsperre sind durch Paket 03 ersetzt;
 die folgenden historischen Originalsperren durch den Korrekturweg aus Paket 04.
-Die damalige Aufteilungssperre wurde in Paket 06 durch den unten dokumentierten
-Zuordnungsübergang ersetzt. Bei Überschneidungen gilt der jüngste Paketstand.
+Die damalige Aufteilungssperre wurde in Paket 06 vorübergehend durch den unten historisch dokumentierten
+Zuordnungsübergang ersetzt. AP1 entfernt diesen Übergang wieder. Bei Überschneidungen gilt der jüngste Paketstand.
 
 - **Aufteilung (R01/R02):** Mehrere getrennte Empfängerrechnungen sind bei Anlage,
   Entwurfsspeicherung und Finalisierung gesperrt. Eine einzelne gemeinsame
@@ -288,7 +288,7 @@ in Paket 02, revisionssichere Speicherung in Paket 03.
   Alte Zahlungstimestamps bleiben unverändert und zeigen weiter ihren gespeicherten
   Datumsanteil; eine historische Ortszeitzone wird nicht rückwirkend unterstellt.
 
-## Paket 06 – Empfängerbezogene Aufteilung
+## Paket 06 – Empfängerbezogene Aufteilung (historische Umsetzung, durch AP1 abgelöst)
 
 - **Drei getrennte Begriffe:** `guardianIds` einer Ergebnisrechnung sind deren
   Rechnungsempfänger:innen. Die Leistung wird davor je Quellposition ausdrücklich
@@ -466,3 +466,11 @@ und [Bundesbank-IBAN-Regeln](https://www.bundesbank.de/de/aufgaben/unbarer-zahlu
 - Die Safari-Fallbackabsicht bleibt JSON-Download/-Import ohne Ordner-API.
   Linux-WebKit gibt Safari/macOS nicht frei. Native Datei-/Druck-, Banking-App-,
   visuelle PDF-/Theme- und Screenreaderabnahmen bleiben vor Produktfreigabe offen.
+
+
+## AP1 – Keine neuen getrennten Rechnungen (2026-09-24)
+
+- `separate` bleibt als Legacy-Wert in Schema 7 und im Import lesbar; neue Entwürfe und direkte Abschlüsse damit sind auch mit genau einem Empfänger gesperrt. Korrekturen eines ausgestellten `separate`-Belegs führen denselben Vorgang unter unverändertem Wert fort. Originalversionen, Beträge, Nummern, Zahlungen und Roharchive werden nicht umgedeutet.
+- Kopieren eines historischen aufgeteilten Belegs ist gesperrt: Teilbetragspositionen und gemeinsame Texte können sonst unbemerkt in eine neue Forderung gelangen. Eine neue gemeinsame Rechnung wird manuell und nach Prüfung angelegt.
+- Zwei Altentwurfsformen sind möglich: einzeln aus früherer Aufteilung entstandene `separate`-Entwürfe mit einem Empfänger und ohne Gruppenbezug; sowie importierte `separate`-Entwürfe mit mehreren Empfängern. Beide bleiben lesbar. Nach sichtbarer Prüfung von Empfänger, Kind, Positionen, Einleitung und Freitext und fünf einzelnen Bestätigungen wird Form eins mit ihrem Empfänger zum gemeinsamen Entwurf. Form zwei verlangt eine neue ausdrückliche Empfängerwahl und erhält eine neue Entwurfs-ID. Jeder Empfänger muss jedem gewählten Kind zugeordnet sein. Erst der atomare Speicherabschluss ersetzt den alten Entwurf; keine Nummer wird verbraucht und keine Finalisierung ausgeführt.
+- Keine Formatänderung: Schema 7, Speicherprotokoll 4, Archivformat 1. Historische Felder bleiben unverändert; AP1 benötigt keine Migration. Die früheren Paket-06-Regeln oben beschreiben nur Altbestände, keine heutige Neuanlage.
