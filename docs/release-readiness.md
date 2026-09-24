@@ -1,3 +1,7 @@
+# AP1 – Prüfstand (2026-09-24)
+
+Die folgenden Paket-12-Nachweise sind historische Ergebnisse vor AP1. AP1 ersetzt die Empfängeraufteilung durch gemeinsame Rechnungen und die bestätigte Umwandlung offener Altentwürfe. Vor einer Freigabe müssen die aktualisierten Fach- und Browserprüfungen auf Node 22 und den drei Playwright-Browsern erfolgreich laufen. Lokales `npm ci` erhielt HTTP 403; die bisherigen P12-Ergebnisse gelten nicht als AP1-Nachweis. Keine Freigabe, kein Merge und kein Deployment.
+
 # Paket 12 – Freigabereife
 
 Stand 2026-09-09. Ausgang `main`: `95d7370dbe5931c6ab0373bc070db2ad8763cb93`.
@@ -41,7 +45,7 @@ Browserdateien stehen unter `tests/browser/`, Fachtests und Fehlermocks unter
 
 | Szenario | Automatischer Beleg | Offene Teilabnahme |
 | --- | --- | --- |
-| a: Zwei Familien → Aufteilung → Finalisierung → Export → Import → Reload | `documents.spec.ts` P06, `fallback.spec.ts`, `invoice-split.test.ts`: je 30 EUR, 60 EUR gesamt, nur richtige Kinder/Empfänger, eindeutige IDs | Keine zusätzliche fachliche Entscheidung |
+| a (vor AP1): Zwei Familien → historische Aufteilung | Paket-12-Nachweis vor AP1; der Ablauf wurde durch gemeinsame Rechnung, Altentwurfsprüfung und Export/Import/Reload ersetzt | AP1-Browserlauf noch offen |
 | b: Original → Personen löschen → drucken → Korrektur → neu zuordnen → Reload | `documents.spec.ts` P04 und `stabilization.test.ts`: Original-PDF textgleich, neue Nummer, eine aktive Forderung/eine Zahlung | Nativer Druckdialog |
 | c: Negative Einstellung/sofortiger Wechsel; Speichern/Schließen; Quota/Wiederholung | `stabilization.spec.ts`, `storage.spec.ts`, `storage.test.ts`: keine falsche Bestätigung, fehlerhafte Eingabe bleibt im Formular | Keine Geräte-Crash-/Stromausfallzusage |
 | d: Leerer Bestand mit Backup; zwei Tabs; manuelle/automatische Sicherung; Fehler/Restore | Echte Tabs in `storage.spec.ts`, echter OPFS in `stabilization.spec.ts`; `storage.test.ts` für Picker-/Rechte-/IndexedDB-/createWritable-/write-/close-Fehler | Native Auswahl, OS grant/prompt/deny/Entzug, echte Synchronisationskonflikte |
@@ -155,3 +159,4 @@ PDF-Text-, Fokus- und Kontrastprüfungen sind davon getrennt.
   Kein entsprechender Schreib-Endpunkt ist verfügbar.
 
 Nächstes vorgesehenes Paket: optional **13**; nicht begonnen.
+

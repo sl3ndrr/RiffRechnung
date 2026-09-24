@@ -1,3 +1,11 @@
+# AP1 – Neue Rechnungsaufteilung entfernen
+
+Stand 2026-09-24: Arbeitsbranch `codex/ap1-remove-invoice-split`, Ausgang `main` 1449d596e6538d32f4c22ef3a0b2f845ef1aed71. AP2–AP5 noch nicht integriert. Lokal war kein Git-Checkout verfügbar; die Auditdateien wurden über den verbundenen GitHub-Zugriff bereitgestellt.
+
+AP1 entfernt die neue Empfänger-/Centaufteilung samt UI, Vorschau und Mehrfach-Speicherbefehl. Neue `separate`-Entwürfe und direkte Abschlüsse sind gesperrt. Historische Ausgaben und Korrekturen bleiben erhalten; Kopien von aufgeteilten Belegen sind gesperrt. Einzel- und Mehrpersonenrechnungen nutzen `joint`. Offene Altentwürfe werden nach ausdrücklicher Prüfung atomar übernommen. Kein Schemawechsel (7), keine stille Korrektur historischer Angaben.
+
+Die unten dokumentierte Paketfolge 00–17 ist eine frühere Umsetzung und nicht die AP-Serie. Paket 06 bleibt ein historischer Entwicklungsstand; seine Neuanlage wurde durch AP1 abgelöst.
+
 # Umsetzungsstatus
 
 Stand: 2026-09-09, Paket 12. Zielbranch `main` zu Beginn:
@@ -90,3 +98,4 @@ Paketdetails bleiben im Git-Verlauf dieser Datei. Produktregeln:
 
 Nächstes vorgesehenes Paket: **13 – Wiederherstellung mit Versionsvergleich**,
 optional und nur auf gesonderten Auftrag. Zuerst verbleibende P12-Freigaben klären.
+

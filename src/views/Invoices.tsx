@@ -3,7 +3,7 @@ import { outputItemTotal } from '../lib/utils'
 import { DocumentHistory, HistoricalSnapshotEvidence, type DocumentHistoryActions } from '../components/DocumentHistory'
 import { activeInvoices, isActiveClaim, openCents, selectedInvoices } from '../lib/documents'
 import { commandResult } from '../lib/result'
-import { needsHistoricalSplitReview } from '../lib/invoiceSplit'
+import { needsHistoricalSplitReview } from '../lib/historicalSplit'
 import { FINALIZED_INVOICE_BLOCKED, isFinalizedInvoice } from '../lib/safety'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -307,7 +307,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
 
       <div className="detail-actions">
         {invoice.status === 'draft' ? (
-          <><button className="button button--primary" type="button" onClick={() => onSetStatus('sent')}><Send aria-hidden="true" /> Finalisieren</button><button className="button button--tonal" type="button" onClick={onPrint}><Printer aria-hidden="true" /> Vorschau</button><button className="button button--text" type="button" onClick={onEdit}><Edit3 aria-hidden="true" /> Bearbeiten</button></>
+          <>{invoice.recipientStrategy === 'separate' && !invoice.correction ? <p className="notice" role="status">Historischer Aufteilungsentwurf: Bitte öffnen, alle Angaben prüfen und ausdrücklich als gemeinsamen Entwurf übernehmen. Eine direkte Finalisierung ist gesperrt.</p> : <button className="button button--primary" type="button" onClick={() => onSetStatus('sent')}><Send aria-hidden="true" /> Finalisieren</button>}<button className="button button--tonal" type="button" onClick={onPrint}><Printer aria-hidden="true" /> Vorschau</button><button className="button button--text" type="button" onClick={onEdit}><Edit3 aria-hidden="true" /> Bearbeiten</button></>
         ) : (
           <><button className="button button--primary" onClick={onPrint}><Printer aria-hidden="true" /> PDF / Drucken</button><button className="button button--tonal" onClick={onEdit} disabled><Edit3 aria-hidden="true" /> Rechnung bearbeiten</button></>
         )}

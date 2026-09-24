@@ -2,7 +2,7 @@ import { deleteGuardianState, deleteStudentState, deleteInvoiceDraftState, reset
 import { allocatePayment, archiveInvoice, createCorrectionDraft, resolveDocumentConflicts, selectInvoice } from './lib/documents'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BarChart3, BookUser, Download, FilePlus2, LayoutDashboard, Menu, MessageSquareText, Moon, Palette, ReceiptText, Search, Settings as SettingsIcon, Sun, Upload, UserRound, X } from 'lucide-react'
-import type { AppState, AuditEvent, Guardian, Invoice, InvoiceDraft, InvoiceItemAllocation, InvoiceStatus, PageKey, Settings as SettingsType, Student, ToastMessage } from './types'
+import type { AppState, AuditEvent, Guardian, Invoice, InvoiceDraft, InvoiceStatus, PageKey, Settings as SettingsType, Student, ToastMessage } from './types'
 import { Dashboard } from './views/Dashboard'
 import { Invoices } from './views/Invoices'
 import { InvoiceEditor } from './views/InvoiceEditor'
@@ -14,7 +14,7 @@ import { StorageRecovery } from './views/StorageRecovery'
 import { ImportReview, type ImportReviewData } from './views/ImportReview'
 import { inspectImportBytes, type ImportPreview } from './lib/importState'
 import { requireSuccess } from './lib/result'
-import { prepareInvoiceCopy, prepareNewInvoice, saveGuardianState, saveInvoiceState, saveSettingsState, saveStudentState, splitInvoiceState } from './lib/commands'
+import { prepareInvoiceCopy, prepareNewInvoice, saveGuardianState, saveInvoiceState, saveSettingsState, saveStudentState, convertLegacyDraftState } from './lib/commands'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { ChangelogModal } from './components/ChangelogModal'
 import { ToastRegion } from './components/ToastRegion'
@@ -260,24 +260,24 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     })
   }
 
-  const saveInvoice = async (draft: InvoiceDraft, finalize: boolean, allocations?: InvoiceItemAllocation[]) => {
-    let savedIds: string[] = []
-    const saved = await commit((current) => {
-      if (allocations) {
-        const split = requireSuccess(splitInvoiceState(current, draft, allocations, finalize))
-        savedIds = split.invoiceIds
-        return split.state
-      }
-      const next = requireSuccess(saveInvoiceState(current, draft, finalize))
-      savedIds = next.invoices.at(-1)?.id ? [next.invoices.at(-1)!.id] : []
-      return next
-    }, allocations ? finalize ? 'Aufgeteilte Rechnungen gemeinsam finalisiert' : 'Aufgeteilte Rechnungsentwürfe angelegt' : finalize ? 'Rechnung finalisiert' : 'Rechnungsentwurf gespeichert', 'invoice', draft.id)
+  const saveInvoice = async (draft: InvoiceDraft, finalize: boolean) => {
+    const saved = await commit((current) => requireSuccess(saveInvoiceState(current, draft, finalize)), finalize ? 'Rechnung finalisiert' : 'Rechnungsentwurf gespeichert', 'invoice', draft.id)
     if (!saved) return
     setEditor((current) => ({ ...current, open: false }))
     setEditorDirty(false)
     setPage('invoices')
-    setSelectedInvoiceId(savedIds[0] ?? null)
-    toast(allocations ? `${savedIds.length} ${finalize ? 'Rechnungen finalisiert' : 'Entwürfe angelegt'}.` : finalize ? 'Rechnung finalisiert.' : 'Entwurf gespeichert.', 'success')
+    setSelectedInvoiceId(draft.id ?? stateRef.current.invoices.at(-1)?.id ?? null)
+    toast(finalize ? 'Rechnung finalisiert.' : 'Entwurf gespeichert.', 'success')
+  }
+
+  const convertLegacyDraft = async (sourceId: string, reviewed: string[], guardianIds: string[], edited: InvoiceDraft) => {
+    const saved = await commit((current) => requireSuccess(convertLegacyDraftState(current, sourceId, reviewed, guardianIds, edited)), 'Historischen Entwurf ausdrücklich übernommen', 'invoice', sourceId)
+    if (!saved) return
+    setEditor((current) => ({ ...current, open: false }))
+    setEditorDirty(false)
+    setPage('invoices')
+    setSelectedInvoiceId(stateRef.current.invoices.find((invoice) => invoice.id === sourceId)?.id ?? stateRef.current.invoices.at(-1)?.id ?? null)
+    toast('Gemeinsamer Entwurf übernommen. Bitte vor der Finalisierung nochmals prüfen.', 'success')
   }
 
   const startCorrection = async (invoice: Invoice, reason: string) => {
@@ -717,7 +717,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
 
       <FolderReview review={folderReview} current={session.revision} onClose={() => setFolderReview(null)} onChoose={connectFolder} onConnect={() => void acceptFolder()} onRestore={(preview) => setConfirmation({ title: 'Sicherung zuordnen und wiederherstellen?', message: 'Mit der Bestätigung wird die gewählte Sicherung als neuer lokaler Stand eingeführt. Altbackups ohne Bestands-ID werden ausdrücklich zugeordnet; eine gemeinsame Herkunft wird nicht behauptet. Vorhandene Originale und Rohdaten bleiben geschützt.', label: 'Zuordnung und Wiederherstellung bestätigen', action: async () => { await acceptFolder(preview) } })} />
       <ImportReview review={importReview} onClose={() => setImportReview(null)} onApply={confirmImport} />
-      <InvoiceEditor state={state} open={editor.open} draft={editor.draft} editing={editor.editing} finalized={editor.finalized} invoiceNumber={editor.invoiceNumber} guardians={state.guardians} students={state.students} settings={state.settings} onClose={requestCloseEditor} onDirtyChange={setEditorDirty} onSave={saveInvoice} />
+      <InvoiceEditor state={state} open={editor.open} draft={editor.draft} editing={editor.editing} finalized={editor.finalized} invoiceNumber={editor.invoiceNumber} guardians={state.guardians} students={state.students} settings={state.settings} onClose={requestCloseEditor} onDirtyChange={setEditorDirty} onSave={saveInvoice} onConvert={convertLegacyDraft} />
       <ChangelogModal open={changelogOpen} onClose={() => setChangelogOpen(false)} />
       <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} cancelLabel={confirmation?.cancelLabel} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />
       <ToastRegion messages={toasts} onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))} />

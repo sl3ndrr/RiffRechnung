@@ -72,12 +72,12 @@ test('P06: ungeprüfte Zwei-/Drei-Familien-Aufteilungen umgehen den Zuordnungsü
     const draft = draftFor(state, state.students.map((student) => student.id))
     const original = structuredClone(state)
     for (const finalize of [false, true]) {
-      assert.throws(() => saveInvoiceDraft(state, { ...draft, recipientStrategy: 'separate' }, finalize), /gemeinsame Aufteilung.*Positionszuordnung/)
+      assert.throws(() => saveInvoiceDraft(state, { ...draft, recipientStrategy: 'separate' }, finalize), /Getrennte Rechnungen|Historische getrennte Entwürfe/)
       assert.throws(() => saveInvoiceDraft(state, draft, finalize), /jedem ausgewählten Kind/)
     }
     // An imported legacy draft cannot bypass the editor guard via its status menu.
     const legacy: Invoice = { ...draft, id: 'legacy', number: null, sequence: null, year: 2026, status: 'draft', recipientStrategy: 'separate', createdAt: at, updatedAt: at }
-    assert.throws(() => changeInvoiceStatus({ ...state, invoices: [legacy] }, legacy.id, 'sent'), /gemeinsame Aufteilung.*Positionszuordnung/)
+    assert.throws(() => changeInvoiceStatus({ ...state, invoices: [legacy] }, legacy.id, 'sent'), /Getrennte Rechnungen|Historische getrennte Entwürfe/)
     assert.deepEqual(state, original)
     assert.equal(roundTrip(state).invoices.length, 0)
     assert.deepEqual(state.counters, {})
@@ -253,3 +253,4 @@ test('P01: nur deutsche Konten für Änderungen und Finalisierung; fremde histor
   const paid = roundTrip(changeInvoiceStatus(historical, historical.invoices[0].id, 'paid', at, '2026-09-05'))
   assert.deepEqual(paid.invoices[0].snapshot, historical.invoices[0].snapshot)
 }))
+

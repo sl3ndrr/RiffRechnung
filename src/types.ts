@@ -249,26 +249,3 @@ export interface InvoiceDraft {
   freeText: string
   legalText: string
 }
-
-export interface InvoiceItemAllocationPart {
-  guardianId: string
-  amountCents: number
-}
-
-export interface InvoiceItemAllocation {
-  itemId: string
-  parts: InvoiceItemAllocationPart[]
-}
-
-export interface InvoiceSplitResult {
-  guardianId: string
-  studentIds: string[]
-  items: InvoiceItem[]
-  totalCents: number
-}
-
-export interface InvoiceSplitPreview {
-  results: InvoiceSplitResult[]
-  sourceTotalCents: number
-  totalCents: number
-}

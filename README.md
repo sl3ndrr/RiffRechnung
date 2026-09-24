@@ -5,7 +5,7 @@ Eine vollständig clientseitige Web-App für Rechnungen rund um Gitarrenunterric
 ## Funktionsumfang
 
 - Kinder und mehrere Erziehungsberechtigte verwalten, filtern, sortieren und miteinander verknüpfen
-- gemeinsame Rechnungen erstellen oder Positionen nach ausdrücklicher Empfänger-/Centzuordnung atomar in mehrere Rechnungen aufteilen
+- gemeinsame Rechnungen an eine oder mehrere berechtigte Personen erstellen; historische getrennte Belege und Korrekturen weiterhin lesen
 - mehrere Kinder und automatisch berechnete Zwischensummen auf einer Rechnung
 - frei definierbare Positionen, Zahlungsziel und Textbausteine
 - strukturiertes Kleinunternehmerprofil mit vollständigen Aussteller-/Empfängeranschriften und ausdrücklich typisierter Steuerkennung
@@ -229,3 +229,4 @@ neuen Snapshots. Bei der Migration aus Format 2–5 bleibt die Steuerkennung lee
 und sperrt neue Finalisierungen bis zur bewussten Eingabe. Historische Snapshots
 werden nicht ergänzt; auch eine dort leere BIC bleibt leer. Grundlagen und
 Produktannahmen stehen in [Produktentscheidungen](docs/product-decisions.md).
+

@@ -150,62 +150,28 @@ test('P04 Browser: Zahlungen manuell zuordnen, archivieren und vollständiges Ba
   } finally { await destination.close() }
 })
 
-test('P06 Browser/PDF: zwei Familien explizit zuordnen, gemeinsam vorschauen und atomar finalisieren', async ({ page }, testInfo) => {
-  const state = emptyState()
-  state.updatedAt = documentAt
-  state.settings = { ...state.settings, issuer: { name: 'Testunterricht', street: 'Musikweg 1', postalCode: '50667', city: 'Köln', email: 'rechnung@example.de', phone: '' }, accountHolder: 'Testunterricht', iban: 'DE89370400440532013000', invoiceProfile: 'small-business', taxIdentifier: { kind: 'tax-number', value: '12/345/67890' } }
-  state.guardians = [
-    { id: 'g-familie-a', name: 'Familie A', email: 'a@example.de', phone: '', address: { street: 'A-Straße 1', postalCode: '50667', city: 'Köln' }, iban: '', paymentNote: '', createdAt: documentAt, updatedAt: documentAt },
-    { id: 'g-familie-b', name: 'Familie B', email: 'b@example.de', phone: '', address: { street: 'B-Straße 2', postalCode: '50668', city: 'Köln' }, iban: '', paymentNote: '', createdAt: documentAt, updatedAt: documentAt },
-  ]
-  state.students = [
-    { id: 's-kind-a', name: 'Kind A', billingCode: 'a', guardianIds: ['g-familie-a'], note: '', active: true, createdAt: documentAt, updatedAt: documentAt },
-    { id: 's-kind-b', name: 'Kind B', billingCode: 'b', guardianIds: ['g-familie-b'], note: '', active: true, createdAt: documentAt, updatedAt: documentAt },
-  ]
-  state.nextStudentCodeIndex = 2
-  state.invoices = [{ id: 'split-source', number: null, sequence: null, year: 2026, invoiceDate: '2026-09-01', dueDate: '2026-09-15', period: 'September 2026', status: 'draft', guardianIds: ['g-familie-a', 'g-familie-b'], studentIds: ['s-kind-a', 's-kind-b'], recipientStrategy: 'joint', calculation: 'decimal-v1', items: [
-    { id: 'split-source-a', studentId: 's-kind-a', serviceDate: '2026-09-01', lessonType: 'solo', description: 'Unterricht A', quantity: 1, unit: 'Std.', unitPrice: 30 },
-    { id: 'split-source-b', studentId: 's-kind-b', serviceDate: '2026-09-02', lessonType: 'solo', description: 'Unterricht B', quantity: 1, unit: 'Std.', unitPrice: 30 },
-  ], introText: 'Zugeordneter Unterricht', freeText: '', legalText: state.settings.defaultLegalText, createdAt: documentAt, updatedAt: documentAt }]
+test('AP1 Browser/PDF: gemeinsame Rechnung ohne Aufteilung, Export und Import', async ({ page }, testInfo) => {
+  const state = documentFamily()
+  state.invoices = [{ ...saveInvoiceDraft(state, { ...documentDraft(), guardianIds: ['g-a', 'g-b'] }, false, documentAt).invoices[0] }]
   await seed(page, state)
   await invoices(page)
   await page.getByRole('button', { name: 'Entwurf', exact: true }).click()
   await page.locator('.invoice-detail').getByRole('button', { name: 'Bearbeiten', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Entwurf bearbeiten' })
-  await dialog.getByRole('radio', { name: 'Nach Empfänger:innen aufteilen' }).check()
-  await dialog.getByLabel('Zuordnung für Position 1').selectOption('g-familie-a')
-  await dialog.getByLabel('Zuordnung für Position 2').selectOption('g-familie-b')
-  await dialog.getByRole('button', { name: 'Aufteilung prüfen', exact: true }).click()
-  const preview = dialog.getByLabel('Geprüfte Aufteilungsvorschau')
-  await expect(preview).toContainText('Familie A')
-  await expect(preview).toContainText('Kind A')
-  await expect(preview).toContainText('Familie B')
-  await expect(preview).toContainText('Kind B')
-  await expect(preview).toContainText('Gesamtsumme aller Forderungen')
-  await expect(preview).toContainText('60,00')
-  await preview.getByRole('button', { name: 'Alle Rechnungen finalisieren', exact: true }).click()
+  await expect(dialog.getByText('Nach Empfänger:innen aufteilen')).toHaveCount(0)
+  await expect(dialog.getByText('Positionen auf Empfänger aufteilen')).toHaveCount(0)
+  await dialog.getByRole('button', { name: 'Finalisieren', exact: true }).click()
   await expect(dialog).not.toBeVisible()
   await page.reload()
   const finalized = await stateOf(page)
-  expect(finalized.invoices).toHaveLength(2)
-  expect(finalized.invoices.map((invoice) => invoice.snapshot!.students.map((student) => student.name))).toEqual([['Kind A'], ['Kind B']])
-  expect(finalized.invoices.map((invoice) => invoice.snapshot!.guardians.map((guardian) => guardian.name))).toEqual([['Familie A'], ['Familie B']])
-  expect(new Set(finalized.invoices.flatMap((invoice) => invoice.items.map((item) => item.id))).size).toBe(2)
-  const pdfA = await pdfText(page, finalized, finalized.invoices[0].id)
-  const pdfB = await pdfText(page, finalized, finalized.invoices[1].id)
-  const pdfACopy = await pdfText(page, finalized, finalized.invoices[0].id)
-  expect(pdfA.text).toContain('Familie A')
-  expect(pdfA.text).toContain('Kind A')
-  expect(pdfA.text).not.toContain('Familie B')
-  expect(pdfA.text).not.toContain('Kind B')
-  expect(pdfB.text).toContain('Familie B')
-  expect(pdfB.text).toContain('Kind B')
-  expect(pdfB.text).not.toContain('Familie A')
-  expect(pdfB.text).not.toContain('Kind A')
-  expect(pdfACopy.text).toBe(pdfA.text)
-  expect(await stateOf(page)).toEqual(finalized)
-  await testInfo.attach('aufteilung-familie-a.pdf', { body: pdfA.pdf, contentType: 'application/pdf' })
-  await testInfo.attach('aufteilung-familie-b.pdf', { body: pdfB.pdf, contentType: 'application/pdf' })
+  expect(finalized.invoices).toHaveLength(1)
+  expect(finalized.documentVersions).toHaveLength(1)
+  expect(finalized.invoices[0].snapshot!.guardians.map((person) => person.id)).toEqual(['g-a', 'g-b'])
+  expect(finalized.invoices[0].number).not.toBeNull()
+  const pdf = await pdfText(page, finalized, finalized.invoices[0].id)
+  expect(pdf.text).toContain('Empfaenger A')
+  expect(pdf.text).toContain('Empfaenger B')
+  await testInfo.attach('gemeinsame-rechnung.pdf', { body: pdf.pdf, contentType: 'application/pdf' })
   await page.getByRole('button', { name: 'Einstellungen', exact: true }).click()
   const downloading = page.waitForEvent('download')
   await page.getByRole('button', { name: 'JSON exportieren', exact: true }).click()
@@ -216,13 +182,62 @@ test('P06 Browser/PDF: zwei Familien explizit zuordnen, gemeinsam vorschauen und
     const imported = await destination.newPage()
     await imported.goto('/')
     await imported.getByRole('button', { name: 'Einstellungen', exact: true }).click()
-    await imported.locator('#backup input[type=file]').setInputFiles({ name: 'zwei-familien.json', mimeType: 'application/json', buffer })
+    await imported.locator('#backup input[type=file]').setInputFiles({ name: 'gemeinsam.json', mimeType: 'application/json', buffer })
     await imported.getByRole('button', { name: 'Wiederherstellung vorbereiten', exact: true }).click()
     await imported.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
-    await expect(imported.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
     await imported.reload()
     expect(await stateOf(imported)).toEqual(finalized)
   } finally { await destination.close() }
+})
+
+test('AP1 Browser: ein offener Altentwurf verlangt sichtbare Prüfung und ausdrückliche Übernahme', async ({ page }) => {
+  const state = documentFamily()
+  const source = saveInvoiceDraft(state, documentDraft(), false, documentAt).invoices[0]
+  state.invoices = [{ ...source, recipientStrategy: 'separate' }]
+  await seed(page, state)
+  await invoices(page)
+  await page.getByRole('button', { name: 'Entwurf', exact: true }).click()
+  await expect(page.getByText(/Historischer Aufteilungsentwurf: Bitte öffnen/)).toBeVisible()
+  await page.locator('.invoice-detail').getByRole('button', { name: 'Bearbeiten', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Entwurf bearbeiten' })
+  await expect(dialog.getByText('Originaler Unterricht')).toBeVisible()
+  await expect(dialog.getByText('Nach Empfänger:innen aufteilen')).toHaveCount(0)
+  await dialog.getByRole('button', { name: 'Als gemeinsamen Entwurf übernehmen' }).click()
+  await expect(dialog.getByRole('alert')).toContainText('alle fünf Angaben')
+  for (const field of ['Empfänger', 'Kind', 'Positionen', 'Einleitung', 'Freitext']) await dialog.getByRole('checkbox', { name: `${field} geprüft` }).check()
+  await dialog.getByRole('button', { name: 'Als gemeinsamen Entwurf übernehmen' }).click()
+  await expect(dialog).not.toBeVisible()
+  const converted = await stateOf(page)
+  expect(converted.invoices).toHaveLength(1)
+  expect(converted.invoices[0].recipientStrategy).toBe('joint')
+  expect(converted.invoices[0].number).toBeNull()
+  expect(converted.counters).toEqual(state.counters)
+})
+
+test('AP1 Browser: importierter Altentwurf mit mehreren Empfängern braucht neue Wahl', async ({ page }) => {
+  const state = documentFamily()
+  const source = saveInvoiceDraft(state, documentDraft(), false, documentAt).invoices[0]
+  state.invoices = [{ ...source, guardianIds: ['g-a', 'g-b'], recipientStrategy: 'separate' }]
+  await seed(page, state)
+  await invoices(page)
+  await page.getByRole('button', { name: 'Entwurf', exact: true }).click()
+  await page.locator('.invoice-detail').getByRole('button', { name: 'Bearbeiten', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Entwurf bearbeiten' })
+  await expect(dialog.getByText(/Ursprüngliche Empfänger: Empfaenger A, Empfaenger B/)).toBeVisible()
+  await dialog.getByRole('button', { name: 'Als gemeinsamen Entwurf übernehmen' }).click()
+  expect((await stateOf(page)).invoices[0].recipientStrategy).toBe('separate')
+  const chooser = dialog.getByRole('group', { name: 'Empfänger für den neuen gemeinsamen Entwurf ausdrücklich wählen' })
+  await chooser.getByRole('checkbox', { name: 'Empfaenger A' }).check()
+  await chooser.getByRole('checkbox', { name: 'Empfaenger B' }).check()
+  for (const field of ['Empfänger', 'Kind', 'Positionen', 'Einleitung', 'Freitext']) await dialog.getByRole('checkbox', { name: `${field} geprüft` }).check()
+  await dialog.getByRole('button', { name: 'Als gemeinsamen Entwurf übernehmen' }).click()
+  await expect(dialog).not.toBeVisible()
+  const converted = await stateOf(page)
+  expect(converted.invoices).toHaveLength(1)
+  expect(converted.invoices[0].id).not.toBe(source.id)
+  expect(converted.invoices[0].guardianIds).toEqual(['g-a', 'g-b'])
+  expect(converted.invoices[0].recipientStrategy).toBe('joint')
+  expect(converted.invoices[0].number).toBeNull()
 })
 
 test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unveränderten Eingangsbytes', async ({ page }, testInfo) => {
@@ -321,3 +336,4 @@ test('P05 Browser/PDF: historisch gesicherter Halbcentfehler bleibt nach Import 
   expect(pdf.text).not.toContain('7,58')
   await testInfo.attach('historisch-7-57.pdf', { body: pdf.pdf, contentType: 'application/pdf' })
 })
+

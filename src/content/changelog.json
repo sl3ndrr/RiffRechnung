@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.3",
+    "date": "2026-09-24",
+    "changes": [
+      "Neue Rechnungen werden nur noch gemeinsam an eine oder mehrere berechtigte Personen gestellt; die Aufteilung in mehrere Forderungen entfällt.",
+      "Historische getrennte Belege und Korrekturen bleiben erhalten. Offene Altentwürfe erfordern eine sichtbare Prüfung und ausdrückliche Übernahme."
+    ]
+  },
+  {
     "version": "1.2",
     "date": "2026-09-09",
     "changes": [
@@ -82,3 +90,4 @@
     ]
   }
 ]
+

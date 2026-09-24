@@ -1,11 +1,11 @@
-import { decimalInputText, draftAmountChange, itemTotalCents, previewCents } from '../lib/money'
+import { decimalInputText, draftAmountChange, previewCents } from '../lib/money'
 import { correctionErrors, reassignCorrectionStudent } from '../lib/documents'
-import { allocationCentsFromInput, previewInvoiceSplit } from '../lib/invoiceSplit'
+import { LEGACY_REVIEW_FIELDS } from '../lib/commands'
 import { applyItemNumberInput, itemNumberInput, adjustQuantity as adjustedQuantity, MIN_QUANTITY, MAX_QUANTITY, QUANTITY_INCREMENT } from '../lib/values'
 import { invoiceDraftErrors } from '../lib/invoiceActions'
 import { useEffect, useMemo, useState } from 'react'
 import { Calendar, CircleDollarSign, FileCheck2, Minus, Plus, Save, Send, Trash2 } from 'lucide-react'
-import type { AppState, Guardian, InvoiceDraft, InvoiceItemAllocation, InvoiceSplitPreview, LessonType, Settings, Student } from '../types'
+import type { AppState, Guardian, InvoiceDraft, LessonType, Settings, Student } from '../types'
 import { FINALIZED_INVOICE_BLOCKED } from '../lib/safety'
 import { Modal } from '../components/Modal'
 import { applyLessonType, billingPeriodFromItems, calculateDueDate, createLessonItem, euro, invoiceFinalizationErrors, isFooterTextWithinLimit, itemTotal, MAX_FOOTER_TEXT_LENGTH } from '../lib/utils'
@@ -23,24 +23,23 @@ interface InvoiceEditorProps {
   invoiceNumber?: string | null
   onClose: () => void
   onDirtyChange: (dirty: boolean) => void
-  onSave: (draft: InvoiceDraft, finalize: boolean, allocations?: InvoiceItemAllocation[]) => void
+  onSave: (draft: InvoiceDraft, finalize: boolean) => void
+  onConvert: (sourceId: string, reviewed: string[], guardianIds: string[], edited: InvoiceDraft) => void
 }
 
-type SplitInput = { mode: 'none' | 'whole' | 'parts'; guardianId: string; amounts: Record<string, string> }
-
-export function InvoiceEditor({ state, open, draft, guardians, students, settings, editing, finalized, invoiceNumber, onClose, onDirtyChange, onSave }: InvoiceEditorProps) {
+export function InvoiceEditor({ state, open, draft, guardians, students, settings, editing, finalized, invoiceNumber, onClose, onDirtyChange, onSave, onConvert }: InvoiceEditorProps) {
   const [form, setForm] = useState<InvoiceDraft>(draft)
   const [numberInputs, setNumberInputs] = useState<Record<string, Partial<Record<'quantity' | 'unitPrice', string>>>>({})
   const [errors, setErrors] = useState<string[]>([])
-  const [splitInputs, setSplitInputs] = useState<Record<string, SplitInput>>({})
-  const [splitPreview, setSplitPreview] = useState<InvoiceSplitPreview | null>(null)
+  const [reviewed, setReviewed] = useState<string[]>([])
+  const [conversionRecipients, setConversionRecipients] = useState<string[]>([])
 
   useEffect(() => {
     setForm(structuredClone(draft))
     setNumberInputs({})
     setErrors([])
-    setSplitInputs({})
-    setSplitPreview(null)
+    setReviewed([])
+    setConversionRecipients(draft.guardianIds.length === 1 ? [...draft.guardianIds] : [])
   }, [draft, open])
 
   const linkedGuardianIds = useMemo(() => new Set(form.studentIds.flatMap((id) => students.find((student) => student.id === id)?.guardianIds ?? [])), [form.studentIds, students])
@@ -52,7 +51,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
   const footerTextValid = isFooterTextWithinLimit(form.legalText)
   const dirty = JSON.stringify(form) !== JSON.stringify(draft)
 
-  useEffect(() => { setSplitPreview(null) }, [form, splitInputs])
+  useEffect(() => { setReviewed([]) }, [form, conversionRecipients])
   useEffect(() => { onDirtyChange(open && !finalized && dirty) }, [dirty, finalized, onDirtyChange, open])
   useEffect(() => () => onDirtyChange(false), [onDirtyChange])
 
@@ -135,51 +134,12 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
     }
   }
 
-  const splitAllocations = (): { allocations: InvoiceItemAllocation[]; errors: string[] } => {
-    const inputErrors: string[] = []
-    const allocations = form.items.map((item) => {
-      const input = splitInputs[item.id]
-      if (!input || input.mode === 'none') return { itemId: item.id, parts: [] }
-      if (input.mode === 'whole') return { itemId: item.id, parts: input.guardianId ? [{ guardianId: input.guardianId, amountCents: itemTotalCents(item) }] : [] }
-      const parts = Object.entries(input.amounts).flatMap(([guardianId, raw]) => {
-        if (!raw) return []
-        const amountCents = allocationCentsFromInput(raw)
-        if (amountCents === null) {
-          inputErrors.push(`Teilbetrag für ${guardians.find((guardian) => guardian.id === guardianId)?.name ?? guardianId} bei „${item.description || item.id}“ ist kein gültiger Centbetrag.`)
-          return []
-        }
-        return [{ guardianId, amountCents }]
-      })
-      return { itemId: item.id, parts }
-    })
-    return { allocations, errors: inputErrors }
-  }
-
-  const prepareSplitPreview = () => {
-    const parsed = splitAllocations()
-    if (parsed.errors.length) { setErrors(parsed.errors); return }
-    try {
-      const preview = previewInvoiceSplit(state, form, parsed.allocations)
-      setSplitPreview(preview)
-      setErrors([])
-    } catch (error) {
-      setErrors([error instanceof Error ? error.message : 'Die Aufteilung konnte nicht geprüft werden.'])
-    }
-  }
-
-  const submitSplit = (finalize: boolean) => {
-    const parsed = splitAllocations()
-    if (parsed.errors.length) { setErrors(parsed.errors); return }
-    try {
-      const preview = previewInvoiceSplit(state, form, parsed.allocations)
-      const finalizationErrors = finalize ? preview.results.flatMap((result) => invoiceFinalizationErrors(state, {
-        ...form, guardianIds: [result.guardianId], studentIds: result.studentIds, items: result.items, recipientStrategy: 'separate',
-      })) : []
-      if (finalizationErrors.length) { setErrors([...new Set(finalizationErrors)]); return }
-      onSave({ ...form, period: calculatedPeriod, legalText: form.legalText }, finalize, parsed.allocations)
-    } catch (error) {
-      setErrors([error instanceof Error ? error.message : 'Die Aufteilung konnte nicht gespeichert werden.'])
-    }
+  const legacyDraft = form.recipientStrategy === 'separate' && !form.correction && !finalized
+  const convert = () => {
+    if (!form.id) { setErrors(['Der historische Entwurf muss vor der Umwandlung gespeichert sein.']); return }
+    if (form.items.some((item) => (['quantity', 'unitPrice'] as const).some((field) => itemNumberInput(numberInputs[item.id]?.[field] ?? decimalInputText(item[field]), field) === null))) { setErrors(['Bitte Preise und Mengen vor der Übernahme vervollständigen.']); return }
+    if (!LEGACY_REVIEW_FIELDS.every((field) => reviewed.includes(field))) { setErrors(['Bitte alle fünf Angaben einzeln prüfen und bestätigen.']); return }
+    onConvert(form.id, reviewed, conversionRecipients, form)
   }
 
   return (
@@ -196,8 +156,8 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
           <button className="button button--text" type="button" onClick={onClose}>Abbrechen</button>
           {finalized ? (
             <button className="button button--primary" type="submit" form={INVOICE_EDITOR_FORM_ID} disabled><Save aria-hidden="true" /> Änderungen speichern</button>
-          ) : form.recipientStrategy === 'separate' && form.guardianIds.length > 1 ? (
-            <button className="button button--primary" type="button" onClick={prepareSplitPreview}><Send aria-hidden="true" /> Aufteilung prüfen</button>
+          ) : legacyDraft ? (
+            <button className="button button--primary" type="button" onClick={convert}>Als gemeinsamen Entwurf übernehmen</button>
           ) : (
             <><button className="button button--tonal" type="submit" form={INVOICE_EDITOR_FORM_ID}>Als Entwurf speichern</button><button className="button button--primary" type="button" disabled={Boolean(form.correction && ([...correctionErrors(state, form), ...invoiceFinalizationErrors(state, form)].length))} onClick={() => submit(true)}><Send aria-hidden="true" /> Finalisieren</button></>
           )}
@@ -210,6 +170,14 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
         {finalized && <div className="revision-banner"><FileCheck2 aria-hidden="true" /><div><strong>Finalisierte Rechnung</strong><p>{FINALIZED_INVOICE_BLOCKED}</p></div></div>}
         {errors.length > 0 && <div className="form-errors" role="alert"><strong>Bitte noch prüfen:</strong><ul>{errors.map((error) => <li key={error}>{error}</li>)}</ul></div>}
 
+        {legacyDraft && <section className="form-section" aria-label="Historischen Entwurf prüfen">
+          <h3>Historischer Aufteilungsentwurf</h3>
+          <p>Dieser Entwurf bleibt bis zur bestätigten Umwandlung unverändert. Prüfe die unten sichtbaren Kinder, Positionen, Einleitung und den Freitext. Teilbeträge und gemeinsame Texte können Angaben zu anderen Personen enthalten. Eine neue Rechnungsnummer entsteht erst bei einer späteren Finalisierung.</p>
+          <p>Ursprüngliche Empfänger: {draft.guardianIds.map((id) => guardians.find((guardian) => guardian.id === id)?.name ?? `Gelöschte Person (${id})`).join(', ')}</p>
+          {form.guardianIds.length > 1 && <fieldset className="chip-fieldset"><legend>Empfänger für den neuen gemeinsamen Entwurf ausdrücklich wählen</legend>{eligibleGuardians.map((guardian) => <label key={guardian.id} className="choice-chip"><input type="checkbox" checked={conversionRecipients.includes(guardian.id)} onChange={() => setConversionRecipients((current) => current.includes(guardian.id) ? current.filter((id) => id !== guardian.id) : [...current, guardian.id])} />{guardian.name}</label>)}</fieldset>}
+          <fieldset><legend>Prüfung bestätigen</legend>{LEGACY_REVIEW_FIELDS.map((field) => <label key={field} className="field"><input type="checkbox" checked={reviewed.includes(field)} onChange={() => setReviewed((current) => current.includes(field) ? current.filter((entry) => entry !== field) : [...current, field])} />{field} geprüft</label>)}</fieldset>
+        </section>}
+
         {form.correction && <section className="form-section" aria-label="Korrektur und Neuzuordnung">
           <p>Originalbeleg und reservierte Nummer bleiben erhalten. Jede Position wird übernommen. Finalisierung erst nach gültiger Zuordnung.</p>
           <label className="field"><span>Korrekturgrund</span><textarea value={form.correction.reason} onChange={(event) => setForm({ ...form, correction: { ...form.correction!, reason: event.target.value } })} /></label>
@@ -220,38 +188,12 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
           <div className="form-section__heading"><span>1</span><div><h3>Für wen?</h3><p>Kinder und Rechnungsempfänger auswählen.</p></div></div>
           <fieldset className="chip-fieldset" disabled={finalized}><legend>Kind(er)</legend><div className="choice-chips">{students.filter((student) => student.active || form.studentIds.includes(student.id)).map((student) => <label className={form.studentIds.includes(student.id) ? 'choice-chip is-selected' : 'choice-chip'} key={student.id}><input type="checkbox" checked={form.studentIds.includes(student.id)} onChange={() => selectStudent(student)} /><span className="avatar">{student.name.slice(0, 1)}</span>{student.name}</label>)}</div>{!students.length && <p className="field-hint field-hint--warning">Lege zuerst unter „Familien“ ein Kind an.</p>}{finalized && <p className="field-hint">Die Kindzuordnung bleibt gesperrt, weil sie Bestandteil des Rechnungsnummernkreises ist.</p>}</fieldset>
           <fieldset className="chip-fieldset"><legend>Empfänger</legend><div className="choice-chips">{eligibleGuardians.map((guardian) => <label className={form.guardianIds.includes(guardian.id) ? 'choice-chip is-selected' : 'choice-chip'} key={guardian.id}><input type="checkbox" checked={form.guardianIds.includes(guardian.id)} onChange={() => setForm((current) => ({ ...current, guardianIds: current.guardianIds.includes(guardian.id) ? current.guardianIds.filter((id) => id !== guardian.id) : [...current.guardianIds, guardian.id] }))} /><span className="avatar avatar--warm">{guardian.name.slice(0, 1)}</span>{guardian.name}</label>)}</div></fieldset>
-          {form.guardianIds.length > 1 && (finalized ? <p className="field-hint">Die vorhandene Rechnungsnummer bleibt eine gemeinsame Rechnung für die ausgewählten Empfänger:innen.</p> : <fieldset className="segmented-field"><legend>Bei mehreren Empfänger:innen</legend><div className="segmented-control"><label className={form.recipientStrategy === 'joint' ? 'is-selected' : ''}><input type="radio" name="recipient-strategy" checked={form.recipientStrategy === 'joint'} onChange={() => setForm({ ...form, recipientStrategy: 'joint' })} />Eine gemeinsame Rechnung</label><label className={form.recipientStrategy === 'separate' ? 'is-selected' : ''}><input type="radio" name="recipient-strategy" checked={form.recipientStrategy === 'separate'} onChange={() => setForm({ ...form, recipientStrategy: 'separate' })} />Nach Empfänger:innen aufteilen</label></div><p className="field-hint">Jede Position muss vollständig einer Rechnung oder mit bestätigten Centbeträgen mehreren Rechnungen zugeordnet werden. Zusätzliche Ausdrucke derselben Rechnung erzeugen keine weitere Forderung.</p></fieldset>)}
+          {form.guardianIds.length > 1 && finalized && <p className="field-hint">Die vorhandene Rechnungsnummer bleibt eine gemeinsame Rechnung für die ausgewählten Empfänger:innen.</p>}
         </section>
 
-        {form.recipientStrategy === 'separate' && form.guardianIds.length > 1 && <section className="form-section split-assignment" aria-label="Positionen auf Empfänger aufteilen">
-          <div className="form-section__heading"><span>2</span><div><h3>Leistungen eindeutig zuordnen</h3><p>Keine Quote wird automatisch angenommen. Für jede Position ist eine vollständige Centzuordnung erforderlich.</p></div></div>
-          {form.items.map((item, index) => {
-            const input = splitInputs[item.id] ?? { mode: 'none', guardianId: '', amounts: {} }
-            const student = students.find((entry) => entry.id === item.studentId)
-            const eligible = guardians.filter((guardian) => form.guardianIds.includes(guardian.id) && student?.guardianIds.includes(guardian.id))
-            const assigned = input.mode === 'parts' ? Object.values(input.amounts).reduce((sum, raw) => sum + (allocationCentsFromInput(raw) ?? 0), 0) : 0
-            const rest = itemTotalCents(item) - assigned
-            return <article className="split-assignment__item" key={item.id}>
-              <header><div><strong>Position {index + 1}: {item.description || 'Ohne Beschreibung'}</strong><small>{student?.name ?? 'Unbekanntes Kind'}</small></div><strong>{euro.format(itemTotalCents(item) / 100)}</strong></header>
-              <label className="field"><span>Zuordnung</span><select aria-label={`Zuordnung für Position ${index + 1}`} value={input.mode === 'whole' ? input.guardianId : input.mode} onChange={(event) => {
-                const value = event.target.value
-                setSplitInputs((current) => ({ ...current, [item.id]: value === 'parts' ? { mode: 'parts', guardianId: '', amounts: {} } : value === 'none' ? { mode: 'none', guardianId: '', amounts: {} } : { mode: 'whole', guardianId: value, amounts: {} } }))
-              }}><option value="none">Bitte auswählen</option>{eligible.map((guardian) => <option key={guardian.id} value={guardian.id}>Gesamte Position an {guardian.name}</option>)}<option value="parts">Bestätigte Teilbeträge eingeben</option></select></label>
-              {input.mode === 'parts' && <div className="split-assignment__parts">{eligible.map((guardian) => <label className="field" key={guardian.id}><span>{guardian.name}</span><div className="input-with-suffix"><input aria-label={`Teilbetrag für ${guardian.name} bei Position ${index + 1}`} inputMode="decimal" placeholder="0,00" value={input.amounts[guardian.id] ?? ''} onChange={(event) => setSplitInputs((current) => ({ ...current, [item.id]: { ...input, amounts: { ...input.amounts, [guardian.id]: event.target.value } } }))} /><span>€</span></div>{rest > 0 && <button className="button button--text" type="button" onClick={() => {
-                const currentCents = allocationCentsFromInput(input.amounts[guardian.id] ?? '') ?? 0
-                setSplitInputs((current) => ({ ...current, [item.id]: { ...input, amounts: { ...input.amounts, [guardian.id]: ((currentCents + rest) / 100).toFixed(2).replace('.', ',') } } }))
-              }}>Offenen Rest von {euro.format(rest / 100)} hier zuordnen</button>}</label>)}</div>}
-              {input.mode === 'parts' && <p className={rest === 0 ? 'field-hint' : 'field-hint field-hint--warning'}>Zugeordnet: {euro.format(assigned / 100)} · offener Rest: {euro.format(rest / 100)}. Restcent werden nur durch die ausdrücklich gewählte Rest-Zuordnung vergeben.</p>}
-            </article>
-          })}
-          {splitPreview && <section className="split-preview" aria-label="Geprüfte Aufteilungsvorschau"><h3>Gemeinsame Vorschau</h3>{splitPreview.results.map((result) => {
-            const guardian = guardians.find((entry) => entry.id === result.guardianId)
-            return <article key={result.guardianId}><header><div><strong>{guardian?.name ?? result.guardianId}</strong><small>{result.studentIds.map((id) => students.find((student) => student.id === id)?.name ?? id).join(', ')}</small></div><strong>{euro.format(result.totalCents / 100)}</strong></header><ul>{result.items.map((item) => <li key={`${result.guardianId}-${item.id}`}>{item.description} – {euro.format(itemTotalCents(item) / 100)}</li>)}</ul></article>
-          })}<p className="split-preview__total"><span>Gesamtsumme aller Forderungen</span><strong>{euro.format(splitPreview.totalCents / 100)}</strong></p><div className="button-row"><button className="button button--tonal" type="button" onClick={() => submitSplit(false)}>Alle als Entwürfe anlegen</button><button className="button button--primary" type="button" onClick={() => submitSplit(true)}>Alle Rechnungen finalisieren</button></div></section>}
-        </section>}
 
         <section className="form-section">
-          <div className="form-section__heading"><span>{form.recipientStrategy === 'separate' && form.guardianIds.length > 1 ? '3' : '2'}</span><div><h3>Zeitraum & Fälligkeit</h3><p>Die formalen Angaben der Rechnung.</p></div></div>
+          <div className="form-section__heading"><span>2</span><div><h3>Zeitraum & Fälligkeit</h3><p>Die formalen Angaben der Rechnung.</p></div></div>
           <div className="form-grid form-grid--3">
             <label className="field"><span>Rechnungsdatum</span><div className="input-with-icon"><Calendar aria-hidden="true" /><input type="date" value={form.invoiceDate} onChange={(event) => updateInvoiceDate(event.target.value)} /></div></label>
             <label className="field"><span>Fällig am</span><div className="input-with-icon"><Calendar aria-hidden="true" /><input type="date" value={form.dueDate} readOnly /></div><small>{settings.paymentTermDays} Tage nach Rechnungsdatum</small></label>
@@ -260,7 +202,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
         </section>
 
         <section className="form-section">
-          <div className="form-section__heading form-section__heading--action"><span>{form.recipientStrategy === 'separate' && form.guardianIds.length > 1 ? '4' : '3'}</span><div><h3>Positionen</h3><p>Unterricht, Pauschalen oder sonstige Leistungen.</p></div><button className="button button--tonal" type="button" onClick={addItem}><Plus aria-hidden="true" /> Position</button></div>
+          <div className="form-section__heading form-section__heading--action"><span>3</span><div><h3>Positionen</h3><p>Unterricht, Pauschalen oder sonstige Leistungen.</p></div><button className="button button--tonal" type="button" onClick={addItem}><Plus aria-hidden="true" /> Position</button></div>
           <div className="editor-items">
             {form.items.map((item, index) => (
               <div className="editor-item" key={item.id}>
@@ -281,7 +223,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
         </section>
 
         <section className="form-section">
-          <div className="form-section__heading"><span>{form.recipientStrategy === 'separate' && form.guardianIds.length > 1 ? '5' : '4'}</span><div><h3>Textbausteine</h3><p>Individuelle Hinweise für diese Rechnung.</p></div></div>
+          <div className="form-section__heading"><span>4</span><div><h3>Textbausteine</h3><p>Individuelle Hinweise für diese Rechnung.</p></div></div>
           <div className="form-grid form-grid--2">
             <label className="field"><span id="invoice-intro-label">Einleitung</span><textarea aria-labelledby="invoice-intro-label" rows={4} value={form.introText} onChange={(event) => setForm({ ...form, introText: event.target.value })} /></label>
             <label className="field"><span id="invoice-note-label">Freitext / Hinweis</span><textarea aria-labelledby="invoice-note-label" rows={4} value={form.freeText} onChange={(event) => setForm({ ...form, freeText: event.target.value })} placeholder="Optional" /></label>
