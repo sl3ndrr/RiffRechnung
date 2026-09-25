@@ -16,7 +16,15 @@ Gruppen-Centdifferenz; private PDFs via `pdftotext`; Einzelbeleg-/EPC-/mailto-/C
 und Historien-Leaktests; JSON-Roundtrip/Reload; zwei Tabs; Doppelklick;
 Quota-/Schreibfehler; Zahlung nur A/Korrektur nur B; Partnerlöschung/-verlust;
 Schema-7-Migration und Zukunftssperre. Lokale Node-22-Gates nicht ausführbar
-(Node 24.19.0; npm-Registry und origin HTTP 403). CI-Nachweis ausstehend.
+(Node 24.19.0; npm-Registry und origin HTTP 403).
+
+Implementierungsstand `adf99f5d830e0fc639175f8d3a250cd0c3716920`,
+[CI 36112913179](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36112913179):
+Node 22.23.2; Installation, Lint, 160/160 Fachtests, Typecheck, Build,
+49/49 Browserprüfungen und Dependency-Audit erfolgreich. Darunter beide
+vorhandenen Demo-Duos mit Partnernotizen, unabhängige Vollausgaben und echte
+Chromium-PDFs. Der Abschlusscommit mit zusätzlichen Adress-/Kontoprüfungen
+wird vollständig separat geprüft; genaue Zuordnung im [PR #37](https://github.com/sl3ndrr/RiffRechnung/pull/37).
 
 Native Dateirechte, OS-Druckdialog, visuelle PDF-Abnahme, Banking-Scan,
 Screenreader und Safari/macOS bleiben wie bisher separate offene Freigaben.

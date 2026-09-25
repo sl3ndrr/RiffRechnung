@@ -71,6 +71,10 @@ test('AP2 Browser/PDF: gemeinsame Erfassung, getrennte Bearbeitung, Reload, voll
     await expect(output).toContainText('wird beim Abschluss vergeben')
     await expect(output).toContainText(households[i].guardian)
     await expect(output).toContainText(households[i].student)
+    await expect(output).toContainText(`${households[i].code.toUpperCase()}-Weg ${i + 1}`)
+    await expect(output).toContainText(`${households[i].code}@example.org`)
+    await expect(output.locator('.invoice-payment')).toContainText('Studio')
+    await expect(output.locator('.invoice-payment')).toContainText('DE02 1203 0000 0000 2020 51')
     await expect(output).toContainText(households[i].intro)
     await expect(output).toContainText(households[i].free)
     await expect(output).toContainText(households[i].legal)
@@ -97,11 +101,13 @@ test('AP2 Browser/PDF: gemeinsame Erfassung, getrennte Bearbeitung, Reload, voll
       await expect.poll(() => rendering.evaluate(() => document.documentElement.dataset.documentReady)).toBe(issued.invoices[i].id)
       const pdf = await rendering.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true })
       const text = execFileSync('pdftotext', ['-layout', '-', '-'], { input: pdf, encoding: 'utf8' })
-      for (const marker of [households[i].student, households[i].guardian, households[i].intro, households[i].free, households[i].legal, i === 0 ? '7,58' : '15,02']) {
+      expect(text).toContain('DE02 1203 0000 0000 2020 51')
+      expect(text).toContain('Studio')
+      for (const marker of [households[i].student, households[i].guardian, `${households[i].code.toUpperCase()}-Weg ${i + 1}`, `${households[i].code}@example.org`, households[i].intro, households[i].free, households[i].legal, i === 0 ? '7,58' : '15,02']) {
         expect(text).toContain(marker)
         expect(previewTexts[i]).toContain(marker)
       }
-      for (const marker of [households[1 - i].student, households[1 - i].guardian, households[1 - i].intro, households[1 - i].free, households[1 - i].legal, 'GEHEIM_', issued.duoGroups![0].id, `-${households[1 - i].code}-`]) expect(text).not.toContain(marker)
+      for (const marker of [households[1 - i].student, households[1 - i].guardian, `${households[1 - i].code.toUpperCase()}-Weg`, `${households[1 - i].code}@example.org`, households[1 - i].intro, households[1 - i].free, households[1 - i].legal, 'GEHEIM_', issued.duoGroups![0].id, `-${households[1 - i].code}-`]) expect(text).not.toContain(marker)
       expect(await rendering.evaluate(() => document.documentElement.dataset.giroPayload)).toContain(issued.invoices[i].number!)
       expect(await rendering.evaluate(() => document.documentElement.dataset.giroPayload)).not.toContain(`-${households[1 - i].code}-`)
       await testInfo.attach(`duo-haushalt-${i + 1}.pdf`, { body: pdf, contentType: 'application/pdf' })

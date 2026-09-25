@@ -22,13 +22,24 @@ sind im npm-Testprotokoll enthalten. Ein neuer Browserselektor erwartete
 „Einzelpreis“, während das bestehende Label „Einzelpreis €“ lautet. Preis- und
 Rechtstextselektor berücksichtigen nun das vollständige Label einschließlich
 Suffix bzw. Zeichenzähler. Keine Assertion, kein Zeitbudget wurde abgeschwächt.
-Der Folgelauf prüft zusätzlich beide vorhandenen Demo-Duos, mehrere ausdrückliche
+Der Folgelauf prüfte zusätzlich beide vorhandenen Demo-Duos, mehrere ausdrückliche
 Empfänger pro Ziel, den Erhalt ihrer historischen Versionen und Änderungszeitpunkte.
-Vollständiger grüner Ergebnisnachweis noch ausstehend.
+
+[PR #37](https://github.com/sl3ndrr/RiffRechnung/pull/37), Implementierungsstand
+`adf99f5d830e0fc639175f8d3a250cd0c3716920`,
+[CI 36112913179](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36112913179):
+Node 22.23.2 / npm 10.9.8; `npm ci`, Lint, **160/160 Fachtests**, Typecheck,
+Build und **49/49 Browserprüfungen** erfolgreich. Chromium 153.0.8010.12,
+Firefox 155.0 und Playwright-WebKit 26.6 unter Ubuntu; Poppler und historischer
+origin-Commit verfügbar. Vollständiges Dependency-Audit: 0 gemeldete Schwachstellen.
+Der abschließende Commit ergänzt direkte Adress-/E-Mail-Leakmarker sowie die
+Kontodatenprüfung in Vorschau und PDF. Er erhält einen eigenen vollständigen
+CI-Lauf; dessen exakte SHA/Laufzuordnung wird im PR-Abschluss festgehalten.
 
 Neue Fachdatei `tests/duo.test.ts` ist im tatsächlichen Testeinstieg
 `tests/logic.test.ts` importiert; ihre `AP2:`-/`AP2 Leak:`-/`AP2 Speicher:`-
-Testnamen müssen im npm-Testprotokoll nachgewiesen werden. Keine Testauslassungen
+Testnamen stehen im npm-Testprotokoll des erfolgreichen Laufs (12 neue Tests).
+Damit ist die tatsächliche Ausführung belegt. Keine Testauslassungen
 oder Retries ergänzt. Bestehende Schema-Grenzerwartungen in `logic`, `documents`,
 `money-calendar`, `payment-reporting` sowie Browser-`documents`/`stabilization`
 wurden gezielt von aktuellem Schema 7 auf 8 und Zukunftsschema 8 auf 9 angepasst;

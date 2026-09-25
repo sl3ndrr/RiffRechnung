@@ -17,7 +17,12 @@ Neue Prüfungen: `tests/duo.test.ts` (in `tests/logic.test.ts` importiert),
 `tests/duoFixtures.ts`, `tests/browser/duo.spec.ts` und Duo-JSON-Fallback in
 Chromium, Firefox und WebKit. Prüfstatus und konkrete CI-Nachweise werden in
 [quality-gates.md](quality-gates.md) und [release-readiness.md](release-readiness.md)
-festgehalten. APP_VERSION und Changelog: 1.4. AP3–AP5 nicht begonnen.
+festgehalten. Implementierungsstand `adf99f5d830e0fc639175f8d3a250cd0c3716920`
+bestand [CI 36112913179](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36112913179)
+mit Node 22.23.2, allen Gates, 160 Fachtests und 49 Browserprüfungen.
+Der Abschlusscommit ergänzt Adress-/Kontoprüfungen; seinen eigenen vollständigen
+CI-Nachweis hält [PR #37](https://github.com/sl3ndrr/RiffRechnung/pull/37) fest.
+APP_VERSION und Changelog: 1.4. AP3–AP5 nicht begonnen.
 Kein Merge, kein Deployment, ausschließlich synthetische Daten.
 
 # AP1 – Neue Rechnungsaufteilung entfernen

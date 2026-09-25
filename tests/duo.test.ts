@@ -163,7 +163,7 @@ test('AP2 Leak: jede Ausgabe enthält nur den eigenen Haushalt, keine Notizen od
     const outputs = [print, history, invoicePdfTitle(invoice, state.students), buildEpcPayload(invoice, state.settings, invoiceTotalCents(invoice) / 100), JSON.stringify(raw.snapshot), JSON.stringify(state.documentVersions[i]), decodeURIComponent(mailtoUrl(invoice, state.guardians, state.students)), invoicesToCsv([invoice], state.guardians, state.students), invoice.introText, invoice.freeText, invoice.legalText, ...invoice.items.map((item) => item.description)]
     assert.ok(print.includes(own.student) && print.includes(own.guardian))
     for (const output of outputs) {
-      for (const marker of [foreign.student, foreign.guardian, `-${foreign.code}-`, foreign.intro, foreign.free, foreign.legal, foreign.note, own.note, 'GEHEIM_', group.id]) assert.ok(!output.includes(marker), `Leak ${marker}: ${output}`)
+      for (const marker of [foreign.student, foreign.guardian, `-${foreign.code}-`, `${foreign.code.toUpperCase()}-Weg`, `${foreign.code}@example.org`, foreign.intro, foreign.free, foreign.legal, foreign.note, own.note, 'GEHEIM_', group.id]) assert.ok(!output.includes(marker), `Leak ${marker}: ${output}`)
     }
     const csv = invoicesToCsv([invoice], state.guardians, state.students).split('\r\n')
     const headers = csv[0].split(';'), row = csv[1].split(';')
