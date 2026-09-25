@@ -58,6 +58,16 @@ test('AP3 Browser/PDF: Adressloser Entwurf und 250-Euro-Beleg bleiben nach Stamm
   const second = await pdfText(page, after, after.invoices[0].id)
   expect(second.text).toBe(first.text)
   expect(second.text).not.toContain('Neuer Weg 9')
+  await seed(page, issued)
+  await invoices(page)
+  await page.getByRole('button', { name: issued.invoices[0].number!, exact: true }).click()
+  await page.getByLabel('Korrekturgrund', { exact: true }).fill('Synthetische Preisberichtigung')
+  await page.getByRole('button', { name: 'Korrekturentwurf erzeugen', exact: true }).click()
+  const correction = page.getByRole('dialog', { name: 'Korrekturentwurf bearbeiten' })
+  await correction.getByLabel(/Einzelpreis/).fill('250,01')
+  await expect(correction.getByRole('button', { name: 'Finalisieren', exact: true })).toBeDisabled()
+  await expect(correction.locator('.form-errors[role="status"]')).toContainText('Standardrechnung erforderlich')
+  await expect(correction.locator('.form-errors[role="status"]')).toContainText('Straße & Hausnummer fehlt')
 })
 
 test('P04 Browser/PDF: finalisieren, Personen löschen, Original drucken, korrigieren, neu zuordnen und reload', async ({ page }, testInfo) => {

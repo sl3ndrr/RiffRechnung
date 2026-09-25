@@ -50,6 +50,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
   const calculatedPeriod = billingPeriodFromItems(form.items, form.invoiceDate)
   const footerTextValid = isFooterTextWithinLimit(form.legalText)
   const dirty = JSON.stringify(form) !== JSON.stringify(draft)
+  const correctionBlockers = form.correction && !finalized ? [...correctionErrors(state, form), ...invoiceFinalizationErrors(state, form)] : []
 
   useEffect(() => { setReviewed([]) }, [form, conversionRecipients])
   useEffect(() => { onDirtyChange(open && !finalized && dirty) }, [dirty, finalized, onDirtyChange, open])
@@ -159,7 +160,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
           ) : legacyDraft ? (
             <button className="button button--primary" type="button" onClick={convert}>Als gemeinsamen Entwurf übernehmen</button>
           ) : (
-            <><button className="button button--tonal" type="submit" form={INVOICE_EDITOR_FORM_ID}>Als Entwurf speichern</button><button className="button button--primary" type="button" disabled={Boolean(form.correction && ([...correctionErrors(state, form), ...invoiceFinalizationErrors(state, form)].length))} onClick={() => submit(true)}><Send aria-hidden="true" /> Finalisieren</button></>
+            <><button className="button button--tonal" type="submit" form={INVOICE_EDITOR_FORM_ID}>Als Entwurf speichern</button><button className="button button--primary" type="button" disabled={correctionBlockers.length > 0} onClick={() => submit(true)}><Send aria-hidden="true" /> Finalisieren</button></>
           )}
         </>
       }
@@ -170,6 +171,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
         <p className="muted">Mengen: 0,01–99,99 (bis 2 Nachkommastellen). Preise in EUR je Einheit; gespeicherte Untercentpräzision bleibt erhalten. Gesamt höchstens 999.999.999,99 EUR.</p>
         {finalized && <div className="revision-banner"><FileCheck2 aria-hidden="true" /><div><strong>Finalisierte Rechnung</strong><p>{FINALIZED_INVOICE_BLOCKED}</p></div></div>}
         {errors.length > 0 && <div className="form-errors" role="alert"><strong>Bitte noch prüfen:</strong><ul>{errors.map((error) => <li key={error}>{error}</li>)}</ul></div>}
+        {correctionBlockers.length > 0 && <div className="form-errors" role="status"><strong>Für den Abschluss der Korrektur:</strong><ul>{correctionBlockers.map((error) => <li key={error}>{error}</li>)}</ul></div>}
 
         {legacyDraft && <section className="form-section" aria-label="Historischen Entwurf prüfen">
           <h3>Historischer Aufteilungsentwurf</h3>
