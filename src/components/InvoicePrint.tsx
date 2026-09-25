@@ -155,8 +155,8 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
       <div className="invoice-paper__body">
         <header className="invoice-letterhead">
           <section className="invoice-recipient">
-            <p className="invoice-senderline">{[issuer.name, issuer.street, [issuer.postalCode, issuer.city].filter(Boolean).join(' ')].filter(Boolean).join(' · ')}</p>
-            <p className="invoice-to">AN</p>
+            {(issuer.name || issuer.street || issuer.postalCode || issuer.city) && <p className="invoice-senderline">{[issuer.name, issuer.street, [issuer.postalCode, issuer.city].filter(Boolean).join(' ')].filter(Boolean).join(' · ')}</p>}
+            {recipientList.length > 0 && <p className="invoice-to">AN</p>}
             {recipientList.map((recipient) => (
               <div className="invoice-address" key={recipient.id}>
                 <strong>{recipient.name}</strong>
@@ -175,11 +175,11 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
               <dt>Datum:</dt><dd>{formatDateLong(invoice.invoiceDate)}</dd>
               <dt>Zeitraum:</dt><dd>{period}</dd>
               <dt>Fällig:</dt><dd><strong>{formatDateLong(invoice.dueDate)}</strong></dd>
-              <dt>Von:</dt><dd><strong>{issuer.name || '–'}</strong></dd>
-              <dt>Straße:</dt><dd>{issuer.street || '–'}</dd>
-              <dt>PLZ/Ort:</dt><dd>{issuer.postalCode} {issuer.city}</dd>
-              <dt>Tel.:</dt><dd>{issuer.phone || '–'}</dd>
-              <dt>E-Mail:</dt><dd>{issuer.email || '–'}</dd>
+              {(invoice.status !== 'draft' || issuer.name) && <><dt>Von:</dt><dd><strong>{issuer.name || '–'}</strong></dd></>}
+              {(invoice.status !== 'draft' || issuer.street) && <><dt>Straße:</dt><dd>{issuer.street || '–'}</dd></>}
+              {(invoice.status !== 'draft' || issuer.postalCode || issuer.city) && <><dt>PLZ/Ort:</dt><dd>{issuer.postalCode} {issuer.city}</dd></>}
+              {(invoice.status !== 'draft' || issuer.phone) && <><dt>Tel.:</dt><dd>{issuer.phone || '–'}</dd></>}
+              {(invoice.status !== 'draft' || issuer.email) && <><dt>E-Mail:</dt><dd>{issuer.email || '–'}</dd></>}
             </dl>
           </section>
         </header>

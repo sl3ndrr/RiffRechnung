@@ -80,6 +80,7 @@ test('AP3: Altentwurf ohne damals gesicherte Druckdaten übernimmt keine heutige
   const output = print(state)
   assert.match(output, /ENTWURF/)
   assert.doesNotMatch(output, /Heutiger Kontakt|Heutiger Aussteller/)
+  assert.doesNotMatch(output, /<dt>Straße:<\/dt>|<dt>PLZ\/Ort:<\/dt>|<p class="invoice-senderline"><\/p>/)
 })
 
 test('AP3: 249,99 und 250,00 als ausdrücklich gewählte Kleinbetragsrechnung ohne Anschrift; 250,01 gesperrt', () => {
