@@ -48,7 +48,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
   const total = invoice ? invoiceTotal(invoice) : 0
   const period = invoice ? invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate) : ''
   const source = invoice?.snapshot ?? invoice?.draftPrintSnapshot
-  const printInvoice = invoice?.status === 'draft' && source ? { ...invoice, snapshot: source } : invoice
+  const printInvoice = useMemo(() => invoice?.status === 'draft' && source ? { ...invoice, snapshot: source } : invoice, [invoice, source])
   const footerText = invoice ? footerTextForPrint(invoice.versionId || source ? invoice.legalText : invoice.legalText || settings.defaultLegalText) : ''
   const pageStyle = invoice ? buildInvoicePrintPageStyle(footerText, invoice.number) : ''
   const issuer = source?.issuer ?? settings.issuer
