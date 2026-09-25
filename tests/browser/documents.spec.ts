@@ -349,7 +349,7 @@ test('P05 Browser/PDF: historisch gesicherter Halbcentfehler bleibt nach Import 
   const { captureLegacyDocuments } = await import('../../src/lib/importState')
   const legacy = captureLegacyDocuments(legacyFixture(saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)))
   expect(legacy.documentVersions[0].amounts.totalCents).toBe(757)
-  await seed(page, legacy)
+  await seed(page, parseBackup(JSON.stringify(legacy)))
   await page.reload()
   const restored = await stateOf(page)
   expect(restored.documentVersions).toEqual(legacy.documentVersions)

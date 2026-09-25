@@ -265,6 +265,7 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8, localI
     const snapshotReferences = invoice.snapshot === undefined ? undefined : validateInvoiceSnapshot(invoice.snapshot, `${path}.snapshot`, schema)
     const snapshotKind = (invoice.snapshot as { invoiceKind?: unknown } | undefined)?.invoiceKind
     if (schema >= 8 && snapshotKind !== undefined && snapshotKind !== invoice.invoiceKind) invalidBackup(`${path}.snapshot.invoiceKind`, 'muss der gespeicherten Rechnungsart entsprechen')
+    if (schema >= 8 && status !== 'draft' && invoice.invoiceKind !== undefined && snapshotKind !== invoice.invoiceKind) invalidBackup(`${path}.snapshot.invoiceKind`, 'muss die ausdrücklich gewählte Rechnungsart im Beleg einfrieren')
     const draftKind = (invoice.draftPrintSnapshot as { invoiceKind?: unknown } | undefined)?.invoiceKind
     if (schema >= 8 && draftKind !== undefined && draftKind !== invoice.invoiceKind) invalidBackup(`${path}.draftPrintSnapshot.invoiceKind`, 'muss der gespeicherten Rechnungsart entsprechen')
     const correction = invoice.correction === undefined ? undefined : backupObject(invoice.correction, `${path}.correction`)

@@ -88,6 +88,9 @@ test('AP3: 249,99 und 250,00 als ausdrücklich gewählte Kleinbetragsrechnung oh
     assert.equal(issued.documentVersions[0].amounts.totalCents, Math.round(price * 100))
     assert.equal(issued.documentVersions[0].content.invoiceKind, 'small-amount')
     assert.equal(issued.documentVersions[0].outputSnapshot.invoiceKind, 'small-amount')
+    const tampered = structuredClone(issued)
+    delete tampered.invoices[0].snapshot!.invoiceKind
+    assert.throws(() => validateBackupState(tampered), /invoiceKind/)
     assert.match(print(issued), /Kleinbetragsrechnung nach § 33 UStDV/)
     issued.guardians[0].firstName = 'Nach'
     issued.guardians[0].lastName = 'Abschluss'
