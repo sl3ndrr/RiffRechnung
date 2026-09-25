@@ -28,6 +28,8 @@ export function saveGuardianState(state: AppState, guardian: Guardian): CommandR
       const errors = [contactPartError(saved.firstName, 'Vorname'), contactPartError(saved.lastName, 'Nachname')].filter(Boolean)
       if (errors.length) throw new Error(errors.join(' '))
       if (saved.name !== contactName(saved.firstName!, saved.lastName!)) throw new Error('Der Anzeigename muss ausdrücklich aus Vor- und Nachname gebildet werden.')
+      saved.firstName = saved.firstName!.trim()
+      saved.lastName = saved.lastName!.trim()
     } else if (saved.name !== existing.name) throw new Error('Ein nicht aufgeteilter Altname darf nur nach ausdrücklicher Eingabe beider Namen geändert werden.')
     const next = { ...state, guardians: existing ? state.guardians.map((entry) => entry.id === saved.id ? saved : entry) : [...state.guardians, saved] }
     validateBackupState(next)

@@ -193,6 +193,7 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8, localI
     if (schema >= 8 && (guardian.firstName !== undefined || guardian.lastName !== undefined)) {
       if (typeof guardian.firstName !== 'string' || contactPartError(guardian.firstName, 'Vorname')) invalidBackup(`${path}.firstName`, contactPartError(guardian.firstName as string | undefined, 'Vorname') ?? 'muss eine Zeichenkette sein')
       if (typeof guardian.lastName !== 'string' || contactPartError(guardian.lastName, 'Nachname')) invalidBackup(`${path}.lastName`, contactPartError(guardian.lastName as string | undefined, 'Nachname') ?? 'muss eine Zeichenkette sein')
+      if ((guardian.firstName as string).trim() !== guardian.firstName || (guardian.lastName as string).trim() !== guardian.lastName) invalidBackup(path, 'Vor- und Nachname müssen ohne Rand-Leerzeichen gespeichert sein')
       if (guardian.name !== contactName(guardian.firstName as string, guardian.lastName as string)) invalidBackup(`${path}.name`, 'muss dem ausdrücklich gespeicherten Vor- und Nachnamen entsprechen')
     }
     validateEmail(guardian.email, `${path}.email`)
