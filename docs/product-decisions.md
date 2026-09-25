@@ -517,14 +517,19 @@ und [Bundesbank-IBAN-Regeln](https://www.bundesbank.de/de/aufgaben/unbarer-zahlu
   Anschrift des Ausstellers, Datum, Leistungsangaben, Summe und bei Befreiung
   einen Hinweis. Seine Ausnahme für §§ 3c, 6a und 13b UStG wird für den
   Produktumfang (inländischer Gitarrenunterricht an Privatpersonen) als nicht
-  einschlägig angenommen. [§ 14 UStG](https://www.gesetze-im-internet.de/ustg_1980/__14.html)
-  regelt Rechnungsform, Fälle der Ausstellungspflicht und die allgemeinen
-  Angaben; die amtliche Direktseite war beim Prüfen wegen Timeout/Browser-
-  Sperre nicht vollständig lesbar. Dieser Sonderfallbefund stützt sich auf
-  amtliche Suchauszüge und die [Erläuterung des Landesamts für Steuern Niedersachsen](https://lstn.niedersachsen.de/steuer/steuermerkblaetter_und_broschueren/ausstellen-von-rechnungen-i-s-der-14-14a-ustg-67823.html):
-  Privatunterricht ohne Grundstücksleistung und ohne B2B-Fall löst aus § 14
-  keine zusätzliche Ausstellungs-/E-Rechnungspflicht aus. Das Produkt erstellt
-  trotzdem bewusst Rechnungen; individuelle steuerliche Einordnung bleibt offen.
+  einschlägig angenommen. Der vollständige aktuelle [§ 14 UStG](https://www.gesetze-im-internet.de/ustg_1980/BJNR119530979.html)
+  wurde in der amtlichen Gesamtausgabe geprüft: Absatz 1 regelt die
+  Rechnungsform und die Zustimmung zur elektronischen Übermittlung; Absatz 2
+  nennt insbesondere B2B-Leistungen, Leistungen an nichtunternehmerische
+  juristische Personen und bestimmte Grundstücksleistungen als Fälle einer
+  Ausstellungspflicht. Absatz 3 verlangt Herkunftsechtheit, inhaltliche
+  Unversehrtheit und Lesbarkeit; Absatz 4 nennt die allgemeinen Angaben,
+  die § 33 UStDV für Kleinbeträge vereinfacht. Für den angenommenen
+  Privatunterricht an natürlichen Personen ohne Grundstücksleistung folgt
+  daraus keine zusätzliche Ausstellungs- oder E-Rechnungspflicht. Das Produkt
+  erstellt trotzdem bewusst Rechnungen; elektronische Übermittlung bedarf
+  gegebenenfalls der Empfängerzustimmung. Individuelle steuerliche
+  Einordnung bleibt offen.
 - Schema 8 ändert das Speicherprotokoll 4 und Archivformat 1 nicht. Der
   kontrollierte Import prüft das alte Schema, erzeugt einen deterministischen
   Bericht über 7→8 ohne neue Kontakt- oder Belegdaten und archiviert unveränderte
