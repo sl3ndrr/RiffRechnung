@@ -32,5 +32,5 @@ export function legacyFixture(state: AppState): LegacyState {
 
 }
 export function editable(invoice: Invoice): InvoiceDraft {
-  return { id: invoice.id, correction: invoice.correction, invoiceDate: invoice.invoiceDate, dueDate: invoice.dueDate, period: invoice.period, guardianIds: [...invoice.guardianIds], studentIds: [...invoice.studentIds], recipientStrategy: invoice.recipientStrategy, invoiceKind: invoice.invoiceKind, items: structuredClone(invoice.items), introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText }
+  return { id: invoice.id, correction: invoice.correction, invoiceDate: invoice.invoiceDate, dueDate: invoice.dueDate, period: invoice.period, guardianIds: [...invoice.guardianIds], studentIds: [...invoice.studentIds], recipientStrategy: invoice.recipientStrategy, ...(invoice.invoiceKind ? { invoiceKind: invoice.invoiceKind } : {}), items: structuredClone(invoice.items), introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText }
 }
