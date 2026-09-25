@@ -113,6 +113,7 @@ function validImportState() {
     items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-a')],
   }))
   const current = captureLegacyDocuments(legacyFixture(state))
+  current.schemaVersion = 8
   current.settings = {
     ...current.settings,
     issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', email: 'studio@example.de', phone: '' },

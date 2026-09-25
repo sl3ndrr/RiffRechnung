@@ -21,7 +21,7 @@ export function legacyFixture(state: AppState): LegacyState {
   const copy = structuredClone(state)
   for (const key of ['documentVersions', 'invoiceAdministration', 'payments', 'historicalSnapshotCorrections']) Reflect.deleteProperty(copy, key)
   for (const invoice of copy.invoices) {
-    for (const key of ['calculation', 'versionId', 'correction', 'issuedAmounts', 'claimState', 'archived', 'invoiceKind']) Reflect.deleteProperty(invoice, key)
+    for (const key of ['calculation', 'versionId', 'correction', 'issuedAmounts', 'claimState', 'archived', 'invoiceKind', 'draftPrintSnapshot']) Reflect.deleteProperty(invoice, key)
     if (invoice.status === 'draft') Reflect.deleteProperty(invoice, 'snapshot')
     if (invoice.snapshot) { Reflect.deleteProperty(invoice.snapshot, 'invoiceProfile'); Reflect.deleteProperty(invoice.snapshot, 'taxIdentifier'); Reflect.deleteProperty(invoice.snapshot, 'invoiceKind') }
   }
