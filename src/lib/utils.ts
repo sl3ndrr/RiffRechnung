@@ -416,12 +416,13 @@ export function downloadText(filename: string, content: string, type = 'applicat
   const link = document.createElement('a')
   link.href = url
   link.download = filename
+  link.tabIndex = -1
+  link.setAttribute('aria-hidden', 'true')
   document.body.append(link)
   link.click()
-  link.remove()
-  // The browser starts the download asynchronously. Revoking in the same task
-  // can produce an empty backup under load, even after a download event fires.
-  window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  // Some engines finish initiating the download after click() returns. Keep
+  // both the attached anchor and its blob alive until they have consumed it.
+  window.setTimeout(() => { link.remove(); URL.revokeObjectURL(url) }, 60_000)
 }
 
 export function csvCell(value: string | number): string {
@@ -517,4 +518,3 @@ export function outputUnitPrice(invoice: Invoice, item: InvoiceItem): string {
   const [whole, fraction = ''] = decimalInputText(item.unitPrice).split('.')
   return `${new Intl.NumberFormat('de-DE').format(BigInt(whole))},${fraction.padEnd(2, '0')}\u00a0€`
 }
-
