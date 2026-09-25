@@ -57,9 +57,12 @@ export function previewDuoLessonChange(state: AppState, groupId: string, lesson:
   return { next, differences, token: canonical({ state, lesson }) }
 }
 
-export function applyDuoLessonChange(state: AppState, groupId: string, lesson: DuoLesson, token: string, confirmed: boolean): AppState {
+export function applyDuoLessonChange(state: AppState, groupId: string, lesson: DuoLesson, token: string, confirmed: boolean, at = new Date().toISOString()): AppState {
   const preview = previewDuoLessonChange(state, groupId, lesson)
   if (!confirmed || token !== preview.token) throw new Error('Bitte die aktuellen Unterschiede erneut prüfen und ausdrücklich bestätigen.')
+  const group = preview.next.duoGroups!.find((entry) => entry.id === groupId)!
+  for (const invoice of duoInvoices(preview.next, group)) invoice.updatedAt = at
+  validateBackupState(preview.next)
   return preview.next
 }
 

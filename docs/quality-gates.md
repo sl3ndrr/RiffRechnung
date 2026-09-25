@@ -13,7 +13,18 @@ Lint → `eslint: not found`; Tests → `esbuild: not found`; Typecheck/Build �
 `ba7857fd9180fa392c42a0235643e478e5077ee5` HTTP 403. Node 24.19.0 statt 22.
 Diese Gates sind **nicht ausführbar**, nicht bestanden. Bestehende Node-22-PR-CI
 muss Installation, Lint, Fachtests, Test-Typecheck, Build, Playwright/Poppler und
-Browserprüfungen für den konkreten Ergebniscommit ausführen. Nachweis ausstehend.
+Browserprüfungen für den konkreten Ergebniscommit ausführen.
+
+Erster Lauf [CI 36111901834](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36111901834)
+auf `6a453da63d027c077d12c99b9d03b560125f9eb2`: Installation, Lint, 159/159
+Fachtests, Typecheck und Build erfolgreich; Browser 48/49. Die AP2-Testnamen
+sind im npm-Testprotokoll enthalten. Ein neuer Browserselektor erwartete
+„Einzelpreis“, während das bestehende Label „Einzelpreis €“ lautet. Preis- und
+Rechtstextselektor berücksichtigen nun das vollständige Label einschließlich
+Suffix bzw. Zeichenzähler. Keine Assertion, kein Zeitbudget wurde abgeschwächt.
+Der Folgelauf prüft zusätzlich beide vorhandenen Demo-Duos, mehrere ausdrückliche
+Empfänger pro Ziel, den Erhalt ihrer historischen Versionen und Änderungszeitpunkte.
+Vollständiger grüner Ergebnisnachweis noch ausstehend.
 
 Neue Fachdatei `tests/duo.test.ts` ist im tatsächlichen Testeinstieg
 `tests/logic.test.ts` importiert; ihre `AP2:`-/`AP2 Leak:`-/`AP2 Speicher:`-

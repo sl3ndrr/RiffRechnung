@@ -18,6 +18,7 @@ import { InvoicePrint } from '../src/components/InvoicePrint'
 import { DocumentHistory } from '../src/components/DocumentHistory'
 import { documentAt, editable } from './documentFixtures'
 import { duoFamily, duoDrafts, duoLesson, households } from './duoFixtures'
+import { createDemoState } from '../src/lib/defaults'
 import { memoryStorage, seedState, sharedLock } from './storageHarness'
 
 function finish(state: AppState): AppState {
@@ -98,6 +99,9 @@ test('AP2: Vorschau und Abschluss teilen Snapshots; Einzelabschluss, ungeprüfte
     assert.deepEqual(invoice.items, preview.invoices[index].items)
   })
   assert.throws(() => finish(issued), /Finalisierte/)
+  const before = structuredClone(state)
+  assert.throws(() => finalizeDuoGroup(state, group.id, preview.token, preview.invoices.map((invoice) => invoice.id), documentAt, () => 'same-version'), /eindeutige Identität/)
+  assert.deepEqual(state, before)
 })
 
 test('AP2: zwei Lernende, ausdrückliche Empfänger, vollständige Ziele und gemeinsame Haushalte werden geprüft', () => {
@@ -134,7 +138,7 @@ test('AP2: Basisänderung nur nach gebundener Differenzbestätigung, individuell
   assert.equal(review.differences.length, 6)
   assert.throws(() => applyDuoLessonChange(state, group.id, lesson, review.token, false), /bestätigen/)
   assert.throws(() => applyDuoLessonChange(state, group.id, { ...lesson, quantity: 2 }, review.token, true), /erneut/)
-  const result = applyDuoLessonChange(state, group.id, lesson, review.token, true)
+  const result = applyDuoLessonChange(state, group.id, lesson, review.token, true, '2026-09-25T12:00:00.000Z')
   result.invoices.forEach((invoice, i) => {
     assert.deepEqual(invoice.guardianIds, state.invoices[i].guardianIds)
     assert.equal(invoice.items[0].unitPrice, state.invoices[i].items[0].unitPrice)
@@ -142,6 +146,8 @@ test('AP2: Basisänderung nur nach gebundener Differenzbestätigung, individuell
     assert.equal(invoice.freeText, state.invoices[i].freeText)
     assert.equal(invoice.legalText, state.invoices[i].legalText)
     assert.equal(invoice.items[0].description, lesson.description)
+    assert.equal(invoice.updatedAt, '2026-09-25T12:00:00.000Z')
+    assert.equal(invoice.createdAt, state.invoices[i].createdAt)
   })
   roundtrip(result)
   const removed = structuredClone(state); removed.invoices[1].items = []
@@ -196,6 +202,39 @@ test('AP2: Zahlung nur auf A, Korrektur und Archivierung nur auf B; Kopien und K
   assert.match(csv, /Nur Bastian/)
   assert.ok(!csv.includes(households[0].student))
   roundtrip(state)
+})
+
+test('AP2 Leak: vorhandene Demo-Duos Jonas/Elif und Sophie/Noah übernehmen keine Partnernotizen oder Geschwister', () => {
+  for (const names of [['Jonas Schneider', 'Elif Yılmaz'], ['Sophie Hoffmann', 'Noah Wagner']]) {
+    let state = createDemoState(new Date('2026-09-25T12:00:00.000Z'))
+    const students = names.map((name) => state.students.find((student) => student.name === name)!)
+    students.forEach((student, i) => assert.ok(student.note.includes(names[1 - i].split(' ')[0])))
+    const originals = structuredClone(state.documentVersions)
+    state = createDuoDrafts(state, students.map((student) => student.id), duoLesson, undefined, documentAt)
+    const group = state.duoGroups!.at(-1)!
+    for (const [i, target] of group.targets.entries()) {
+      const draft = editable(state.invoices.find((invoice) => invoice.id === target.invoiceId)!)
+      // Deliberate selection of ALL eligible guardians still means one claim per learner.
+      draft.guardianIds = [...students[i].guardianIds]
+      state = saveInvoiceDraft(state, draft, false, documentAt)
+    }
+    const preview = previewDuo(state, group.id)
+    state = finalizeDuoGroup(state, group.id, preview.token, preview.invoices.map((invoice) => invoice.id), documentAt)
+    assert.deepEqual(state.documentVersions.slice(0, originals.length), originals)
+    for (const [i, target] of group.targets.entries()) {
+      const invoice = selectInvoice(state, state.invoices.find((entry) => entry.id === target.invoiceId)!)
+      assert.deepEqual(invoice.snapshot!.students.map((student) => student.name), [names[i]])
+      assert.deepEqual(invoice.snapshot!.guardians.map((guardian) => guardian.id), students[i].guardianIds)
+      const version = state.documentVersions.find((entry) => entry.id === invoice.versionId)!
+      const html = renderToStaticMarkup(createElement(InvoicePrint, { invoice, guardians: state.guardians, students: state.students, settings: state.settings, includeGiroCode: false }))
+      for (const output of [html, JSON.stringify(version), invoicePdfTitle(invoice, state.students), decodeURIComponent(mailtoUrl(invoice, state.guardians, state.students)), invoicesToCsv([invoice], state.guardians, state.students)]) {
+        assert.ok(!output.includes(names[1 - i]))
+        assert.ok(!output.includes(students[i].note))
+        assert.ok(!output.includes(group.id))
+      }
+    }
+    roundtrip(state)
+  }
 })
 
 test('AP2: Löschen oder fehlender Importpartner lässt die andere Rechnung eigenständig bestehen', () => {

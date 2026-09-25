@@ -53,10 +53,10 @@ test('AP2 Browser/PDF: gemeinsame Erfassung, getrennte Bearbeitung, Reload, voll
     await expect(editor.getByLabel('Einleitung', { exact: true })).toHaveValue('')
     await expect(editor.getByLabel('Freitext / Hinweis', { exact: true })).toHaveValue('')
     await editor.locator('label.choice-chip').filter({ hasText: households[i].guardian }).click()
-    await editor.getByLabel('Einzelpreis', { exact: true }).fill(i === 0 ? '10,10' : '20,02')
+    await editor.getByRole('textbox', { name: 'Einzelpreis €', exact: true }).fill(i === 0 ? '10,10' : '20,02')
     await editor.getByLabel('Einleitung', { exact: true }).fill(households[i].intro)
     await editor.getByLabel('Freitext / Hinweis', { exact: true }).fill(households[i].free)
-    await editor.getByLabel('Fußzeile / Rechtstext', { exact: true }).fill(households[i].legal)
+    await editor.getByRole('textbox', { name: /^Fußzeile \/ Rechtstext \d+ \/ \d+ Zeichen$/ }).fill(households[i].legal)
     await editor.getByRole('button', { name: 'Als Entwurf speichern', exact: true }).click()
     await expect(editor).not.toBeVisible()
   }
