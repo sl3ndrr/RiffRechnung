@@ -6,6 +6,7 @@ Eine vollständig clientseitige Web-App für Rechnungen rund um Gitarrenunterric
 
 - Kinder und mehrere Erziehungsberechtigte verwalten, filtern, sortieren und miteinander verknüpfen
 - gemeinsame Rechnungen an eine oder mehrere berechtigte Personen erstellen; historische getrennte Belege und Korrekturen weiterhin lesen
+- Duo-Unterricht für zwei Haushalte einmal erfassen, zwei gespeicherte Rechnungsentwürfe mit eigenen Empfängern, Preisen und Texten bearbeiten und nach vollständiger Vorschau atomar abschließen
 - mehrere Kinder und automatisch berechnete Zwischensummen auf einer Rechnung
 - frei definierbare Positionen, Zahlungsziel und Textbausteine
 - strukturiertes Kleinunternehmerprofil mit vollständigen Aussteller-/Empfängeranschriften und ausdrücklich typisierter Steuerkennung
@@ -70,6 +71,19 @@ Der GiroCode füllt Empfänger, deutsche IBAN, optional eingegebene BIC, Betrag 
 Automatisch geprüft ist **Chromium 153.0.8010.12 unter Ubuntu 24.04** in CI, einschließlich echter PDF-Erzeugung und Textprüfung. Native Druckdialoge und die visuelle Druckabnahme bleiben offen. Der normale Dokumentfluss ist der vorgesehene Druckfallback für Firefox/Safari; deren PDF-Ausgabe und dynamische `@page`-Seitenzahlen wurden nicht abgenommen. Chrome und Edge werden nicht als eigene Versionen freigegeben. Banking-App-Scans bleiben manuell: eine synthetische finale PDF öffnen bzw. den QR-Code scannen und Empfänger, DE-IBAN, optionale BIC, Betrag sowie Rechnungsnummer gegen den Bankblock prüfen, ohne eine Überweisung auszulösen. Die [Freigabematrix](docs/release-readiness.md) hält Versionen und offene Prüfungen fest.
 
 ## Originale, Korrekturen und Zahlungen
+
+Unter **Rechnungen → Duo · zwei Haushalte** zwei verschiedene Lernende und die
+gemeinsame Leistung wählen. Beide Entwürfe werden gespeichert und über
+**Duo-Verknüpfung öffnen** wiedergefunden. Jede Rechnung getrennt bearbeiten:
+Empfänger ausdrücklich wählen, eigenen Einzelpreis und individuelle Texte prüfen.
+Ein optionaler Gruppenbetrag muss exakt der Summe beider Zielbeträge entsprechen.
+Die beiden vollständigen Ausgaben und Preise vor dem gemeinsamen Abschluss einzeln
+bestätigen; erst dann entstehen zwei Nummern und zwei eigenständige Forderungen.
+Gemeinsame Leistungsänderungen erfordern einen bestätigten Vorher-/Nachhervergleich.
+Ein gemeinsamer Haushalt verwendet weiterhin eine einzige gemeinsame Rechnung.
+Wird ein Gruppenentwurf gelöscht oder fehlt er nach Import, bleibt der andere
+eigenständig. Zahlung, Korrektur und Archivierung betreffen stets nur die gewählte
+Rechnung. Die Gruppenkennung und Partnernotizen erscheinen in keinem Einzelbeleg.
 
 Finalisieren sichert den vollständigen Beleg. Spätere Änderungen an Stammdaten,
 Konten oder Textbausteinen verändern ihn nicht. Ansicht, Druck, Erinnerung und
@@ -164,12 +178,12 @@ beschreibt Migration, Wiederholung nach Fehlern und Kontrolle nach Reload.
 
 ### Datenprüfung und kontrollierter Formatumstieg
 
-Das Datenschema ist Format 7; die Speicherung verwendet weiterhin den versionierten
+Das Datenschema ist Format 8; die Speicherung verwendet weiterhin den versionierten
 Umschlag aus Paket 03 (Speicherprotokoll 4). Entwürfe können unvollständig sein; ungültige
 Preise, Mengen, IDs oder Referenzen werden nicht gespeichert. Nur deutsche IBANs
 sind für neue/geänderte Kontoeinstellungen und neue Finalisierungen zugelassen.
 
-Beim Import und im Wiederherstellungsmodus lassen sich Formate 2 bis 6 prüfen. Bekannte
+Beim Import und im Wiederherstellungsmodus lassen sich Formate 2 bis 7 prüfen. Bekannte
 Empfängerkopien mit doppelten Positions-IDs erhalten eine Reparaturvorschau,
 separate Exporte und einen Bericht mit Originaldaten. Die bestätigte Übernahme
 verwendet denselben abgesicherten Schreibdienst wie normale Änderungen.
@@ -229,4 +243,3 @@ neuen Snapshots. Bei der Migration aus Format 2–5 bleibt die Steuerkennung lee
 und sperrt neue Finalisierungen bis zur bewussten Eingabe. Historische Snapshots
 werden nicht ergänzt; auch eine dort leere BIC bleibt leer. Grundlagen und
 Produktannahmen stehen in [Produktentscheidungen](docs/product-decisions.md).
-

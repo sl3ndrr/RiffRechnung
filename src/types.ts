@@ -212,8 +212,19 @@ export interface VoidedInvoiceNumber {
   recipient: string
 }
 
+/** Administrative working basis only; never projected into a document. */
+export type DuoLesson = Pick<InvoiceItem, 'serviceDate' | 'description' | 'quantity' | 'unit'>
+export interface DuoGroup {
+  id: string
+  targets: { invoiceId: string; itemId: string }[]
+  lesson: DuoLesson
+  totalCents?: number
+}
+
 export interface AppState {
-  schemaVersion: 7
+  schemaVersion: 8
+  /** Absence means no Duo workflow; migration never infers groups. */
+  duoGroups?: DuoGroup[]
   guardians: Guardian[]
   students: Student[]
   invoices: Invoice[]

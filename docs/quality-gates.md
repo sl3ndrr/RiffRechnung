@@ -1,3 +1,64 @@
+## AP2 – Nachweis (2026-09-25)
+
+Ausgang: `main` `47f491eecbebb788bf6f63aea2b1342bc3dfbd85`, AP1 integriert.
+Keine AGENTS.md im bereitgestellten Tree. Terminal-Clone: HTTP 403; lokaler
+Git-Verlauf kennzeichnet deshalb ausdrücklich die Dateimaterialisierung statt
+eines angeblichen vollständigen Checkouts. Eigener GitHub-Arbeitsbranch:
+`codex/ap2-duo-households`. Keine Änderung an Merge-/Deploy-Workflows.
+
+Lokale Gates in der vorgeschriebenen Reihenfolge versucht:
+`npm ci --fetch-retries=0 --fetch-timeout=20000` → E403 beim Registry-Abruf;
+Lint → `eslint: not found`; Tests → `esbuild: not found`; Typecheck/Build →
+`tsc: not found`; Browserprüfung → origin-Fetch des historischen Commits
+`ba7857fd9180fa392c42a0235643e478e5077ee5` HTTP 403. Node 24.19.0 statt 22.
+Diese Gates sind **nicht ausführbar**, nicht bestanden. Bestehende Node-22-PR-CI
+muss Installation, Lint, Fachtests, Test-Typecheck, Build, Playwright/Poppler und
+Browserprüfungen für den konkreten Ergebniscommit ausführen.
+
+Erster Lauf [CI 36111901834](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36111901834)
+auf `6a453da63d027c077d12c99b9d03b560125f9eb2`: Installation, Lint, 159/159
+Fachtests, Typecheck und Build erfolgreich; Browser 48/49. Die AP2-Testnamen
+sind im npm-Testprotokoll enthalten. Ein neuer Browserselektor erwartete
+„Einzelpreis“, während das bestehende Label „Einzelpreis €“ lautet. Preis- und
+Rechtstextselektor berücksichtigen nun das vollständige Label einschließlich
+Suffix bzw. Zeichenzähler. Keine Assertion, kein Zeitbudget wurde abgeschwächt.
+Der Folgelauf prüfte zusätzlich beide vorhandenen Demo-Duos, mehrere ausdrückliche
+Empfänger pro Ziel, den Erhalt ihrer historischen Versionen und Änderungszeitpunkte.
+
+[PR #37](https://github.com/sl3ndrr/RiffRechnung/pull/37), Implementierungsstand
+`adf99f5d830e0fc639175f8d3a250cd0c3716920`,
+[CI 36112913179](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36112913179):
+Node 22.23.2 / npm 10.9.8; `npm ci`, Lint, **160/160 Fachtests**, Typecheck,
+Build und **49/49 Browserprüfungen** erfolgreich. Chromium 153.0.8010.12,
+Firefox 155.0 und Playwright-WebKit 26.6 unter Ubuntu; Poppler und historischer
+origin-Commit verfügbar. Vollständiges Dependency-Audit: 0 gemeldete Schwachstellen.
+Der abschließende Commit ergänzt direkte Adress-/E-Mail-Leakmarker sowie die
+Kontodatenprüfung in Vorschau und PDF. Er erhält einen eigenen vollständigen
+CI-Lauf; dessen exakte SHA/Laufzuordnung wird im PR-Abschluss festgehalten.
+
+Dieser Lauf [CI 36138790679](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36138790679)
+auf `e9605952625fa849da567dd7fc937b7d2e274c61` bestand die 160 Fachtests sowie
+alle Duo-PDF-/Adress-/Kontoprüfungen, endete aber mit 48/49 Browserprüfungen.
+Der AP2-WebKit-JSON-Test erhielt nach dem Exportklick kein Download-Ereignis.
+Das heruntergeladene Trace-Artefakt zeigt Bewegung/Außerhalb-des-Viewports beim
+automatischen Scrollen und einen ausgeführten Klick, während die Bildfolge
+weiter scrollt. Kein Backup-Zeitstempel wurde gesetzt: der Exporthandler lief
+nicht. Der AP2-Test nutzt nun den festen Seitenleistenknopf „Backup exportieren“
+mit demselben Handler; der AP1-Test behält den Einstellungs-Knopf bei. Echter
+Mausklick, nativer Download, Zeitbudgets und alle vollständigen Datenvergleiche
+bleiben erhalten. Keine Force-Clicks, Sleeps oder Retries im Test ergänzt.
+Der Folgestand wird erneut durch sämtliche Gates geprüft; Zuordnung im PR.
+
+Neue Fachdatei `tests/duo.test.ts` ist im tatsächlichen Testeinstieg
+`tests/logic.test.ts` importiert; ihre `AP2:`-/`AP2 Leak:`-/`AP2 Speicher:`-
+Testnamen stehen im npm-Testprotokoll des erfolgreichen Laufs (12 neue Tests).
+Damit ist die tatsächliche Ausführung belegt. Keine Testauslassungen
+oder Retries ergänzt. Bestehende Schema-Grenzerwartungen in `logic`, `documents`,
+`money-calendar`, `payment-reporting` sowie Browser-`documents`/`stabilization`
+wurden gezielt von aktuellem Schema 7 auf 8 und Zukunftsschema 8 auf 9 angepasst;
+die ursprünglichen Original-/Migrations-/Sperrassertionen bleiben erhalten.
+`storageHarness.seedState` übernimmt jetzt die tatsächliche Zustandsversion.
+
 ## AP1 – Nachweis (2026-09-24)
 
 [PR #36](https://github.com/sl3ndrr/RiffRechnung/pull/36), Implementierungscommit `02e712c519d4f833552837a66b63bad06fd73ad9`: [CI 36063143264](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36063143264) unter Node 22.23.2 / npm 10.9.8. `npm ci`, `npm run lint`, `npm test` (148/148; die AP1-Testnamen sind im Protokoll und die Testdatei ist in `tests/logic.test.ts` importiert), `npm run typecheck`, `npm run build`, Installation aller Playwright-Browser und `pdftotext`, `npm run test:browser` (43/43) sowie vollständiges Dependency-Audit erfolgreich. Der abschließende Dokumentationscommit benötigt einen eigenen CI-Lauf.
@@ -643,4 +704,3 @@ Force-Clicks, Testauslassungen oder schwächeren Datenvergleiche. Grundlage:
 [Playwright-Testzeitbudgets](https://playwright.dev/docs/test-timeouts) schließen
 Fixture-Setup ein und sind vom Assertion-Zeitbudget getrennt. Der neue Ergebnis-
 Commit wird vollständig geprüft und im PR mit exakter SHA/CI-Lauf verknüpft.
-

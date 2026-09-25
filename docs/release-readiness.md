@@ -1,3 +1,40 @@
+# AP2 – Prüfstand (2026-09-25)
+
+Arbeitsstand auf `codex/ap2-duo-households`, Ausgang `47f491e…`, APP_VERSION 1.4,
+Schema 8. Noch kein Release und nicht in main. AP3–AP5 sind nicht integriert.
+Die bisherigen AP1-/Paket-12-Ergebnisse sind historische Nachweise, keine
+Freigabe des AP2-Stands. Aktuelle Gates: siehe [quality-gates.md](quality-gates.md).
+
+Der 7→8-Umstieg benötigt die bestehende ausdrückliche Import-/Recoverybestätigung.
+Originaldatei vorher unabhängig sichern, alte Tabs schließen; Rohdaten und Bericht
+werden vor Übernahme archiviert. Die Migration erzeugt keine Duo-Gruppen und
+verändert keine Originalbelege oder Zahlungstage. Rückweg ausschließlich mit
+Originaldatei, passendem alten Code und getrenntem Profil; kein In-place-Downgrade.
+
+AP2-Abnahmematrix: gemeinsame Erfassung/getrennte Bearbeitung; beide Vollvorschauen;
+Gruppen-Centdifferenz; private PDFs via `pdftotext`; Einzelbeleg-/EPC-/mailto-/CSV-
+und Historien-Leaktests; JSON-Roundtrip/Reload; zwei Tabs; Doppelklick;
+Quota-/Schreibfehler; Zahlung nur A/Korrektur nur B; Partnerlöschung/-verlust;
+Schema-7-Migration und Zukunftssperre. Lokale Node-22-Gates nicht ausführbar
+(Node 24.19.0; npm-Registry und origin HTTP 403).
+
+Implementierungsstand `adf99f5d830e0fc639175f8d3a250cd0c3716920`,
+[CI 36112913179](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36112913179):
+Node 22.23.2; Installation, Lint, 160/160 Fachtests, Typecheck, Build,
+49/49 Browserprüfungen und Dependency-Audit erfolgreich. Darunter beide
+vorhandenen Demo-Duos mit Partnernotizen, unabhängige Vollausgaben und echte
+Chromium-PDFs. Der Abschlusscommit mit zusätzlichen Adress-/Kontoprüfungen
+wird vollständig separat geprüft; genaue Zuordnung im [PR #37](https://github.com/sl3ndrr/RiffRechnung/pull/37).
+Sein erster Lauf `36138790679` bestand die zusätzlichen PDF-Prüfungen, scheiterte
+aber am nicht ausgelösten WebKit-Exportklick (48/49). Trace und gezielte Anpassung
+des AP2-Tests an den festen Exportknopf stehen in `quality-gates.md`; kein
+Zeitbudget und kein Datenvergleich wurde abgeschwächt. Der Folgelauf ist separat
+im PR dokumentiert und ersetzt diesen fehlgeschlagenen Nachweis nicht rückwirkend.
+
+Native Dateirechte, OS-Druckdialog, visuelle PDF-Abnahme, Banking-Scan,
+Screenreader und Safari/macOS bleiben wie bisher separate offene Freigaben.
+Kein Merge und kein Deployment.
+
 # AP1 – Prüfstand (2026-09-24)
 
 Die folgenden Paket-12-Nachweise sind historische Ergebnisse vor AP1. AP1 ersetzt die Empfängeraufteilung durch gemeinsame Rechnungen und die bestätigte Umwandlung offener Altentwürfe. [PR #36](https://github.com/sl3ndrr/RiffRechnung/pull/36), Implementierungscommit `02e712c519d4f833552837a66b63bad06fd73ad9`, [CI 36063143264](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36063143264): Node 22.23.2, `npm ci`, Lint, 148/148 Fachtests, Typecheck, Build, 43/43 Browserprüfungen (Chromium sowie JSON-Fallback in Firefox/WebKit) und Dependency-Audit erfolgreich. Der letzte Dokumentationscommit wird gesondert geprüft.
@@ -161,4 +198,3 @@ PDF-Text-, Fokus- und Kontrastprüfungen sind davon getrennt.
   Kein entsprechender Schreib-Endpunkt ist verfügbar.
 
 Nächstes vorgesehenes Paket: optional **13**; nicht begonnen.
-

@@ -1,3 +1,4 @@
+import { duoAudienceErrors, duoForInvoice, duoInvoices, previewDuo } from './duoModel'
 import { calendarParts } from './calendar'
 import { draftAmountChange, moneyErrors } from './money'
 import { allocatedCents, captureDocument, correctionErrors, snapshotFor, persistentInvoice } from './documents'
@@ -21,7 +22,9 @@ function paymentForFullClaim(state: AppState, versionId: string): { id: string; 
   return candidates.length === 1 ? candidates[0] : null
 }
 
-function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatus, at: string, createId: (prefix: string) => string, paymentDay?: string): AppState {
+function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatus, at: string, createId: (prefix: string) => string, paymentDay?: string, duoGroupId?: string): AppState {
+  const group = duoForInvoice(state, invoice.id)
+  if (group && duoInvoices(state, group).length === 2 && group.id !== duoGroupId) throw new Error('Bitte beide Duo-Rechnungen in der gemeinsamen Vorschau abschließen.')
   if (invoice.recipientStrategy === 'separate' && (!invoice.correction ||
     state.documentVersions.find((version) => version.id === invoice.correction?.replacesId)?.content.recipientStrategy !== 'separate')) {
     throw new Error('Historische getrennte Entwürfe dürfen nicht finalisiert werden. Bitte ausdrücklich in einen gemeinsamen Entwurf umwandeln.')
@@ -72,6 +75,11 @@ export function saveInvoiceDraft(state: AppState, draft: InvoiceDraft, finalize:
   }
   let next = { ...state, invoices: [...state.invoices.filter((invoice) => invoice.id !== saved.id), persistentInvoice(saved)] }
   validateBackupState(next)
+  const group = duoForInvoice(next, saved.id)
+  if (group && duoInvoices(next, group).length === 2) {
+    const errors = duoAudienceErrors(next, duoInvoices(next, group))
+    if (errors.length) throw new Error(errors.join(' '))
+  }
   if (finalize) next = finalizeInvoice(next, saved, 'sent', at, createId)
   validateBackupState(next)
   return next
@@ -144,4 +152,18 @@ function draftAudienceErrors(state: AppState, draft: InvoiceDraft): string[] {
 export function invoiceDraftErrors(state: AppState, draft: InvoiceDraft): string[] {
   const result = commandResult(() => saveInvoiceDraft(state, draft, false))
   return result.ok ? [] : result.errors.map((error) => error.message)
+}
+
+/** A pure transition: the caller persists both results with ONE StorageSession.change. */
+export function finalizeDuoGroup(state: AppState, groupId: string, token: string, confirmedInvoiceIds: string[], at = new Date().toISOString(), createId = uid): AppState {
+  const preview = previewDuo(state, groupId)
+  if (preview.token !== token) throw new Error('Die Vorschau ist nicht mehr aktuell. Bitte beide Rechnungen erneut prüfen.')
+  if (preview.errors.length) throw new Error(preview.errors.join(' '))
+  if (confirmedInvoiceIds.length !== 2 || !preview.invoices.every((invoice) => confirmedInvoiceIds.includes(invoice.id))) throw new Error('Bitte den eigenen Preis und die vollständige Ausgabe jeder Zielrechnung ausdrücklich bestätigen.')
+  // All validation precedes even the first in-memory allocation. No storage side effects here.
+  let next = state
+  for (const invoice of preview.invoices) next = finalizeInvoice(next, state.invoices.find((entry) => entry.id === invoice.id)!, 'sent', at, createId, undefined, groupId)
+  validateBackupState(next)
+  assertOriginalsPreserved(state, next)
+  return next
 }
