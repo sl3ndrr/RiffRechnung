@@ -77,9 +77,11 @@ test('AP3: Altentwurf ohne damals gesicherte Druckdaten übernimmt keine heutige
   state.guardians[0].lastName = 'Kontakt'
   state.guardians[0].name = 'Heutiger Kontakt'
   state.settings.issuer.name = 'Heutiger Aussteller'
+  state.settings.defaultLegalText = 'Heutiger Rechtstext'
+  state.invoices[0].legalText = ''
   const output = print(state)
   assert.match(output, /ENTWURF/)
-  assert.doesNotMatch(output, /Heutiger Kontakt|Heutiger Aussteller/)
+  assert.doesNotMatch(output, /Heutiger Kontakt|Heutiger Aussteller|Heutiger Rechtstext/)
   assert.doesNotMatch(output, /<dt>Straße:<\/dt>|<dt>PLZ\/Ort:<\/dt>|<p class="invoice-senderline"><\/p>/)
 })
 

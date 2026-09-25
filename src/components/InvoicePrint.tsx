@@ -50,7 +50,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
   const source = invoice?.snapshot ?? invoice?.draftPrintSnapshot
   const legacyDraftWithoutPrintData = invoice?.status === 'draft' && !source
   const printInvoice = useMemo(() => invoice?.status === 'draft' && source ? { ...invoice, snapshot: source } : invoice, [invoice, source])
-  const footerText = invoice ? footerTextForPrint(invoice.versionId || source ? invoice.legalText : invoice.legalText || settings.defaultLegalText) : ''
+  const footerText = invoice ? footerTextForPrint(invoice.legalText) : ''
   const pageStyle = invoice ? buildInvoicePrintPageStyle(footerText, invoice.number) : ''
   const issuer = source?.issuer ?? (legacyDraftWithoutPrintData ? { name: '', street: '', postalCode: '', city: '', email: '', phone: '' } : settings.issuer)
   const account = printInvoice && !legacyDraftWithoutPrintData ? paymentDataForInvoice(printInvoice, settings) : { accountHolder: '', iban: '', bic: '', bankName: '' }
