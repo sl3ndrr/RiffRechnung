@@ -4,7 +4,8 @@ import { buildMailto } from './mailbox'
 import { validId, validPrice, validQuantity } from './values'
 import { assertInvoiceEditable } from './safety'
 import { cleanIban, paymentDataErrors, paymentDataForInvoice } from './paymentData'
-import { invoiceProfileErrors, invoiceSetupErrors } from './invoiceProfile'
+import { invoiceSetupErrors } from './invoiceProfile'
+import { invoiceCompliance } from './invoiceCompliance'
 import type { AppState, Guardian, Invoice, InvoiceItem, InvoiceStatus, LessonType, Settings, Student } from '../types'
 
 export const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
@@ -26,7 +27,7 @@ export function limitFooterText(value: string): string {
   return value.slice(0, MAX_FOOTER_TEXT_LENGTH)
 }
 
-type InvoiceFinalizationCandidate = Pick<Invoice, 'guardianIds' | 'studentIds' | 'invoiceDate' | 'dueDate' | 'items' | 'legalText'> & Partial<Pick<Invoice, 'recipientStrategy'>>
+type InvoiceFinalizationCandidate = Pick<Invoice, 'guardianIds' | 'studentIds' | 'invoiceDate' | 'dueDate' | 'items' | 'legalText'> & Partial<Pick<Invoice, 'recipientStrategy' | 'invoiceKind'>>
 
 export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 'students' | 'settings'>, invoice: InvoiceFinalizationCandidate): string[] {
   const errors: string[] = [...moneyErrors(invoice)]
@@ -36,7 +37,7 @@ export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 's
   const selectedStudentIds = new Set(invoice.studentIds)
   const selectedStudents = state.students.filter((student) => selectedStudentIds.has(student.id))
   const selectedGuardians = state.guardians.filter((guardian) => invoice.guardianIds.includes(guardian.id))
-  errors.push(...invoiceProfileErrors(state.settings, selectedGuardians).map((error) => error.message))
+  if (!errors.length) errors.push(...invoiceCompliance(invoice.invoiceKind, invoiceTotalCents(invoice), state.settings, selectedGuardians).map((error) => error.message))
 
   if (!invoice.guardianIds.length) errors.push('Mindestens eine empfangende Person auswählen.')
   else if (invoice.guardianIds.some((id) => !guardianIds.has(id))) errors.push('Alle empfangenden Personen müssen in den aktuellen Stammdaten vorhanden sein.')
@@ -229,8 +230,9 @@ export function guardianName(invoice: Invoice, guardians: Guardian[]): string {
 }
 
 export function studentName(invoice: Invoice, students: Student[]): string {
-  const snapshot = invoice.snapshot?.students.map((item) => item.name).filter(Boolean)
+  const snapshot = (invoice.snapshot ?? invoice.draftPrintSnapshot)?.students.map((item) => item.name).filter(Boolean)
   if (snapshot) return snapshot.join(', ') || 'Ohne Kind'
+  if (invoice.status === 'draft') return 'Ohne Kind'
   const names = invoice.studentIds
     .map((id) => students.find((student) => student.id === id)?.name)
     .filter(Boolean)
@@ -414,10 +416,13 @@ export function downloadText(filename: string, content: string, type = 'applicat
   const link = document.createElement('a')
   link.href = url
   link.download = filename
+  link.tabIndex = -1
+  link.setAttribute('aria-hidden', 'true')
   document.body.append(link)
   link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
+  // Some engines finish initiating the download after click() returns. Keep
+  // both the attached anchor and its blob alive until they have consumed it.
+  window.setTimeout(() => { link.remove(); URL.revokeObjectURL(url) }, 60_000)
 }
 
 export function csvCell(value: string | number): string {

@@ -2,6 +2,7 @@ import { mailboxError, MAILBOX_ERROR } from '../lib/mailbox'
 import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, Mail, MapPin, Pencil, Plus, Search, Trash2, UserRound, Users } from 'lucide-react'
 import type { AppState, Guardian, Student } from '../types'
+import { contactName, contactPartError } from '../lib/contactName'
 import { EmptyState } from '../components/EmptyState'
 import { Modal } from '../components/Modal'
 import { sortPeople, studentCodeForIndex, uid, type PeopleSortMode } from '../lib/utils'
@@ -19,7 +20,7 @@ interface PeopleProps {
 
 const blankGuardian = (): Guardian => ({
   id: uid('guardian'),
-  name: '', email: '', phone: '', iban: '', paymentNote: '',
+  name: '', firstName: '', lastName: '', email: '', phone: '', iban: '', paymentNote: '',
   address: { street: '', postalCode: '', city: '' },
   createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
 })
@@ -32,6 +33,7 @@ const blankStudent = (): Student => ({
 export function People({ state, onSaveGuardian, onSaveStudent, onDeleteGuardian, onDeleteStudent }: PeopleProps) {
   const [search, setSearch] = useState('')
   const [guardianForm, setGuardianForm] = useState<Guardian | null>(null)
+  const [keepLegacyName, setKeepLegacyName] = useState(false)
   const [studentForm, setStudentForm] = useState<Student | null>(null)
   const [onlyActiveStudents, setOnlyActiveStudents] = useState(true)
   const [peopleSort, setPeopleSort] = useState<PeopleSortMode>('name-asc')
@@ -47,9 +49,16 @@ export function People({ state, onSaveGuardian, onSaveStudent, onDeleteGuardian,
   const closeStudentForm = () => { setStudentForm(null); setError('') }
 
   const saveGuardian = async () => {
-    if (!guardianForm?.name.trim()) return setError('Bitte einen Namen eintragen.')
+    if (!guardianForm) return
+    const legacy = state.guardians.find((entry) => entry.id === guardianForm.id && entry.firstName === undefined && entry.lastName === undefined)
+    const keepName = legacy && !guardianForm.firstName && !guardianForm.lastName
+    if (keepName && !keepLegacyName) return setError('Bitte den bisherigen Anzeigenamen ausdrücklich bestätigen oder Vor- und Nachname ergänzen.')
+    if (!keepName) {
+      const error = contactPartError(guardianForm.firstName, 'Vorname') ?? contactPartError(guardianForm.lastName, 'Nachname')
+      if (error) return setError(error)
+    }
     if (mailboxError(guardianForm.email)) return setError(MAILBOX_ERROR)
-    if (!await onSaveGuardian({ ...guardianForm, updatedAt: new Date().toISOString() })) return
+    if (!await onSaveGuardian({ ...guardianForm, name: keepName ? guardianForm.name : contactName(guardianForm.firstName!, guardianForm.lastName!), updatedAt: new Date().toISOString() })) return
     setGuardianForm(null)
     setError('')
   }
@@ -107,7 +116,7 @@ export function People({ state, onSaveGuardian, onSaveStudent, onDeleteGuardian,
                   <article className="guardian-row" key={guardian.id}>
                     <span className="avatar avatar--warm">{guardian.name.slice(0, 1)}</span>
                     <div className="guardian-row__main"><strong>{guardian.name}</strong><span><Mail aria-hidden="true" /> {guardian.email || 'Keine E-Mail'}</span><span><MapPin aria-hidden="true" /> {[guardian.address.postalCode, guardian.address.city].filter(Boolean).join(' ') || 'Keine Anschrift'}</span><small>{linkedStudents.map((student) => student.name).join(', ') || 'Noch keinem Kind zugeordnet'}</small></div>
-                    <div className="guardian-row__actions"><button className="icon-button icon-button--small" onClick={() => setGuardianForm(structuredClone(guardian))} aria-label={`${guardian.name} bearbeiten`}><Pencil aria-hidden="true" /></button><button className="icon-button icon-button--small" onClick={() => onDeleteGuardian(guardian)} aria-label={`${guardian.name} löschen`}><Trash2 aria-hidden="true" /></button><ChevronRight aria-hidden="true" /></div>
+                    <div className="guardian-row__actions"><button className="icon-button icon-button--small" onClick={() => { setKeepLegacyName(false); setGuardianForm(structuredClone(guardian)) }} aria-label={`${guardian.name} bearbeiten`}><Pencil aria-hidden="true" /></button><button className="icon-button icon-button--small" onClick={() => onDeleteGuardian(guardian)} aria-label={`${guardian.name} löschen`}><Trash2 aria-hidden="true" /></button><ChevronRight aria-hidden="true" /></div>
                   </article>
                 )
               })}
@@ -119,7 +128,7 @@ export function People({ state, onSaveGuardian, onSaveStudent, onDeleteGuardian,
       <Modal open={Boolean(guardianForm)} onClose={closeGuardianForm} title={state.guardians.some((item) => item.id === guardianForm?.id) ? 'Elternteil bearbeiten' : 'Elternteil anlegen'} eyebrow="Erziehungsberechtigte Person" footer={<><button className="button button--text" type="button" onClick={closeGuardianForm}>Abbrechen</button><button className="button button--primary" type="submit" form={GUARDIAN_FORM_ID}>Speichern</button></>}>
         {guardianForm && <form className="form-stack" id={GUARDIAN_FORM_ID} onSubmit={(event) => { event.preventDefault(); saveGuardian() }}>
           {error && <p className="inline-error" role="alert">{error}</p>}
-          <div className="form-grid form-grid--2"><label className="field field--full"><span>Name *</span><input autoFocus value={guardianForm.name} onChange={(event) => setGuardianForm({ ...guardianForm, name: event.target.value })} placeholder="Vor- und Nachname" /></label><label className="field"><span>E-Mail</span><input type="text" inputMode="email" aria-invalid={Boolean(mailboxError(guardianForm.email))} value={guardianForm.email} onChange={(event) => setGuardianForm({ ...guardianForm, email: event.target.value })} /></label><label className="field"><span>Telefon</span><input type="tel" value={guardianForm.phone} onChange={(event) => setGuardianForm({ ...guardianForm, phone: event.target.value })} /></label><label className="field field--full"><span>Straße & Hausnummer</span><input value={guardianForm.address.street} onChange={(event) => setGuardianForm({ ...guardianForm, address: { ...guardianForm.address, street: event.target.value } })} /></label><label className="field"><span>PLZ</span><input inputMode="numeric" value={guardianForm.address.postalCode} onChange={(event) => setGuardianForm({ ...guardianForm, address: { ...guardianForm.address, postalCode: event.target.value } })} /></label><label className="field"><span>Ort</span><input value={guardianForm.address.city} onChange={(event) => setGuardianForm({ ...guardianForm, address: { ...guardianForm.address, city: event.target.value } })} /></label><label className="field field--full"><span>IBAN / Zahlungsinfo (optional)</span><input value={guardianForm.iban} onChange={(event) => setGuardianForm({ ...guardianForm, iban: event.target.value })} placeholder="Nur falls für interne Zuordnung benötigt" /></label><label className="field field--full"><span>Interne Notiz</span><textarea rows={2} value={guardianForm.paymentNote} onChange={(event) => setGuardianForm({ ...guardianForm, paymentNote: event.target.value })} /></label></div>
+          <div className="form-grid form-grid--2">{guardianForm.firstName === undefined && guardianForm.lastName === undefined && <div className="field field--full"><span>Bisheriger Anzeigename: {guardianForm.name}</span><label><input type="checkbox" checked={keepLegacyName} onChange={(event) => setKeepLegacyName(event.target.checked)} /> Unverändert behalten, ohne Aufteilung</label></div>}<label className="field"><span>Vorname *</span><input autoFocus value={guardianForm.firstName ?? ''} onChange={(event) => setGuardianForm({ ...guardianForm, firstName: event.target.value })} /></label><label className="field"><span>Nachname *</span><input value={guardianForm.lastName ?? ''} onChange={(event) => setGuardianForm({ ...guardianForm, lastName: event.target.value })} /></label><label className="field"><span>E-Mail</span><input type="text" inputMode="email" aria-invalid={Boolean(mailboxError(guardianForm.email))} value={guardianForm.email} onChange={(event) => setGuardianForm({ ...guardianForm, email: event.target.value })} /></label><label className="field"><span>Telefon</span><input type="tel" value={guardianForm.phone} onChange={(event) => setGuardianForm({ ...guardianForm, phone: event.target.value })} /></label><label className="field field--full"><span>Straße & Hausnummer</span><input value={guardianForm.address.street} onChange={(event) => setGuardianForm({ ...guardianForm, address: { ...guardianForm.address, street: event.target.value } })} /></label><label className="field"><span>PLZ</span><input inputMode="numeric" value={guardianForm.address.postalCode} onChange={(event) => setGuardianForm({ ...guardianForm, address: { ...guardianForm.address, postalCode: event.target.value } })} /></label><label className="field"><span>Ort</span><input value={guardianForm.address.city} onChange={(event) => setGuardianForm({ ...guardianForm, address: { ...guardianForm.address, city: event.target.value } })} /></label><label className="field field--full"><span>IBAN / Zahlungsinfo (optional)</span><input value={guardianForm.iban} onChange={(event) => setGuardianForm({ ...guardianForm, iban: event.target.value })} placeholder="Nur falls für interne Zuordnung benötigt" /></label><label className="field field--full"><span>Interne Notiz</span><textarea rows={2} value={guardianForm.paymentNote} onChange={(event) => setGuardianForm({ ...guardianForm, paymentNote: event.target.value })} /></label></div>
         </form>}
       </Modal>
 

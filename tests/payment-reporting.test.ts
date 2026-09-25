@@ -87,6 +87,10 @@ test('P08: Schema 6 übernimmt Vollzahlungen mit unbekanntem Zahlungstag einmali
   current = changeInvoiceStatus(current, current.invoices[0].id, 'paid', '2026-01-04T08:15:00.000Z', '2026-01-03')
   const legacy = structuredClone(current) as unknown as { schemaVersion: number; payments: Array<Record<string, unknown>> }
   legacy.schemaVersion = 6
+  for (const guardian of (legacy as unknown as { guardians: Array<Record<string, unknown>> }).guardians) {
+    Reflect.deleteProperty(guardian, 'firstName')
+    Reflect.deleteProperty(guardian, 'lastName')
+  }
   legacy.payments.forEach((payment) => {
     Reflect.deleteProperty(payment, 'paymentDayStatus')
     Reflect.deleteProperty(payment, 'legacyPaymentDay')
@@ -94,7 +98,7 @@ test('P08: Schema 6 übernimmt Vollzahlungen mit unbekanntem Zahlungstag einmali
 
   const preview = inspectImport(JSON.stringify(legacy))
   assert.ok(preview.ok)
-  assert.equal(preview.value.report?.migration, 'riffrechnung-to-v7')
+  assert.equal(preview.value.report?.migration, 'riffrechnung-to-v8')
   assert.equal(preview.value.report?.fromSchema, 6)
   assert.equal(preview.value.state.payments[0].paidAt, null)
   assert.equal(preview.value.state.payments[0].paymentDayStatus, 'unknown')
@@ -103,7 +107,7 @@ test('P08: Schema 6 übernimmt Vollzahlungen mit unbekanntem Zahlungstag einmali
   assert.equal(financialReport(preview.value.state, 2026).unknownDatePayments[0].amountCents, 3000)
 
   const reloaded = parseBackup(serializeBackup(preview.value.state))
-  assert.equal(reloaded.schemaVersion, 7)
+  assert.equal(reloaded.schemaVersion, 8)
   const repeatImport = inspectImport(serializeBackup(reloaded))
   assert.ok(repeatImport.ok)
   if (repeatImport.ok) assert.equal(repeatImport.value.report, null)

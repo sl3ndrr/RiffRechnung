@@ -16,7 +16,7 @@ ihre technische Umsetzung wird pro Paket im [Umsetzungsstatus](implementation-st
 | Backup-Ordner | Ein Ordner gehört zu einem führenden Datenbestand. Abweichende Bestände erkennen; kein stilles Zusammenführen oder Überschreiben. | Konservative Regel übernommen, Paket 03. |
 | Zahlungen | Zunächst Vollzahlung mit tatsächlichem Zahlungstag. Fehlende historische Zahlungstage bleiben unbekannt. Teilzahlungen später separat. | Paket 08 (F02-MVP) umgesetzt, optional Paket 14. |
 | Datenformate | Änderungen versionieren; Altformate definieren, unveränderte Eingangsdaten schützen, Migrationsbericht und Wiederherstellung vorsehen. Laden/Importieren muss idempotent sein. Unbekannte neuere Formate nicht überschreiben; ausgestellte Beträge/Snapshots nicht still ändern. | Pakete 02–05 und spätere Formatänderungen; Paket 00 ohne Migration. |
-| Steuerliches Profil | Kleinunternehmer nach § 19 UStG für neue Rechnungen; keine automatische Kleinbetrags- oder andere Ausnahme. | Vom Nutzer ausdrücklich für Paket 07 gewählt. Profil, vollständige Anschriften und eine typisierte zulässige Steuerkennung sind vor Finalisierung erforderlich. |
+| Steuerliches Profil | Kleinunternehmer nach § 19 UStG für neue Rechnungen; Kleinbetragsrechnung nur durch ausdrückliche Rechnungsartwahl. | AP3 (25.09.2026) ersetzt die pauschale Empfängeranschriftspflicht aus Paket 07: Standard mit Empfängeranschrift, § 33 UStDV bis 250,00 € ohne diese; Ausstelleranschrift und bisherige Steuerkennungsprüfung bleiben vorläufig für beide Arten Pflicht. AP4 bearbeitet Ausgabeoptionen der Steuerkennung/des Hinweises. |
 | Zielbrowser | Nur tatsächlich geprüfte Browser/Versionen freigeben. | Verbindliche Versions-/Nachweismatrix in [release-readiness.md](release-readiness.md). Chromium-PDF und JSON-Fallback getrennt prüfen; Linux-WebKit belegt weder Safari/macOS noch dessen Druckdialog. |
 | Freigabe | Jedes Paket separat beauftragen. PR/Commits sind Teil des Pakets; Merge und produktives Deployment brauchen einen separaten Auftrag. Nur synthetische Testdaten verwenden. | Paket 00 endet vor Merge/Deployment. |
 
@@ -320,6 +320,10 @@ in Paket 02, revisionssichere Speicherung in Paket 03.
 
 ## Paket 07 – Rechnungsprofil und Zahlungsdaten
 
+Die damalige pauschale Empfängeranschriftspflicht und der Ausschluss der
+Kleinbetragsrechnung gelten seit AP3 (25.09.2026) nur noch historisch. Die
+aktuelle Finalisierungsregel und ihre Quellen stehen unter „AP3“ weiter unten.
+
 - Das Produkt unterstützt für neue Rechnungen ausschließlich das ausdrücklich
   gewählte Kleinunternehmerprofil nach § 19 UStG. Die Rechnung enthält den
   Steuerbefreiungshinweis. Andere Steuerprofile und die Kleinbetragsregel werden
@@ -474,3 +478,62 @@ und [Bundesbank-IBAN-Regeln](https://www.bundesbank.de/de/aufgaben/unbarer-zahlu
 - Kopieren eines historischen aufgeteilten Belegs ist gesperrt: Teilbetragspositionen und gemeinsame Texte können sonst unbemerkt in eine neue Forderung gelangen. Eine neue gemeinsame Rechnung wird manuell und nach Prüfung angelegt.
 - Zwei Altentwurfsformen sind möglich: einzeln aus früherer Aufteilung entstandene `separate`-Entwürfe mit einem Empfänger und ohne Gruppenbezug; sowie importierte `separate`-Entwürfe mit mehreren Empfängern. Beide bleiben lesbar. Nach sichtbarer Prüfung von Empfänger, Kind, Positionen, Einleitung und Freitext und fünf einzelnen Bestätigungen wird Form eins mit ihrem Empfänger zum gemeinsamen Entwurf. Form zwei verlangt eine neue ausdrückliche Empfängerwahl und erhält eine neue Entwurfs-ID. Jeder Empfänger muss jedem gewählten Kind zugeordnet sein. Erst der atomare Speicherabschluss ersetzt den alten Entwurf; keine Nummer wird verbraucht und keine Finalisierung ausgeführt.
 - Keine Formatänderung: Schema 7, Speicherprotokoll 4, Archivformat 1. Historische Felder bleiben unverändert; AP1 benötigt keine Migration. Die früheren Paket-06-Regeln oben beschreiben nur Altbestände, keine heutige Neuanlage.
+
+## AP3 – Kontakte, Entwürfe und Rechnungsart (25.09.2026)
+
+- Für neue Empfängerkontakte sind getrennter Vor- und Nachname erforderlich
+  (jeweils getrimmt, höchstens 120 Zeichen, ohne Steuerzeichen). Anschrift,
+  Telefon und E-Mail sind optional. `name` bleibt der gespeicherte Anzeigename
+  und die einzige Quelle für Druck, CSV und gesicherte Empfänger-Snapshots.
+  Bestehende Namen werden bei Schema 7→8 weder zerlegt noch neu gebildet.
+  Beim Bearbeiten ohne Namensaufteilung wird die Erhaltung des bisherigen
+  Anzeigenamens ausdrücklich bestätigt. Kindernamen bleiben unverändert:
+  Sie sind Leistungsbezeichnungen, keine Rechnungsempfängerkontakte; AP5 kann
+  dies anhand seines konkreten Empfängermodells erneut beurteilen.
+- Jede Rechnung hat eine sichtbare Rechnungsart. `standard` ist der normale
+  neue Entwurfswert; `small-amount` wird nur ausdrücklich im Editor gewählt.
+  Bei Altbelegen fehlt das Feld und bedeutet Standardrechnung nach den
+  damaligen Regeln. Der Abschluss friert die Wahl in Beleginhalt und Snapshot
+  ein. Eine Kopie beginnt erneut als Standardrechnung; eine Korrektur übernimmt
+  die bisherige Wahl zur ausdrücklichen Prüfung im Editor. Ein gespeicherter
+  Entwurf friert seine Druckdaten beim Speichern ein;
+  spätere Stammdaten- und Einstellungsänderungen verändern seinen Druck nicht.
+  Alte Entwürfe ohne solche Daten erhalten keine erfundene Historie.
+- Standardrechnungen verlangen beim Abschluss Namen und vollständige
+  Anschriften der Aussteller- und gewählten Empfängerseite. Bei ausdrücklich
+  gewählten Kleinbetragsrechnungen entfällt nur die Pflicht zur
+  Empfängeranschrift. Die abschließende Rechnungssumme darf nach exakter
+  Centberechnung 25.000 Cent nicht übersteigen; 25.001 Cent sperren auch
+  Korrekturen und nennen die fehlenden Standardangaben. Die Ausstellerangaben
+  bleiben erforderlich. Die vorhandene Steuerkennungsprüfung bleibt vorläufig
+  konservativ in beiden Arten; AP4 entscheidet über Ausgabeoptionen und nutzt
+  dieselbe zentrale Abschlussfunktion. Es gibt keinen automatischen Wechsel.
+- Gesetzesprüfung 25.09.2026: [§ 34a UStDV](https://www.gesetze-im-internet.de/ustdv_1980/__34a.html)
+  fordert für die reguläre Kleinunternehmerrechnung Aussteller und Empfänger
+  mit vollständigem Namen/Anschrift, Kennung, Datum, Leistungsangaben, Entgelt
+  und Befreiungshinweis; Satz 2 lässt [§ 33 UStDV](https://www.gesetze-im-internet.de/ustdv_1980/__33.html)
+  unberührt. § 33 erlaubt bis einschließlich 250 Euro eine Rechnung ohne
+  Empfängername/-anschrift oder Aussteller-Steuerkennung, verlangt aber Name/
+  Anschrift des Ausstellers, Datum, Leistungsangaben, Summe und bei Befreiung
+  einen Hinweis. Seine Ausnahme für §§ 3c, 6a und 13b UStG wird für den
+  Produktumfang (inländischer Gitarrenunterricht an Privatpersonen) als nicht
+  einschlägig angenommen. Der vollständige aktuelle [§ 14 UStG](https://www.gesetze-im-internet.de/ustg_1980/BJNR119530979.html)
+  wurde in der amtlichen Gesamtausgabe geprüft: Absatz 1 regelt die
+  Rechnungsform und die Zustimmung zur elektronischen Übermittlung; Absatz 2
+  nennt insbesondere B2B-Leistungen, Leistungen an nichtunternehmerische
+  juristische Personen und bestimmte Grundstücksleistungen als Fälle einer
+  Ausstellungspflicht. Absatz 3 verlangt Herkunftsechtheit, inhaltliche
+  Unversehrtheit und Lesbarkeit; Absatz 4 nennt die allgemeinen Angaben,
+  die § 33 UStDV für Kleinbeträge vereinfacht. Für den angenommenen
+  Privatunterricht an natürlichen Personen ohne Grundstücksleistung folgt
+  daraus keine zusätzliche Ausstellungs- oder E-Rechnungspflicht. Das Produkt
+  erstellt trotzdem bewusst Rechnungen; elektronische Übermittlung bedarf
+  gegebenenfalls der Empfängerzustimmung. Individuelle steuerliche
+  Einordnung bleibt offen.
+- Schema 8 ändert das Speicherprotokoll 4 und Archivformat 1 nicht. Der
+  kontrollierte Import prüft das alte Schema, erzeugt einen deterministischen
+  Bericht über 7→8 ohne neue Kontakt- oder Belegdaten und archiviert unveränderte
+  Rohdaten vor Übernahme. Weitere additive AP4/AP5-Felder dürfen Schema 8 nur
+  verwenden, solange Schema 8 noch nicht in `main` oder einem Release steht.
+  Unbekannte neuere Schemas bleiben schreibgeschützt. Rückweg nur über die
+  unabhängig gesicherte Originaldatei in getrenntem Profil.

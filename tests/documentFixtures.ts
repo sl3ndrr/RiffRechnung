@@ -9,7 +9,7 @@ export function documentFamily(): AppState {
   let state = emptyState()
   state.updatedAt = documentAt
   state.settings = { ...state.settings, issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', phone: '', email: 'studio@example.org' }, accountHolder: 'Studio', iban: 'DE02120300000000202051', invoiceProfile: 'small-business', taxIdentifier: { kind: 'tax-number', value: '12/345/67890' } }
-  for (const id of ['a', 'b']) state = requireSuccess(saveGuardianState(state, { id: `g-${id}`, name: `Empfaenger ${id.toUpperCase()}`, email: `${id}@example.org`, phone: '', address: { street: `Testweg ${id === 'a' ? 2 : 3}`, postalCode: '12345', city: 'Teststadt' }, iban: '', paymentNote: '', createdAt: documentAt, updatedAt: documentAt }))
+  for (const id of ['a', 'b']) state = requireSuccess(saveGuardianState(state, { id: `g-${id}`, firstName: 'Empfaenger', lastName: id.toUpperCase(), name: `Empfaenger ${id.toUpperCase()}`, email: `${id}@example.org`, phone: '', address: { street: `Testweg ${id === 'a' ? 2 : 3}`, postalCode: '12345', city: 'Teststadt' }, iban: '', paymentNote: '', createdAt: documentAt, updatedAt: documentAt }))
   for (const id of ['a', 'b']) state = requireSuccess(saveStudentState(state, { id: `s-${id}`, name: `Testkind ${id.toUpperCase()}`, billingCode: '', guardianIds: ['g-a', 'g-b'], note: '', active: true, createdAt: documentAt, updatedAt: documentAt }))
   return state
 }
@@ -21,15 +21,16 @@ export function legacyFixture(state: AppState): LegacyState {
   const copy = structuredClone(state)
   for (const key of ['documentVersions', 'invoiceAdministration', 'payments', 'historicalSnapshotCorrections']) Reflect.deleteProperty(copy, key)
   for (const invoice of copy.invoices) {
-    for (const key of ['calculation', 'versionId', 'correction', 'issuedAmounts', 'claimState', 'archived']) Reflect.deleteProperty(invoice, key)
-    if (invoice.snapshot) { Reflect.deleteProperty(invoice.snapshot, 'invoiceProfile'); Reflect.deleteProperty(invoice.snapshot, 'taxIdentifier') }
+    for (const key of ['calculation', 'versionId', 'correction', 'issuedAmounts', 'claimState', 'archived', 'invoiceKind', 'draftPrintSnapshot']) Reflect.deleteProperty(invoice, key)
+    if (invoice.status === 'draft') Reflect.deleteProperty(invoice, 'snapshot')
+    if (invoice.snapshot) { Reflect.deleteProperty(invoice.snapshot, 'invoiceProfile'); Reflect.deleteProperty(invoice.snapshot, 'taxIdentifier'); Reflect.deleteProperty(invoice.snapshot, 'invoiceKind') }
   }
+  for (const guardian of copy.guardians) { Reflect.deleteProperty(guardian, 'firstName'); Reflect.deleteProperty(guardian, 'lastName') }
   Reflect.deleteProperty(copy.settings, 'invoiceProfile')
   Reflect.deleteProperty(copy.settings, 'taxIdentifier')
   return { ...copy, schemaVersion: 3 }
 
 }
 export function editable(invoice: Invoice): InvoiceDraft {
-  return { id: invoice.id, correction: invoice.correction, invoiceDate: invoice.invoiceDate, dueDate: invoice.dueDate, period: invoice.period, guardianIds: [...invoice.guardianIds], studentIds: [...invoice.studentIds], recipientStrategy: invoice.recipientStrategy, items: structuredClone(invoice.items), introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText }
+  return { id: invoice.id, correction: invoice.correction, invoiceDate: invoice.invoiceDate, dueDate: invoice.dueDate, period: invoice.period, guardianIds: [...invoice.guardianIds], studentIds: [...invoice.studentIds], recipientStrategy: invoice.recipientStrategy, ...(invoice.invoiceKind ? { invoiceKind: invoice.invoiceKind } : {}), items: structuredClone(invoice.items), introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText }
 }
-

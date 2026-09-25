@@ -21,6 +21,8 @@ function printableState(itemCount: number, freeText = '', legalText = 'Rechtstex
   const state = documentFamily()
   state.guardians[0] = {
     ...state.guardians[0],
+    firstName: 'Familie mit einem außergewöhnlich langen, mehrteiligen Namen für den echten',
+    lastName: 'Seitenumbruch',
     name: 'Familie mit einem außergewöhnlich langen, mehrteiligen Namen für den echten Seitenumbruch',
     address: {
       street: 'Sehr langer Straßenname mit mehreren eindeutig lesbaren Bestandteilen und Hausnummer 12345',

@@ -176,7 +176,7 @@ test('P01: verdeckte Empfängerabweichungen und Verlust ungesicherter historisch
   assert.throws(() => assertOriginalsPreserved(finalized, changed), /Finalisierte Belege/)
   const historicalSource = legacyFixture(finalized)
   delete historicalSource.invoices[0].snapshot
-  const historical = captureLegacyDocuments(historicalSource)
+  const historical = parseBackup(JSON.stringify(captureLegacyDocuments(historicalSource)))
   validateBackupState(historical)
   assert.doesNotThrow(() => validateBackupState({ ...historical, guardians: [], students: [] }), 'P04: gesicherte Version besitzt ihren eigenen historischen Referenzbereich')
   assert.throws(() => validateLegacyV3Structure({ ...historicalSource, guardians: [], students: [] }), /unbekannte Person|unbekanntes Kind/, 'Ungesicherte Alt-Referenzen bleiben geschützt')
@@ -246,11 +246,10 @@ test('P01: nur deutsche Konten für Änderungen und Finalisierung; fremde histor
   let historical = saveInvoiceDraft(state, draftFor(state), true, at)
   historical.settings.iban = 'GB29NWBK60161331926819'
   historical.invoices[0].snapshot!.iban = 'GB29NWBK60161331926819'
-  historical = roundTrip(captureLegacyDocuments(legacyFixture(historical)))
+  historical = roundTrip(parseBackup(JSON.stringify(captureLegacyDocuments(legacyFixture(historical)))))
   assert.throws(() => updateSettings(historical.settings, { ...historical.settings, accountHolder: 'Neuer Name' }), /nur deutsche/)
   assert.equal(updateSettings(historical.settings, { ...historical.settings, theme: 'dark' }).iban, historical.settings.iban)
   assert.throws(() => saveInvoiceDraft(historical, { ...draftFor(state), items: [createLessonItem('s0', '2026-08-12', state.settings, 'new-item')] }, true), /nur deutsche/)
   const paid = roundTrip(changeInvoiceStatus(historical, historical.invoices[0].id, 'paid', at, '2026-09-05'))
   assert.deepEqual(paid.invoices[0].snapshot, historical.invoices[0].snapshot)
 }))
-

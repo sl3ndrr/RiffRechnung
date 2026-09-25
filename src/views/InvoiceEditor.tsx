@@ -50,6 +50,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
   const calculatedPeriod = billingPeriodFromItems(form.items, form.invoiceDate)
   const footerTextValid = isFooterTextWithinLimit(form.legalText)
   const dirty = JSON.stringify(form) !== JSON.stringify(draft)
+  const correctionBlockers = form.correction && !finalized ? [...correctionErrors(state, form), ...invoiceFinalizationErrors(state, form)] : []
 
   useEffect(() => { setReviewed([]) }, [form, conversionRecipients])
   useEffect(() => { onDirtyChange(open && !finalized && dirty) }, [dirty, finalized, onDirtyChange, open])
@@ -159,16 +160,18 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
           ) : legacyDraft ? (
             <button className="button button--primary" type="button" onClick={convert}>Als gemeinsamen Entwurf übernehmen</button>
           ) : (
-            <><button className="button button--tonal" type="submit" form={INVOICE_EDITOR_FORM_ID}>Als Entwurf speichern</button><button className="button button--primary" type="button" disabled={Boolean(form.correction && ([...correctionErrors(state, form), ...invoiceFinalizationErrors(state, form)].length))} onClick={() => submit(true)}><Send aria-hidden="true" /> Finalisieren</button></>
+            <><button className="button button--tonal" type="submit" form={INVOICE_EDITOR_FORM_ID}>Als Entwurf speichern</button><button className="button button--primary" type="button" disabled={correctionBlockers.length > 0} onClick={() => submit(true)}><Send aria-hidden="true" /> Finalisieren</button></>
           )}
         </>
       }
     >
       <form className="invoice-form" id={INVOICE_EDITOR_FORM_ID} onSubmit={(event) => { event.preventDefault(); submit(false) }}>
+        <label className="field"><span>Rechnungsart</span><select value={form.invoiceKind ?? 'standard'} onChange={(event) => setForm({ ...form, invoiceKind: event.target.value as 'standard' | 'small-amount' })}><option value="standard">Standardrechnung</option><option value="small-amount">Kleinbetragsrechnung nach § 33 UStDV (bis 250,00 €)</option></select></label>
         {editing && !state.invoices.find((invoice) => invoice.id === draft.id)?.calculation && change.changed && <p role="status" className="notice">Dezimalberechnung prüfen: bisher {euro.format(change.before / 100)}, jetzt {change.after === null ? 'ungültiger Betrag' : euro.format(change.after / 100)}. Positionsbeträge werden einzeln kaufmännisch auf Cent gerundet. Speichern oder Finalisieren übernimmt die hier angezeigten neuen Beträge; Originalbelege bleiben erhalten.</p>}
         <p className="muted">Mengen: 0,01–99,99 (bis 2 Nachkommastellen). Preise in EUR je Einheit; gespeicherte Untercentpräzision bleibt erhalten. Gesamt höchstens 999.999.999,99 EUR.</p>
         {finalized && <div className="revision-banner"><FileCheck2 aria-hidden="true" /><div><strong>Finalisierte Rechnung</strong><p>{FINALIZED_INVOICE_BLOCKED}</p></div></div>}
         {errors.length > 0 && <div className="form-errors" role="alert"><strong>Bitte noch prüfen:</strong><ul>{errors.map((error) => <li key={error}>{error}</li>)}</ul></div>}
+        {correctionBlockers.length > 0 && <div className="form-errors" role="status"><strong>Für den Abschluss der Korrektur:</strong><ul>{correctionBlockers.map((error) => <li key={error}>{error}</li>)}</ul></div>}
 
         {legacyDraft && <section className="form-section" aria-label="Historischen Entwurf prüfen">
           <h3>Historischer Aufteilungsentwurf</h3>

@@ -37,6 +37,39 @@ async function pdfText(page: Page, state: AppState, invoiceId: string): Promise<
   } finally { await rendering.close() }
 }
 
+test('AP3 Browser/PDF: Adressloser Entwurf und 250-Euro-Beleg bleiben nach Stammdatenänderung druckgleich', async ({ page }) => {
+  const state = documentFamily()
+  state.guardians[0].address = { street: '', postalCode: '', city: '' }
+  const base = documentDraft()
+  const draft = { ...base, invoiceKind: 'small-amount' as const, items: base.items.map((item) => ({ ...item, quantity: 1, unitPrice: 250 })) }
+  const saved = saveInvoiceDraft(state, draft, false, documentAt)
+  await seed(page, saved)
+  const draftPrint = await pdfText(page, saved, saved.invoices[0].id)
+  expect(draftPrint.text).toContain('ENTWURF')
+  expect(draftPrint.text).toContain('Empfaenger A')
+  expect(draftPrint.text).not.toContain('Adresse fehlt')
+  const issued = saveInvoiceDraft(saved, { ...draft, id: saved.invoices[0].id }, true, documentAt)
+  const first = await pdfText(page, issued, issued.invoices[0].id)
+  const after = structuredClone(issued)
+  after.guardians[0].firstName = 'Anderer'
+  after.guardians[0].lastName = 'Name'
+  after.guardians[0].name = 'Anderer Name'
+  after.guardians[0].address = { street: 'Neuer Weg 9', postalCode: '99999', city: 'Anderswo' }
+  const second = await pdfText(page, after, after.invoices[0].id)
+  expect(second.text).toBe(first.text)
+  expect(second.text).not.toContain('Neuer Weg 9')
+  await seed(page, issued)
+  await invoices(page)
+  await page.getByRole('button', { name: issued.invoices[0].number!, exact: true }).click()
+  await page.getByLabel('Korrekturgrund', { exact: true }).fill('Synthetische Preisberichtigung')
+  await page.getByRole('button', { name: 'Korrekturentwurf erzeugen', exact: true }).click()
+  const correction = page.getByRole('dialog', { name: 'Korrekturentwurf bearbeiten' })
+  await correction.getByLabel(/Einzelpreis/).fill('250,01')
+  await expect(correction.getByRole('button', { name: 'Finalisieren', exact: true })).toBeDisabled()
+  await expect(correction.locator('.form-errors[role="status"]')).toContainText('Standardrechnung erforderlich')
+  await expect(correction.locator('.form-errors[role="status"]')).toContainText('Straße & Hausnummer fehlt')
+})
+
 test('P04 Browser/PDF: finalisieren, Personen löschen, Original drucken, korrigieren, neu zuordnen und reload', async ({ page }, testInfo) => {
   await seed(page, saveInvoiceDraft(documentFamily(), documentDraft(), false, documentAt))
   await invoices(page)
@@ -175,7 +208,11 @@ test('AP1 Browser/PDF: gemeinsame Rechnung ohne Aufteilung, Export und Import', 
   const downloading = page.waitForEvent('download')
   await page.getByRole('button', { name: 'JSON exportieren', exact: true }).click()
   const buffer = await readFile((await (await downloading).path())!)
-  expect(parseBackup(buffer.toString())).toEqual(finalized)
+  try { expect(parseBackup(buffer.toString())).toEqual(finalized) }
+  catch (error) {
+    await testInfo.attach('failed-synthetic-backup.json', { body: buffer, contentType: 'application/json' })
+    throw new Error(`Exportdatei mit ${buffer.length} Byte konnte nicht geprüft werden: ${error instanceof Error ? error.message : String(error)}`)
+  }
   const destination = await page.context().browser()!.newContext({ baseURL: 'http://127.0.0.1:4173' })
   try {
     const imported = await destination.newPage()
@@ -257,7 +294,7 @@ test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unverändert
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
   await page.reload()
   const state = await stateOf(page)
-  expect(state.schemaVersion).toBe(7)
+  expect(state.schemaVersion).toBe(8)
   expect(state.documentVersions[0].provenance).toBe('oldest-available')
   await invoices(page)
   await page.getByRole('button', { name: '2026-a-0001', exact: true }).click()
@@ -326,7 +363,7 @@ test('P05 Browser/PDF: historisch gesicherter Halbcentfehler bleibt nach Import 
   const { captureLegacyDocuments } = await import('../../src/lib/importState')
   const legacy = captureLegacyDocuments(legacyFixture(saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)))
   expect(legacy.documentVersions[0].amounts.totalCents).toBe(757)
-  await seed(page, legacy)
+  await seed(page, parseBackup(JSON.stringify(legacy)))
   await page.reload()
   const restored = await stateOf(page)
   expect(restored.documentVersions).toEqual(legacy.documentVersions)
@@ -335,4 +372,3 @@ test('P05 Browser/PDF: historisch gesicherter Halbcentfehler bleibt nach Import 
   expect(pdf.text).not.toContain('7,58')
   await testInfo.attach('historisch-7-57.pdf', { body: pdf.pdf, contentType: 'application/pdf' })
 })
-

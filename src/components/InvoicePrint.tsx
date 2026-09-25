@@ -47,28 +47,32 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
   const [qrCode, setQrCode] = useState<GeneratedQrCode | null>(null)
   const total = invoice ? invoiceTotal(invoice) : 0
   const period = invoice ? invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate) : ''
-  const source = invoice?.snapshot
-  const footerText = invoice ? footerTextForPrint(invoice.versionId || source ? invoice.legalText : invoice.legalText || settings.defaultLegalText) : ''
+  const source = invoice?.snapshot ?? invoice?.draftPrintSnapshot
+  const legacyDraftWithoutPrintData = invoice?.status === 'draft' && !source
+  const printInvoice = useMemo(() => invoice?.status === 'draft' && source ? { ...invoice, snapshot: source } : invoice, [invoice, source])
+  const footerText = invoice ? footerTextForPrint(invoice.legalText) : ''
   const pageStyle = invoice ? buildInvoicePrintPageStyle(footerText, invoice.number) : ''
-  const issuer = source?.issuer ?? settings.issuer
-  const account = invoice ? paymentDataForInvoice(invoice, settings) : { accountHolder: '', iban: '', bic: '', bankName: '' }
-  const taxData = invoice ? taxDataForInvoice(invoice, settings) : { invoiceProfile: null, taxIdentifier: null }
+  const issuer = source?.issuer ?? (legacyDraftWithoutPrintData ? { name: '', street: '', postalCode: '', city: '', email: '', phone: '' } : settings.issuer)
+  const account = printInvoice && !legacyDraftWithoutPrintData ? paymentDataForInvoice(printInvoice, settings) : { accountHolder: '', iban: '', bic: '', bankName: '' }
+  const taxData = printInvoice && !legacyDraftWithoutPrintData ? taxDataForInvoice(printInvoice, settings) : { invoiceProfile: null, taxIdentifier: null }
   const recipientList = useMemo(() => {
     if (!invoice) return []
     if (source) return source.guardians
+    if (legacyDraftWithoutPrintData) return []
     return invoice.guardianIds.flatMap((id) => {
       const guardian = guardians.find((item) => item.id === id)
       return guardian ? [{ id: guardian.id, name: guardian.name, email: guardian.email, ...guardian.address }] : []
     })
-  }, [guardians, invoice, source])
+  }, [guardians, invoice, legacyDraftWithoutPrintData, source])
   const studentList = useMemo(() => {
     if (!invoice) return []
     if (source) return source.students
+    if (legacyDraftWithoutPrintData) return []
     return invoice.studentIds.flatMap((id) => {
       const student = students.find((item) => item.id === id)
       return student ? [{ id: student.id, name: student.name }] : []
     })
-  }, [invoice, source, students])
+  }, [invoice, legacyDraftWithoutPrintData, source, students])
 
   const groups = useMemo(() => {
     if (!invoice) return []
@@ -91,10 +95,10 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
     })
   }, [invoice, period, studentList])
 
-  const giroCode = useMemo(() => invoice
-    ? resolveGiroCode(invoice, settings, includeGiroCode)
-    : { kind: 'unavailable' as const, reason: 'Keine Rechnung ausgewählt.' },
-  [includeGiroCode, invoice, settings])
+  const giroCode = useMemo(() => printInvoice && !legacyDraftWithoutPrintData
+    ? resolveGiroCode(printInvoice, settings, includeGiroCode)
+    : { kind: 'unavailable' as const, reason: legacyDraftWithoutPrintData ? 'Historischer Entwurf ohne gesicherte Zahlungsdaten.' : 'Keine Rechnung ausgewählt.' },
+  [includeGiroCode, legacyDraftWithoutPrintData, printInvoice, settings])
 
   useEffect(() => {
     setQrCode(null)
@@ -151,30 +155,31 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
       <div className="invoice-paper__body">
         <header className="invoice-letterhead">
           <section className="invoice-recipient">
-            <p className="invoice-senderline">{[issuer.name, issuer.street, `${issuer.postalCode} ${issuer.city}`].filter(Boolean).join(' · ')}</p>
-            <p className="invoice-to">AN</p>
+            {(issuer.name || issuer.street || issuer.postalCode || issuer.city) && <p className="invoice-senderline">{[issuer.name, issuer.street, [issuer.postalCode, issuer.city].filter(Boolean).join(' ')].filter(Boolean).join(' · ')}</p>}
+            {recipientList.length > 0 && <p className="invoice-to">AN</p>}
             {recipientList.map((recipient) => (
               <div className="invoice-address" key={recipient.id}>
                 <strong>{recipient.name}</strong>
-                <span>{recipient.street}</span>
-                <span>{recipient.postalCode} {recipient.city}</span>
-                <small>{recipient.email}</small>
+                {recipient.street && <span>{recipient.street}</span>}
+                {(recipient.postalCode || recipient.city) && <span>{[recipient.postalCode, recipient.city].filter(Boolean).join(' ')}</span>}
+                {recipient.email && <small>{recipient.email}</small>}
               </div>
             ))}
           </section>
           <section className="invoice-meta">
             <h1>RECHNUNG</h1>
+            {(source?.invoiceKind ?? invoice.invoiceKind) === 'small-amount' && <p>Kleinbetragsrechnung nach § 33 UStDV</p>}
             <div className="invoice-meta__rule" />
             <dl>
               <dt>Nr.:</dt><dd><strong>{invoice.number ?? 'ENTWURF'}</strong></dd>
               <dt>Datum:</dt><dd>{formatDateLong(invoice.invoiceDate)}</dd>
               <dt>Zeitraum:</dt><dd>{period}</dd>
               <dt>Fällig:</dt><dd><strong>{formatDateLong(invoice.dueDate)}</strong></dd>
-              <dt>Von:</dt><dd><strong>{issuer.name || '–'}</strong></dd>
-              <dt>Straße:</dt><dd>{issuer.street || '–'}</dd>
-              <dt>PLZ/Ort:</dt><dd>{issuer.postalCode} {issuer.city}</dd>
-              <dt>Tel.:</dt><dd>{issuer.phone || '–'}</dd>
-              <dt>E-Mail:</dt><dd>{issuer.email || '–'}</dd>
+              {(invoice.status !== 'draft' || issuer.name) && <><dt>Von:</dt><dd><strong>{issuer.name || '–'}</strong></dd></>}
+              {(invoice.status !== 'draft' || issuer.street) && <><dt>Straße:</dt><dd>{issuer.street || '–'}</dd></>}
+              {(invoice.status !== 'draft' || issuer.postalCode || issuer.city) && <><dt>PLZ/Ort:</dt><dd>{issuer.postalCode} {issuer.city}</dd></>}
+              {(invoice.status !== 'draft' || issuer.phone) && <><dt>Tel.:</dt><dd>{issuer.phone || '–'}</dd></>}
+              {(invoice.status !== 'draft' || issuer.email) && <><dt>E-Mail:</dt><dd>{issuer.email || '–'}</dd></>}
             </dl>
           </section>
         </header>

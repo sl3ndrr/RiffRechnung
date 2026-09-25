@@ -1,4 +1,5 @@
 import { localToday, shiftCalendarMonths } from './calendar'
+import { contactName, contactPartError } from './contactName'
 import type { AppState, Guardian, InvoiceDraft, Settings, Student } from '../types'
 import { createEmptyInvoiceDraft, emptyState } from './defaults'
 import { assertInvoiceEditable, assertReplacementAllowed } from './safety'
@@ -21,8 +22,15 @@ export function saveSettingsState(state: AppState, settings: Settings): CommandR
 export function saveGuardianState(state: AppState, guardian: Guardian): CommandResult<AppState> {
   return commandResult(() => {
     validateBackupState(state)
-    const existing = state.guardians.some((entry) => entry.id === guardian.id)
+    const existing = state.guardians.find((entry) => entry.id === guardian.id)
     const saved = structuredClone(guardian)
+    if (saved.firstName !== undefined || saved.lastName !== undefined || !existing) {
+      const errors = [contactPartError(saved.firstName, 'Vorname'), contactPartError(saved.lastName, 'Nachname')].filter(Boolean)
+      if (errors.length) throw new Error(errors.join(' '))
+      if (saved.name !== contactName(saved.firstName!, saved.lastName!)) throw new Error('Der Anzeigename muss ausdrücklich aus Vor- und Nachname gebildet werden.')
+      saved.firstName = saved.firstName!.trim()
+      saved.lastName = saved.lastName!.trim()
+    } else if (saved.name !== existing.name) throw new Error('Ein nicht aufgeteilter Altname darf nur nach ausdrücklicher Eingabe beider Namen geändert werden.')
     const next = { ...state, guardians: existing ? state.guardians.map((entry) => entry.id === saved.id ? saved : entry) : [...state.guardians, saved] }
     validateBackupState(next)
     return next
@@ -73,7 +81,7 @@ export function prepareInvoiceCopy(state: AppState, invoiceId: string, targetDat
     const draft: InvoiceDraft = {
       invoiceDate, dueDate: calculateDueDate(invoiceDate, state.settings.paymentTermDays),
       period: billingPeriodFromItems(items, invoiceDate), guardianIds: [...invoice.guardianIds], studentIds: [...invoice.studentIds],
-      recipientStrategy: invoice.recipientStrategy, items, introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText,
+      recipientStrategy: invoice.recipientStrategy, invoiceKind: 'standard', items, introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText,
     }
     // Verify the actual prospective persistent result without mutating state.
     saveInvoiceDraft(state, draft, false, targetDate.toISOString())

@@ -8,7 +8,8 @@ Eine vollständig clientseitige Web-App für Rechnungen rund um Gitarrenunterric
 - gemeinsame Rechnungen an eine oder mehrere berechtigte Personen erstellen; historische getrennte Belege und Korrekturen weiterhin lesen
 - mehrere Kinder und automatisch berechnete Zwischensummen auf einer Rechnung
 - frei definierbare Positionen, Zahlungsziel und Textbausteine
-- strukturiertes Kleinunternehmerprofil mit vollständigen Aussteller-/Empfängeranschriften und ausdrücklich typisierter Steuerkennung
+- Kleinunternehmerprofil mit vollständiger Ausstelleranschrift und typisierter Steuerkennung; Empfängeranschrift bei Standardrechnungen, ausdrücklich gewählte Kleinbetragsrechnung bis 250,00 € ohne Empfängeranschrift
+- neue Empfängerkontakte mit getrenntem Vor- und Nachnamen; alle übrigen Kontaktangaben optional, alte Anzeigenamen bleiben erhalten
 - Entwurf, versendet, bezahlt und automatisch erkanntes „überfällig“; verknüpfte Korrekturentwürfe erhalten den vollständigen Originalbeleg
 - konfigurierbarer Nummernkreis mit dauerhaftem Kinderkennzeichen (`a`, `b`, `c` …); jedes Kind bzw. jede Kindkombination zählt getrennt und Nummern werden erst bei Finalisierung vergeben
 - unveränderliche vollständige Belegversionen mit damaligen Positionen, Beträgen, Personen, Konto und Texten; einsehbare Korrekturgründe und Snapshot-Differenzen
@@ -229,4 +230,3 @@ neuen Snapshots. Bei der Migration aus Format 2–5 bleibt die Steuerkennung lee
 und sperrt neue Finalisierungen bis zur bewussten Eingabe. Historische Snapshots
 werden nicht ergänzt; auch eine dort leere BIC bleibt leer. Grundlagen und
 Produktannahmen stehen in [Produktentscheidungen](docs/product-decisions.md).
-
