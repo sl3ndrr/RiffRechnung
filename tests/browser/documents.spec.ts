@@ -208,7 +208,11 @@ test('AP1 Browser/PDF: gemeinsame Rechnung ohne Aufteilung, Export und Import', 
   const downloading = page.waitForEvent('download')
   await page.getByRole('button', { name: 'JSON exportieren', exact: true }).click()
   const buffer = await readFile((await (await downloading).path())!)
-  expect(parseBackup(buffer.toString())).toEqual(finalized)
+  try { expect(parseBackup(buffer.toString())).toEqual(finalized) }
+  catch (error) {
+    await testInfo.attach('failed-synthetic-backup.json', { body: buffer, contentType: 'application/json' })
+    throw new Error(`Exportdatei mit ${buffer.length} Byte konnte nicht geprüft werden: ${error instanceof Error ? error.message : String(error)}`)
+  }
   const destination = await page.context().browser()!.newContext({ baseURL: 'http://127.0.0.1:4173' })
   try {
     const imported = await destination.newPage()
