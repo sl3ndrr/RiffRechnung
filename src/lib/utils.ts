@@ -419,7 +419,9 @@ export function downloadText(filename: string, content: string, type = 'applicat
   document.body.append(link)
   link.click()
   link.remove()
-  URL.revokeObjectURL(url)
+  // The browser starts the download asynchronously. Revoking in the same task
+  // can produce an empty backup under load, even after a download event fires.
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
 
 export function csvCell(value: string | number): string {
@@ -515,3 +517,4 @@ export function outputUnitPrice(invoice: Invoice, item: InvoiceItem): string {
   const [whole, fraction = ''] = decimalInputText(item.unitPrice).split('.')
   return `${new Intl.NumberFormat('de-DE').format(BigInt(whole))},${fraction.padEnd(2, '0')}\u00a0€`
 }
+
