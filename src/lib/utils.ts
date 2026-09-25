@@ -230,8 +230,9 @@ export function guardianName(invoice: Invoice, guardians: Guardian[]): string {
 }
 
 export function studentName(invoice: Invoice, students: Student[]): string {
-  const snapshot = invoice.snapshot?.students.map((item) => item.name).filter(Boolean)
+  const snapshot = (invoice.snapshot ?? invoice.draftPrintSnapshot)?.students.map((item) => item.name).filter(Boolean)
   if (snapshot) return snapshot.join(', ') || 'Ohne Kind'
+  if (invoice.status === 'draft') return 'Ohne Kind'
   const names = invoice.studentIds
     .map((id) => students.find((student) => student.id === id)?.name)
     .filter(Boolean)

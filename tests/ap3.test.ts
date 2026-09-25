@@ -70,6 +70,18 @@ test('AP3: Entwurf ohne Anschrift druckt den gesicherten Namen ohne Adresslücke
   assert.equal(print(state), initial)
 })
 
+test('AP3: Altentwurf ohne damals gesicherte Druckdaten übernimmt keine heutigen Namen oder Kontodaten', () => {
+  const state = saveInvoiceDraft(family(), draft(30), false, at)
+  delete state.invoices[0].draftPrintSnapshot
+  state.guardians[0].firstName = 'Heutiger'
+  state.guardians[0].lastName = 'Kontakt'
+  state.guardians[0].name = 'Heutiger Kontakt'
+  state.settings.issuer.name = 'Heutiger Aussteller'
+  const output = print(state)
+  assert.match(output, /ENTWURF/)
+  assert.doesNotMatch(output, /Heutiger Kontakt|Heutiger Aussteller/)
+})
+
 test('AP3: 249,99 und 250,00 als ausdrücklich gewählte Kleinbetragsrechnung ohne Anschrift; 250,01 gesperrt', () => {
   for (const price of [249.99, 250]) {
     const issued = saveInvoiceDraft(family(), draft(price, 'small-amount'), true, at)
