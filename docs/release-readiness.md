@@ -8,8 +8,8 @@ unter Node 22.23.2 mit `npm ci`, Lint, 155/155 Fachtests, Typecheck, Build,
 44/44 Browserprüfungen, `pdftotext` und vollständigem Audit. Der Fehler bei
 der Korrektur-Rechnungsart ist behoben; die Download-Zwischenläufe sind in
 [quality-gates.md](quality-gates.md) zugeordnet. Native Freigaben der älteren
-Paketfolge bleiben offen. Die amtliche §-14-Seite
-war beim direkten Abruf nicht vollständig zugänglich; siehe Produktentscheidungen.
+Paketfolge bleiben offen. § 14 UStG wurde über die amtliche Gesamtausgabe
+vollständig geprüft; siehe Produktentscheidungen.
 Ein späterer unveränderter Dokumentationslauf hatte zweimal wechselnde
 Downloadfehler in WebKit und Chromium; [CI 36181722538](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36181722538)
 bestand mit zusätzlicher Fehlerdiagnose erneut 155/155 und 44/44. Die
