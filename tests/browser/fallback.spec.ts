@@ -28,9 +28,10 @@ test('AP2 Fallback: vollständige Duo-Gruppe als JSON exportieren, importieren u
   const state = finalizeDuoGroup(drafts, group.id, preview.token, preview.invoices.map((invoice) => invoice.id))
   await page.goto('/')
   await restore(page, Buffer.from(serializeBackup(state)))
-  await settings(page)
+  // The fixed sidebar uses the same export handler without racing WebKit's
+  // smooth scroll to the settings card. The AP1 test covers that second entry.
   const downloading = page.waitForEvent('download')
-  await page.getByRole('button', { name: 'JSON exportieren', exact: true }).click()
+  await page.getByRole('button', { name: 'Backup exportieren', exact: true }).click()
   const buffer = await readFile((await (await downloading).path())!)
   expect(parseBackup(buffer.toString())).toEqual(state)
   const destination = await browser.newContext({ baseURL: 'http://127.0.0.1:4173' })

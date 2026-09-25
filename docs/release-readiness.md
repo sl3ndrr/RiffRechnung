@@ -25,6 +25,11 @@ Node 22.23.2; Installation, Lint, 160/160 Fachtests, Typecheck, Build,
 vorhandenen Demo-Duos mit Partnernotizen, unabhängige Vollausgaben und echte
 Chromium-PDFs. Der Abschlusscommit mit zusätzlichen Adress-/Kontoprüfungen
 wird vollständig separat geprüft; genaue Zuordnung im [PR #37](https://github.com/sl3ndrr/RiffRechnung/pull/37).
+Sein erster Lauf `36138790679` bestand die zusätzlichen PDF-Prüfungen, scheiterte
+aber am nicht ausgelösten WebKit-Exportklick (48/49). Trace und gezielte Anpassung
+des AP2-Tests an den festen Exportknopf stehen in `quality-gates.md`; kein
+Zeitbudget und kein Datenvergleich wurde abgeschwächt. Der Folgelauf ist separat
+im PR dokumentiert und ersetzt diesen fehlgeschlagenen Nachweis nicht rückwirkend.
 
 Native Dateirechte, OS-Druckdialog, visuelle PDF-Abnahme, Banking-Scan,
 Screenreader und Safari/macOS bleiben wie bisher separate offene Freigaben.

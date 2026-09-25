@@ -36,6 +36,19 @@ Der abschließende Commit ergänzt direkte Adress-/E-Mail-Leakmarker sowie die
 Kontodatenprüfung in Vorschau und PDF. Er erhält einen eigenen vollständigen
 CI-Lauf; dessen exakte SHA/Laufzuordnung wird im PR-Abschluss festgehalten.
 
+Dieser Lauf [CI 36138790679](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36138790679)
+auf `e9605952625fa849da567dd7fc937b7d2e274c61` bestand die 160 Fachtests sowie
+alle Duo-PDF-/Adress-/Kontoprüfungen, endete aber mit 48/49 Browserprüfungen.
+Der AP2-WebKit-JSON-Test erhielt nach dem Exportklick kein Download-Ereignis.
+Das heruntergeladene Trace-Artefakt zeigt Bewegung/Außerhalb-des-Viewports beim
+automatischen Scrollen und einen ausgeführten Klick, während die Bildfolge
+weiter scrollt. Kein Backup-Zeitstempel wurde gesetzt: der Exporthandler lief
+nicht. Der AP2-Test nutzt nun den festen Seitenleistenknopf „Backup exportieren“
+mit demselben Handler; der AP1-Test behält den Einstellungs-Knopf bei. Echter
+Mausklick, nativer Download, Zeitbudgets und alle vollständigen Datenvergleiche
+bleiben erhalten. Keine Force-Clicks, Sleeps oder Retries im Test ergänzt.
+Der Folgestand wird erneut durch sämtliche Gates geprüft; Zuordnung im PR.
+
 Neue Fachdatei `tests/duo.test.ts` ist im tatsächlichen Testeinstieg
 `tests/logic.test.ts` importiert; ihre `AP2:`-/`AP2 Leak:`-/`AP2 Speicher:`-
 Testnamen stehen im npm-Testprotokoll des erfolgreichen Laufs (12 neue Tests).
