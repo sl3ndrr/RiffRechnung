@@ -43,8 +43,19 @@ unter Node 22.23.2: `npm ci`, `npm run lint`, `npm test` (155/155),
 `npm run typecheck`, `npm run build`, Browserinstallation und `pdftotext`,
 `npm run test:browser` (44/44 einschließlich AP3-Korrektur und AP1-JSON-
 Fallback in Chromium, Firefox und WebKit) sowie vollständiges Audit ohne
-Schwachstellen bestanden. Kein Test wurde abgeschwächt. Der Dokumentationsstand
-wird durch den PR-Check des folgenden Commits zusätzlich geprüft.
+Schwachstellen bestanden. Kein Test wurde abgeschwächt.
+
+Der erste und der unveränderte zweite Versuch von
+[CI 36180058758](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36180058758)
+scheiterten jeweils mit 43/44 Browserfällen: erst am ausbleibenden WebKit-
+Download-Ereignis, dann an ungültigen Downloadbytes im Chromium-AP1-Test.
+Der Test sichert nun nur im Fehlerfall die synthetischen Bytes und prüft
+zusätzlich die Export-Rückmeldung; alle Roundtrip-Vergleiche bleiben bestehen.
+[CI 36181722538](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36181722538)
+auf `0e5c54bf4d2097eca62d7e0da6e35773c345dec8` bestand erneut alle Gates
+mit 155/155 Fach- und 44/44 Browserprüfungen sowie Audit. Die wechselnden
+Download-Timeouts bleiben ein Reproduzierbarkeitsrisiko für die Browser-CI;
+ein einzelner grüner Lauf beweist keine dauerhafte Stabilität.
 
 ## AP1 – Nachweis (2026-09-24)
 
