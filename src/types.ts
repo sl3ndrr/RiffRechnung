@@ -4,6 +4,7 @@ export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue'
 export type RecipientStrategy = 'joint' | 'separate'
 export type LessonType = 'solo' | 'duo'
 export type InvoiceProfile = 'unconfigured' | 'small-business'
+export type InvoiceKind = 'standard' | 'small-amount'
 export type TaxIdentifierKind = 'tax-number' | 'vat-id' | 'small-business-id'
 
 export interface TaxIdentifier {
@@ -20,6 +21,8 @@ export interface Address {
 export interface Guardian {
   id: string
   name: string
+  firstName?: string
+  lastName?: string
   email: string
   phone: string
   address: Address
@@ -81,9 +84,12 @@ export interface InvoiceSnapshot {
   invoiceProfile?: InvoiceProfile
   /** Absent on historical snapshots; never filled from current settings. */
   taxIdentifier?: TaxIdentifier
+  /** Absent on historical documents: standard invoice under its original rules. */
+  invoiceKind?: InvoiceKind
 }
 
 export interface Invoice {
+  invoiceKind?: InvoiceKind
   calculation?: 'decimal-v1'
   id: string
   number: string | null
@@ -213,7 +219,7 @@ export interface VoidedInvoiceNumber {
 }
 
 export interface AppState {
-  schemaVersion: 7
+  schemaVersion: 8
   guardians: Guardian[]
   students: Student[]
   invoices: Invoice[]
@@ -236,6 +242,7 @@ export interface ToastMessage {
 }
 
 export interface InvoiceDraft {
+  invoiceKind?: InvoiceKind
   id?: string
   correction?: { replacesId: string; reason: string }
   invoiceDate: string

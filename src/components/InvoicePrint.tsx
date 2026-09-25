@@ -151,19 +151,20 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
       <div className="invoice-paper__body">
         <header className="invoice-letterhead">
           <section className="invoice-recipient">
-            <p className="invoice-senderline">{[issuer.name, issuer.street, `${issuer.postalCode} ${issuer.city}`].filter(Boolean).join(' · ')}</p>
+            <p className="invoice-senderline">{[issuer.name, issuer.street, [issuer.postalCode, issuer.city].filter(Boolean).join(' ')].filter(Boolean).join(' · ')}</p>
             <p className="invoice-to">AN</p>
             {recipientList.map((recipient) => (
               <div className="invoice-address" key={recipient.id}>
                 <strong>{recipient.name}</strong>
-                <span>{recipient.street}</span>
-                <span>{recipient.postalCode} {recipient.city}</span>
-                <small>{recipient.email}</small>
+                {recipient.street && <span>{recipient.street}</span>}
+                {(recipient.postalCode || recipient.city) && <span>{[recipient.postalCode, recipient.city].filter(Boolean).join(' ')}</span>}
+                {recipient.email && <small>{recipient.email}</small>}
               </div>
             ))}
           </section>
           <section className="invoice-meta">
             <h1>RECHNUNG</h1>
+            {(invoice.snapshot?.invoiceKind ?? invoice.invoiceKind) === 'small-amount' && <p>Kleinbetragsrechnung nach § 33 UStDV</p>}
             <div className="invoice-meta__rule" />
             <dl>
               <dt>Nr.:</dt><dd><strong>{invoice.number ?? 'ENTWURF'}</strong></dd>

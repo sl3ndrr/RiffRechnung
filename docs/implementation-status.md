@@ -1,3 +1,25 @@
+# AP3 – Empfängerkontakte und Rechnungsart
+
+Stand 25.09.2026: Ausgang `main` 47f491eecbebb788bf6f63aea2b1342bc3dfbd85
+(AP1 integriert; AP2/AP4/AP5 nicht integriert). Der lokale Arbeitsbereich war
+kein Checkout; die Repositorydateien wurden über den verbundenen GitHub-Zugriff
+geprüft. Schema 8 für optionale getrennte Kontaktnamen und Rechnungsart;
+Speicherprotokoll 4 und Archivformat 1 bleiben. Schema 7→8 erfolgt mit
+kontrolliertem Bericht und Originalarchiv. Noch nicht zusammengeführt oder
+bereitgestellt. Weitere Testergebnisse und Grenzen stehen in
+[release-readiness.md](release-readiness.md).
+
+Neue Kontakte benötigen Vor- und Nachname. Historische Anzeigenamen bleiben
+unverändert und werden erst bei einer späteren Bearbeitung ausdrücklich
+aufgeteilt oder bestätigt. Kinder behalten ihren einzelnen Leistungsnamen.
+Standardrechnungen verlangen weiterhin Empfängeranschriften. Die ausdrücklich
+gewählte Kleinbetragsrechnung erlaubt fehlende Empfängeranschriften nur bis
+25.000 Cent. Die gemeinsame Abschlussfunktion prüft auch Korrekturen; die
+Rechnungsart steht in Beleginhalt und Snapshot. Neue gespeicherte Entwürfe
+halten ihren Druckstand fest, ohne eine Nummer zu vergeben.
+
+Die frühere Folge 00–17 und AP1 stehen nachfolgend als historische Abschnitte.
+
 # AP1 – Neue Rechnungsaufteilung entfernen
 
 Stand 2026-09-24: Arbeitsbranch `codex/ap1-remove-invoice-split`, Ausgang `main` 1449d596e6538d32f4c22ef3a0b2f845ef1aed71. AP2–AP5 noch nicht integriert. [PR #36](https://github.com/sl3ndrr/RiffRechnung/pull/36): Implementierungscommit `02e712c519d4f833552837a66b63bad06fd73ad9`; [CI 36063143264](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36063143264) mit 148 Fach- und 43 Browserprüfungen, Lint, Typecheck, Build und Audit erfolgreich. Lokal war kein Git-Checkout verfügbar; die Auditdateien wurden über den verbundenen GitHub-Zugriff bereitgestellt.

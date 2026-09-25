@@ -1,3 +1,16 @@
+# AP3 – Prüfstand 25.09.2026
+
+AP3 beruht auf `main` 47f491e (AP1 integriert). Schema 8 ist noch nicht
+freigegeben oder gemergt. Die lokalen Node/npm-Gates waren wegen Node 24
+(statt 22) und eines 403 beim `npm ci` nicht vollständig ausführbar;
+CI-Ergebnisse sind separat zu erfassen. Browserfreigaben und native
+Restprüfungen der älteren Paketfolge bleiben offen. Die amtliche §-14-Seite
+war beim direkten Abruf nicht vollständig zugänglich; siehe Produktentscheidungen.
+
+Die bisherige Schemanummer 7 und die pauschale Empfängeranschriftspflicht in
+den folgenden historischen Freigabeabschnitten beschreiben den Stand vor AP3.
+Rückweg von Schema 8 nur mit gesichertem Schema-7-Original in getrenntem Profil.
+
 # AP1 – Prüfstand (2026-09-24)
 
 Die folgenden Paket-12-Nachweise sind historische Ergebnisse vor AP1. AP1 ersetzt die Empfängeraufteilung durch gemeinsame Rechnungen und die bestätigte Umwandlung offener Altentwürfe. [PR #36](https://github.com/sl3ndrr/RiffRechnung/pull/36), Implementierungscommit `02e712c519d4f833552837a66b63bad06fd73ad9`, [CI 36063143264](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36063143264): Node 22.23.2, `npm ci`, Lint, 148/148 Fachtests, Typecheck, Build, 43/43 Browserprüfungen (Chromium sowie JSON-Fallback in Firefox/WebKit) und Dependency-Audit erfolgreich. Der letzte Dokumentationscommit wird gesondert geprüft.

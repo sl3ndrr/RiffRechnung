@@ -165,6 +165,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
       }
     >
       <form className="invoice-form" id={INVOICE_EDITOR_FORM_ID} onSubmit={(event) => { event.preventDefault(); submit(false) }}>
+        <label className="field"><span>Rechnungsart</span><select value={form.invoiceKind ?? 'standard'} onChange={(event) => setForm({ ...form, invoiceKind: event.target.value as 'standard' | 'small-amount' })}><option value="standard">Standardrechnung</option><option value="small-amount">Kleinbetragsrechnung nach § 33 UStDV (bis 250,00 €)</option></select></label>
         {editing && !state.invoices.find((invoice) => invoice.id === draft.id)?.calculation && change.changed && <p role="status" className="notice">Dezimalberechnung prüfen: bisher {euro.format(change.before / 100)}, jetzt {change.after === null ? 'ungültiger Betrag' : euro.format(change.after / 100)}. Positionsbeträge werden einzeln kaufmännisch auf Cent gerundet. Speichern oder Finalisieren übernimmt die hier angezeigten neuen Beträge; Originalbelege bleiben erhalten.</p>}
         <p className="muted">Mengen: 0,01–99,99 (bis 2 Nachkommastellen). Preise in EUR je Einheit; gespeicherte Untercentpräzision bleibt erhalten. Gesamt höchstens 999.999.999,99 EUR.</p>
         {finalized && <div className="revision-banner"><FileCheck2 aria-hidden="true" /><div><strong>Finalisierte Rechnung</strong><p>{FINALIZED_INVOICE_BLOCKED}</p></div></div>}

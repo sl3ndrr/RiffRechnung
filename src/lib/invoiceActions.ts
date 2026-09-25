@@ -70,6 +70,11 @@ export function saveInvoiceDraft(state: AppState, draft: InvoiceDraft, finalize:
     year: parseDate(draft.invoiceDate).getFullYear(), period: billingPeriodFromItems(draft.items, draft.invoiceDate),
     status: 'draft', calculation: 'decimal-v1', createdAt: existing?.createdAt ?? at, updatedAt: at,
   }
+  // A saved draft freezes its print data at this save, including deliberately empty address lines.
+  // A correction with missing live contacts keeps its earlier captured evidence until reassigned.
+  saved.snapshot = saved.guardianIds.every((id) => state.guardians.some((person) => person.id === id))
+    ? snapshotFor(state, saved)
+    : existing?.snapshot
   let next = { ...state, invoices: [...state.invoices.filter((invoice) => invoice.id !== saved.id), persistentInvoice(saved)] }
   validateBackupState(next)
   if (finalize) next = finalizeInvoice(next, saved, 'sent', at, createId)

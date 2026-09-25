@@ -30,7 +30,7 @@ export const defaultSettings: Settings = {
 
 export function emptyState(): AppState {
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     documentVersions: [], invoiceAdministration: [], payments: [], historicalSnapshotCorrections: [],
     guardians: [],
     students: [],
@@ -60,6 +60,7 @@ export function createEmptyInvoiceDraft(settings: Settings, reference = new Date
     guardianIds: [],
     studentIds: [],
     recipientStrategy: 'joint',
+    invoiceKind: 'standard',
     items: [],
     introText: 'Hiermit stelle ich die Unterrichtseinheiten im Fach Gitarre für den genannten Zeitraum in Rechnung.',
     freeText: '',

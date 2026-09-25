@@ -1,5 +1,14 @@
 [
   {
+    "version": "1.4",
+    "date": "2026-09-25",
+    "changes": [
+      "Neue Empfängerkontakte benötigen Vor- und Nachname; Anschrift und weitere Kontaktdaten sind optional. Alte Anzeigenamen bleiben unangetastet.",
+      "Rechnungen bis 250,00 € können ausdrücklich als Kleinbetragsrechnung abgeschlossen werden. Standardrechnungen verlangen weiterhin die Empfängeranschrift.",
+      "Gespeicherte Entwürfe drucken ohne fehlende Adresszeilen und behalten ihre damaligen Druckdaten."
+    ]
+  },
+  {
     "version": "1.3",
     "date": "2026-09-24",
     "changes": [
@@ -90,4 +99,3 @@
     ]
   }
 ]
-

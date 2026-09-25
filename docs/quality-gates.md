@@ -1,3 +1,11 @@
+# AP3 – zusätzliche Gate-Notiz 25.09.2026
+
+`npm ci` in der bereitgestellten Laufzeit (Node 24.19.0) scheiterte an HTTP 403
+für `yocto-queue-0.1.0.tgz`; darauf aufbauende lokale Gates werden nur nach
+wirklich erfolgreicher Installation als bestanden bezeichnet. Die neue
+`tests/ap3.test.ts` wird ausdrücklich aus `tests/logic.test.ts` importiert.
+Die CI-Prüfungen des eigenen AP3-Branches sind gesondert zu bewerten.
+
 ## AP1 – Nachweis (2026-09-24)
 
 [PR #36](https://github.com/sl3ndrr/RiffRechnung/pull/36), Implementierungscommit `02e712c519d4f833552837a66b63bad06fd73ad9`: [CI 36063143264](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36063143264) unter Node 22.23.2 / npm 10.9.8. `npm ci`, `npm run lint`, `npm test` (148/148; die AP1-Testnamen sind im Protokoll und die Testdatei ist in `tests/logic.test.ts` importiert), `npm run typecheck`, `npm run build`, Installation aller Playwright-Browser und `pdftotext`, `npm run test:browser` (43/43) sowie vollständiges Dependency-Audit erfolgreich. Der abschließende Dokumentationscommit benötigt einen eigenen CI-Lauf.
