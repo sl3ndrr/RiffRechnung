@@ -6,7 +6,11 @@ kein Checkout; die Repositorydateien wurden über den verbundenen GitHub-Zugriff
 geprüft. Schema 8 für optionale getrennte Kontaktnamen und Rechnungsart;
 Speicherprotokoll 4 und Archivformat 1 bleiben. Schema 7→8 erfolgt mit
 kontrolliertem Bericht und Originalarchiv. Noch nicht zusammengeführt oder
-bereitgestellt. Weitere Testergebnisse und Grenzen stehen in
+bereitgestellt. [Entwurfs-PR #38](https://github.com/sl3ndrr/RiffRechnung/pull/38)
+und Ergebniscommit `b8ff8b91` mit [CI 36179170530](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36179170530):
+155 Fach- und 44 Browserprüfungen, Lint, Typecheck, Build und Audit bestanden.
+Zwischenfehler und Korrekturen stehen in den Qualitätsschranken. Weitere
+Testergebnisse und Grenzen stehen in
 [release-readiness.md](release-readiness.md).
 
 Neue Kontakte benötigen Vor- und Nachname. Historische Anzeigenamen bleiben
@@ -120,4 +124,3 @@ Paketdetails bleiben im Git-Verlauf dieser Datei. Produktregeln:
 
 Nächstes vorgesehenes Paket: **13 – Wiederherstellung mit Versionsvergleich**,
 optional und nur auf gesonderten Auftrag. Zuerst verbleibende P12-Freigaben klären.
-

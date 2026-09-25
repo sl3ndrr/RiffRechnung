@@ -5,6 +5,46 @@ für `yocto-queue-0.1.0.tgz`; darauf aufbauende lokale Gates werden nur nach
 wirklich erfolgreicher Installation als bestanden bezeichnet. Die neue
 `tests/ap3.test.ts` wird ausdrücklich aus `tests/logic.test.ts` importiert.
 Die CI-Prüfungen des eigenen AP3-Branches sind gesondert zu bewerten.
+[CI 36176504548](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36176504548)
+auf `03803019`: Node 22.23.2, `npm ci`, Lint, 154/154 Fachtests,
+Typecheck, Build, 44/44 Browserprüfungen mit Chromium/Firefox/WebKit,
+`pdftotext` und vollständiges Audit erfolgreich. Die AP3-Fälle laufen über
+den Import in `tests/logic.test.ts` und sind im Fachtestprotokoll benannt.
+
+Spätere Zwischenläufe [36176645864](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36176645864),
+[36176832409](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36176832409)
+und [36176988150](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36176988150)
+bestanden jeweils Installation, Lint, Fachtests, Typecheck und Build, aber nur
+43/44 Browserfälle: Der bestehende AP1-Export-/Importtest erhielt im Download
+ungültiges JSON. Als Ursache kommt der beim Klick noch im selben Task
+widerrufene Objekt-URL infrage. Der Export gibt ihn nun zeitversetzt frei;
+der Test blieb inhaltlich unverändert.
+[CI 36177190418](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36177190418)
+deckte mit dem neuen Browserfall auf, dass der Editor beim Öffnen eines
+Korrekturentwurfs die gespeicherte Rechnungsart nicht übernahm. `App.tsx`
+übernimmt sie nun; der Grenzfall erwartet die sichtbare Sperr- und
+Adressmeldung. Auch hier blieben die Testaussagen erhalten.
+[CI 36177972747](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36177972747)
+zeigte danach sieben Roundtrip-Differenzen: Ein Testadapter setzte bei
+Altbelegen `invoiceKind: undefined`, das JSON naturgemäß entfernt. UI und
+Adapter übernehmen den Schlüssel jetzt nur bei vorhandenem Wert, damit die
+Legacy-Bedeutung auch byte- und objektseitig erhalten bleibt.
+[CI 36178221455](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36178221455)
+bestand 155 Fachtests und 43/44 Browserfälle einschließlich des neuen
+AP3-Korrekturfalls und des zuvor betroffenen Chromium-Backups. WebKit meldete
+beim JSON-Fallback keinen Download innerhalb von 10 s. Der Klick wurde laut
+Playwright-Trace ausgeführt; der kurzlebige Download-Anker wurde bisher direkt
+entfernt. Anker und Objekt-URL bleiben jetzt bis zur verzögerten Freigabe
+erhalten. Der unveränderte WebKit-Roundtrip bestand im folgenden Ergebnislauf.
+
+**Ergebniscommit `b8ff8b91d9a337d7b6c79d218936212216aedd0d`:**
+[CI 36179170530](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36179170530)
+unter Node 22.23.2: `npm ci`, `npm run lint`, `npm test` (155/155),
+`npm run typecheck`, `npm run build`, Browserinstallation und `pdftotext`,
+`npm run test:browser` (44/44 einschließlich AP3-Korrektur und AP1-JSON-
+Fallback in Chromium, Firefox und WebKit) sowie vollständiges Audit ohne
+Schwachstellen bestanden. Kein Test wurde abgeschwächt. Der Dokumentationsstand
+wird durch den PR-Check des folgenden Commits zusätzlich geprüft.
 
 ## AP1 – Nachweis (2026-09-24)
 
@@ -651,4 +691,3 @@ Force-Clicks, Testauslassungen oder schwächeren Datenvergleiche. Grundlage:
 [Playwright-Testzeitbudgets](https://playwright.dev/docs/test-timeouts) schließen
 Fixture-Setup ein und sind vom Assertion-Zeitbudget getrennt. Der neue Ergebnis-
 Commit wird vollständig geprüft und im PR mit exakter SHA/CI-Lauf verknüpft.
-
