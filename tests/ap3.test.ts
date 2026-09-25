@@ -30,12 +30,13 @@ function print(state: AppState): string {
 
 test('AP3: neuer Kontakt verlangt getrennte Namen ohne Leer- und Steuerzeichen; Rest ist optional', () => {
   const state = family(), contact = state.guardians[0]
+  const newFamily = { ...state, guardians: [], students: [] }
   for (const value of ['', '   ', '\n']) {
-    assert.equal(saveGuardianState({ ...state, guardians: [] }, { ...contact, firstName: value }).ok, false)
-    assert.equal(saveGuardianState({ ...state, guardians: [] }, { ...contact, lastName: value }).ok, false)
+    assert.equal(saveGuardianState(newFamily, { ...contact, firstName: value }).ok, false)
+    assert.equal(saveGuardianState(newFamily, { ...contact, lastName: value }).ok, false)
   }
-  assert.equal(saveGuardianState({ ...state, guardians: [] }, { ...contact, firstName: 'A'.repeat(121) }).ok, false)
-  assert.deepEqual(requireSuccess(saveGuardianState({ ...state, guardians: [] }, contact)).guardians[0], contact)
+  assert.equal(saveGuardianState(newFamily, { ...contact, firstName: 'A'.repeat(121) }).ok, false)
+  assert.deepEqual(requireSuccess(saveGuardianState(newFamily, contact)).guardians[0], contact)
 })
 
 test('AP3: fünf mehrteilige Altnamen bleiben nach 7→8, Export und Import unverändert', () => {
@@ -59,7 +60,10 @@ test('AP3: Entwurf ohne Anschrift druckt den gesicherten Namen ohne Adresslücke
   const initial = print(state)
   assert.match(initial, /ENTWURF/)
   assert.match(initial, /Anna Beispiel/)
-  assert.doesNotMatch(initial, /Adresse fehlt|<span><\/span>|<small><\/small>/)
+  assert.match(initial, /<div class="invoice-address"><strong>Anna Beispiel<\/strong><\/div>/)
+  assert.doesNotMatch(initial, /Adresse fehlt/)
+  state.guardians[0].firstName = 'Später'
+  state.guardians[0].lastName = 'geändert'
   state.guardians[0].name = 'Später geändert'
   state.guardians[0].address.street = 'Späterweg 7'
   state.settings.issuer.name = 'Späteres Studio'
@@ -73,9 +77,11 @@ test('AP3: 249,99 und 250,00 als ausdrücklich gewählte Kleinbetragsrechnung oh
     assert.equal(issued.documentVersions[0].content.invoiceKind, 'small-amount')
     assert.equal(issued.documentVersions[0].outputSnapshot.invoiceKind, 'small-amount')
     assert.match(print(issued), /Kleinbetragsrechnung nach § 33 UStDV/)
-    issued.guardians[0].name = 'Nach Abschluss geändert'
+    issued.guardians[0].firstName = 'Nach'
+    issued.guardians[0].lastName = 'Abschluss'
+    issued.guardians[0].name = 'Nach Abschluss'
     issued.guardians[0].address.street = 'Neuer Weg 2'
-    assert.doesNotMatch(print(issued), /Nach Abschluss geändert|Neuer Weg 2/)
+    assert.doesNotMatch(print(issued), /Nach Abschluss|Neuer Weg 2/)
     validateBackupState(requireSuccess(inspectImport(JSON.stringify(issued))).state)
   }
   const errors = invoiceFinalizationErrors(family(), draft(250.01, 'small-amount')).join(' ')

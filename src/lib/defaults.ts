@@ -287,5 +287,6 @@ export function createDemoState(referenceDate = new Date()): AppState {
     const payment = demo.payments.find((entry) => entry.allocations.at(-1)?.versionId === invoice.versionId && entry.paymentDayStatus === 'confirmed')
     return payment?.paidAt ? { ...invoice, paidAt: payment.paidAt } : invoice
   })
+  demo.schemaVersion = 8
   return demo
 }

@@ -107,6 +107,8 @@ export interface Invoice {
   freeText: string
   legalText: string
   snapshot?: InvoiceSnapshot
+  /** Frozen print data of a saved draft; distinct from an issued original. */
+  draftPrintSnapshot?: InvoiceSnapshot
   paidAt?: string
   sentAt?: string
   createdAt: string

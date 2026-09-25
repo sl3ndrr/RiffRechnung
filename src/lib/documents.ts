@@ -126,7 +126,7 @@ export function createCorrectionDraft(state: AppState, invoiceId: string, reason
   if (state.invoices.some((entry) => entry.status === 'draft' && entry.correction?.replacesId === parent.id)) throw new Error('Für diesen Beleg gibt es bereits einen Korrekturentwurf.')
   const draft: Invoice = {
     ...structuredClone(parent.content), id: freshId('invoice', new Set(state.invoices.map((entry) => entry.id)), uid),
-    number: null, sequence: null, status: 'draft', snapshot: structuredClone(parent.outputSnapshot),
+    number: null, sequence: null, status: 'draft', snapshot: undefined, draftPrintSnapshot: structuredClone(parent.outputSnapshot),
     items: copyItemsWithFreshIds(parent.content.items, new Set(state.invoices.flatMap((entry) => entry.items.map((item) => item.id))), uid),
     correction: { replacesId: parent.id, reason: reason.trim() }, createdAt: at, updatedAt: at,
   }

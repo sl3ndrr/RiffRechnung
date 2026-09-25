@@ -37,6 +37,7 @@ function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatu
     snapshot: snapshotFor(state, invoice), sentAt: at, updatedAt: at,
     ...(confirmedPaymentDay ? { paidAt: confirmedPaymentDay } : {}),
   }
+  Reflect.deleteProperty(finalized, 'draftPrintSnapshot')
   const version = captureDocument(state, finalized, freshId('version', new Set(state.documentVersions.map((entry) => entry.id)), createId), false)
   finalized.versionId = version.id
   return {
@@ -72,9 +73,10 @@ export function saveInvoiceDraft(state: AppState, draft: InvoiceDraft, finalize:
   }
   // A saved draft freezes its print data at this save, including deliberately empty address lines.
   // A correction with missing live contacts keeps its earlier captured evidence until reassigned.
-  saved.snapshot = saved.guardianIds.every((id) => state.guardians.some((person) => person.id === id))
+  Reflect.deleteProperty(saved, 'snapshot')
+  saved.draftPrintSnapshot = saved.guardianIds.every((id) => state.guardians.some((person) => person.id === id))
     ? snapshotFor(state, saved)
-    : existing?.snapshot
+    : existing?.draftPrintSnapshot
   let next = { ...state, invoices: [...state.invoices.filter((invoice) => invoice.id !== saved.id), persistentInvoice(saved)] }
   validateBackupState(next)
   if (finalize) next = finalizeInvoice(next, saved, 'sent', at, createId)

@@ -47,12 +47,13 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
   const [qrCode, setQrCode] = useState<GeneratedQrCode | null>(null)
   const total = invoice ? invoiceTotal(invoice) : 0
   const period = invoice ? invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate) : ''
-  const source = invoice?.snapshot
+  const source = invoice?.snapshot ?? invoice?.draftPrintSnapshot
+  const printInvoice = invoice?.status === 'draft' && source ? { ...invoice, snapshot: source } : invoice
   const footerText = invoice ? footerTextForPrint(invoice.versionId || source ? invoice.legalText : invoice.legalText || settings.defaultLegalText) : ''
   const pageStyle = invoice ? buildInvoicePrintPageStyle(footerText, invoice.number) : ''
   const issuer = source?.issuer ?? settings.issuer
-  const account = invoice ? paymentDataForInvoice(invoice, settings) : { accountHolder: '', iban: '', bic: '', bankName: '' }
-  const taxData = invoice ? taxDataForInvoice(invoice, settings) : { invoiceProfile: null, taxIdentifier: null }
+  const account = printInvoice ? paymentDataForInvoice(printInvoice, settings) : { accountHolder: '', iban: '', bic: '', bankName: '' }
+  const taxData = printInvoice ? taxDataForInvoice(printInvoice, settings) : { invoiceProfile: null, taxIdentifier: null }
   const recipientList = useMemo(() => {
     if (!invoice) return []
     if (source) return source.guardians
@@ -91,10 +92,10 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
     })
   }, [invoice, period, studentList])
 
-  const giroCode = useMemo(() => invoice
-    ? resolveGiroCode(invoice, settings, includeGiroCode)
+  const giroCode = useMemo(() => printInvoice
+    ? resolveGiroCode(printInvoice, settings, includeGiroCode)
     : { kind: 'unavailable' as const, reason: 'Keine Rechnung ausgewählt.' },
-  [includeGiroCode, invoice, settings])
+  [includeGiroCode, printInvoice, settings])
 
   useEffect(() => {
     setQrCode(null)
@@ -164,7 +165,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
           </section>
           <section className="invoice-meta">
             <h1>RECHNUNG</h1>
-            {(invoice.snapshot?.invoiceKind ?? invoice.invoiceKind) === 'small-amount' && <p>Kleinbetragsrechnung nach § 33 UStDV</p>}
+            {(source?.invoiceKind ?? invoice.invoiceKind) === 'small-amount' && <p>Kleinbetragsrechnung nach § 33 UStDV</p>}
             <div className="invoice-meta__rule" />
             <dl>
               <dt>Nr.:</dt><dd><strong>{invoice.number ?? 'ENTWURF'}</strong></dd>

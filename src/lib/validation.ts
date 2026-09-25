@@ -233,7 +233,7 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8, localI
   backupArray(data.invoices, 'invoices').forEach((entry, index) => {
     const path = `invoices[${index}]`
     const invoice = backupObject(entry, path)
-    knownKeys(invoice, path, 'id number sequence year invoiceDate dueDate period status guardianIds studentIds recipientStrategy items introText freeText legalText snapshot paidAt sentAt createdAt updatedAt' + (versioned ? ' versionId correction' : '') + (schema >= 5 ? ' calculation' : '') + (schema >= 8 ? ' invoiceKind' : ''))
+    knownKeys(invoice, path, 'id number sequence year invoiceDate dueDate period status guardianIds studentIds recipientStrategy items introText freeText legalText snapshot paidAt sentAt createdAt updatedAt' + (versioned ? ' versionId correction' : '') + (schema >= 5 ? ' calculation' : '') + (schema >= 8 ? ' invoiceKind draftPrintSnapshot' : ''))
     if (schema >= 8 && invoice.invoiceKind !== undefined) backupEnum(invoice.invoiceKind, `${path}.invoiceKind`, INVOICE_KINDS)
     registerId(invoice.id, `${path}.id`, invoiceIds)
     const number = invoice.number === null ? null : backupString(invoice.number, `${path}.number`, true)
@@ -256,10 +256,16 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8, localI
     const invoiceStudentIds = backupIdArray(invoice.studentIds, `${path}.studentIds`)
     const invoiceStudentIdSet = new Set(invoiceStudentIds)
     backupEnum(invoice.recipientStrategy, `${path}.recipientStrategy`, RECIPIENT_STRATEGIES)
-    if (status === 'draft' && invoice.snapshot !== undefined && schema < 8) invalidBackup(`${path}.snapshot`, 'ist für Entwürfe nicht zulässig')
+    if (status === 'draft' && invoice.snapshot !== undefined) invalidBackup(`${path}.snapshot`, 'ist für Entwürfe nicht zulässig')
+    if (invoice.draftPrintSnapshot !== undefined) {
+      if (schema < 8 || status !== 'draft') invalidBackup(`${path}.draftPrintSnapshot`, 'ist nur für neue Entwürfe zulässig')
+      validateInvoiceSnapshot(invoice.draftPrintSnapshot, `${path}.draftPrintSnapshot`, schema)
+    }
     const snapshotReferences = invoice.snapshot === undefined ? undefined : validateInvoiceSnapshot(invoice.snapshot, `${path}.snapshot`, schema)
     const snapshotKind = (invoice.snapshot as { invoiceKind?: unknown } | undefined)?.invoiceKind
     if (schema >= 8 && snapshotKind !== undefined && snapshotKind !== invoice.invoiceKind) invalidBackup(`${path}.snapshot.invoiceKind`, 'muss der gespeicherten Rechnungsart entsprechen')
+    const draftKind = (invoice.draftPrintSnapshot as { invoiceKind?: unknown } | undefined)?.invoiceKind
+    if (schema >= 8 && draftKind !== undefined && draftKind !== invoice.invoiceKind) invalidBackup(`${path}.draftPrintSnapshot.invoiceKind`, 'muss der gespeicherten Rechnungsart entsprechen')
     const correction = invoice.correction === undefined ? undefined : backupObject(invoice.correction, `${path}.correction`)
     if (correction) {
       knownKeys(correction, `${path}.correction`, 'replacesId reason')
