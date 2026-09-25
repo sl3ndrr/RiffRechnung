@@ -81,7 +81,7 @@ export function prepareInvoiceCopy(state: AppState, invoiceId: string, targetDat
     const draft: InvoiceDraft = {
       invoiceDate, dueDate: calculateDueDate(invoiceDate, state.settings.paymentTermDays),
       period: billingPeriodFromItems(items, invoiceDate), guardianIds: [...invoice.guardianIds], studentIds: [...invoice.studentIds],
-      recipientStrategy: invoice.recipientStrategy, invoiceKind: invoice.invoiceKind ?? 'standard', items, introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText,
+      recipientStrategy: invoice.recipientStrategy, invoiceKind: 'standard', items, introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText,
     }
     // Verify the actual prospective persistent result without mutating state.
     saveInvoiceDraft(state, draft, false, targetDate.toISOString())

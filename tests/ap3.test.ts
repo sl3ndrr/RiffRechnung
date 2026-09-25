@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { InvoicePrint } from '../src/components/InvoicePrint'
-import { saveGuardianState } from '../src/lib/commands'
+import { prepareInvoiceCopy, saveGuardianState } from '../src/lib/commands'
 import { createCorrectionDraft } from '../src/lib/documents'
 import { emptyState } from '../src/lib/defaults'
 import { inspectImport } from '../src/lib/importState'
@@ -104,6 +104,12 @@ test('AP3: 249,99 und 250,00 als ausdrücklich gewählte Kleinbetragsrechnung oh
   assert.match(errors, /Standardrechnung erforderlich/)
   assert.match(errors, /Straße & Hausnummer fehlt/)
   assert.throws(() => saveInvoiceDraft(family(), draft(250.01, 'small-amount'), true, at), /Standardrechnung erforderlich/)
+})
+
+test('AP3: Kopie eines Kleinbetragsbelegs beginnt als Standardrechnung', () => {
+  const issued = saveInvoiceDraft(family(), draft(30, 'small-amount'), true, at)
+  const copy = requireSuccess(prepareInvoiceCopy(issued, issued.invoices[0].id, new Date('2026-10-25T12:00:00.000Z')))
+  assert.equal(copy.invoiceKind, 'standard')
 })
 
 test('AP3: Standardrechnung verlangt feldgenau Straße, PLZ und Ort; Korrektur über Grenze sperrt erneut', () => {

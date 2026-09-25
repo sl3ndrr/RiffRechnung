@@ -494,7 +494,9 @@ und [Bundesbank-IBAN-Regeln](https://www.bundesbank.de/de/aufgaben/unbarer-zahlu
   neue Entwurfswert; `small-amount` wird nur ausdrücklich im Editor gewählt.
   Bei Altbelegen fehlt das Feld und bedeutet Standardrechnung nach den
   damaligen Regeln. Der Abschluss friert die Wahl in Beleginhalt und Snapshot
-  ein. Ein gespeicherter Entwurf friert seine Druckdaten beim Speichern ein;
+  ein. Eine Kopie beginnt erneut als Standardrechnung; eine Korrektur übernimmt
+  die bisherige Wahl zur ausdrücklichen Prüfung im Editor. Ein gespeicherter
+  Entwurf friert seine Druckdaten beim Speichern ein;
   spätere Stammdaten- und Einstellungsänderungen verändern seinen Druck nicht.
   Alte Entwürfe ohne solche Daten erhalten keine erfundene Historie.
 - Standardrechnungen verlangen beim Abschluss Namen und vollständige
