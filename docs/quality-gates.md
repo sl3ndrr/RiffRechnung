@@ -1,3 +1,29 @@
+## AP2 – Nachweis (2026-09-25)
+
+Ausgang: `main` `47f491eecbebb788bf6f63aea2b1342bc3dfbd85`, AP1 integriert.
+Keine AGENTS.md im bereitgestellten Tree. Terminal-Clone: HTTP 403; lokaler
+Git-Verlauf kennzeichnet deshalb ausdrücklich die Dateimaterialisierung statt
+eines angeblichen vollständigen Checkouts. Eigener GitHub-Arbeitsbranch:
+`codex/ap2-duo-households`. Keine Änderung an Merge-/Deploy-Workflows.
+
+Lokale Gates in der vorgeschriebenen Reihenfolge versucht:
+`npm ci --fetch-retries=0 --fetch-timeout=20000` → E403 beim Registry-Abruf;
+Lint → `eslint: not found`; Tests → `esbuild: not found`; Typecheck/Build →
+`tsc: not found`; Browserprüfung → origin-Fetch des historischen Commits
+`ba7857fd9180fa392c42a0235643e478e5077ee5` HTTP 403. Node 24.19.0 statt 22.
+Diese Gates sind **nicht ausführbar**, nicht bestanden. Bestehende Node-22-PR-CI
+muss Installation, Lint, Fachtests, Test-Typecheck, Build, Playwright/Poppler und
+Browserprüfungen für den konkreten Ergebniscommit ausführen. Nachweis ausstehend.
+
+Neue Fachdatei `tests/duo.test.ts` ist im tatsächlichen Testeinstieg
+`tests/logic.test.ts` importiert; ihre `AP2:`-/`AP2 Leak:`-/`AP2 Speicher:`-
+Testnamen müssen im npm-Testprotokoll nachgewiesen werden. Keine Testauslassungen
+oder Retries ergänzt. Bestehende Schema-Grenzerwartungen in `logic`, `documents`,
+`money-calendar`, `payment-reporting` sowie Browser-`documents`/`stabilization`
+wurden gezielt von aktuellem Schema 7 auf 8 und Zukunftsschema 8 auf 9 angepasst;
+die ursprünglichen Original-/Migrations-/Sperrassertionen bleiben erhalten.
+`storageHarness.seedState` übernimmt jetzt die tatsächliche Zustandsversion.
+
 ## AP1 – Nachweis (2026-09-24)
 
 [PR #36](https://github.com/sl3ndrr/RiffRechnung/pull/36), Implementierungscommit `02e712c519d4f833552837a66b63bad06fd73ad9`: [CI 36063143264](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36063143264) unter Node 22.23.2 / npm 10.9.8. `npm ci`, `npm run lint`, `npm test` (148/148; die AP1-Testnamen sind im Protokoll und die Testdatei ist in `tests/logic.test.ts` importiert), `npm run typecheck`, `npm run build`, Installation aller Playwright-Browser und `pdftotext`, `npm run test:browser` (43/43) sowie vollständiges Dependency-Audit erfolgreich. Der abschließende Dokumentationscommit benötigt einen eigenen CI-Lauf.
@@ -643,4 +669,3 @@ Force-Clicks, Testauslassungen oder schwächeren Datenvergleiche. Grundlage:
 [Playwright-Testzeitbudgets](https://playwright.dev/docs/test-timeouts) schließen
 Fixture-Setup ein und sind vom Assertion-Zeitbudget getrennt. Der neue Ergebnis-
 Commit wird vollständig geprüft und im PR mit exakter SHA/CI-Lauf verknüpft.
-

@@ -4,6 +4,9 @@ import { serializeBackup, parseBackup, STORAGE_KEY } from '../../src/lib/storage
 import { documentDraft, documentFamily, documentAt } from '../documentFixtures'
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
 import { invoiceTotalCents } from '../../src/lib/money'
+import { duoDrafts } from '../duoFixtures'
+import { previewDuo } from '../../src/lib/duoModel'
+import { finalizeDuoGroup } from '../../src/lib/invoiceActions'
 
 async function withoutFolder(context: BrowserContext, browserName: string) {
   // Firefox/WebKit run with their native absence of the picker; Chromium tests
@@ -18,6 +21,31 @@ async function restore(page: Page, buffer: Buffer) {
   await page.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
 }
+
+test('AP2 Fallback: vollständige Duo-Gruppe als JSON exportieren, importieren und reload', async ({ page, context, browser, browserName }) => {
+  await withoutFolder(context, browserName)
+  const drafts = duoDrafts(), group = drafts.duoGroups![0], preview = previewDuo(drafts, group.id)
+  const state = finalizeDuoGroup(drafts, group.id, preview.token, preview.invoices.map((invoice) => invoice.id))
+  await page.goto('/')
+  await restore(page, Buffer.from(serializeBackup(state)))
+  await settings(page)
+  const downloading = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'JSON exportieren', exact: true }).click()
+  const buffer = await readFile((await (await downloading).path())!)
+  expect(parseBackup(buffer.toString())).toEqual(state)
+  const destination = await browser.newContext({ baseURL: 'http://127.0.0.1:4173' })
+  try {
+    await withoutFolder(destination, browserName)
+    const imported = await destination.newPage()
+    await imported.goto('/')
+    await restore(imported, buffer)
+    const raw = await imported.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)
+    await imported.reload()
+    expect(await imported.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(raw)
+    expect(parseBackup(raw!)).toEqual(state)
+    expect(parseBackup(raw!).duoGroups).toEqual(state.duoGroups)
+  } finally { await destination.close() }
+})
 
 test('AP1 Fallback: gemeinsame Rechnung an zwei Personen als JSON exportieren, importieren und reload', async ({ page, context, browser, browserName }, testInfo) => {
   const flowStarted = Date.now()
@@ -59,4 +87,3 @@ test('AP1 Fallback: gemeinsame Rechnung an zwei Personen als JSON exportieren, i
     console.log(`P12 JSON-Fallback UI-Ablauf: ${browserName} ${Date.now() - flowStarted} ms (ohne initiales Fixture-Setup)`)
   }
 })
-
