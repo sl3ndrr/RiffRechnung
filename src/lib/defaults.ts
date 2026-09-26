@@ -30,7 +30,7 @@ export const defaultSettings: Settings = {
 
 export function emptyState(): AppState {
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     documentVersions: [], invoiceAdministration: [], payments: [], historicalSnapshotCorrections: [],
     guardians: [],
     students: [],
@@ -58,6 +58,7 @@ export function createEmptyInvoiceDraft(settings: Settings, reference = new Date
     dueDate: calculateDueDate(localToday(invoiceDate), settings.paymentTermDays),
     period: monthName,
     guardianIds: [],
+    recipients: [],
     studentIds: [],
     recipientStrategy: 'joint',
     items: [],

@@ -1,3 +1,9 @@
+# AP5 – Prüfstand (2026-09-26)
+
+Schema 8 trennt neue typisierte Rechnungsempfänger von unveränderten Schema-7-Altbelegen. Selbstzahler erhalten ihr dauerhaftes Lernendenkennzeichen; der Wechsel des Zahlmodus ändert keine früheren Nummern oder Belegversionen. Neue gemischte gemeinsame Rechnungen zeigen allen ausdrücklich ausgewählten Empfängern die Namen und Positionen aller ausgewählten Lernenden. AP2-Gruppen und AP3-Rechnungsarten einschließlich Kleinbetragsrechnung fehlen in der Ausgangsbasis und können hier nicht als geprüft gelten. Historische Doppelanlagen werden nicht automatisch bereinigt.
+
+Lokal steht Node 24.19.0 statt `.nvmrc` 22 bereit; `npm ci` endet mit HTTP 403 beim Paketabruf. Lokale Folge-Gates dürfen daher nicht als bestanden gelten. [CI 36253116923](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36253116923) auf `6183cb31ef6ec3dd1c07fd5dc44d26ec4c38ea44` prüfte unter Node 22 alle 155 Fachtests und 44 Browserprüfungen einschließlich PDF-Text, Migration, Export/Import und Reload erfolgreich; Lint, Typecheck, Build und Audit bestanden ebenfalls. Die synthetischen AP5-PDFs für Selbstzahlerin und Minderjährigen mit zwei Empfängern wurden als einzelne A4-Seiten visuell geprüft, ohne sichtbare Kollisionen oder Abschneidungen. Native Druckdialoge, Safari/macOS und weitere Freigabepunkte unten bleiben offen. Jeder weitere Commit benötigt einen eigenen vollständigen Lauf. Kein Merge oder Deployment.
+
 # AP1 – Prüfstand (2026-09-24)
 
 Die folgenden Paket-12-Nachweise sind historische Ergebnisse vor AP1. AP1 ersetzt die Empfängeraufteilung durch gemeinsame Rechnungen und die bestätigte Umwandlung offener Altentwürfe. [PR #36](https://github.com/sl3ndrr/RiffRechnung/pull/36), Implementierungscommit `02e712c519d4f833552837a66b63bad06fd73ad9`, [CI 36063143264](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36063143264): Node 22.23.2, `npm ci`, Lint, 148/148 Fachtests, Typecheck, Build, 43/43 Browserprüfungen (Chromium sowie JSON-Fallback in Firefox/WebKit) und Dependency-Audit erfolgreich. Der letzte Dokumentationscommit wird gesondert geprüft.
@@ -161,4 +167,3 @@ PDF-Text-, Fokus- und Kontrastprüfungen sind davon getrennt.
   Kein entsprechender Schreib-Endpunkt ist verfügbar.
 
 Nächstes vorgesehenes Paket: optional **13**; nicht begonnen.
-

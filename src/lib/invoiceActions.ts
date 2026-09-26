@@ -8,6 +8,7 @@ import type { AppState, Invoice, InvoiceDraft, InvoiceStatus } from '../types'
 import { assertInvoiceEditable, assertOriginalsPreserved } from './safety'
 import { validateBackupState } from './validation'
 import { billingPeriodFromItems, invoiceFinalizationErrors, nextInvoiceAllocation, parseDate, uid } from './utils'
+import { guardianIdsFor, recipientCanBillStudent, recipientRefs } from './recipients'
 
 function requiredPaymentDay(value: string | undefined): string {
   if (!value) throw new Error('Bitte den tatsächlichen Zahlungstag eingeben.')
@@ -67,6 +68,7 @@ export function saveInvoiceDraft(state: AppState, draft: InvoiceDraft, finalize:
   if (errors.length) throw new Error(errors.join(' '))
   const saved: Invoice = {
     ...structuredClone(draft), id: existing?.id ?? freshId('invoice', new Set(state.invoices.map((invoice) => invoice.id)), createId), number: null, sequence: null,
+    guardianIds: draft.recipients ? guardianIdsFor(draft.recipients) : [...draft.guardianIds],
     year: parseDate(draft.invoiceDate).getFullYear(), period: billingPeriodFromItems(draft.items, draft.invoiceDate),
     status: 'draft', calculation: 'decimal-v1', createdAt: existing?.createdAt ?? at, updatedAt: at,
   }
@@ -133,11 +135,23 @@ export function changeInvoiceStatus(state: AppState, invoiceId: string, status: 
 }
 
 function draftAudienceErrors(state: AppState, draft: InvoiceDraft): string[] {
+  if (draft.recipients) {
+    const refs = recipientRefs(draft)
+    if (draft.guardianIds.join('\0') !== guardianIdsFor(refs).join('\0')) return ['Der Empfängerbezug und die Erziehungsberechtigten-Projektion widersprechen sich.']
+    if (draft.studentIds.length && refs.some((ref) => {
+      if (draft.correction && !state[ref.type === 'guardian' ? 'guardians' : 'students'].some((person) => person.id === ref.id)) return false
+      return !draft.studentIds.some((id) => {
+        const student = state.students.find((entry) => entry.id === id)
+        return student && recipientCanBillStudent(ref, student)
+      })
+    })) return ['Jeder Rechnungsempfänger muss mindestens einem ausgewählten Lernenden zugeordnet sein.']
+    return []
+  }
   if (draft.studentIds.length && draft.guardianIds.some((id) => draft.studentIds.some((studentId) => {
     if (draft.correction && !state.guardians.some((guardian) => guardian.id === id)) return false
     const student = state.students.find((entry) => entry.id === studentId)
     return student && !student.guardianIds.includes(id)
-  }))) return ['Alle empfangenden Personen müssen jedem ausgewählten Kind zugeordnet sein.']
+  }))) return ['Alle empfangenden Personen müssen jedem ausgewählten Lernenden zugeordnet sein.']
   return []
 }
 

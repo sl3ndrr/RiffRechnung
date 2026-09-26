@@ -140,9 +140,9 @@ test('P04: kontrollierte Migration eines Protokoll-4/Schema-3-Bestands bewahrt R
   assert.equal(session.revision!.datasetId, old.datasetId)
   const archive = JSON.parse(JSON.parse(session.exportRecoveryArchive()).recoveries[0].raw)
   assert.equal(archive.previousRaw, raw); assert.equal(archive.sourceRaw, raw)
-  assert.equal(archive.report.toSchema, 7)
+  assert.equal(archive.report.toSchema, 8)
   assert.equal(new StorageSession({ storage, lock: sharedLock() }).initial.status, 'ready')
-  const future = JSON.stringify({ ...old, schemaVersion: 8, data: { ...old.data, schemaVersion: 8 } })
+  const future = JSON.stringify({ ...old, schemaVersion: 9, data: { ...old.data, schemaVersion: 9 } })
   storage.setItem(STORAGE_KEY, future)
   await assert.rejects(new StorageSession({ storage, lock: sharedLock() }).restore(session.export()), /neuere Formate/)
   assert.equal(storage.getItem(STORAGE_KEY), future)
@@ -241,7 +241,7 @@ test('P04: Validatoren schützen Graph, Identitäten, Verwaltungsreferenzen und 
   ]) { const altered = structuredClone(state); mutate(altered); assert.equal(inspectImport(JSON.stringify(altered)).ok, false) }
   const corrected = createCorrectionDraft(state, state.invoices[0].id, 'Referenzprüfung', at)
   corrected.invoices.at(-1)!.items[0].studentId = 'invented-student'
-  assert.throws(() => validateBackupState(corrected), /unbekanntes Kind|zugeordnet/)
+  assert.throws(() => validateBackupState(corrected), /unbekannte lernende Person|zugeordnet/)
   assert.throws(() => createCorrectionDraft(state, state.invoices[0].id, '', at), /Korrekturgrund/)
 })
 

@@ -6,6 +6,7 @@ import { billingPeriodFromItems, buildInvoicePrintPageStyle, euro, footerTextFor
 import { paymentDataForInvoice } from '../lib/paymentData'
 import { SMALL_BUSINESS_TAX_NOTICE, TAX_IDENTIFIER_LABELS, taxDataForInvoice } from '../lib/invoiceProfile'
 import { generateGiroCode, resolveGiroCode, type GiroCodeEncoder } from '../lib/printJob'
+import { liveRecipient, recipientKey, recipientRefs, snapshotRecipients } from '../lib/recipients'
 
 interface InvoicePrintProps {
   invoice: Invoice | null
@@ -55,12 +56,12 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
   const taxData = invoice ? taxDataForInvoice(invoice, settings) : { invoiceProfile: null, taxIdentifier: null }
   const recipientList = useMemo(() => {
     if (!invoice) return []
-    if (source) return source.guardians
-    return invoice.guardianIds.flatMap((id) => {
-      const guardian = guardians.find((item) => item.id === id)
-      return guardian ? [{ id: guardian.id, name: guardian.name, email: guardian.email, ...guardian.address }] : []
+    if (source) return snapshotRecipients(source)
+    return recipientRefs(invoice).flatMap((ref) => {
+      const person = liveRecipient(ref, guardians, students)
+      return person ? [person] : []
     })
-  }, [guardians, invoice, source])
+  }, [guardians, invoice, source, students])
   const studentList = useMemo(() => {
     if (!invoice) return []
     if (source) return source.students
@@ -154,7 +155,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
             <p className="invoice-senderline">{[issuer.name, issuer.street, `${issuer.postalCode} ${issuer.city}`].filter(Boolean).join(' · ')}</p>
             <p className="invoice-to">AN</p>
             {recipientList.map((recipient) => (
-              <div className="invoice-address" key={recipient.id}>
+              <div className="invoice-address" key={recipientKey(recipient)}>
                 <strong>{recipient.name}</strong>
                 <span>{recipient.street}</span>
                 <span>{recipient.postalCode} {recipient.city}</span>

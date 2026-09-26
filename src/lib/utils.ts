@@ -5,6 +5,7 @@ import { validId, validPrice, validQuantity } from './values'
 import { assertInvoiceEditable } from './safety'
 import { cleanIban, paymentDataErrors, paymentDataForInvoice } from './paymentData'
 import { invoiceProfileErrors, invoiceSetupErrors } from './invoiceProfile'
+import { liveRecipient, recipientCanBillStudent, recipientRefs, snapshotRecipients } from './recipients'
 import type { AppState, Guardian, Invoice, InvoiceItem, InvoiceStatus, LessonType, Settings, Student } from '../types'
 
 export const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
@@ -26,7 +27,7 @@ export function limitFooterText(value: string): string {
   return value.slice(0, MAX_FOOTER_TEXT_LENGTH)
 }
 
-type InvoiceFinalizationCandidate = Pick<Invoice, 'guardianIds' | 'studentIds' | 'invoiceDate' | 'dueDate' | 'items' | 'legalText'> & Partial<Pick<Invoice, 'recipientStrategy'>>
+type InvoiceFinalizationCandidate = Pick<Invoice, 'guardianIds' | 'studentIds' | 'invoiceDate' | 'dueDate' | 'items' | 'legalText'> & Partial<Pick<Invoice, 'recipientStrategy' | 'recipients' | 'correction'>>
 
 export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 'students' | 'settings'>, invoice: InvoiceFinalizationCandidate): string[] {
   const errors: string[] = [...moneyErrors(invoice)]
@@ -35,17 +36,21 @@ export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 's
   const studentIds = new Set(state.students.map((student) => student.id))
   const selectedStudentIds = new Set(invoice.studentIds)
   const selectedStudents = state.students.filter((student) => selectedStudentIds.has(student.id))
-  const selectedGuardians = state.guardians.filter((guardian) => invoice.guardianIds.includes(guardian.id))
-  errors.push(...invoiceProfileErrors(state.settings, selectedGuardians).map((error) => error.message))
+  const refs = recipientRefs(invoice)
+  const selectedGuardians = state.guardians.filter((guardian) => refs.some((ref) => ref.type === 'guardian' && ref.id === guardian.id))
+  const selfPayers = state.students.filter((student) => refs.some((ref) => ref.type === 'student' && ref.id === student.id))
+  errors.push(...invoiceProfileErrors(state.settings, selectedGuardians, selfPayers).map((error) => error.message))
 
-  if (!invoice.guardianIds.length) errors.push('Mindestens eine empfangende Person auswählen.')
-  else if (invoice.guardianIds.some((id) => !guardianIds.has(id))) errors.push('Alle empfangenden Personen müssen in den aktuellen Stammdaten vorhanden sein.')
-  if (!invoice.studentIds.length) errors.push('Mindestens ein Kind auswählen.')
-  else if (invoice.studentIds.some((id) => !studentIds.has(id))) errors.push('Alle ausgewählten Kinder müssen in den aktuellen Stammdaten vorhanden sein.')
+  if (!refs.length) errors.push('Mindestens eine empfangende Person auswählen.')
+  else if (refs.some((ref) => !liveRecipient(ref, state.guardians, state.students) || ref.type === 'student' && !state.students.find((student) => student.id === ref.id)?.selfPayer)) errors.push('Alle empfangenden Personen müssen als berechtigte Stammdaten vorhanden sein.')
+  if (!invoice.studentIds.length) errors.push('Mindestens eine lernende Person auswählen.')
+  else if (invoice.studentIds.some((id) => !studentIds.has(id))) errors.push('Alle ausgewählten Lernenden müssen in den aktuellen Stammdaten vorhanden sein.')
 
-  const linkedGuardianIds = new Set(selectedStudents.flatMap((student) => student.guardianIds))
-  if (invoice.guardianIds.length && invoice.guardianIds.some((id) => guardianIds.has(id) && (!linkedGuardianIds.has(id) || selectedStudents.some((student) => !student.guardianIds.includes(id))))) {
-    errors.push('Alle empfangenden Personen müssen jedem ausgewählten Kind zugeordnet sein; familienfremde Kinddaten dürfen nicht weitergegeben werden.')
+  if (invoice.recipients) {
+    if (refs.some((ref) => !selectedStudents.some((student) => recipientCanBillStudent(ref, student))) || selectedStudents.some((student) => !refs.some((ref) => recipientCanBillStudent(ref, student)))) errors.push('Jeder Rechnungsempfänger muss mindestens einem ausgewählten Lernenden zugeordnet sein und jeder Lernende einen Rechnungsempfänger haben.')
+  } else {
+    const linkedGuardianIds = new Set(selectedStudents.flatMap((student) => student.guardianIds))
+    if (invoice.guardianIds.length && invoice.guardianIds.some((id) => guardianIds.has(id) && (!linkedGuardianIds.has(id) || selectedStudents.some((student) => !student.guardianIds.includes(id))))) errors.push('Alle empfangenden Personen müssen jedem ausgewählten Lernenden zugeordnet sein; Angaben zu anderen Lernenden dürfen nicht weitergegeben werden.')
   }
   if (!invoice.invoiceDate || !invoice.dueDate) errors.push('Rechnungs- und Fälligkeitsdatum angeben.')
   if (!billingPeriodFromItems(invoice.items, invoice.invoiceDate)) errors.push('Leistungszeitraum über die Positionsdaten angeben.')
@@ -57,7 +62,7 @@ export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 's
     || !validPrice(item.unitPrice)
   ))) errors.push('Alle Positionen vollständig und mit gültigen Werten ausfüllen.')
   if (invoice.items.some((item) => !studentIds.has(item.studentId) || !selectedStudentIds.has(item.studentId))) {
-    errors.push('Alle Positionen müssen einem ausgewählten Kind aus den aktuellen Stammdaten zugeordnet sein.')
+    errors.push('Alle Positionen müssen einem ausgewählten Lernenden aus den aktuellen Stammdaten zugeordnet sein.')
   }
   if (!isFooterTextWithinLimit(invoice.legalText)) errors.push(`Der Fußzeilen-/Rechtstext darf höchstens ${MAX_FOOTER_TEXT_LENGTH} Zeichen lang sein.`)
   return errors
@@ -182,7 +187,7 @@ export function applyLessonType(item: InvoiceItem, lessonType: LessonType, setti
 
 export function createLessonItem(studentId: string, serviceDate: string, settings: Pick<Settings, 'privateRate' | 'duoRate'>, id = uid('item')): InvoiceItem {
   const lessonType: LessonType = 'solo'
-  if (!validId(id) || !validId(studentId)) throw new Error('Eine gültige Positions- und Kind-ID wird benötigt.')
+  if (!validId(id) || !validId(studentId)) throw new Error('Eine gültige Positions- und Lernenden-ID wird benötigt.')
   if (!validPrice(lessonRate(settings, lessonType))) throw new Error('Der Standardpreis ist ungültig.')
   return {
     id,
@@ -219,22 +224,22 @@ export const statusLabel: Record<InvoiceStatus, string> = {
   overdue: 'Überfällig',
 }
 
-export function guardianName(invoice: Invoice, guardians: Guardian[]): string {
-  const snapshot = invoice.snapshot?.guardians.map((item) => item.name).filter(Boolean)
+export function guardianName(invoice: Invoice, guardians: Guardian[], students: Student[] = []): string {
+  const snapshot = invoice.snapshot && snapshotRecipients(invoice.snapshot).map((item) => item.name).filter(Boolean)
   if (snapshot) return snapshot.join(' & ') || 'Ohne Empfänger'
-  const names = invoice.guardianIds
-    .map((id) => guardians.find((guardian) => guardian.id === id)?.name)
+  const names = recipientRefs(invoice)
+    .map((ref) => liveRecipient(ref, guardians, students)?.name)
     .filter(Boolean)
   return names.join(' & ') || 'Ohne Empfänger'
 }
 
 export function studentName(invoice: Invoice, students: Student[]): string {
   const snapshot = invoice.snapshot?.students.map((item) => item.name).filter(Boolean)
-  if (snapshot) return snapshot.join(', ') || 'Ohne Kind'
+  if (snapshot) return snapshot.join(', ') || 'Ohne Lernende'
   const names = invoice.studentIds
     .map((id) => students.find((student) => student.id === id)?.name)
     .filter(Boolean)
-  return names.join(', ') || 'Ohne Kind'
+  return names.join(', ') || 'Ohne Lernende'
 }
 
 export function reopenInvoiceAsDraft(state: AppState, invoiceId: string): AppState {
@@ -272,7 +277,7 @@ export function sortInvoices(invoices: Invoice[], key: InvoiceSortKey, direction
     let primary = 0
     if (key === 'date') primary = a.invoiceDate.localeCompare(b.invoiceDate) || a.createdAt.localeCompare(b.createdAt)
     if (key === 'number') primary = germanCollator.compare(a.number ?? 'Entwurf', b.number ?? 'Entwurf')
-    if (key === 'family') primary = germanCollator.compare(`${guardianName(a, guardians)} ${studentName(a, students)}`, `${guardianName(b, guardians)} ${studentName(b, students)}`)
+    if (key === 'family') primary = germanCollator.compare(`${guardianName(a, guardians, students)} ${studentName(a, students)}`, `${guardianName(b, guardians, students)} ${studentName(b, students)}`)
     if (key === 'period') primary = invoicePeriodSortValue(a).localeCompare(invoicePeriodSortValue(b))
     if (key === 'status') primary = invoiceStatusOrder[effectiveStatus(a)] - invoiceStatusOrder[effectiveStatus(b)]
     if (key === 'amount') primary = invoiceTotal(a) - invoiceTotal(b)
@@ -293,7 +298,7 @@ function filenamePart(value: string, fallback: string): string {
 
 export function invoicePdfTitle(invoice: Invoice, students: Student[]): string {
   const number = filenamePart(invoice.number ?? 'Entwurf', 'Entwurf')
-  const child = filenamePart(studentName(invoice, students), 'Ohne Kind')
+  const child = filenamePart(studentName(invoice, students), 'Ohne Lernende')
   return `Rechnung ${number} - ${child}`
 }
 
@@ -349,7 +354,7 @@ export function nextInvoiceAllocation(state: AppState, invoiceDate: string, stud
   const counterScope = state.settings.resetNumberAnnually ? String(year) : 'global'
   const counterKey = `${counterScope}:${studentCode}`
   const legacyCounterKey = `${counterScope}:${studentCode.replaceAll('+', '')}`
-  let sequence = Math.max(1, state.counters[counterKey] ?? state.counters[legacyCounterKey] ?? 1)
+  let sequence = Math.max(1, state.counters[counterKey] ?? 1, state.counters[legacyCounterKey] ?? 1)
   let candidate = formatInvoiceNumber(state.settings, sequence, year, studentCode)
   const used = new Set([
     ...state.invoices.map((invoice) => invoice.number),
@@ -428,7 +433,7 @@ export function csvCell(value: string | number): string {
 }
 
 export function invoicesToCsv(invoices: Invoice[], guardians: Guardian[], students: Student[]): string {
-  const header = ['Rechnungsnummer', 'Datum', 'Zeitraum', 'Empfänger', 'Kind(er)', 'Status', 'Netto/Gesamt EUR', 'Bezahlt am', 'Belegversion', 'Ersetzt Version', 'Korrekturgrund', 'Forderungsbeleg', 'Archiviert']
+  const header = ['Rechnungsnummer', 'Datum', 'Zeitraum', 'Empfänger', 'Lernende', 'Status', 'Netto/Gesamt EUR', 'Bezahlt am', 'Belegversion', 'Ersetzt Version', 'Korrekturgrund', 'Forderungsbeleg', 'Archiviert']
   const rows = invoices
     .filter((invoice) => invoice.number)
     .sort((a, b) => a.invoiceDate.localeCompare(b.invoiceDate))
@@ -436,7 +441,7 @@ export function invoicesToCsv(invoices: Invoice[], guardians: Guardian[], studen
       invoice.number ?? '',
       invoice.invoiceDate,
       invoice.period,
-      guardianName(invoice, guardians),
+      guardianName(invoice, guardians, students),
       studentName(invoice, students),
       statusLabel[effectiveStatus(invoice)],
       invoiceTotal(invoice).toFixed(2).replace('.', ','),
@@ -451,12 +456,12 @@ export function invoicesToCsv(invoices: Invoice[], guardians: Guardian[], studen
 }
 
 export function createReminder(invoice: Invoice, guardians: Guardian[], students: Student[]): { subject: string; body: string; recipients: string[] } {
-  const names = guardianName(invoice, guardians)
+  const names = guardianName(invoice, guardians, students)
   const child = studentName(invoice, students)
   const numberText = invoice.number ?? 'Entwurf'
-  const snapshotEmails = invoice.snapshot?.guardians.map((guardian) => guardian.email).filter(Boolean) ?? []
-  const liveEmails = invoice.guardianIds
-    .map((id) => guardians.find((guardian) => guardian.id === id)?.email)
+  const snapshotEmails = invoice.snapshot ? snapshotRecipients(invoice.snapshot).map((recipient) => recipient.email).filter(Boolean) : []
+  const liveEmails = recipientRefs(invoice)
+    .map((ref) => liveRecipient(ref, guardians, students)?.email)
     .filter((email): email is string => Boolean(email))
   const recipients = invoice.snapshot ? snapshotEmails : liveEmails
   const subject = `Zahlungserinnerung zur Rechnung ${numberText}`

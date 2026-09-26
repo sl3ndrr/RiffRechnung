@@ -32,7 +32,7 @@ import { isCurrentPrintRequest, type PrintRequest } from './lib/printJob'
 const navItems: Array<{ key: PageKey; label: string; icon: typeof LayoutDashboard }> = [
   { key: 'dashboard', label: 'Übersicht', icon: LayoutDashboard },
   { key: 'invoices', label: 'Rechnungen', icon: ReceiptText },
-  { key: 'people', label: 'Familien', icon: BookUser },
+  { key: 'people', label: 'Personen', icon: BookUser },
   { key: 'reports', label: 'Auswertung', icon: BarChart3 },
   { key: 'settings', label: 'Einstellungen', icon: SettingsIcon },
 ]
@@ -250,6 +250,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         dueDate: invoice.dueDate,
         period: invoice.period,
         guardianIds: invoice.guardianIds,
+        ...(invoice.recipients ? { recipients: structuredClone(invoice.recipients) } : {}),
         studentIds: invoice.studentIds,
         recipientStrategy: invoice.recipientStrategy,
         items: structuredClone(invoice.items),
@@ -325,15 +326,15 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
 
   const saveGuardian = async (guardian: Guardian): Promise<boolean> => {
     const exists = stateRef.current.guardians.some((item) => item.id === guardian.id)
-    const saved = await commit((current) => requireSuccess(saveGuardianState(current, guardian)), exists ? 'Elternteil aktualisiert' : 'Elternteil angelegt', 'person', guardian.id)
+    const saved = await commit((current) => requireSuccess(saveGuardianState(current, guardian)), exists ? 'Erziehungsberechtigte Person aktualisiert' : 'Erziehungsberechtigte Person angelegt', 'person', guardian.id)
     if (saved) toast(exists ? 'Kontakt aktualisiert.' : 'Kontakt angelegt.', 'success')
     return saved
   }
 
   const saveStudent = async (student: Student): Promise<boolean> => {
     const exists = stateRef.current.students.some((item) => item.id === student.id)
-    const saved = await commit((current) => requireSuccess(saveStudentState(current, student)), exists ? 'Kind aktualisiert' : 'Kind angelegt', 'person', student.id)
-    if (saved) toast(exists ? 'Kind aktualisiert.' : 'Kind angelegt.', 'success')
+    const saved = await commit((current) => requireSuccess(saveStudentState(current, student)), exists ? 'Lernende Person aktualisiert' : 'Lernende Person angelegt', 'person', student.id)
+    if (saved) toast(exists ? 'Lernende Person aktualisiert.' : 'Lernende Person angelegt.', 'success')
     return saved
   }
 
@@ -342,18 +343,18 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     message: 'Die Person wird aus Stammdaten, Zuordnungen und offenen Entwürfen entfernt. Finalisierte Rechnungen behalten ihren eingefrorenen Empfängerstand.',
     label: 'Kontakt löschen', danger: true,
     action: async () => {
-      if (!await commit((current) => requireSuccess(deleteGuardianState(current, guardian.id)), 'Elternteil gelöscht', 'person', guardian.id)) return
+      if (!await commit((current) => requireSuccess(deleteGuardianState(current, guardian.id)), 'Erziehungsberechtigte Person gelöscht', 'person', guardian.id)) return
       toast('Kontakt gelöscht.', 'success')
     },
   })
 
   const deleteStudent = (student: Student) => setConfirmation({
     title: `${student.name} löschen?`,
-    message: 'Das Kind und zugehörige Positionen in normalen Entwürfen werden entfernt. Originalbelege und Korrekturentwürfe bleiben erhalten; dort ist gegebenenfalls eine Neuzuordnung nötig.',
-    label: 'Kind löschen', danger: true,
+    message: 'Die lernende Person und zugehörige Positionen in normalen Entwürfen werden entfernt. Originalbelege und Korrekturentwürfe bleiben erhalten; dort ist gegebenenfalls eine Neuzuordnung nötig.',
+    label: 'Lernende Person löschen', danger: true,
     action: async () => {
-      if (!await commit((current) => requireSuccess(deleteStudentState(current, student.id)), 'Kind gelöscht', 'person', student.id)) return
-      toast('Kind gelöscht.', 'success')
+      if (!await commit((current) => requireSuccess(deleteStudentState(current, student.id)), 'Lernende Person gelöscht', 'person', student.id)) return
+      toast('Lernende Person gelöscht.', 'success')
     },
   })
 
@@ -485,7 +486,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const confirmImport = (preview: ImportPreview) => {
     setConfirmation({
       title: 'Backup als neuen Stand wiederherstellen?',
-      message: `${preview.state.students.length} Kinder, ${preview.state.invoices.length} Rechnungen. ${preview.envelope ? `Bestand ${preview.envelope.datasetId}, Revision ${preview.envelope.revision}.` : 'Ohne Bestands-ID: Mit der Bestätigung ordnest du dieses Altbackup ausdrücklich zu; eine gemeinsame Herkunft ist nicht nachgewiesen.'} Der aktuelle Stand und die unveränderten Eingangsdaten werden zuerst lokal aufbewahrt. Bekannte Originalbelege dürfen nicht verändert werden.`,
+      message: `${preview.state.students.length} Lernende, ${preview.state.invoices.length} Rechnungen. ${preview.envelope ? `Bestand ${preview.envelope.datasetId}, Revision ${preview.envelope.revision}.` : 'Ohne Bestands-ID: Mit der Bestätigung ordnest du dieses Altbackup ausdrücklich zu; eine gemeinsame Herkunft ist nicht nachgewiesen.'} Der aktuelle Stand und die unveränderten Eingangsdaten werden zuerst lokal aufbewahrt. Bekannte Originalbelege dürfen nicht verändert werden.`,
       label: 'Wiederherstellung bestätigen', danger: true,
       action: async () => { if (await applyRestore(preview)) setImportReview(null) },
     })

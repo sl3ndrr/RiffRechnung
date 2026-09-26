@@ -3,17 +3,17 @@ import { captureDocument } from './documents'
 import { validateEnvelope, type StorageEnvelope } from './envelope'
 import type { AppState, Invoice, InvoiceItem, Settings, Student } from '../types'
 import { commandResult, requireSuccess, type CommandResult } from './result'
-import { backupEnum, backupObject, backupTimestamp, knownKeys, validateBackupState, validateLegacyV2Structure, validateLegacyV3Structure, validateLegacyV4Structure, validateLegacyV5Structure, validateLegacyV6Structure } from './validation'
+import { backupEnum, backupObject, backupTimestamp, knownKeys, validateBackupState, validateLegacyV2Structure, validateLegacyV3Structure, validateLegacyV4Structure, validateLegacyV5Structure, validateLegacyV6Structure, validateLegacyV7Structure } from './validation'
 import { ensureStudentCodePattern, invoiceStudentCode, studentCodeForIndex, studentCodeIndex } from './utils'
 import { mailboxError } from './mailbox'
 
 interface MigrationChange { path: string; before: unknown; after: unknown; reason: string }
 export interface IdMapping { invoiceId: string; itemIndex: number; oldId: string; newId: string }
 export interface MigrationReport {
-  migration: 'riffrechnung-to-v7'
+  migration: 'riffrechnung-to-v8'
   version: 1
-  fromSchema: 2 | 3 | 4 | 5 | 6
-  toSchema: 7
+  fromSchema: 2 | 3 | 4 | 5 | 6 | 7
+  toSchema: 8
   source: 'local-state' | 'riffrechnung' | 'gitarrenrechnungen'
   changes: MigrationChange[]
   idMappings: IdMapping[]
@@ -45,7 +45,7 @@ function upgradeToV7(value: unknown, report?: Pick<MigrationReport, 'changes'>):
   const record = (path: string, before: unknown, after: unknown, reason: string) => {
     if (report && canonical(before) !== canonical(after)) report.changes.push({ path, before: before ?? null, after, reason })
   }
-  state.schemaVersion = 7
+  state.schemaVersion = 7 as never
   state.payments = state.payments.map((payment, index) => {
     const invoice = state.invoices.find((entry) => entry.versionId === payment.sourceVersionId)
     const retained = payment.paidAt ?? invoice?.paidAt
@@ -67,6 +67,13 @@ function upgradeToV7(value: unknown, report?: Pick<MigrationReport, 'changes'>):
     Reflect.deleteProperty(next, 'paidAt')
     return next
   })
+  return state
+}
+
+function upgradeToV8(value: unknown, report?: Pick<MigrationReport, 'changes'>): AppState {
+  const state = structuredClone(value) as AppState
+  state.schemaVersion = 8
+  report?.changes.push({ path: 'schemaVersion', before: 7, after: 8, reason: 'Typisierte Empfänger für neue Belege; historische Empfänger, Kontaktdaten und Snapshots bleiben unverändert.' })
   return state
 }
 
@@ -130,7 +137,7 @@ function migrateV2(data: unknown, source: MigrationReport['source']): { state: L
   // Shape has been checked, including references and ALL numeric values.
   // Only the following documented optional v2 fields may still be absent.
   const state = structuredClone(data) as LegacyState
-  const report: MigrationReport = { migration: 'riffrechnung-to-v7', version: 1, fromSchema: 2, toSchema: 7, source, changes: [], idMappings: [] }
+  const report: MigrationReport = { migration: 'riffrechnung-to-v8', version: 1, fromSchema: 2, toSchema: 8, source, changes: [], idMappings: [] }
   repairCopiedItemIds(state, report)
   const record = (path: string, before: unknown, after: unknown, reason: string) => {
     if (canonical(before) !== canonical(after)) report.changes.push({ path, before: before ?? null, after, reason })
@@ -142,12 +149,12 @@ function migrateV2(data: unknown, source: MigrationReport['source']): { state: L
     if (student.billingCode) return
     while (used.has(studentCodeForIndex(cursor))) cursor++
     const code = studentCodeForIndex(cursor++)
-    record(`students[${index}].billingCode`, student.billingCode, code, 'Fehlendes Alt-Kinderkennzeichen; keine Person erzeugt')
+    record(`students[${index}].billingCode`, student.billingCode, code, 'Fehlendes altes Lernendenkennzeichen; keine Person erzeugt')
     student.billingCode = code
     used.add(code)
   })
   const nextIndex = Math.max(state.nextStudentCodeIndex ?? 0, ...state.students.map((student) => studentCodeIndex(student.billingCode) + 1), 0)
-  record('nextStudentCodeIndex', state.nextStudentCodeIndex, nextIndex, 'Kinderkennzeichen reservieren')
+  record('nextStudentCodeIndex', state.nextStudentCodeIndex, nextIndex, 'Lernendenkennzeichen reservieren')
   state.nextStudentCodeIndex = nextIndex
   state.invoices.forEach((invoice, invoiceIndex) => invoice.items.forEach((item: InvoiceItem, itemIndex) => {
     if (item.lessonType !== undefined) return
@@ -167,7 +174,7 @@ function migrateV2(data: unknown, source: MigrationReport['source']): { state: L
     }
   }
   const pattern = ensureStudentCodePattern(state.settings.numberPattern)
-  record('settings.numberPattern', state.settings.numberPattern, pattern, 'Kinderkennzeichen im Muster für künftige Nummern')
+  record('settings.numberPattern', state.settings.numberPattern, pattern, 'Lernendenkennzeichen im Muster für künftige Nummern')
   state.settings.numberPattern = pattern
   if (state.voidedInvoiceNumbers === undefined) {
     record('voidedInvoiceNumbers', undefined, [], 'Altformat ohne Reservierungsliste; keine fehlende Historie rekonstruiert')
@@ -214,32 +221,38 @@ export function inspectImport(rawData: string): CommandResult<ImportPreview> {
       if (root.schemaVersion !== backupObject(data, 'data').schemaVersion) throw new Error('Backup-Umschlag und Daten haben unterschiedliche Formatversionen.')
     }
     const version = backupObject(data, 'data').schemaVersion
-    if (version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== 6 && version !== 7) throw new Error('Die Datei hat kein unterstütztes Backup-Format. Neuere oder unbekannte Formate bleiben unverändert.')
+    if (version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== 6 && version !== 7 && version !== 8) throw new Error('Die Datei hat kein unterstütztes Backup-Format. Neuere oder unbekannte Formate bleiben unverändert.')
     let report: MigrationReport | null = null
     let state: AppState
-    if (version === 7) { validateBackupState(data); state = structuredClone(data) }
+    if (version === 8) { validateBackupState(data); state = structuredClone(data) }
+    else if (version === 7) {
+      validateLegacyV7Structure(data)
+      report = { migration: 'riffrechnung-to-v8', version: 1, fromSchema: 7, toSchema: 8, source, changes: [], idMappings: [] }
+      state = upgradeToV8(data, report)
+    }
     else if (version === 6) {
       validateLegacyV6Structure(data)
-      report = { migration: 'riffrechnung-to-v7', version: 1, fromSchema: 6, toSchema: 7, source, changes: [], idMappings: [] }
-      state = upgradeToV7(data, report)
+      report = { migration: 'riffrechnung-to-v8', version: 1, fromSchema: 6, toSchema: 8, source, changes: [], idMappings: [] }
+      state = upgradeToV8(upgradeToV7(data, report), report)
     }
     else if (version === 5) {
       validateLegacyV5Structure(data)
-      report = { migration: 'riffrechnung-to-v7', version: 1, fromSchema: 5, toSchema: 7, source, changes: [], idMappings: [] }
-      state = upgradeToV7(upgradeToV6(data), report)
+      report = { migration: 'riffrechnung-to-v8', version: 1, fromSchema: 5, toSchema: 8, source, changes: [], idMappings: [] }
+      state = upgradeToV8(upgradeToV7(upgradeToV6(data), report), report)
     }
     else if (version === 4) {
       validateLegacyV4Structure(data)
-      report = { migration: 'riffrechnung-to-v7', version: 1, fromSchema: 4, toSchema: 7, source, changes: [], idMappings: [] }
-      state = upgradeToV7(upgradeToV6({ ...structuredClone(data as AppState), schemaVersion: 5 }), report)
+      report = { migration: 'riffrechnung-to-v8', version: 1, fromSchema: 4, toSchema: 8, source, changes: [], idMappings: [] }
+      state = upgradeToV8(upgradeToV7(upgradeToV6({ ...structuredClone(data as AppState), schemaVersion: 5 }), report), report)
     }
     else {
       let legacy: LegacyState
       if (version === 2) ({ state: legacy, report } = migrateV2(data, source))
       else { validateLegacyV3Structure(data); legacy = structuredClone(data) as LegacyState }
-      report ??= { migration: 'riffrechnung-to-v7', version: 1, fromSchema: 3, toSchema: 7, source, changes: [], idMappings: [] }
+      report ??= { migration: 'riffrechnung-to-v8', version: 1, fromSchema: 3, toSchema: 8, source, changes: [], idMappings: [] }
       state = captureLegacyDocuments(legacy)
       report.changes.push({ path: 'schemaVersion', before: version, after: 7, reason: 'Vollständige älteste verfügbare Belegstände, getrennte Verwaltung und unbekannte historische Zahlungstage sichern; frühere Inhalte bleiben unbekannt' })
+      report.changes.push({ path: 'schemaVersion', before: 7, after: 8, reason: 'Typisierte Empfänger nur für neue Belege; historische Angaben bleiben unverändert' })
       for (const document of state.documentVersions) report.changes.push({ path: `documentVersions.${document.id}`, before: null, after: document, reason: 'Jetzt verfügbarer historischer Inhalt, alte Ausgabebeträge und Snapshot-/Registerbelege; keine Wiederherstellung verlorener Originale' })
       for (const invoice of state.invoices.filter((entry) => entry.versionId)) report.changes.push({ path: `invoices.${invoice.id}.versionId`, before: null, after: invoice.versionId, reason: 'Verweis auf den gesicherten vollständigen Belegstand' })
       report.changes.push({ path: 'invoiceAdministration', before: null, after: state.invoiceAdministration, reason: 'Vorhandenen Verwaltungsstatus übernehmen; frühere Ereignisse bleiben unbekannt' })
@@ -300,5 +313,5 @@ export function captureLegacyDocuments(legacy: LegacyState): AppState {
       allocations: [{ versionId: invoice.status === 'paid' ? version.id : null, at: invoice.updatedAt, reason: 'Aus historischem Vollzahlungsstatus übernommen; Zahlungsdatum bleibt unbekannt, wenn es nicht gespeichert war.' }],
     })
   })
-  return upgradeToV7(state)
+  return upgradeToV8(upgradeToV7(state))
 }

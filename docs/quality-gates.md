@@ -1,3 +1,13 @@
+## AP5 – Prüfauftrag (2026-09-26)
+
+Neue `tests/adult-recipients.test.ts` wird ausdrücklich aus `tests/logic.test.ts` importiert. Sie prüft Selbstzahler und zwei Erziehungsberechtigte über Entwurf, Finalisierung, Zahlung, Snapshot, HTML-Druck, JSON und Reload; neue Kopien alter Belege, Moduswechsel, Korrektur, typgleiche IDs, segmentierte Kombinationszähler/Legacy-Schlüssel und reservierte Nummern sowie Schema-7→8-Migration und Roharchiv. Der Browserfall in `tests/browser/documents.spec.ts` legt beide Personenarten über die sichtbare Oberfläche an und prüft echte PDF-Texte sowie Export/Import/Reload. Umbenannte sichtbare Bezeichnungen wurden in den bestehenden Playwright-Selektoren einschließlich der Inventur von `accessibility.spec.ts` geprüft; geänderte Versions- und Fehlermeldungserwartungen sind gezielt angepasst.
+
+GitHub [CI 36253116923](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36253116923) auf `6183cb31ef6ec3dd1c07fd5dc44d26ec4c38ea44` (Ubuntu 24.04, Node 22.23.2): `npm ci`, Lint, 155/155 Fachtests (sieben AP5-Fälle), Typecheck, Build, Playwright-Installation für Chromium/Firefox/WebKit, `poppler-utils`, 44/44 Browserprüfungen einschließlich PDF-Text und vollständiges `npm audit --json` (0 gemeldete Schwachstellen) erfolgreich. Die beiden synthetischen AP5-PDFs im [Browser-Artefakt 10909314626](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36253116923/artifacts/10909314626) wurden mit Poppler als jeweils eine A4-Seite bei 1500 Pixeln gerendert und visuell auf Anschrift, Anrede, Nummer, Betrag, Zahlungsblock, Ränder und Fußzeile geprüft: keine Überlappung oder Abschneidung sichtbar. Das belegt diese Chromium-Ausgaben, nicht den nativen Druckdialog oder Safari.
+
+Frühere Läufe zeigten zwei Browserfehler: versteckte Chip-Eingaben wurden direkt bedient, und ein Importtest lud vor Abschluss des asynchronen Speicherns neu. Danach stoppte ein Lauf an einer veralteten Fehlermeldungserwartung. Die Tests verwenden jetzt sichtbare Beschriftungen, warten auf den bestätigten Speicherabschluss und prüfen weiterhin den vollständigen Zustand nach Reload; kein Test wurde abgeschwächt.
+
+Lokal: Node 24.19.0 statt 22.x; `npm ci` scheitert mit HTTP 403 für `yocto-queue`. Ohne installierte Projektabhängigkeiten sind Lint, Fachtests, Typecheck, Build und Browserlauf lokal nicht ausführbar. Die AP1-Nachweise unten gelten nur für den alten Stand. Für jeden weiteren Commit ist erneut der vollständige Node-22-Lauf erforderlich.
+
 ## AP1 – Nachweis (2026-09-24)
 
 [PR #36](https://github.com/sl3ndrr/RiffRechnung/pull/36), Implementierungscommit `02e712c519d4f833552837a66b63bad06fd73ad9`: [CI 36063143264](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36063143264) unter Node 22.23.2 / npm 10.9.8. `npm ci`, `npm run lint`, `npm test` (148/148; die AP1-Testnamen sind im Protokoll und die Testdatei ist in `tests/logic.test.ts` importiert), `npm run typecheck`, `npm run build`, Installation aller Playwright-Browser und `pdftotext`, `npm run test:browser` (43/43) sowie vollständiges Dependency-Audit erfolgreich. Der abschließende Dokumentationscommit benötigt einen eigenen CI-Lauf.
@@ -643,4 +653,3 @@ Force-Clicks, Testauslassungen oder schwächeren Datenvergleiche. Grundlage:
 [Playwright-Testzeitbudgets](https://playwright.dev/docs/test-timeouts) schließen
 Fixture-Setup ein und sind vom Assertion-Zeitbudget getrennt. Der neue Ergebnis-
 Commit wird vollständig geprüft und im PR mit exakter SHA/CI-Lauf verknüpft.
-
