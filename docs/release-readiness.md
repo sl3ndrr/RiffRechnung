@@ -2,7 +2,7 @@
 
 Schema 8 trennt neue typisierte Rechnungsempfänger von unveränderten Schema-7-Altbelegen. Selbstzahler erhalten ihr dauerhaftes Lernendenkennzeichen; der Wechsel des Zahlmodus ändert keine früheren Nummern oder Belegversionen. Neue gemischte gemeinsame Rechnungen zeigen allen ausdrücklich ausgewählten Empfängern die Namen und Positionen aller ausgewählten Lernenden. AP2-Gruppen und AP3-Rechnungsarten einschließlich Kleinbetragsrechnung fehlen in der Ausgangsbasis und können hier nicht als geprüft gelten. Historische Doppelanlagen werden nicht automatisch bereinigt.
 
-Lokal steht Node 24.19.0 statt `.nvmrc` 22 bereit; `npm ci` endet mit HTTP 403 beim Paketabruf. Lokale Folge-Gates dürfen daher nicht als bestanden gelten. Der PR-Head benötigt den vollständigen Node-22-CI-Lauf einschließlich Browser/PDF-Text, Migration, Export/Import und Reload. Die unten stehenden nativen Freigabegrenzen bleiben bestehen. Kein Merge oder Deployment.
+Lokal steht Node 24.19.0 statt `.nvmrc` 22 bereit; `npm ci` endet mit HTTP 403 beim Paketabruf. Lokale Folge-Gates dürfen daher nicht als bestanden gelten. [CI 36239006533](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36239006533) auf `61818aaaff5898f69ea2a75a1b357dc738c3d7c6` prüfte unter Node 22 alle 154 Fachtests und 44 Browserprüfungen einschließlich PDF-Text, Migration, Export/Import und Reload erfolgreich; Lint, Typecheck, Build und Audit bestanden ebenfalls. Jeder weitere Commit benötigt einen eigenen vollständigen Lauf. Die unten stehenden nativen Freigabegrenzen bleiben bestehen. Kein Merge oder Deployment.
 
 # AP1 – Prüfstand (2026-09-24)
 
