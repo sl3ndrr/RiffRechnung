@@ -179,7 +179,7 @@ test('P01: verdeckte Empfängerabweichungen und Verlust ungesicherter historisch
   const historical = captureLegacyDocuments(historicalSource)
   validateBackupState(historical)
   assert.doesNotThrow(() => validateBackupState({ ...historical, guardians: [], students: [] }), 'P04: gesicherte Version besitzt ihren eigenen historischen Referenzbereich')
-  assert.throws(() => validateLegacyV3Structure({ ...historicalSource, guardians: [], students: [] }), /unbekannte Person|unbekanntes Kind/, 'Ungesicherte Alt-Referenzen bleiben geschützt')
+  assert.throws(() => validateLegacyV3Structure({ ...historicalSource, guardians: [], students: [] }), /unbekannte Person|unbekannte lernende Person/, 'Ungesicherte Alt-Referenzen bleiben geschützt')
 })
 
 test('P01: reservierte Nummern bleiben nach abgewiesenem Austausch und Reload belegt', async () => withStorage(() => {
@@ -253,4 +253,3 @@ test('P01: nur deutsche Konten für Änderungen und Finalisierung; fremde histor
   const paid = roundTrip(changeInvoiceStatus(historical, historical.invoices[0].id, 'paid', at, '2026-09-05'))
   assert.deepEqual(paid.invoices[0].snapshot, historical.invoices[0].snapshot)
 }))
-

@@ -149,12 +149,12 @@ function migrateV2(data: unknown, source: MigrationReport['source']): { state: L
     if (student.billingCode) return
     while (used.has(studentCodeForIndex(cursor))) cursor++
     const code = studentCodeForIndex(cursor++)
-    record(`students[${index}].billingCode`, student.billingCode, code, 'Fehlendes Alt-Kinderkennzeichen; keine Person erzeugt')
+    record(`students[${index}].billingCode`, student.billingCode, code, 'Fehlendes altes Lernendenkennzeichen; keine Person erzeugt')
     student.billingCode = code
     used.add(code)
   })
   const nextIndex = Math.max(state.nextStudentCodeIndex ?? 0, ...state.students.map((student) => studentCodeIndex(student.billingCode) + 1), 0)
-  record('nextStudentCodeIndex', state.nextStudentCodeIndex, nextIndex, 'Kinderkennzeichen reservieren')
+  record('nextStudentCodeIndex', state.nextStudentCodeIndex, nextIndex, 'Lernendenkennzeichen reservieren')
   state.nextStudentCodeIndex = nextIndex
   state.invoices.forEach((invoice, invoiceIndex) => invoice.items.forEach((item: InvoiceItem, itemIndex) => {
     if (item.lessonType !== undefined) return
@@ -174,7 +174,7 @@ function migrateV2(data: unknown, source: MigrationReport['source']): { state: L
     }
   }
   const pattern = ensureStudentCodePattern(state.settings.numberPattern)
-  record('settings.numberPattern', state.settings.numberPattern, pattern, 'Kinderkennzeichen im Muster für künftige Nummern')
+  record('settings.numberPattern', state.settings.numberPattern, pattern, 'Lernendenkennzeichen im Muster für künftige Nummern')
   state.settings.numberPattern = pattern
   if (state.voidedInvoiceNumbers === undefined) {
     record('voidedInvoiceNumbers', undefined, [], 'Altformat ohne Reservierungsliste; keine fehlende Historie rekonstruiert')

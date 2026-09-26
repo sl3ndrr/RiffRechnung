@@ -241,7 +241,7 @@ test('P04: Validatoren schützen Graph, Identitäten, Verwaltungsreferenzen und 
   ]) { const altered = structuredClone(state); mutate(altered); assert.equal(inspectImport(JSON.stringify(altered)).ok, false) }
   const corrected = createCorrectionDraft(state, state.invoices[0].id, 'Referenzprüfung', at)
   corrected.invoices.at(-1)!.items[0].studentId = 'invented-student'
-  assert.throws(() => validateBackupState(corrected), /unbekanntes Kind|zugeordnet/)
+  assert.throws(() => validateBackupState(corrected), /unbekannte lernende Person|zugeordnet/)
   assert.throws(() => createCorrectionDraft(state, state.invoices[0].id, '', at), /Korrekturgrund/)
 })
 

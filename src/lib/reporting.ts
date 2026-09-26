@@ -77,7 +77,7 @@ export function unknownPaymentDayLabel(payment: InvoicePayment): string {
 /** CSV is built from the same financial report, never from a separate date rule. */
 export function financialReportToCsv(state: AppState, year: number): string {
   const report = financialReport(state, year)
-  const header = ['Datensatz', 'Rechnungsnummer', 'Rechnungsdatum', 'Zahlungsdatum', 'Zahlungsdatum-Status', 'Erfassungszeitpunkt', 'Empfänger', 'Kind(er)', 'Forderungsstatus', 'Rechnungsvolumen EUR', 'Zahlungseingang EUR', 'Ursprungsbeleg', 'Aktuelle Zuordnung']
+  const header = ['Datensatz', 'Rechnungsnummer', 'Rechnungsdatum', 'Zahlungsdatum', 'Zahlungsdatum-Status', 'Erfassungszeitpunkt', 'Empfänger', 'Lernende', 'Forderungsstatus', 'Rechnungsvolumen EUR', 'Zahlungseingang EUR', 'Ursprungsbeleg', 'Aktuelle Zuordnung']
   const invoiceRows = report.invoices
     .sort((a, b) => a.invoiceDate.localeCompare(b.invoiceDate) || (a.number ?? '').localeCompare(b.number ?? ''))
     .map((invoice) => [

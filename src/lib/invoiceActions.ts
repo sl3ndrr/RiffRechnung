@@ -151,7 +151,7 @@ function draftAudienceErrors(state: AppState, draft: InvoiceDraft): string[] {
     if (draft.correction && !state.guardians.some((guardian) => guardian.id === id)) return false
     const student = state.students.find((entry) => entry.id === studentId)
     return student && !student.guardianIds.includes(id)
-  }))) return ['Alle empfangenden Personen müssen jedem ausgewählten Kind zugeordnet sein.']
+  }))) return ['Alle empfangenden Personen müssen jedem ausgewählten Lernenden zugeordnet sein.']
   return []
 }
 

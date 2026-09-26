@@ -50,7 +50,7 @@ export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 's
     if (refs.some((ref) => !selectedStudents.some((student) => recipientCanBillStudent(ref, student))) || selectedStudents.some((student) => !refs.some((ref) => recipientCanBillStudent(ref, student)))) errors.push('Jeder Rechnungsempfänger muss mindestens einem ausgewählten Lernenden zugeordnet sein und jeder Lernende einen Rechnungsempfänger haben.')
   } else {
     const linkedGuardianIds = new Set(selectedStudents.flatMap((student) => student.guardianIds))
-    if (invoice.guardianIds.length && invoice.guardianIds.some((id) => guardianIds.has(id) && (!linkedGuardianIds.has(id) || selectedStudents.some((student) => !student.guardianIds.includes(id))))) errors.push('Alle empfangenden Personen müssen jedem ausgewählten Kind zugeordnet sein; familienfremde Kinddaten dürfen nicht weitergegeben werden.')
+    if (invoice.guardianIds.length && invoice.guardianIds.some((id) => guardianIds.has(id) && (!linkedGuardianIds.has(id) || selectedStudents.some((student) => !student.guardianIds.includes(id))))) errors.push('Alle empfangenden Personen müssen jedem ausgewählten Lernenden zugeordnet sein; Angaben zu anderen Lernenden dürfen nicht weitergegeben werden.')
   }
   if (!invoice.invoiceDate || !invoice.dueDate) errors.push('Rechnungs- und Fälligkeitsdatum angeben.')
   if (!billingPeriodFromItems(invoice.items, invoice.invoiceDate)) errors.push('Leistungszeitraum über die Positionsdaten angeben.')
@@ -187,7 +187,7 @@ export function applyLessonType(item: InvoiceItem, lessonType: LessonType, setti
 
 export function createLessonItem(studentId: string, serviceDate: string, settings: Pick<Settings, 'privateRate' | 'duoRate'>, id = uid('item')): InvoiceItem {
   const lessonType: LessonType = 'solo'
-  if (!validId(id) || !validId(studentId)) throw new Error('Eine gültige Positions- und Kind-ID wird benötigt.')
+  if (!validId(id) || !validId(studentId)) throw new Error('Eine gültige Positions- und Lernenden-ID wird benötigt.')
   if (!validPrice(lessonRate(settings, lessonType))) throw new Error('Der Standardpreis ist ungültig.')
   return {
     id,
@@ -235,11 +235,11 @@ export function guardianName(invoice: Invoice, guardians: Guardian[], students: 
 
 export function studentName(invoice: Invoice, students: Student[]): string {
   const snapshot = invoice.snapshot?.students.map((item) => item.name).filter(Boolean)
-  if (snapshot) return snapshot.join(', ') || 'Ohne Kind'
+  if (snapshot) return snapshot.join(', ') || 'Ohne Lernende'
   const names = invoice.studentIds
     .map((id) => students.find((student) => student.id === id)?.name)
     .filter(Boolean)
-  return names.join(', ') || 'Ohne Kind'
+  return names.join(', ') || 'Ohne Lernende'
 }
 
 export function reopenInvoiceAsDraft(state: AppState, invoiceId: string): AppState {
@@ -298,7 +298,7 @@ function filenamePart(value: string, fallback: string): string {
 
 export function invoicePdfTitle(invoice: Invoice, students: Student[]): string {
   const number = filenamePart(invoice.number ?? 'Entwurf', 'Entwurf')
-  const child = filenamePart(studentName(invoice, students), 'Ohne Kind')
+  const child = filenamePart(studentName(invoice, students), 'Ohne Lernende')
   return `Rechnung ${number} - ${child}`
 }
 
@@ -433,7 +433,7 @@ export function csvCell(value: string | number): string {
 }
 
 export function invoicesToCsv(invoices: Invoice[], guardians: Guardian[], students: Student[]): string {
-  const header = ['Rechnungsnummer', 'Datum', 'Zeitraum', 'Empfänger', 'Kind(er)', 'Status', 'Netto/Gesamt EUR', 'Bezahlt am', 'Belegversion', 'Ersetzt Version', 'Korrekturgrund', 'Forderungsbeleg', 'Archiviert']
+  const header = ['Rechnungsnummer', 'Datum', 'Zeitraum', 'Empfänger', 'Lernende', 'Status', 'Netto/Gesamt EUR', 'Bezahlt am', 'Belegversion', 'Ersetzt Version', 'Korrekturgrund', 'Forderungsbeleg', 'Archiviert']
   const rows = invoices
     .filter((invoice) => invoice.number)
     .sort((a, b) => a.invoiceDate.localeCompare(b.invoiceDate))

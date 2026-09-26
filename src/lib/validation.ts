@@ -326,7 +326,7 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8, localI
     })
     invoiceStudentIds.forEach((id, referenceIndex) => {
       if (!studentIds.has(id) && !snapshotReferences?.studentIds.has(id) && !historicalStudents.includes(id)) {
-        invalidBackup(`${path}.studentIds[${referenceIndex}]`, 'verweist auf ein unbekanntes Kind')
+        invalidBackup(`${path}.studentIds[${referenceIndex}]`, 'verweist auf eine unbekannte lernende Person')
       }
     })
     // Only the explicit legacy repair preflight uses invoice-local item IDs.
@@ -340,7 +340,7 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8, localI
       knownKeys(item, itemPath, 'id studentId serviceDate lessonType description quantity unit unitPrice')
       registerId(item.id, `${itemPath}.id`, invoiceItemIds)
       const studentId = backupString(item.studentId, `${itemPath}.studentId`, true)
-      if (!studentIds.has(studentId) && !snapshotReferences?.studentIds.has(studentId) && !historicalStudents.includes(studentId)) invalidBackup(`${itemPath}.studentId`, 'verweist auf ein unbekanntes Kind')
+      if (!studentIds.has(studentId) && !snapshotReferences?.studentIds.has(studentId) && !historicalStudents.includes(studentId)) invalidBackup(`${itemPath}.studentId`, 'verweist auf eine unbekannte lernende Person')
       if (!invoiceStudentIdSet.has(studentId)) invalidBackup(`${itemPath}.studentId`, 'ist der Rechnung nicht zugeordnet')
       backupCalendarDate(item.serviceDate, `${itemPath}.serviceDate`)
       if (!legacy || item.lessonType !== undefined) backupEnum(item.lessonType, `${itemPath}.lessonType`, LESSON_TYPES)
