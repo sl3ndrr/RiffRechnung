@@ -34,6 +34,10 @@ export interface Student {
   name: string
   billingCode: string
   guardianIds: string[]
+  /** Absent means the historical billing mode through guardians. */
+  selfPayer?: true
+  /** Optional master data; required address parts are checked only at finalization. */
+  contact?: { email: string; phone: string; address: Address }
   note: string
   active: boolean
   createdAt: string
@@ -63,6 +67,9 @@ export interface GuardianSnapshot extends Address {
   email: string
 }
 
+export interface RecipientRef { type: 'guardian' | 'student'; id: string }
+export interface RecipientSnapshot extends GuardianSnapshot { type: RecipientRef['type'] }
+
 export interface StudentSnapshot {
   id: string
   name: string
@@ -71,6 +78,8 @@ export interface StudentSnapshot {
 export interface InvoiceSnapshot {
   issuer: IssuerSnapshot
   guardians: GuardianSnapshot[]
+  /** Absent on historical output; never resolved from live master data. */
+  recipients?: RecipientSnapshot[]
   students: StudentSnapshot[]
   accountHolder: string
   iban: string
@@ -94,6 +103,8 @@ export interface Invoice {
   period: string
   status: InvoiceStatus
   guardianIds: string[]
+  /** Authoritative when present; guardianIds remains the legacy projection. */
+  recipients?: RecipientRef[]
   studentIds: string[]
   recipientStrategy: RecipientStrategy
   items: InvoiceItem[]
@@ -213,7 +224,7 @@ export interface VoidedInvoiceNumber {
 }
 
 export interface AppState {
-  schemaVersion: 7
+  schemaVersion: 8
   guardians: Guardian[]
   students: Student[]
   invoices: Invoice[]
@@ -242,6 +253,7 @@ export interface InvoiceDraft {
   dueDate: string
   period: string
   guardianIds: string[]
+  recipients?: RecipientRef[]
   studentIds: string[]
   recipientStrategy: RecipientStrategy
   items: InvoiceItem[]

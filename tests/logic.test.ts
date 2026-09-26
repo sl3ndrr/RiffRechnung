@@ -4,6 +4,7 @@ import './invoice-split.test'
 import './payment-data.test'
 import './payment-reporting.test'
 import './invoice-profile.test'
+import './adult-recipients.test'
 import { legacyFixture } from './documentFixtures'
 import { captureLegacyDocuments } from '../src/lib/importState'
 import { seedState, sharedLock, fakeDirectory } from './storageHarness'
@@ -530,7 +531,7 @@ test('vollständiges Backup lässt sich wiederherstellen', () => {
     },
   })
   const restored = parseBackup(serializeBackup(state))
-  assert.equal(restored.schemaVersion, 7)
+  assert.equal(restored.schemaVersion, 8)
   assert.equal(restored.settings.issuer.name, 'Test Unterricht')
   assert.equal(restored.students[0]?.billingCode, 'a')
   assert.equal(restored.voidedInvoiceNumbers[0]?.number, '2026-a-0004')
@@ -701,7 +702,7 @@ test('Entwürfe lassen sich aus der Detailansicht nur mit vollständigen aktuell
   assert.deepEqual(invoiceFinalizationErrors(state, draft), [])
   assert.match(invoiceFinalizationErrors(state, { ...draft, guardianIds: [] }).join(' '), /empfangende Person/)
   assert.match(invoiceFinalizationErrors(state, { ...draft, guardianIds: ['guardian-missing'] }).join(' '), /Stammdaten/)
-  assert.match(invoiceFinalizationErrors(state, { ...draft, studentIds: [] }).join(' '), /Kind/)
+  assert.match(invoiceFinalizationErrors(state, { ...draft, studentIds: [] }).join(' '), /lernende/i)
   assert.match(invoiceFinalizationErrors(state, { ...draft, studentIds: ['student-missing'] }).join(' '), /Stammdaten/)
   assert.match(invoiceFinalizationErrors(state, { ...draft, items: [] }).join(' '), /Position/)
   assert.match(invoiceFinalizationErrors(state, { ...draft, items: [{ ...draft.items[0], description: '' }] }).join(' '), /vollständig/)
@@ -739,7 +740,7 @@ test('Editor-Finalisierung wird vor Nummern- und Snapshot-Vergabe zentral validi
     { name: 'kein Empfänger', draft: { ...validDraft, guardianIds: [] }, expected: /empfangende Person/ },
     { name: 'gelöschter Empfänger', draft: { ...validDraft, guardianIds: ['guardian-missing'] }, expected: /Stammdaten/ },
     { name: 'nicht zugeordneter Empfänger', draft: { ...validDraft, guardianIds: ['guardian-unlinked'] }, guardians: [...state.guardians, unlinkedGuardian], expected: /zugeordnet/ },
-    { name: 'kein Kind', draft: { ...validDraft, studentIds: [] }, expected: /Kind/ },
+    { name: 'kein Kind', draft: { ...validDraft, studentIds: [] }, expected: /lernende/i },
     { name: 'gelöschtes Kind', draft: { ...validDraft, studentIds: ['student-missing'] }, expected: /Stammdaten/ },
     { name: 'keine Position', draft: { ...validDraft, items: [] }, expected: /Position/ },
     { name: 'Position mit gelöschtem Kind', draft: { ...validDraft, items: [{ ...validDraft.items[0], studentId: 'student-missing' }] }, expected: /aktuellen Stammdaten/ },

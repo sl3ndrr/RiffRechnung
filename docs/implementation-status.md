@@ -1,3 +1,11 @@
+# AP5 – Erwachsene Lernende als Rechnungsempfänger
+
+Stand 2026-09-26: Branch `codex/ap5-adult-learners` basiert auf `main` `47f491eecbebb788bf6f63aea2b1342bc3dfbd85`. AP1 ist integriert; AP2–AP4 sind nicht integriert. Die AP-Serie ist von den historischen Paketen 00–17 getrennt. Die Codebasis hatte Schema 7, Speicherprotokoll 4, Archivformat 1 und APP_VERSION 1.3 (der Auditstand 1.2 ist überholt). Ein lokaler Git-Checkout war anfangs nicht vorhanden; der GitHub-Tree wurde blobgleich für die Bearbeitung materialisiert.
+
+AP5 ergänzt den Selbstzahlmodus und optionale Kontaktdaten in einem Lernendendatensatz. Neue Rechnungen erhalten typisierte Empfängerreferenzen und typisierte, unveränderliche Empfänger-Snapshots. Historische `guardianIds`/`guardians` bleiben erhalten, ebenso Nummern, Zahlungen und Korrekturketten. Schema 7→8 ändert nur die Versionskennung und wird mit Migrationsbericht sowie unverändertem Roharchiv kontrolliert übernommen; spätere Importe/Ladevorgänge auf Schema 8 sind idempotent. Speicherprotokoll 4 und Archivformat 1 bleiben. Gemischte gemeinsame Rechnungen benötigen ausdrücklich ausgewählte, je Lernendem berechtigte Empfänger; die Oberfläche weist auf die gemeinsame Einsicht hin.
+
+AP2-Duo-Gruppen und AP3-Rechnungsarten/Namensfelder existieren hier nicht. Die AP3-Kleinbetragsrechnung ist deshalb nicht Teil dieses Branches; das vorhandene Kleinunternehmerprofil wird weiter geprüft. Bestehende Doppelanlagen werden nicht zusammengeführt. Test- und Freigabegrenzen stehen in [quality-gates.md](quality-gates.md) und [release-readiness.md](release-readiness.md). Kein Merge und kein Deployment.
+
 # AP1 – Neue Rechnungsaufteilung entfernen
 
 Stand 2026-09-24: Arbeitsbranch `codex/ap1-remove-invoice-split`, Ausgang `main` 1449d596e6538d32f4c22ef3a0b2f845ef1aed71. AP2–AP5 noch nicht integriert. [PR #36](https://github.com/sl3ndrr/RiffRechnung/pull/36): Implementierungscommit `02e712c519d4f833552837a66b63bad06fd73ad9`; [CI 36063143264](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36063143264) mit 148 Fach- und 43 Browserprüfungen, Lint, Typecheck, Build und Audit erfolgreich. Lokal war kein Git-Checkout verfügbar; die Auditdateien wurden über den verbundenen GitHub-Zugriff bereitgestellt.
@@ -98,4 +106,3 @@ Paketdetails bleiben im Git-Verlauf dieser Datei. Produktregeln:
 
 Nächstes vorgesehenes Paket: **13 – Wiederherstellung mit Versionsvergleich**,
 optional und nur auf gesonderten Auftrag. Zuerst verbleibende P12-Freigaben klären.
-

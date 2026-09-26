@@ -4,13 +4,13 @@ Eine vollständig clientseitige Web-App für Rechnungen rund um Gitarrenunterric
 
 ## Funktionsumfang
 
-- Kinder und mehrere Erziehungsberechtigte verwalten, filtern, sortieren und miteinander verknüpfen
+- Lernende mit optionalen Erziehungsberechtigten verwalten; Erwachsene können mit einem Datensatz selbst Rechnungsempfänger sein
 - gemeinsame Rechnungen an eine oder mehrere berechtigte Personen erstellen; historische getrennte Belege und Korrekturen weiterhin lesen
-- mehrere Kinder und automatisch berechnete Zwischensummen auf einer Rechnung
+- mehrere Lernende und automatisch berechnete Zwischensummen auf einer gemeinsamen Rechnung
 - frei definierbare Positionen, Zahlungsziel und Textbausteine
 - strukturiertes Kleinunternehmerprofil mit vollständigen Aussteller-/Empfängeranschriften und ausdrücklich typisierter Steuerkennung
 - Entwurf, versendet, bezahlt und automatisch erkanntes „überfällig“; verknüpfte Korrekturentwürfe erhalten den vollständigen Originalbeleg
-- konfigurierbarer Nummernkreis mit dauerhaftem Kinderkennzeichen (`a`, `b`, `c` …); jedes Kind bzw. jede Kindkombination zählt getrennt und Nummern werden erst bei Finalisierung vergeben
+- konfigurierbarer Nummernkreis mit dauerhaftem Kennzeichen je lernender Person (`a`, `b`, `c` …); Kombinationen zählen getrennt und Nummern werden erst bei Finalisierung vergeben
 - unveränderliche vollständige Belegversionen mit damaligen Positionen, Beträgen, Personen, Konto und Texten; einsehbare Korrekturgründe und Snapshot-Differenzen
 - A4-Druckansicht mit Entwurfswasserzeichen, gemeinsamer Rechtstext-/Seitenzahl-Fußzeile und Rechnungsnummer auf Folgeseiten
 - clientseitig erzeugter EPC-GiroCode (EPC069-12 / Version 002) für SEPA-Überweisungen
@@ -71,6 +71,16 @@ Automatisch geprüft ist **Chromium 153.0.8010.12 unter Ubuntu 24.04** in CI, ei
 
 ## Originale, Korrekturen und Zahlungen
 
+Unter **Personen** kann eine erwachsene lernende Person **Zahlt selbst** wählen und
+optionale E-Mail- und Anschriftdaten hinterlegen. Name und Kontaktdaten werden
+nicht als zweiter Elternteil erfasst. Eine finale Rechnung benötigt die vollständige
+Anschrift jedes ausgewählten Empfängers. Bei Minderjährigen bleiben mehrere
+Erziehungsberechtigte möglich. Neue gemeinsame Rechnungen können ausdrücklich
+Empfänger beider Arten enthalten; alle ausgewählten Empfänger sehen dann die
+Namen und Positionen aller ausgewählten Lernenden. Freitexte vor dem Abschluss
+prüfen. Das Kennzeichen einer lernenden Person bleibt beim Zahlmoduswechsel
+gleich; ausgestellte Belege behalten ihren damaligen Empfänger-Snapshot.
+
 Finalisieren sichert den vollständigen Beleg. Spätere Änderungen an Stammdaten,
 Konten oder Textbausteinen verändern ihn nicht. Ansicht, Druck, Erinnerung und
 Export verwenden dieselbe ausgewählte Version, auch bei leeren historischen
@@ -78,7 +88,7 @@ Kontofeldern. Bereits gesicherte Beträge bleiben bei der Rechenumstellung erhal
 ältere Formate ohne Belegversion sichern zunächst ihren bisherigen Ausgabestand.
 
 In den Rechnungsdetails einen **Korrekturgrund** eingeben und **Korrekturentwurf
-erzeugen** wählen. Der Entwurf übernimmt sämtliche Positionen. Gelöschte Kinder
+erzeugen** wählen. Der Entwurf übernimmt sämtliche Positionen. Gelöschte Lernende
 und empfangende Personen ausdrücklich neu zuordnen; bis dahin lässt sich der
 Entwurf speichern, aber nicht finalisieren. Historische Abweichungen zuerst mit
 dem Ergebnis der Klärung dokumentieren. Die Finalisierung vergibt eine neue Nummer
@@ -148,9 +158,9 @@ beschreibt Migration, Wiederholung nach Fehlern und Kontrolle nach Reload.
 
 - Rechnungen, Einstellungen und Historie liegen im verwendeten Browserprofil. Ein Geräteschutz, ein gesperrtes Benutzerkonto und ein geschütztes Browserprofil sind deshalb Teil des Schutzmodells. Inkognito-Modus, das Löschen von Website-Daten oder ein Geräteverlust können lokale Daten entfernen.
 - Browser-Speicher ist an den **Origin** (Schema, Host und Port), nicht an den Repository-Unterpfad gebunden. Die konfigurierte GitHub-Pages-Auslieferung hat ohne `CNAME` den Origin `https://sl3ndrr.github.io`; RiffRechnung liegt darunter unter `/RiffRechnung/`. Andere dort ausgelieferte Projekte teilen den Origin und sind kein getrenntes Speicher-Sicherheitsgebiet. Die im Eigentümerkonto vorhandenen weiteren Repositories belegen nicht, dass sie auch dort ausgeliefert werden; das konnte aus der Repository-Konfiguration nicht abschließend festgestellt werden. Wenn nicht vertrauenswürdige Anwendungen unter diesem Origin betrieben werden sollen, ist ein separater Origin eine Betriebsoption.
-- JSON-Exports und Ordner-Backups sind normale Klartextdateien. Sie enthalten Familien-/Kontaktangaben, Rechnungen, Einstellungen, Freitexte und Notizen, vollständige Belegversionen sowie Änderungs- und Zahlungszuordnungshistorie. Sicherungen nur geschützt ablegen und vor dem Weitergeben prüfen.
+- JSON-Exports und Ordner-Backups sind normale Klartextdateien. Sie enthalten Personen-/Kontaktangaben, Rechnungen, Einstellungen, Freitexte und Notizen, vollständige Belegversionen sowie Änderungs- und Zahlungszuordnungshistorie. Sicherungen nur geschützt ablegen und vor dem Weitergeben prüfen.
 - Die App nutzt keine Cloud-API. Wird ein lokal synchronisierter Ordner gewählt, kann dessen installierte Desktop-Synchronisation die Klartextdateien an den jeweiligen Dienst übertragen; dessen Datenschutz- und Freigaberegeln gelten zusätzlich.
-- Rechnungsnummern sind innerhalb jedes Kinderkennzeichens monoton und eindeutig. Das erste angelegte Kind erhält `a`, das zweite `b`; eine gemeinsame Rechnung für beide verwendet `a+b`. `ab` kann dagegen das Kennzeichen eines einzelnen später angelegten Kindes sein. Parallel genutzte Browserprofile/Geräte teilen keinen Nummernkreis; für einen lückenlosen gemeinsamen Nummernkreis darf nur ein führender Datenbestand verwendet werden.
+- Rechnungsnummern sind innerhalb jedes Lernendenkennzeichens monoton und eindeutig. Die erste angelegte lernende Person erhält `a`, die zweite `b`; eine gemeinsame Rechnung für beide verwendet `a+b`. `ab` kann dagegen das Kennzeichen einer einzelnen später angelegten Person sein. Parallel genutzte Browserprofile/Geräte teilen keinen Nummernkreis; für einen lückenlosen gemeinsamen Nummernkreis darf nur ein führender Datenbestand verwendet werden.
 - Finalisierte Rechnungen bleiben erhalten; inhaltliche Änderungen erzeugen Korrekturen. Archivierung und Zahlungs-/Versandverwaltung ändern den gesicherten Inhalt nicht. Originalnummern und frühere Registereinträge bleiben dauerhaft reserviert.
 - Ein migrierter Beleg ist nur der älteste verfügbare Stand. Fehlende frühere Versionen werden nicht rekonstruiert. Lokale Versionierung garantiert weder Manipulationssicherheit noch automatische GoBD-Konformität.
 - Für neue Rechnungen ist nach ausdrücklicher Produktentscheidung das Kleinunternehmerprofil nach § 19 UStG vorgesehen. Vor Finalisierung sind vollständige Aussteller-/Empfängeranschriften und eine ausdrücklich typisierte Steuerkennung erforderlich. Andere Steuerprofile oder Ausnahmen werden nicht automatisch angenommen. Die App ersetzt keine Steuer- oder Rechtsberatung.
@@ -164,12 +174,12 @@ beschreibt Migration, Wiederholung nach Fehlern und Kontrolle nach Reload.
 
 ### Datenprüfung und kontrollierter Formatumstieg
 
-Das Datenschema ist Format 7; die Speicherung verwendet weiterhin den versionierten
+Das Datenschema ist Format 8; die Speicherung verwendet weiterhin den versionierten
 Umschlag aus Paket 03 (Speicherprotokoll 4). Entwürfe können unvollständig sein; ungültige
 Preise, Mengen, IDs oder Referenzen werden nicht gespeichert. Nur deutsche IBANs
 sind für neue/geänderte Kontoeinstellungen und neue Finalisierungen zugelassen.
 
-Beim Import und im Wiederherstellungsmodus lassen sich Formate 2 bis 6 prüfen. Bekannte
+Beim Import und im Wiederherstellungsmodus lassen sich Formate 2 bis 7 prüfen. Bekannte
 Empfängerkopien mit doppelten Positions-IDs erhalten eine Reparaturvorschau,
 separate Exporte und einen Bericht mit Originaldaten. Die bestätigte Übernahme
 verwendet denselben abgesicherten Schreibdienst wie normale Änderungen.
@@ -229,4 +239,3 @@ neuen Snapshots. Bei der Migration aus Format 2–5 bleibt die Steuerkennung lee
 und sperrt neue Finalisierungen bis zur bewussten Eingabe. Historische Snapshots
 werden nicht ergänzt; auch eine dort leere BIC bleibt leer. Grundlagen und
 Produktannahmen stehen in [Produktentscheidungen](docs/product-decisions.md).
-

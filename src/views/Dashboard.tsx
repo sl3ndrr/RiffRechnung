@@ -35,7 +35,7 @@ export function Dashboard({ state, onNavigate, onNewInvoice, onLoadDemo, demoBlo
           <div className="onboarding-hero__copy">
             <p className="eyebrow">In zwei ruhigen Schritten</p>
             <h1>Alles bereit für deine erste Rechnung.</h1>
-            <p>Zuerst Absender und Konto, dann eine Familie – so startest du vollständig eingerichtet und ohne Umwege.</p>
+            <p>Zuerst Absender und Konto, dann eine lernende Person – so startest du vollständig eingerichtet und ohne Umwege.</p>
           </div>
           <div className="onboarding-hero__status">
             <div className="onboarding-progress" aria-live="polite">
@@ -60,9 +60,9 @@ export function Dashboard({ state, onNavigate, onNewInvoice, onLoadDemo, demoBlo
           <button className="onboarding-card" onClick={() => onNavigate('people')}>
             <span className="onboarding-card__step">02</span>
             <Users aria-hidden="true" />
-            <h2>Familie anlegen</h2>
-            <p>Erziehungsberechtigte erfassen und ein oder mehrere Kinder zuordnen.</p>
-            <span className="text-link">Familie erfassen <ArrowRight aria-hidden="true" /></span>
+            <h2>Personen anlegen</h2>
+            <p>Lernende und ihre Rechnungsempfänger erfassen.</p>
+            <span className="text-link">Personen erfassen <ArrowRight aria-hidden="true" /></span>
           </button>
           <button className="onboarding-card onboarding-card--soft" onClick={onLoadDemo} disabled={Boolean(demoBlockedReason)} aria-describedby={demoBlockedReason ? 'demo-blocked' : undefined}>
             <span className="onboarding-card__step"><Sparkles aria-hidden="true" /></span>
@@ -106,7 +106,7 @@ export function Dashboard({ state, onNavigate, onNewInvoice, onLoadDemo, demoBlo
         </article>
         <article className="metric-card metric-card--purple">
           <span className="metric-card__icon"><Users aria-hidden="true" /></span>
-          <div><p>Aktive Schüler:innen</p><strong>{state.students.filter((student) => student.active).length}</strong><small>{state.guardians.length} Erziehungsberechtigte</small></div>
+          <div><p>Aktive Lernende</p><strong>{state.students.filter((student) => student.active).length}</strong><small>{state.guardians.length} erziehungsberechtigte Personen</small></div>
         </article>
       </section>
 
@@ -135,8 +135,8 @@ export function Dashboard({ state, onNavigate, onNewInvoice, onLoadDemo, demoBlo
             <div className="attention-list">
               {overdue.slice(0, 3).map((invoice) => (
                 <button key={invoice.id} onClick={() => onOpenInvoice(invoice.id)}>
-                  <span className="avatar avatar--warm">{guardianName(invoice, state.guardians).slice(0, 1)}</span>
-                  <span><strong>{guardianName(invoice, state.guardians)}</strong><small>{invoice.number} · fällig {formatDate(invoice.dueDate)}</small></span>
+                  <span className="avatar avatar--warm">{guardianName(invoice, state.guardians, state.students).slice(0, 1)}</span>
+                  <span><strong>{guardianName(invoice, state.guardians, state.students)}</strong><small>{invoice.number} · fällig {formatDate(invoice.dueDate)}</small></span>
                   <strong>{euro.format(invoiceTotal(invoice))}</strong>
                 </button>
               ))}
@@ -154,13 +154,13 @@ export function Dashboard({ state, onNavigate, onNewInvoice, onLoadDemo, demoBlo
         </div>
         <div className="table-scroll">
           <table className="data-table">
-            <thead><tr><th>Nummer</th><th>Familie / Kind</th><th>Zeitraum</th><th>Status</th><th className="align-right">Betrag</th></tr></thead>
+            <thead><tr><th>Nummer</th><th>Empfänger / Lernende</th><th>Zeitraum</th><th>Status</th><th className="align-right">Betrag</th></tr></thead>
             <tbody>{recent.map((invoice) => {
               const status = effectiveStatus(invoice)
               return (
                 <tr key={invoice.id} onClick={() => onOpenInvoice(invoice.id)}>
                   <td><button className="button button--text invoice-detail-link" type="button" onClick={(event) => { event.stopPropagation(); onOpenInvoice(invoice.id) }}>{invoice.number ?? 'Entwurf'}</button><small>{formatDate(invoice.invoiceDate)}</small></td>
-                  <td>{guardianName(invoice, state.guardians)}<small>{studentName(invoice, state.students)}</small></td>
+                  <td>{guardianName(invoice, state.guardians, state.students)}<small>{studentName(invoice, state.students)}</small></td>
                   <td>{invoice.period}</td>
                   <td><span className={`status-chip status-chip--${status}`}><i />{statusLabel[status]}</span></td>
                   <td className="align-right"><strong>{euro.format(invoiceTotal(invoice))}</strong></td>

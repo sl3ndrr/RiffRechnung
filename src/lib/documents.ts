@@ -5,6 +5,7 @@ import { copyItemsWithFreshIds, freshId } from './identities'
 import { billingPeriodFromItems, guardianName, uid } from './utils'
 import { validateBackupState } from './validation'
 import { snapshotTaxData } from './invoiceProfile'
+import { liveRecipient, recipientRefs } from './recipients'
 
 export function documentContent(invoice: Invoice): DocumentContent {
   const content = structuredClone(invoice)
@@ -15,12 +16,17 @@ export function documentContent(invoice: Invoice): DocumentContent {
 }
 
 export function snapshotFor(state: Pick<AppState, 'guardians' | 'students' | 'settings'>, invoice: Invoice): InvoiceSnapshot {
+  const recipients = invoice.recipients?.flatMap((ref) => {
+    const person = liveRecipient(ref, state.guardians, state.students)
+    return person ? [person] : []
+  })
   return {
     issuer: structuredClone(state.settings.issuer),
     guardians: invoice.guardianIds.flatMap((id) => {
       const person = state.guardians.find((entry) => entry.id === id)
       return person ? [{ id, name: person.name, email: person.email, ...person.address }] : []
     }),
+    ...(recipients ? { recipients } : {}),
     students: invoice.studentIds.flatMap((id) => {
       const student = state.students.find((entry) => entry.id === id)
       return student ? [{ id, name: student.name }] : []
@@ -54,6 +60,7 @@ export function captureDocument(state: AppState, invoice: Invoice, id: string, h
   const conflict = (path: string, message: string, ...values: unknown[]) => version.conflicts.push({ path, message, values: values.map((value) => JSON.stringify(value)) })
   if (!invoice.snapshot) conflict('snapshot', 'Kein historischer Snapshot vorhanden. Nur der jetzt verfügbare Ausgabestand konnte gesichert werden.', null, snapshot)
   if (canonical(invoice.guardianIds) !== canonical(snapshot.guardians.map((person) => person.id))) conflict('guardianIds', 'Zuordnung und Snapshot-Empfänger widersprechen sich. Die Ausgabe verwendet den gesicherten Snapshot.', invoice.guardianIds, snapshot.guardians)
+  if (invoice.recipients && canonical(recipientRefs(invoice)) !== canonical(snapshot.recipients?.map(({ type, id }) => ({ type, id })))) conflict('recipients', 'Typisierter Empfängerbezug und Snapshot widersprechen sich.', invoice.recipients, snapshot.recipients)
   if (canonical(invoice.studentIds) !== canonical(snapshot.students.map((student) => student.id))) conflict('studentIds', 'Zuordnung und Snapshot-Kinder widersprechen sich.', invoice.studentIds, snapshot.students)
   if (invoice.snapshot && invoice.legalText !== invoice.snapshot.legalText) conflict('legalText', 'Rechnung und Snapshot enthalten verschiedene Rechtstexte.', invoice.legalText, invoice.snapshot.legalText)
   if (totalCents !== legacyCalculatedTotalCents) conflict('amounts', 'Historischer Registerbetrag und bisherige Rechnungsausgabe weichen ab. Beide Beträge bleiben erhalten; Registerbetrag hat Vorrang.', totalCents, legacyCalculatedTotalCents)
@@ -136,7 +143,8 @@ export function createCorrectionDraft(state: AppState, invoiceId: string, reason
 
 export function reassignCorrectionStudent(draft: InvoiceDraft, oldId: string, newId: string): InvoiceDraft {
   if (!draft.correction) throw new Error('Die Neuzuordnung benötigt einen Korrekturentwurf.')
-  return { ...draft, studentIds: [...new Set(draft.studentIds.map((id) => id === oldId ? newId : id))], items: draft.items.map((item) => item.studentId === oldId ? { ...item, studentId: newId } : item) }
+  return { ...draft, studentIds: [...new Set(draft.studentIds.map((id) => id === oldId ? newId : id))], items: draft.items.map((item) => item.studentId === oldId ? { ...item, studentId: newId } : item),
+    ...(draft.recipients ? { recipients: draft.recipients.map((ref) => ref.type === 'student' && ref.id === oldId ? { ...ref, id: newId } : ref) } : {}) }
 }
 
 export function archiveInvoice(state: AppState, invoiceId: string, archived = true): AppState {

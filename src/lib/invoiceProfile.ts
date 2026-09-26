@@ -1,4 +1,4 @@
-import type { Address, Guardian, Invoice, InvoiceProfile, InvoiceSnapshot, Settings, TaxIdentifier, TaxIdentifierKind } from '../types'
+import type { Address, Guardian, Invoice, InvoiceProfile, InvoiceSnapshot, Settings, Student, TaxIdentifier, TaxIdentifierKind } from '../types'
 import { paymentDataErrors } from './paymentData'
 
 export const SMALL_BUSINESS_TAX_NOTICE = 'Steuerbefreiung für Kleinunternehmer (§ 19 UStG).'
@@ -26,8 +26,9 @@ export function invoiceSetupErrors(settings: Settings): InvoiceFieldError[] {
   errors.push(...paymentDataErrors(settings).map((error) => ({ field: `settings.${error.field}`, message: `Einstellungen → Bankverbindung → ${error.message}` })))
   return errors
 }
-export function invoiceProfileErrors(settings: Settings, guardians: Guardian[]): InvoiceFieldError[] {
-  return [...invoiceSetupErrors(settings), ...guardians.flatMap((guardian) => addressErrors(`guardians.${guardian.id}.address`, `Familien → ${guardian.name || guardian.id}`, { ...guardian.address, name: guardian.name }))]
+export function invoiceProfileErrors(settings: Settings, guardians: Guardian[], selfPayers: Student[] = []): InvoiceFieldError[] {
+  return [...invoiceSetupErrors(settings), ...guardians.flatMap((guardian) => addressErrors(`guardians.${guardian.id}.address`, `Personen → ${guardian.name || guardian.id}`, { ...guardian.address, name: guardian.name })),
+    ...selfPayers.flatMap((student) => addressErrors(`students.${student.id}.contact.address`, `Personen → ${student.name || student.id}`, { street: student.contact?.address.street ?? '', postalCode: student.contact?.address.postalCode ?? '', city: student.contact?.address.city ?? '', name: student.name }))]
 }
 export interface TaxData { invoiceProfile: InvoiceProfile | null; taxIdentifier: TaxIdentifier | null }
 export function taxDataForInvoice(invoice: Pick<Invoice, 'snapshot'>, settings: Settings): TaxData {
