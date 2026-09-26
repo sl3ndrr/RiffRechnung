@@ -537,3 +537,49 @@ und [Bundesbank-IBAN-Regeln](https://www.bundesbank.de/de/aufgaben/unbarer-zahlu
   verwenden, solange Schema 8 noch nicht in `main` oder einem Release steht.
   Unbekannte neuere Schemas bleiben schreibgeschützt. Rückweg nur über die
   unabhängig gesicherte Originaldatei in getrenntem Profil.
+
+## AP4 – Steuerkennung und Befreiungshinweis (26.09.2026)
+
+- AP4 baut auf der noch offenen AP3-Arbeit mit Schema 8 und einer einzigen
+  zentralen Abschlussprüfung auf. AP2 und AP5 sind nicht integriert. Das Feld
+  `taxPresentation` ist optional im Rechnungsinhalt; sein Fehlen erhält den
+  bisherigen Druck exakt. Neue Rechnungen beginnen mit Kennungsausgabe und
+  Steuerblock. Kleinbetragsrechnungen dürfen die Kennung ausdrücklich auslassen,
+  Standardrechnungen nicht. Bei Ausgabe wird für jeden der drei Kennungstypen
+  eine nichtleere Angabe verlangt. Die Grenze von 25.000 Cent und die
+  Empfängeranschrift bleiben ausschließlich in der AP3-Abschlussprüfung.
+  Die Dashboard-Einrichtung kann mit leerer Kennung als startbereit gelten;
+  die gewählte Rechnungsart entscheidet beim Abschluss. Einstellungen nennen
+  die fehlende Kennung ausdrücklich als Standardrechnungsanforderung.
+- Der Befreiungshinweis wird bei jeder neuen Finalisierung ausgegeben.
+  Entwurfsvorschauen dürfen Kennung und Hinweis unabhängig von der späteren
+  Kennungspflicht getrennt ausblenden und tragen
+  das sichtbare ENTWURF-Wasserzeichen. Der alternative Ort „Fußzeile“ ist die
+  Rechtstextzeile direkt bei der Endsumme, nicht die spätere Schlusszeile:
+  Summe, Kennung und diese Fußzeile bilden im Druck eine zusammengehaltene
+  Tabellengruppe. Die Schlusszeile behält die Belegreferenz. Damit bleibt der
+  Hinweis auch bei mehrseitiger Ausgabe erkennbar der Endsumme zugeordnet.
+- `InvoiceSnapshot.taxOutput` hält explizit die gedruckte Kennung als Typ/Wert
+  oder `null`, den konkreten Hinweistext und die Position fest. Er wird bei
+  neuen Entwürfen beim Speichern und bei finalen Belegen in
+  `DocumentVersion.outputSnapshot` gesichert. Finalisierte Ausgaben lesen
+  ausschließlich diese Version; neue Konstanten, Einstellungen und
+  Vorgabetexte füllen keine historischen Angaben auf. Fehlt `taxOutput`, gilt
+  weiterhin die vor AP4 gespeicherte Ausgabe einschließlich ihrer alten
+  Kennungs-/Hinweisbedingung und unverändertem Rechtstext.
+- Der neue Standard für `defaultLegalText` ist leer, damit er keinen zweiten
+  automatischen Hinweis liefert. Bestehende Einstellungen und Belegfreitexte
+  werden nicht umgeschrieben. Editor und Rechnungsdetail zeigen einen
+  nicht blockierenden Hinweis bei „§ 19“ oder „Kleinunternehmer“ im freien
+  Rechtstext; diese Heuristik entscheidet nie über die automatische Ausgabe.
+- Schema 8 wird additiv erweitert, weil es weder auf `main` noch in einem
+  Release steht. Die AP3-Migration 7→8 bleibt unverändert und erzeugt
+  keines der optionalen AP4-Felder aus heutigen Einstellungen. Import und
+  Backup prüfen die neuen Schlüssel nur ab Schema 8. Speicherprotokoll 4 und
+  Archivformat 1 bleiben. Rückweg weiterhin nur mit gesichertem Original in
+  getrenntem Profil. Fachliche Grundlage: [§ 34a UStDV](https://www.gesetze-im-internet.de/ustdv_1980/__34a.html)
+  verlangt Kennung und Entgelt mit Hinweis in einer Summe;
+  [§ 33 UStDV](https://www.gesetze-im-internet.de/ustdv_1980/__33.html)
+  erlaubt bis 250 Euro die fehlende Kennung, verlangt bei Befreiung aber
+  weiterhin den Hinweis. Die in AP3 dokumentierte Annahme zum inländischen
+  Privatunterricht gilt fort.

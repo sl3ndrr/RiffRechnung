@@ -27,7 +27,7 @@ export function limitFooterText(value: string): string {
   return value.slice(0, MAX_FOOTER_TEXT_LENGTH)
 }
 
-type InvoiceFinalizationCandidate = Pick<Invoice, 'guardianIds' | 'studentIds' | 'invoiceDate' | 'dueDate' | 'items' | 'legalText'> & Partial<Pick<Invoice, 'recipientStrategy' | 'invoiceKind'>>
+type InvoiceFinalizationCandidate = Pick<Invoice, 'guardianIds' | 'studentIds' | 'invoiceDate' | 'dueDate' | 'items' | 'legalText'> & Partial<Pick<Invoice, 'recipientStrategy' | 'invoiceKind' | 'taxPresentation'>>
 
 export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 'students' | 'settings'>, invoice: InvoiceFinalizationCandidate): string[] {
   const errors: string[] = [...moneyErrors(invoice)]
@@ -37,7 +37,7 @@ export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 's
   const selectedStudentIds = new Set(invoice.studentIds)
   const selectedStudents = state.students.filter((student) => selectedStudentIds.has(student.id))
   const selectedGuardians = state.guardians.filter((guardian) => invoice.guardianIds.includes(guardian.id))
-  if (!errors.length) errors.push(...invoiceCompliance(invoice.invoiceKind, invoiceTotalCents(invoice), state.settings, selectedGuardians).map((error) => error.message))
+  if (!errors.length) errors.push(...invoiceCompliance(invoice.invoiceKind, invoiceTotalCents(invoice), state.settings, selectedGuardians, invoice.taxPresentation).map((error) => error.message))
 
   if (!invoice.guardianIds.length) errors.push('Mindestens eine empfangende Person auswählen.')
   else if (invoice.guardianIds.some((id) => !guardianIds.has(id))) errors.push('Alle empfangenden Personen müssen in den aktuellen Stammdaten vorhanden sein.')
@@ -371,7 +371,9 @@ export function uid(prefix: string): string {
 export { cleanIban, formatIban, germanIbanError, isValidGermanIban as isValidIban } from './paymentData'
 
 export function isInvoiceSetupComplete(settings: Settings): boolean {
-  return invoiceSetupErrors(settings).length === 0
+  // Dashboard readiness means an invoice can be started; the chosen kind
+  // determines the additional identifier requirement at finalization.
+  return invoiceSetupErrors(settings, false).length === 0
 }
 
 function sanitizeEpc(value: string, maxLength: number): string {

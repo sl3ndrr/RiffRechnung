@@ -1,4 +1,4 @@
-import type { Address, Guardian, Invoice, InvoiceProfile, InvoiceSnapshot, Settings, TaxIdentifier, TaxIdentifierKind } from '../types'
+import type { Address, Guardian, Invoice, InvoiceProfile, InvoiceSnapshot, Settings, TaxIdentifier, TaxIdentifierKind, TaxOutput, TaxPresentation } from '../types'
 import { paymentDataErrors } from './paymentData'
 
 export const SMALL_BUSINESS_TAX_NOTICE = 'Steuerbefreiung für Kleinunternehmer (§ 19 UStG).'
@@ -6,6 +6,9 @@ export const TAX_IDENTIFIER_LABELS: Record<TaxIdentifierKind, string> = {
   'tax-number': 'Steuernummer',
   'vat-id': 'Umsatzsteuer-Identifikationsnummer',
   'small-business-id': 'Kleinunternehmer-Identifikationsnummer',
+}
+export function newTaxPresentation(): TaxPresentation {
+  return { showIdentifier: true, showIdentifierInDraft: true, showNoticeInDraft: true, noticePosition: 'tax-block' }
 }
 export interface InvoiceFieldError { field: string; message: string }
 const required = (field: string, label: string, value: string): InvoiceFieldError[] => value.trim() ? [] : [{ field, message: `${label} fehlt.` }]
@@ -18,11 +21,11 @@ export function taxIdentifierInputError(identifier: TaxIdentifier): string | nul
   if (value.length > 64 || /[\r\n]/u.test(value)) return 'Die steuerliche Identifikationsangabe darf höchstens 64 Zeichen und keinen Zeilenumbruch enthalten.'
   return null
 }
-export function invoiceSetupErrors(settings: Settings): InvoiceFieldError[] {
+export function invoiceSetupErrors(settings: Settings, requireIdentifier = true): InvoiceFieldError[] {
   const errors = addressErrors('settings.issuer', 'Einstellungen → Rechnungssteller', settings.issuer)
   if (settings.invoiceProfile !== 'small-business') errors.push({ field: 'settings.invoiceProfile', message: 'Einstellungen → Rechnungsprofil: Kleinunternehmer nach § 19 UStG ausdrücklich auswählen.' })
   const identifierError = taxIdentifierInputError(settings.taxIdentifier)
-  if (identifierError) errors.push({ field: 'settings.taxIdentifier.value', message: `Einstellungen → ${TAX_IDENTIFIER_LABELS[settings.taxIdentifier.kind]}: ${identifierError}` })
+  if (requireIdentifier && identifierError) errors.push({ field: 'settings.taxIdentifier.value', message: `Einstellungen → ${TAX_IDENTIFIER_LABELS[settings.taxIdentifier.kind]}: ${identifierError}` })
   errors.push(...paymentDataErrors(settings).map((error) => ({ field: `settings.${error.field}`, message: `Einstellungen → Bankverbindung → ${error.message}` })))
   return errors
 }
@@ -36,4 +39,21 @@ export function taxDataForInvoice(invoice: Pick<Invoice, 'snapshot'>, settings: 
 }
 export function snapshotTaxData(settings: Settings): Pick<InvoiceSnapshot, 'invoiceProfile' | 'taxIdentifier'> {
   return { invoiceProfile: settings.invoiceProfile, taxIdentifier: structuredClone(settings.taxIdentifier) }
+}
+
+export function snapshotTaxOutput(settings: Settings, invoice: Invoice): TaxOutput | undefined {
+  const choice = invoice.taxPresentation
+  if (!choice) return undefined
+  return {
+    identifier: choice.showIdentifier && (invoice.status !== 'draft' || choice.showIdentifierInDraft)
+      ? structuredClone(settings.taxIdentifier) : null,
+    noticeText: settings.invoiceProfile === 'small-business' && (invoice.status !== 'draft' || choice.showNoticeInDraft)
+      ? SMALL_BUSINESS_TAX_NOTICE : null,
+    noticePosition: choice.noticePosition,
+  }
+}
+
+/** A hint only: user-authored legal text is neither parsed as a tax decision nor rewritten. */
+export function hasPossibleTaxNotice(value: string): boolean {
+  return /§\s*19\b|kleinunternehmer/iu.test(value)
 }

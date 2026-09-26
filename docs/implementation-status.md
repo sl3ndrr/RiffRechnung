@@ -1,3 +1,15 @@
+# AP4 – Ausgabe der Steuerkennung und des Befreiungshinweises
+
+Stand 26.09.2026: Arbeitsbranch `codex/ap4-tax-output-options` auf AP3-Head
+`c010cf4d`, gestapelter [Entwurfs-PR #39](https://github.com/sl3ndrr/RiffRechnung/pull/39).
+AP1 liegt auf `main`; AP2 hat einen getrennten offenen Branch, AP5 ist nicht
+integriert. Schema 8 wird vor seiner Freigabe additiv genutzt. Neue
+Rechnungen wählen Kennungsausgabe und Hinweisposition je Beleg; der konkrete
+Drucktext und die Kennung werden in der Belegversion gesichert. Der
+Altbeleg-Druck wurde vor dem Umbau mit Fach- und PDF-Test charakterisiert.
+Die mehrseitige Fußzeile ist bei der Endsumme verankert. Keine
+Empfängeranschriftänderung über AP3 hinaus. Kein Merge und kein Deployment.
+
 # AP3 – Empfängerkontakte und Rechnungsart
 
 Stand 25.09.2026: Ausgang `main` 47f491eecbebb788bf6f63aea2b1342bc3dfbd85

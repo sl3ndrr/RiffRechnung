@@ -253,6 +253,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         studentIds: invoice.studentIds,
         recipientStrategy: invoice.recipientStrategy,
         ...(invoice.invoiceKind ? { invoiceKind: invoice.invoiceKind } : {}),
+        ...(invoice.taxPresentation ? { taxPresentation: structuredClone(invoice.taxPresentation) } : {}),
         items: structuredClone(invoice.items),
         introText: invoice.introText,
         freeText: invoice.freeText,

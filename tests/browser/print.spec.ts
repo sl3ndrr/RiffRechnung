@@ -108,6 +108,91 @@ test('P09 Browser/PDF: ein-, zwei- und mehrseitige Rechnungen behalten Text, Was
   expect(draftPdf.text).toContain('ENTWURF')
 })
 
+test('AP4 Charakterisierung: Altbeleg ohne Ausgabeoptionen druckt Kennung und Befreiungshinweis direkt nach der Summe', async ({ page }, testInfo) => {
+  const state = printableState(1, '', 'Historischer Rechtstext')
+  const invoice = state.invoices[0]
+  expect(invoice.invoiceKind).toBeUndefined()
+  const { text } = await createPdf(page, state, invoice.id, 'ap4-altbeleg-vor-umbau', testInfo)
+  const rendered = text.replace(/\s+/g, ' ')
+  expect(rendered).toMatch(/Summe .*Steuernummer: 12\/345\/67890 Steuerbefreiung für Kleinunternehmer \(§ 19 UStG\)\. Bitte überweisen Sie/)
+  expect(rendered).toContain('Historischer Rechtstext')
+  expect(text.split('Steuerbefreiung für Kleinunternehmer (§ 19 UStG).')).toHaveLength(2)
+})
+
+test('AP4 Browser/PDF: Steuerblock und Fußzeile halten den einzigen Befreiungshinweis auch mehrseitig bei der Endsumme', async ({ page }, testInfo) => {
+  for (const noticePosition of ['tax-block', 'footer'] as const) {
+    for (const count of [1, 108]) {
+      const state = documentFamily()
+      const draft = documentDraft()
+      const issued = saveInvoiceDraft(state, {
+        ...draft, invoiceKind: 'standard', taxPresentation: { showIdentifier: true, showIdentifierInDraft: true, showNoticeInDraft: true, noticePosition },
+        legalText: 'Synthetischer Rechtstext ohne Steuerhinweis',
+        items: Array.from({ length: count }, (_, i) => ({
+          ...draft.items[0], id: `ap4-pdf-${i}`, serviceDate: `2026-09-${String(i % 28 + 1).padStart(2, '0')}`,
+          description: `Synthetische Unterrichtsposition ${i + 1} mit längerem Beschreibungstext`,
+        })),
+      }, true, documentAt)
+      const pdf = await createPdf(page, issued, issued.invoices[0].id, `ap4-${noticePosition}-${count}`, testInfo)
+      const pages = pdf.text.split('\f').filter((text) => text.trim())
+      const finalPage = pages.findIndex((text) => /\bSumme\b/.test(text))
+      const noticePages = pages.flatMap((text, i) => text.includes('Steuerbefreiung für Kleinunternehmer (§ 19 UStG).') ? [i] : [])
+      expect(pdf.pages).toBeGreaterThanOrEqual(count === 1 ? 1 : 2)
+      expect(noticePages).toEqual([finalPage])
+      expect(pdf.text.split('Steuerbefreiung für Kleinunternehmer (§ 19 UStG).')).toHaveLength(2)
+      expect(pdf.text.split('Steuernummer:')).toHaveLength(2)
+      if (noticePosition === 'footer') expect(pages[finalPage]).toContain('Synthetischer Rechtstext ohne Steuerhinweis')
+    }
+  }
+})
+
+test('AP4 Browser/PDF: Kleinbetrag ohne Kennung druckt den Hinweis; Entwurf kann beides ausblenden', async ({ page }, testInfo) => {
+  const state = documentFamily()
+  state.settings.taxIdentifier.value = ''
+  const draft = documentDraft()
+  const choice: InvoiceDraft = {
+    ...draft, invoiceKind: 'small-amount', taxPresentation: { showIdentifier: false, showIdentifierInDraft: false, showNoticeInDraft: false, noticePosition: 'tax-block' },
+    items: [{ ...draft.items[0], quantity: 1, unitPrice: 249.99 }],
+  }
+  const saved = saveInvoiceDraft(state, choice, false, documentAt)
+  const draftPdf = await createPdf(page, saved, saved.invoices[0].id, 'ap4-entwurf-ohne-steuerangaben', testInfo)
+  expect(draftPdf.text).toContain('ENTWURF')
+  expect(draftPdf.text).not.toContain('Steuernummer:')
+  expect(draftPdf.text).not.toContain('Steuerbefreiung für Kleinunternehmer (§ 19 UStG).')
+  const issued = saveInvoiceDraft(saved, { ...choice, id: saved.invoices[0].id }, true, documentAt)
+  const finalPdf = await createPdf(page, issued, issued.invoices[0].id, 'ap4-kleinbetrag-ohne-kennung', testInfo)
+  expect(finalPdf.text).not.toContain('Steuernummer:')
+  expect(finalPdf.text.split('Steuerbefreiung für Kleinunternehmer (§ 19 UStG).')).toHaveLength(2)
+})
+
+test('AP4 Browser: Editor speichert getrennte Schalter und warnt bei möglichem Freitext-Doppelhinweis', async ({ page }) => {
+  const base = documentFamily()
+  const saved = saveInvoiceDraft(base, {
+    ...documentDraft(), invoiceKind: 'standard',
+    taxPresentation: { showIdentifier: true, showIdentifierInDraft: true, showNoticeInDraft: true, noticePosition: 'tax-block' },
+  }, false, documentAt)
+  await seed(page, saved)
+  await page.getByRole('button', { name: /^Rechnungen/ }).first().click()
+  await page.getByRole('button', { name: 'Entwurf', exact: true }).click()
+  await page.locator('.invoice-detail').getByRole('button', { name: 'Bearbeiten', exact: true }).click()
+  const editor = page.getByRole('dialog', { name: 'Entwurf bearbeiten' })
+  const identifier = editor.getByRole('checkbox', { name: 'Steuerkennung ausgeben' })
+  await expect(identifier).toBeDisabled()
+  await editor.getByRole('combobox', { name: 'Rechnungsart' }).selectOption('small-amount')
+  await expect(identifier).toBeEnabled()
+  await identifier.uncheck()
+  await editor.getByRole('combobox', { name: 'Befreiungshinweis' }).selectOption('footer')
+  await editor.getByRole('checkbox', { name: 'Steuerkennung auch in der Entwurfsvorschau zeigen' }).uncheck()
+  await editor.getByRole('checkbox', { name: 'Befreiungshinweis auch in der Entwurfsvorschau zeigen' }).uncheck()
+  await editor.getByRole('textbox', { name: /Fußzeile \/ Rechtstext/ }).fill('Eigener Hinweis zu § 19')
+  await expect(editor.getByText(/Fußzeilentext enthält möglicherweise/)).toBeVisible()
+  await editor.getByRole('button', { name: 'Als Entwurf speichern', exact: true }).click()
+  await expect(editor).not.toBeVisible()
+  await expect(page.locator('.invoice-detail').getByText(/Vorschauhinweis: Der freie Fußzeilentext/)).toBeVisible()
+  const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('riffrechnung-state-v4')!).data.invoices[0])
+  expect(persisted.taxPresentation).toEqual({ showIdentifier: false, showIdentifierInDraft: false, showNoticeInDraft: false, noticePosition: 'footer' })
+  expect(persisted.legalText).toBe('Eigener Hinweis zu § 19')
+})
+
 test('P09 Browser: abgelehnte QR-Erzeugung und ein verspäteter früherer Auftrag bleiben isoliert', async ({ page }) => {
   const single = printableState(2)
   const rendering = await page.context().newPage()

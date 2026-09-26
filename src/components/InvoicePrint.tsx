@@ -55,6 +55,10 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
   const issuer = source?.issuer ?? (legacyDraftWithoutPrintData ? { name: '', street: '', postalCode: '', city: '', email: '', phone: '' } : settings.issuer)
   const account = printInvoice && !legacyDraftWithoutPrintData ? paymentDataForInvoice(printInvoice, settings) : { accountHolder: '', iban: '', bic: '', bankName: '' }
   const taxData = printInvoice && !legacyDraftWithoutPrintData ? taxDataForInvoice(printInvoice, settings) : { invoiceProfile: null, taxIdentifier: null }
+  const taxOutput = source?.taxOutput
+  const printedIdentifier = taxOutput ? taxOutput.identifier : taxData.invoiceProfile === 'small-business' ? taxData.taxIdentifier : null
+  const printedNotice = taxOutput ? taxOutput.noticeText : taxData.invoiceProfile === 'small-business' && taxData.taxIdentifier?.value ? SMALL_BUSINESS_TAX_NOTICE : null
+  const noticeInFooter = taxOutput?.noticePosition === 'footer'
   const recipientList = useMemo(() => {
     if (!invoice) return []
     if (source) return source.guardians
@@ -147,6 +151,12 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
       : giroCode.kind === 'unavailable'
         ? `Kein GiroCode: ${giroCode.reason}`
         : `GiroCode nicht verfügbar: ${giroCode.reason}`
+  const totalRow = <tr className="invoice-total-row">
+    <td colSpan={2}>Summe</td>
+    <td>{number.format(invoice.items.reduce((sum, item) => sum + item.quantity, 0))}</td>
+    <td />
+    <td>{euro.format(total)}</td>
+  </tr>
 
   return (
     <article className="invoice-paper" aria-label={`Rechnung ${invoice.number ?? 'Entwurf'}`}>
@@ -198,16 +208,22 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
             {groups.map((group) => (
               <PrintGroup invoice={invoice} key={group.key} label={group.label} items={group.items} showSubtotal={groups.length > 1} />
             ))}
-            <tr className="invoice-total-row">
-              <td colSpan={2}>Summe</td>
-              <td>{number.format(invoice.items.reduce((sum, item) => sum + item.quantity, 0))}</td>
-              <td />
-              <td>{euro.format(total)}</td>
-            </tr>
+            {!taxOutput && totalRow}
           </tbody>
+          {taxOutput && <tbody className="invoice-final-rows">
+            {totalRow}
+            {(printedIdentifier?.value || printedNotice && !noticeInFooter) && <tr className="invoice-tax-row"><td colSpan={5}><section className="invoice-tax-data" aria-label="Steuerliche Angaben">
+              {printedIdentifier?.value && <p><strong>{TAX_IDENTIFIER_LABELS[printedIdentifier.kind]}:</strong> {printedIdentifier.value}</p>}
+              {printedNotice && !noticeInFooter && <p>{printedNotice}</p>}
+            </section></td></tr>}
+            {noticeInFooter && <tr className="invoice-total-footer-row"><td colSpan={5}><footer className="invoice-total-footer" aria-label="Fußzeile zur Endsumme">
+              {footerText && <p>{footerText}</p>}
+              {printedNotice && <p>{printedNotice}</p>}
+            </footer></td></tr>}
+          </tbody>}
         </table>
 
-        {taxData.invoiceProfile === 'small-business' && taxData.taxIdentifier?.value && <section className="invoice-tax-data" aria-label="Steuerliche Angaben"><p><strong>{TAX_IDENTIFIER_LABELS[taxData.taxIdentifier.kind]}:</strong> {taxData.taxIdentifier.value}</p><p>{SMALL_BUSINESS_TAX_NOTICE}</p></section>}
+        {!taxOutput && taxData.invoiceProfile === 'small-business' && taxData.taxIdentifier?.value && <section className="invoice-tax-data" aria-label="Steuerliche Angaben"><p><strong>{TAX_IDENTIFIER_LABELS[taxData.taxIdentifier.kind]}:</strong> {taxData.taxIdentifier.value}</p><p>{SMALL_BUSINESS_TAX_NOTICE}</p></section>}
 
         <section className="invoice-payment-block">
           <section className="invoice-payment-copy">
@@ -234,7 +250,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
             <div className="invoice-thanks"><p>Vielen Dank</p><strong>{issuer.name}</strong></div>
             <footer className="invoice-footer">
               <div className="invoice-footer__rule" />
-              <div className="invoice-footer__content"><p>{footerText}</p><span className="invoice-footer__reference">Rechnung {invoice.number ?? 'Entwurf'} · Seitenzahl im Seitenrand</span></div>
+              <div className="invoice-footer__content">{!noticeInFooter && <p>{footerText}</p>}<span className="invoice-footer__reference">Rechnung {invoice.number ?? 'Entwurf'} · Seitenzahl im Seitenrand</span></div>
             </footer>
           </section>
         </section>

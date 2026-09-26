@@ -6,6 +6,22 @@ export type LessonType = 'solo' | 'duo'
 export type InvoiceProfile = 'unconfigured' | 'small-business'
 export type InvoiceKind = 'standard' | 'small-amount'
 export type TaxIdentifierKind = 'tax-number' | 'vat-id' | 'small-business-id'
+export type TaxNoticePosition = 'tax-block' | 'footer'
+
+export interface TaxPresentation {
+  showIdentifier: boolean
+  showIdentifierInDraft: boolean
+  showNoticeInDraft: boolean
+  noticePosition: TaxNoticePosition
+}
+
+export interface TaxOutput {
+  /** null is an explicit decision not to print an identifier. */
+  identifier: TaxIdentifier | null
+  /** null is permitted only in draft print data. Issued versions always carry text. */
+  noticeText: string | null
+  noticePosition: TaxNoticePosition
+}
 
 export interface TaxIdentifier {
   kind: TaxIdentifierKind
@@ -86,10 +102,13 @@ export interface InvoiceSnapshot {
   taxIdentifier?: TaxIdentifier
   /** Absent on historical documents: standard invoice under its original rules. */
   invoiceKind?: InvoiceKind
+  /** Absent on historical documents; the old renderer must keep its original output. */
+  taxOutput?: TaxOutput
 }
 
 export interface Invoice {
   invoiceKind?: InvoiceKind
+  taxPresentation?: TaxPresentation
   calculation?: 'decimal-v1'
   id: string
   number: string | null
@@ -245,6 +264,7 @@ export interface ToastMessage {
 
 export interface InvoiceDraft {
   invoiceKind?: InvoiceKind
+  taxPresentation?: TaxPresentation
   id?: string
   correction?: { replacesId: string; reason: string }
   invoiceDate: string

@@ -34,9 +34,10 @@ function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatu
   const allocation = nextInvoiceAllocation(state, invoice.invoiceDate, invoice.studentIds)
   const finalized: Invoice = {
     ...invoice, calculation: 'decimal-v1', number: allocation.number, sequence: allocation.sequence, status,
-    snapshot: snapshotFor(state, invoice), sentAt: at, updatedAt: at,
+    sentAt: at, updatedAt: at,
     ...(confirmedPaymentDay ? { paidAt: confirmedPaymentDay } : {}),
   }
+  finalized.snapshot = snapshotFor(state, finalized)
   Reflect.deleteProperty(finalized, 'draftPrintSnapshot')
   const version = captureDocument(state, finalized, freshId('version', new Set(state.documentVersions.map((entry) => entry.id)), createId), false)
   finalized.versionId = version.id

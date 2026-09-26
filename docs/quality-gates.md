@@ -1,3 +1,36 @@
+# AP4 – Gate-Notiz 26.09.2026
+
+Arbeitsbranch `codex/ap4-tax-output-options` basiert auf dem offenen AP3-
+Head `c010cf4d`. Der Charakterisierungstest in `tests/ap4.test.ts` wurde
+vor dem Umbau aus `tests/logic.test.ts` importiert. Der PDF-Test in
+`tests/browser/print.spec.ts` prüfte den gerenderten Text des Altbelegs.
+[CI 36203816712](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36203816712)
+auf `1684225f` unter Node 22: Installation, Lint, alle Fachtests (mit
+ausdrücklich protokollierter AP4-Charakterisierung), Typecheck und Build
+bestanden; die Chromium-PDF-Charakterisierung ebenfalls. 44/45 Browserfälle
+bestanden. Der bestehende AP1-JSON-Download in WebKit scheiterte an der
+Export-Rückmeldung; die bekannte Download-Instabilität aus AP3 bleibt ein
+Risiko. Kein Test wurde abgeschwächt. Lokales `npm ci` scheiterte mit HTTP
+403 für `yocto-queue`; die Folge-Gates werden dort nicht als bestanden
+gewertet.
+
+Der erste Implementierungslauf `d3051eab` bestand Installation und Lint,
+entdeckte aber im AP4-Fachtest eine fehlende Hinweiszeile: Der finale Snapshot
+wurde mit dem vorherigen Entwurfsstatus erstellt. Die Reihenfolge im zentralen
+Finalisierungsbefehl wurde korrigiert; der Test blieb unverändert.
+[CI 36204634782](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36204634782)
+auf `65b97fd8` unter Node 22.23.2 bestand danach `npm ci`, Lint,
+`npm test` (161/161, darunter alle AP4-Fälle), Typecheck, Build,
+`npm run test:browser` (47/47 mit Chromium-PDF, Firefox und WebKit) und das
+vollständige Dependency-Audit (0 gemeldete Schwachstellen). Block- und
+Fußzeilenposition wurden im mehrseitigen PDF auf der Endsumme-Seite gezählt.
+Der zusätzliche Editor-Browsertest bestand in
+[CI 36205098812](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36205098812)
+auf `eddf3dca`: 161/161 Fach- und 48/48 Browserprüfungen, alle übrigen
+Gates und Audit ebenfalls grün. Er prüft die Standard-Sperre, die
+Kleinbetragswahl, beide Entwurfsschalter, die gespeicherte Fußzeilenposition
+und die nicht blockierende Freitextwarnung.
+
 # AP3 – zusätzliche Gate-Notiz 25.09.2026
 
 `npm ci` in der bereitgestellten Laufzeit (Node 24.19.0) scheiterte an HTTP 403
