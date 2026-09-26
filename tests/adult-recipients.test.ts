@@ -4,7 +4,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { AppState, InvoiceDraft, RecipientRef, Student } from '../src/types'
 import { documentAt, documentDraft, documentFamily, editable } from './documentFixtures'
-import { saveStudentState } from '../src/lib/commands'
+import { prepareInvoiceCopy, saveStudentState } from '../src/lib/commands'
 import { requireSuccess } from '../src/lib/result'
 import { guardianIdsFor } from '../src/lib/recipients'
 import { saveInvoiceDraft, changeInvoiceStatus } from '../src/lib/invoiceActions'
@@ -74,6 +74,18 @@ test('AP5: zwei Erziehungsberechtigte bleiben als typisierte Empfänger ein geme
   assert.match(pdfHtml(state, state.invoices[0].id), /Sehr geehrte\/r Empfaenger A und Empfaenger B/)
   assert.equal(state.payments.length, 1)
   await roundtrip(state)
+})
+
+test('AP5: neue Kopie eines Altbelegs erhält typisierte Empfänger ohne Originaländerung', () => {
+  let state = documentFamily()
+  state = saveInvoiceDraft(state, documentDraft(), true, documentAt)
+  const original = structuredClone(state.documentVersions[0])
+  assert.equal(state.invoices[0].recipients, undefined)
+  const copy = requireSuccess(prepareInvoiceCopy(state, state.invoices[0].id, new Date('2026-10-01T12:00:00.000Z')))
+  assert.deepEqual(copy.recipients, [{ type: 'guardian', id: 'g-a' }])
+  state = saveInvoiceDraft(state, copy, true, '2026-10-01T12:00:00.000Z')
+  assert.deepEqual(state.invoices[1].snapshot?.recipients?.map((recipient) => recipient.id), ['g-a'])
+  assert.deepEqual(state.documentVersions[0], original)
 })
 
 test('AP5: Moduswechsel erhält Kennzeichen, Altsnapshot, Korrekturkette und reservierte Nummern', async () => {
