@@ -73,7 +73,7 @@ test('P06: ungeprüfte Zwei-/Drei-Familien-Aufteilungen umgehen den Zuordnungsü
     const original = structuredClone(state)
     for (const finalize of [false, true]) {
       assert.throws(() => saveInvoiceDraft(state, { ...draft, recipientStrategy: 'separate' }, finalize), /Getrennte Rechnungen|Historische getrennte Entwürfe/)
-      assert.throws(() => saveInvoiceDraft(state, draft, finalize), /jedem ausgewählten Kind/)
+      assert.throws(() => saveInvoiceDraft(state, draft, finalize), /jedem ausgewählten Lernenden/)
     }
     // An imported legacy draft cannot bypass the editor guard via its status menu.
     const legacy: Invoice = { ...draft, id: 'legacy', number: null, sequence: null, year: 2026, status: 'draft', recipientStrategy: 'separate', createdAt: at, updatedAt: at }
