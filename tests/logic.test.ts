@@ -227,7 +227,7 @@ test('Onboarding priorisiert die Einrichtung und hält den Demo-Zugang sichtbar'
 
   const emptyMarkup = renderDashboard()
   assert.match(emptyMarkup, /0 von 2 Schritten abgeschlossen/)
-  assert.ok(emptyMarkup.indexOf('Absender &amp; Konto') < emptyMarkup.indexOf('Familie anlegen'))
+  assert.ok(emptyMarkup.indexOf('Absender &amp; Konto') < emptyMarkup.indexOf('Personen anlegen'))
   assert.match(emptyMarkup, /Lieber erst mit Beispieldaten testen\?/)
   assert.match(emptyMarkup, /Mit Beispieldaten starten/)
 
@@ -833,7 +833,7 @@ test('Kinderliste startet mit aktivem Aktiv-Filter', () => {
   const source = readFileSync(new URL('../src/views/People.tsx', import.meta.url), 'utf8')
   const stylesheet = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8')
   assert.match(source, /\[onlyActiveStudents, setOnlyActiveStudents\] = useState\(true\)/)
-  assert.match(source, /Nur aktive Kinder anzeigen/)
+  assert.match(source, /Nur aktive Lernende anzeigen/)
   assert.match(source, /!onlyActiveStudents \|\| student\.active/)
   assert.match(source, /switch-row switch-row--compact people-active-filter[\s\S]*type="checkbox"[\s\S]*<i \/>/)
   assert.match(stylesheet, /\.switch-row input:checked \+ i \{[^}]*background: var\(--primary\);/)
