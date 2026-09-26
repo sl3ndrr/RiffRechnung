@@ -12,7 +12,19 @@ bestanden. Der bestehende AP1-JSON-Download in WebKit scheiterte an der
 Export-Rückmeldung; die bekannte Download-Instabilität aus AP3 bleibt ein
 Risiko. Kein Test wurde abgeschwächt. Lokales `npm ci` scheiterte mit HTTP
 403 für `yocto-queue`; die Folge-Gates werden dort nicht als bestanden
-gewertet. Der vollständige AP4-Ergebnislauf wird gesondert zugeordnet.
+gewertet.
+
+Der erste Implementierungslauf `d3051eab` bestand Installation und Lint,
+entdeckte aber im AP4-Fachtest eine fehlende Hinweiszeile: Der finale Snapshot
+wurde mit dem vorherigen Entwurfsstatus erstellt. Die Reihenfolge im zentralen
+Finalisierungsbefehl wurde korrigiert; der Test blieb unverändert.
+[CI 36204634782](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36204634782)
+auf `65b97fd8` unter Node 22.23.2 bestand danach `npm ci`, Lint,
+`npm test` (161/161, darunter alle AP4-Fälle), Typecheck, Build,
+`npm run test:browser` (47/47 mit Chromium-PDF, Firefox und WebKit) und das
+vollständige Dependency-Audit (0 gemeldete Schwachstellen). Block- und
+Fußzeilenposition wurden im mehrseitigen PDF auf der Endsumme-Seite gezählt.
+Ein zusätzlicher Editor-Browsertest wird am Abschlusscommit geprüft.
 
 # AP3 – zusätzliche Gate-Notiz 25.09.2026
 

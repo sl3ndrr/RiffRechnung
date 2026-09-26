@@ -222,6 +222,11 @@ begrenzen etwa den 31. Januar auf den 28./29. Februar. Details und Nachweise:
 
 ### Rechnungsprofil und deutsche IBAN (Paket 07)
 
+Der folgende Paket-07-Abschnitt beschreibt den damaligen Stand. Aktuell gelten
+die oben beschriebenen AP3/AP4-Regeln: Bei ausdrücklich gewählten
+Kleinbetragsrechnungen bis 250,00 € sind Empfängeranschrift und ausgegebene
+Steuerkennung entbehrlich; der Befreiungshinweis bleibt Pflicht.
+
 Unvollständige Einstellungen und Rechnungsentwürfe sind speicherbar. Finalisieren
 ist erst mit vollständigem Kleinunternehmerprofil, Aussteller- und
 Empfängeranschriften, einer als Steuernummer, USt-IdNr. oder

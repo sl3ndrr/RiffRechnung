@@ -164,6 +164,34 @@ test('AP4 Browser/PDF: Kleinbetrag ohne Kennung druckt den Hinweis; Entwurf kann
   expect(finalPdf.text.split('Steuerbefreiung für Kleinunternehmer (§ 19 UStG).')).toHaveLength(2)
 })
 
+test('AP4 Browser: Editor speichert getrennte Schalter und warnt bei möglichem Freitext-Doppelhinweis', async ({ page }) => {
+  const base = documentFamily()
+  const saved = saveInvoiceDraft(base, {
+    ...documentDraft(), invoiceKind: 'standard',
+    taxPresentation: { showIdentifier: true, showNoticeInDraft: true, noticePosition: 'tax-block' },
+  }, false, documentAt)
+  await seed(page, saved)
+  await page.getByRole('button', { name: /^Rechnungen/ }).first().click()
+  await page.getByRole('button', { name: 'Entwurf', exact: true }).click()
+  await page.locator('.invoice-detail').getByRole('button', { name: 'Bearbeiten', exact: true }).click()
+  const editor = page.getByRole('dialog', { name: 'Entwurf bearbeiten' })
+  const identifier = editor.getByRole('checkbox', { name: 'Steuerkennung ausgeben' })
+  await expect(identifier).toBeDisabled()
+  await editor.getByRole('combobox', { name: 'Rechnungsart' }).selectOption('small-amount')
+  await expect(identifier).toBeEnabled()
+  await identifier.uncheck()
+  await editor.getByRole('combobox', { name: 'Befreiungshinweis' }).selectOption('footer')
+  await editor.getByRole('checkbox', { name: 'Befreiungshinweis auch in der Entwurfsvorschau zeigen' }).uncheck()
+  await editor.getByRole('textbox', { name: /Fußzeile \/ Rechtstext/ }).fill('Eigener Hinweis zu § 19')
+  await expect(editor.getByText(/Fußzeilentext enthält möglicherweise/)).toBeVisible()
+  await editor.getByRole('button', { name: 'Als Entwurf speichern', exact: true }).click()
+  await expect(editor).not.toBeVisible()
+  await expect(page.locator('.invoice-detail').getByText(/Vorschauhinweis: Der freie Fußzeilentext/)).toBeVisible()
+  const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('riffrechnung-state-v4')!).data.invoices[0])
+  expect(persisted.taxPresentation).toEqual({ showIdentifier: false, showNoticeInDraft: false, noticePosition: 'footer' })
+  expect(persisted.legalText).toBe('Eigener Hinweis zu § 19')
+})
+
 test('P09 Browser: abgelehnte QR-Erzeugung und ein verspäteter früherer Auftrag bleiben isoliert', async ({ page }) => {
   const single = printableState(2)
   const rendering = await page.context().newPage()
