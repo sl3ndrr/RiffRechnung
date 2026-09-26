@@ -108,6 +108,17 @@ test('P09 Browser/PDF: ein-, zwei- und mehrseitige Rechnungen behalten Text, Was
   expect(draftPdf.text).toContain('ENTWURF')
 })
 
+test('AP4 Charakterisierung: Altbeleg ohne Ausgabeoptionen druckt Kennung und Befreiungshinweis direkt nach der Summe', async ({ page }, testInfo) => {
+  const state = printableState(1, '', 'Historischer Rechtstext')
+  const invoice = state.invoices[0]
+  expect(invoice.invoiceKind).toBeUndefined()
+  const { text } = await createPdf(page, state, invoice.id, 'ap4-altbeleg-vor-umbau', testInfo)
+  const rendered = text.replace(/\s+/g, ' ')
+  expect(rendered).toMatch(/Summe .*Steuernummer: 12\/345\/67890 Steuerbefreiung für Kleinunternehmer \(§ 19 UStG\)\. Bitte überweisen Sie/)
+  expect(rendered).toContain('Historischer Rechtstext')
+  expect(text.split('Steuerbefreiung für Kleinunternehmer (§ 19 UStG).')).toHaveLength(2)
+})
+
 test('P09 Browser: abgelehnte QR-Erzeugung und ein verspäteter früherer Auftrag bleiben isoliert', async ({ page }) => {
   const single = printableState(2)
   const rendering = await page.context().newPage()
