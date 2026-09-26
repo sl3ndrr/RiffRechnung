@@ -1,6 +1,7 @@
 import { localToday, paymentDay } from './calendar'
 import { calculateDueDate } from './utils'
 import { captureLegacyDocuments } from './importState'
+import { newTaxPresentation } from './invoiceProfile'
 import type { AppState, Guardian, Invoice, InvoiceDraft, InvoiceItem, LessonType, Settings, Student } from '../types'
 
 export const defaultSettings: Settings = {
@@ -23,7 +24,7 @@ export const defaultSettings: Settings = {
   numberPattern: '{YYYY}-{K}-{NNNN}',
   resetNumberAnnually: true,
   paymentTermDays: 14,
-  defaultLegalText: 'Privatrechnung | Umsatzsteuerbefreit gemäß § 19 UStG (Kleinunternehmerregelung).',
+  defaultLegalText: '',
   theme: 'system',
   reducedMotion: false,
 }
@@ -61,6 +62,7 @@ export function createEmptyInvoiceDraft(settings: Settings, reference = new Date
     studentIds: [],
     recipientStrategy: 'joint',
     invoiceKind: 'standard',
+    taxPresentation: newTaxPresentation(),
     items: [],
     introText: 'Hiermit stelle ich die Unterrichtseinheiten im Fach Gitarre für den genannten Zeitraum in Rechnung.',
     freeText: '',

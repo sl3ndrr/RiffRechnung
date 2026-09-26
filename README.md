@@ -8,7 +8,8 @@ Eine vollständig clientseitige Web-App für Rechnungen rund um Gitarrenunterric
 - gemeinsame Rechnungen an eine oder mehrere berechtigte Personen erstellen; historische getrennte Belege und Korrekturen weiterhin lesen
 - mehrere Kinder und automatisch berechnete Zwischensummen auf einer Rechnung
 - frei definierbare Positionen, Zahlungsziel und Textbausteine
-- Kleinunternehmerprofil mit vollständiger Ausstelleranschrift und typisierter Steuerkennung; Empfängeranschrift bei Standardrechnungen, ausdrücklich gewählte Kleinbetragsrechnung bis 250,00 € ohne Empfängeranschrift
+- Kleinunternehmerprofil mit vollständiger Ausstelleranschrift; typisierte Steuerkennung bei Standardrechnungen verpflichtend, bei ausdrücklich gewählten Kleinbetragsrechnungen bis 250,00 € ausblendbar; Empfängeranschrift nur bei Standardrechnungen
+- Befreiungshinweis je Rechnung im Steuerblock oder in einer Fußzeile an der Endsumme; finale Belege sichern Kennungsentscheidung, Hinweistext und Position
 - neue Empfängerkontakte mit getrenntem Vor- und Nachnamen; alle übrigen Kontaktangaben optional, alte Anzeigenamen bleiben erhalten
 - Entwurf, versendet, bezahlt und automatisch erkanntes „überfällig“; verknüpfte Korrekturentwürfe erhalten den vollständigen Originalbeleg
 - konfigurierbarer Nummernkreis mit dauerhaftem Kinderkennzeichen (`a`, `b`, `c` …); jedes Kind bzw. jede Kindkombination zählt getrennt und Nummern werden erst bei Finalisierung vergeben
@@ -65,6 +66,8 @@ Vite verwendet für den Produktions-Build relative Asset-Pfade. Dadurch funktion
 ## PDF / Drucken
 
 „PDF / Drucken“ öffnet den nativen Druckdialog des Browsers. Dort **Als PDF speichern** wählen. Das Druck-CSS setzt A4 mit **16 mm oben, 20 mm links/rechts und 22 mm unten**, Inter-Typografie, Briefkopf, Tabellenfarben und Bankdaten um. Entwürfe tragen ein Wasserzeichen. Rechtstext, Rechnungsreferenz und Hinweise stehen zusätzlich im normalen Dokumentfluss: Selbst wenn ein Browser die optionalen `@page`-Randbereiche nicht unterstützt, bleiben die wesentlichen Angaben im PDF erhalten. In Chromium ergänzen die Randbereiche auf jeder Seite Rechnungsreferenz und „Seite x von y“. Lange Namen, Anschriften, Kontoangaben und mehrzeilige Freitexte bleiben umbruchfähig statt abgeschnitten zu werden.
+
+Die Fußzeilenoption stellt Rechtstext und Befreiungshinweis als eigene Zeilen direkt an die Endsumme; dadurch bleiben beide auch bei mehrseitigen Rechnungen auf deren Seite. Die spätere Schlusszeile enthält dann nur noch die Belegreferenz. Der frei eingegebene Rechtstext wird nicht automatisch gekürzt oder auf mögliche Dopplungen hin verändert; Editor und Rechnungsdetail weisen auf „§ 19“ oder „Kleinunternehmer“ darin hin. Neue Standardeinstellungen enthalten keinen zusätzlichen Befreiungstext. Bereits gespeicherte Rechtstexte bleiben erhalten.
 
 Der GiroCode füllt Empfänger, deutsche IBAN, optional eingegebene BIC, Betrag und Rechnungsnummer aus derselben gebundenen Belegversion in unterstützten Banking-Apps aus. Bei einer fehlerhaften EPC-Payload oder abgelehnter QR-Erzeugung erklärt die App den Grund und bietet ausdrücklich **„Ohne GiroCode drucken“** an; das fehlerhafte Bild wird nicht übernommen. Das ändert weder die Finalisierungsprüfung noch Rechnungsdaten. Für neue Verwendung werden ausschließlich deutsche Empfänger-IBANs unterstützt. IBAN-Prüfsumme und BIC-Format bestätigen weder Kontoinhaber noch Erreichbarkeit. Der EPC-Standard selbst kann keine Echtzeitüberweisung erzwingen; diese Option wird – sofern verfügbar – in der Banking-App ausgewählt.
 

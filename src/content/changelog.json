@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.5",
+    "date": "2026-09-26",
+    "changes": [
+      "Die Steuerkennung kann bei ausdrücklich gewählten Kleinbetragsrechnungen ausgelassen werden; Standardrechnungen verlangen sie weiterhin.",
+      "Der Befreiungshinweis steht wahlweise im Steuerblock oder in der Fußzeile an der Endsumme. Entwürfe dürfen beide Angaben ausblenden; finale Belege frieren ihre tatsächliche Ausgabe ein."
+    ]
+  },
+  {
     "version": "1.4",
     "date": "2026-09-25",
     "changes": [

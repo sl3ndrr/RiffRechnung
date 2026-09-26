@@ -1,3 +1,23 @@
+# AP4 – Prüfstand 26.09.2026
+
+AP4 ist ein gestapelter Entwurfs-PR auf AP3 und noch nicht freigegeben.
+Die gesetzlichen Voraussetzungen aus §§ 33 und 34a UStDV wurden für den
+dokumentierten Produktumfang erneut geprüft. Die neue Fußzeilenwahl wird als
+Zeile bei der Endsumme gedruckt, damit ein mehrseitiger Beleg den Hinweis
+nicht erst auf einer späteren Seite zeigt. Der bestehende Rechtstext bleibt
+unverändert, sodass ein nutzereigener Steuerhinweis zusätzlich vorkommen
+kann; Editor und Rechnungsdetail warnen ohne Inhaltsänderung.
+
+Der Charakterisierungscommit `1684225f` bestand `npm ci`, Lint,
+Fachtests einschließlich importiertem AP4-Test, Typecheck, Build und den
+Altbeleg-PDF-Test in Chromium in
+[CI 36203816712](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36203816712).
+Der vollständige Browserlauf endete mit 44/45: Der bekannte instabile
+AP1-JSON-Download in WebKit erhielt keine Export-Rückmeldung; die AP4-
+Charakterisierung bestand. Die Implementierungs-Gates sind separat am
+Ergebniscommit zu prüfen. Lokales `npm ci` erhielt Registry HTTP 403,
+Node ist hier 24 statt 22. Native Freigabegrenzen unten bleiben offen.
+
 # AP3 – Prüfstand 25.09.2026
 
 AP3 beruht auf `main` 47f491e (AP1 integriert). Schema 8 ist noch nicht

@@ -1,3 +1,19 @@
+# AP4 – Gate-Notiz 26.09.2026
+
+Arbeitsbranch `codex/ap4-tax-output-options` basiert auf dem offenen AP3-
+Head `c010cf4d`. Der Charakterisierungstest in `tests/ap4.test.ts` wurde
+vor dem Umbau aus `tests/logic.test.ts` importiert. Der PDF-Test in
+`tests/browser/print.spec.ts` prüfte den gerenderten Text des Altbelegs.
+[CI 36203816712](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36203816712)
+auf `1684225f` unter Node 22: Installation, Lint, alle Fachtests (mit
+ausdrücklich protokollierter AP4-Charakterisierung), Typecheck und Build
+bestanden; die Chromium-PDF-Charakterisierung ebenfalls. 44/45 Browserfälle
+bestanden. Der bestehende AP1-JSON-Download in WebKit scheiterte an der
+Export-Rückmeldung; die bekannte Download-Instabilität aus AP3 bleibt ein
+Risiko. Kein Test wurde abgeschwächt. Lokales `npm ci` scheiterte mit HTTP
+403 für `yocto-queue`; die Folge-Gates werden dort nicht als bestanden
+gewertet. Der vollständige AP4-Ergebnislauf wird gesondert zugeordnet.
+
 # AP3 – zusätzliche Gate-Notiz 25.09.2026
 
 `npm ci` in der bereitgestellten Laufzeit (Node 24.19.0) scheiterte an HTTP 403

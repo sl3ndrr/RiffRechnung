@@ -1,9 +1,13 @@
-import type { Guardian, InvoiceKind, Settings } from '../types'
+import type { Guardian, InvoiceKind, Settings, TaxPresentation } from '../types'
 import { invoiceSetupErrors, type InvoiceFieldError } from './invoiceProfile'
 
 /** The only decision point for invoice-kind-specific finalization requirements. */
-export function invoiceCompliance(kind: InvoiceKind | undefined, totalCents: number, settings: Settings, recipients: Guardian[]): InvoiceFieldError[] {
-  const errors = invoiceSetupErrors(settings)
+export function invoiceCompliance(kind: InvoiceKind | undefined, totalCents: number, settings: Settings, recipients: Guardian[], presentation?: TaxPresentation): InvoiceFieldError[] {
+  const showIdentifier = presentation?.showIdentifier ?? true
+  const errors = invoiceSetupErrors(settings, kind !== 'small-amount' || showIdentifier)
+  if (kind !== 'small-amount' && !showIdentifier) {
+    errors.push({ field: 'taxPresentation.showIdentifier', message: 'Standardrechnung: Steuerkennung ausgeben ist Pflicht. Bitte im Rechnungseditor aktivieren.' })
+  }
   if (kind === 'small-amount' && totalCents > 25_000) {
     errors.push({ field: 'invoiceKind', message: 'Kleinbetragsrechnung über 250,00 €: Standardrechnung erforderlich. Bitte Rechnungsart ändern und die fehlenden Empfängerangaben ergänzen.' })
   }

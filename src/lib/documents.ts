@@ -4,7 +4,7 @@ import { canonical } from './envelope'
 import { copyItemsWithFreshIds, freshId } from './identities'
 import { billingPeriodFromItems, guardianName, uid } from './utils'
 import { validateBackupState } from './validation'
-import { snapshotTaxData } from './invoiceProfile'
+import { snapshotTaxData, snapshotTaxOutput } from './invoiceProfile'
 
 export function documentContent(invoice: Invoice): DocumentContent {
   const content = structuredClone(invoice)
@@ -29,6 +29,7 @@ export function snapshotFor(state: Pick<AppState, 'guardians' | 'students' | 'se
     bic: state.settings.bic, bankName: state.settings.bankName, legalText: invoice.legalText,
     ...(invoice.invoiceKind ? { invoiceKind: invoice.invoiceKind } : {}),
     ...snapshotTaxData(state.settings),
+    ...(invoice.taxPresentation ? { taxOutput: snapshotTaxOutput(state.settings, invoice) } : {}),
   }
 }
 

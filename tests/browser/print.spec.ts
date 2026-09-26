@@ -119,6 +119,51 @@ test('AP4 Charakterisierung: Altbeleg ohne Ausgabeoptionen druckt Kennung und Be
   expect(text.split('Steuerbefreiung für Kleinunternehmer (§ 19 UStG).')).toHaveLength(2)
 })
 
+test('AP4 Browser/PDF: Steuerblock und Fußzeile halten den einzigen Befreiungshinweis auch mehrseitig bei der Endsumme', async ({ page }, testInfo) => {
+  for (const noticePosition of ['tax-block', 'footer'] as const) {
+    for (const count of [1, 108]) {
+      const state = documentFamily()
+      const draft = documentDraft()
+      const issued = saveInvoiceDraft(state, {
+        ...draft, invoiceKind: 'standard', taxPresentation: { showIdentifier: true, showNoticeInDraft: true, noticePosition },
+        legalText: 'Synthetischer Rechtstext ohne Steuerhinweis',
+        items: Array.from({ length: count }, (_, i) => ({
+          ...draft.items[0], id: `ap4-pdf-${i}`, serviceDate: `2026-09-${String(i % 28 + 1).padStart(2, '0')}`,
+          description: `Synthetische Unterrichtsposition ${i + 1} mit längerem Beschreibungstext`,
+        })),
+      }, true, documentAt)
+      const pdf = await createPdf(page, issued, issued.invoices[0].id, `ap4-${noticePosition}-${count}`, testInfo)
+      const pages = pdf.text.split('\f').filter((text) => text.trim())
+      const finalPage = pages.findIndex((text) => /\bSumme\b/.test(text))
+      const noticePages = pages.flatMap((text, i) => text.includes('Steuerbefreiung für Kleinunternehmer (§ 19 UStG).') ? [i] : [])
+      expect(pdf.pages).toBeGreaterThanOrEqual(count === 1 ? 1 : 2)
+      expect(noticePages).toEqual([finalPage])
+      expect(pdf.text.split('Steuerbefreiung für Kleinunternehmer (§ 19 UStG).')).toHaveLength(2)
+      expect(pdf.text.split('Steuernummer:')).toHaveLength(2)
+      if (noticePosition === 'footer') expect(pages[finalPage]).toContain('Synthetischer Rechtstext ohne Steuerhinweis')
+    }
+  }
+})
+
+test('AP4 Browser/PDF: Kleinbetrag ohne Kennung druckt den Hinweis; Entwurf kann beides ausblenden', async ({ page }, testInfo) => {
+  const state = documentFamily()
+  state.settings.taxIdentifier.value = ''
+  const draft = documentDraft()
+  const choice: InvoiceDraft = {
+    ...draft, invoiceKind: 'small-amount', taxPresentation: { showIdentifier: false, showNoticeInDraft: false, noticePosition: 'tax-block' },
+    items: [{ ...draft.items[0], quantity: 1, unitPrice: 249.99 }],
+  }
+  const saved = saveInvoiceDraft(state, choice, false, documentAt)
+  const draftPdf = await createPdf(page, saved, saved.invoices[0].id, 'ap4-entwurf-ohne-steuerangaben', testInfo)
+  expect(draftPdf.text).toContain('ENTWURF')
+  expect(draftPdf.text).not.toContain('Steuernummer:')
+  expect(draftPdf.text).not.toContain('Steuerbefreiung für Kleinunternehmer (§ 19 UStG).')
+  const issued = saveInvoiceDraft(saved, { ...choice, id: saved.invoices[0].id }, true, documentAt)
+  const finalPdf = await createPdf(page, issued, issued.invoices[0].id, 'ap4-kleinbetrag-ohne-kennung', testInfo)
+  expect(finalPdf.text).not.toContain('Steuernummer:')
+  expect(finalPdf.text.split('Steuerbefreiung für Kleinunternehmer (§ 19 UStG).')).toHaveLength(2)
+})
+
 test('P09 Browser: abgelehnte QR-Erzeugung und ein verspäteter früherer Auftrag bleiben isoliert', async ({ page }) => {
   const single = printableState(2)
   const rendering = await page.context().newPage()

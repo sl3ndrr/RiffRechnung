@@ -3,6 +3,7 @@ import { correctionErrors, reassignCorrectionStudent } from '../lib/documents'
 import { LEGACY_REVIEW_FIELDS } from '../lib/commands'
 import { applyItemNumberInput, itemNumberInput, adjustQuantity as adjustedQuantity, MIN_QUANTITY, MAX_QUANTITY, QUANTITY_INCREMENT } from '../lib/values'
 import { invoiceDraftErrors } from '../lib/invoiceActions'
+import { hasPossibleTaxNotice, newTaxPresentation, TAX_IDENTIFIER_LABELS, taxIdentifierInputError } from '../lib/invoiceProfile'
 import { useEffect, useMemo, useState } from 'react'
 import { Calendar, CircleDollarSign, FileCheck2, Minus, Plus, Save, Send, Trash2 } from 'lucide-react'
 import type { AppState, Guardian, InvoiceDraft, LessonType, Settings, Student } from '../types'
@@ -49,6 +50,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
   const change = draftAmountChange(draft)
   const calculatedPeriod = billingPeriodFromItems(form.items, form.invoiceDate)
   const footerTextValid = isFooterTextWithinLimit(form.legalText)
+  const taxPresentation = form.taxPresentation ?? newTaxPresentation()
   const dirty = JSON.stringify(form) !== JSON.stringify(draft)
   const correctionBlockers = form.correction && !finalized ? [...correctionErrors(state, form), ...invoiceFinalizationErrors(state, form)] : []
 
@@ -166,7 +168,16 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
       }
     >
       <form className="invoice-form" id={INVOICE_EDITOR_FORM_ID} onSubmit={(event) => { event.preventDefault(); submit(false) }}>
-        <label className="field"><span>Rechnungsart</span><select value={form.invoiceKind ?? 'standard'} onChange={(event) => setForm({ ...form, invoiceKind: event.target.value as 'standard' | 'small-amount' })}><option value="standard">Standardrechnung</option><option value="small-amount">Kleinbetragsrechnung nach § 33 UStDV (bis 250,00 €)</option></select></label>
+        <label className="field"><span>Rechnungsart</span><select value={form.invoiceKind ?? 'standard'} onChange={(event) => setForm({ ...form, invoiceKind: event.target.value as 'standard' | 'small-amount', taxPresentation: { ...taxPresentation, showIdentifier: event.target.value === 'standard' ? true : taxPresentation.showIdentifier } })}><option value="standard">Standardrechnung</option><option value="small-amount">Kleinbetragsrechnung nach § 33 UStDV (bis 250,00 €)</option></select></label>
+        <fieldset className="form-section" aria-label="Steuerangaben im Druck">
+          <legend>Steuerangaben im Druck</legend>
+          <label className="field"><input type="checkbox" checked={taxPresentation.showIdentifier} disabled={finalized || (form.invoiceKind !== 'small-amount' && taxPresentation.showIdentifier)} onChange={(event) => setForm({ ...form, taxPresentation: { ...taxPresentation, showIdentifier: event.target.checked } })} /> Steuerkennung ausgeben</label>
+          <small>Bei Standardrechnungen Pflicht; nur die ausdrücklich gewählte Kleinbetragsrechnung darf sie auslassen.</small>
+          {taxPresentation.showIdentifier && taxIdentifierInputError(settings.taxIdentifier) && <small className="field-warning" role="status">Einstellungen → {TAX_IDENTIFIER_LABELS[settings.taxIdentifier.kind]}: {taxIdentifierInputError(settings.taxIdentifier)}</small>}
+          <label className="field"><span>Befreiungshinweis</span><select value={taxPresentation.noticePosition} disabled={finalized} onChange={(event) => setForm({ ...form, taxPresentation: { ...taxPresentation, noticePosition: event.target.value as 'tax-block' | 'footer' } })}><option value="tax-block">Steuerblock direkt unter der Endsumme</option><option value="footer">Fußzeile direkt bei der Endsumme</option></select></label>
+          <small>Die Fußzeile steht mit der Endsumme auf derselben Druckseite. Der Befreiungshinweis wird bei jeder Finalisierung gedruckt.</small>
+          <label className="field"><input type="checkbox" checked={taxPresentation.showNoticeInDraft} disabled={finalized} onChange={(event) => setForm({ ...form, taxPresentation: { ...taxPresentation, showNoticeInDraft: event.target.checked } })} /> Befreiungshinweis auch in der Entwurfsvorschau zeigen</label>
+        </fieldset>
         {editing && !state.invoices.find((invoice) => invoice.id === draft.id)?.calculation && change.changed && <p role="status" className="notice">Dezimalberechnung prüfen: bisher {euro.format(change.before / 100)}, jetzt {change.after === null ? 'ungültiger Betrag' : euro.format(change.after / 100)}. Positionsbeträge werden einzeln kaufmännisch auf Cent gerundet. Speichern oder Finalisieren übernimmt die hier angezeigten neuen Beträge; Originalbelege bleiben erhalten.</p>}
         <p className="muted">Mengen: 0,01–99,99 (bis 2 Nachkommastellen). Preise in EUR je Einheit; gespeicherte Untercentpräzision bleibt erhalten. Gesamt höchstens 999.999.999,99 EUR.</p>
         {finalized && <div className="revision-banner"><FileCheck2 aria-hidden="true" /><div><strong>Finalisierte Rechnung</strong><p>{FINALIZED_INVOICE_BLOCKED}</p></div></div>}
@@ -231,6 +242,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
             <label className="field"><span id="invoice-intro-label">Einleitung</span><textarea aria-labelledby="invoice-intro-label" rows={4} value={form.introText} onChange={(event) => setForm({ ...form, introText: event.target.value })} /></label>
             <label className="field"><span id="invoice-note-label">Freitext / Hinweis</span><textarea aria-labelledby="invoice-note-label" rows={4} value={form.freeText} onChange={(event) => setForm({ ...form, freeText: event.target.value })} placeholder="Optional" /></label>
             <label className="field field--full"><span>Fußzeile / Rechtstext</span><textarea rows={2} maxLength={MAX_FOOTER_TEXT_LENGTH} value={form.legalText} onChange={(event) => setForm({ ...form, legalText: event.target.value })} aria-invalid={!footerTextValid} /><small className="field-counter">{form.legalText.length} / {MAX_FOOTER_TEXT_LENGTH} Zeichen</small>{form.legalText.length >= MAX_FOOTER_TEXT_LENGTH && <small className="field-warning" role="status">Zeichenlimit erreicht. Nutze für längere rechnungsspezifische Angaben das Feld „Freitext / Hinweis“.</small>}</label>
+            {hasPossibleTaxNotice(form.legalText) && <p className="field-warning" role="status">Der Fußzeilentext enthält möglicherweise bereits „§ 19“ oder „Kleinunternehmer“. Bitte eine mögliche Doppelung prüfen; der Text bleibt unverändert.</p>}
           </div>
         </section>
       </form>
