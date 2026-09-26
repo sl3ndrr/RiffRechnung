@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import type { AppState } from '../../src/types'
 import { documentDraft, documentFamily, documentAt, legacyFixture } from '../documentFixtures'
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
@@ -402,6 +402,7 @@ test('AP5 Browser/PDF: Selbstzahlerin und Minderjähriger mit zwei Empfängern v
     const pdf = await pdfText(page, saved, invoice.id)
     expect(pdf.text).toContain(`Sehr geehrte/r ${expectedRecipients.join(' und ')}`)
     expect(pdf.text).toContain(address)
+    await writeFile(testInfo.outputPath(`ap5-${learner.replace(' ', '-')}.pdf`), pdf.pdf)
     await testInfo.attach(`ap5-${learner.replace(' ', '-')}.pdf`, { body: pdf.pdf, contentType: 'application/pdf' })
   }
   expect(saved.payments).toHaveLength(2)
