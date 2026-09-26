@@ -8,7 +8,7 @@ export const TAX_IDENTIFIER_LABELS: Record<TaxIdentifierKind, string> = {
   'small-business-id': 'Kleinunternehmer-Identifikationsnummer',
 }
 export function newTaxPresentation(): TaxPresentation {
-  return { showIdentifier: true, showNoticeInDraft: true, noticePosition: 'tax-block' }
+  return { showIdentifier: true, showIdentifierInDraft: true, showNoticeInDraft: true, noticePosition: 'tax-block' }
 }
 export interface InvoiceFieldError { field: string; message: string }
 const required = (field: string, label: string, value: string): InvoiceFieldError[] => value.trim() ? [] : [{ field, message: `${label} fehlt.` }]
@@ -45,7 +45,8 @@ export function snapshotTaxOutput(settings: Settings, invoice: Invoice): TaxOutp
   const choice = invoice.taxPresentation
   if (!choice) return undefined
   return {
-    identifier: choice.showIdentifier ? structuredClone(settings.taxIdentifier) : null,
+    identifier: choice.showIdentifier && (invoice.status !== 'draft' || choice.showIdentifierInDraft)
+      ? structuredClone(settings.taxIdentifier) : null,
     noticeText: settings.invoiceProfile === 'small-business' && (invoice.status !== 'draft' || choice.showNoticeInDraft)
       ? SMALL_BUSINESS_TAX_NOTICE : null,
     noticePosition: choice.noticePosition,

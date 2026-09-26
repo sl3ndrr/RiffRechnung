@@ -168,8 +168,9 @@ function validateTaxOutput(value: unknown, path: string): void {
 
 function validateTaxPresentation(value: unknown, path: string): void {
   const choice = backupObject(value, path)
-  knownKeys(choice, path, 'showIdentifier showNoticeInDraft noticePosition')
+  knownKeys(choice, path, 'showIdentifier showIdentifierInDraft showNoticeInDraft noticePosition')
   backupBoolean(choice.showIdentifier, `${path}.showIdentifier`)
+  backupBoolean(choice.showIdentifierInDraft, `${path}.showIdentifierInDraft`)
   backupBoolean(choice.showNoticeInDraft, `${path}.showNoticeInDraft`)
   backupEnum(choice.noticePosition, `${path}.noticePosition`, TAX_NOTICE_POSITIONS)
 }
@@ -258,6 +259,10 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8, localI
     knownKeys(invoice, path, 'id number sequence year invoiceDate dueDate period status guardianIds studentIds recipientStrategy items introText freeText legalText snapshot paidAt sentAt createdAt updatedAt' + (versioned ? ' versionId correction' : '') + (schema >= 5 ? ' calculation' : '') + (schema >= 8 ? ' invoiceKind draftPrintSnapshot taxPresentation' : ''))
     if (schema >= 8 && invoice.invoiceKind !== undefined) backupEnum(invoice.invoiceKind, `${path}.invoiceKind`, INVOICE_KINDS)
     if (schema >= 8 && invoice.taxPresentation !== undefined) validateTaxPresentation(invoice.taxPresentation, `${path}.taxPresentation`)
+    if (schema >= 8 && invoice.taxPresentation !== undefined && invoice.invoiceKind !== 'small-amount'
+      && backupObject(invoice.taxPresentation, `${path}.taxPresentation`).showIdentifier === false) {
+      invalidBackup(`${path}.taxPresentation.showIdentifier`, 'darf nur bei Kleinbetragsrechnungen falsch sein')
+    }
     registerId(invoice.id, `${path}.id`, invoiceIds)
     const number = invoice.number === null ? null : backupString(invoice.number, `${path}.number`, true)
     if (number !== null) {
@@ -299,7 +304,8 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8, localI
         if (Boolean(output) !== Boolean(choice)) invalidBackup(`${path}.${name}.taxOutput`, 'muss bei neuer Ausgabeentscheidung vorhanden sein und bei Altbelegen fehlen')
         if (!output || !choice) continue
         if (output.noticePosition !== choice.noticePosition) invalidBackup(`${path}.${name}.taxOutput.noticePosition`, 'muss der gespeicherten Position entsprechen')
-        if ((output.identifier === null) === (choice.showIdentifier === true)) invalidBackup(`${path}.${name}.taxOutput.identifier`, 'muss der gespeicherten Ausgabeentscheidung entsprechen')
+        const visibleIdentifier = choice.showIdentifier === true && (name === 'snapshot' || choice.showIdentifierInDraft === true)
+        if ((output.identifier === null) === visibleIdentifier) invalidBackup(`${path}.${name}.taxOutput.identifier`, 'muss der gespeicherten Ausgabeentscheidung entsprechen')
         if (output.identifier !== null && JSON.stringify(output.identifier) !== JSON.stringify(snapshot.taxIdentifier)) invalidBackup(`${path}.${name}.taxOutput.identifier`, 'muss den eingefrorenen Kennungstyp und -wert enthalten')
         if (name === 'snapshot') {
           if (output.noticeText === null) invalidBackup(`${path}.snapshot.taxOutput.noticeText`, 'muss bei finalen Belegen den Befreiungshinweis enthalten')

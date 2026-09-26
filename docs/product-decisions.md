@@ -548,8 +548,12 @@ und [Bundesbank-IBAN-Regeln](https://www.bundesbank.de/de/aufgaben/unbarer-zahlu
   Standardrechnungen nicht. Bei Ausgabe wird für jeden der drei Kennungstypen
   eine nichtleere Angabe verlangt. Die Grenze von 25.000 Cent und die
   Empfängeranschrift bleiben ausschließlich in der AP3-Abschlussprüfung.
+  Die Dashboard-Einrichtung kann mit leerer Kennung als startbereit gelten;
+  die gewählte Rechnungsart entscheidet beim Abschluss. Einstellungen nennen
+  die fehlende Kennung ausdrücklich als Standardrechnungsanforderung.
 - Der Befreiungshinweis wird bei jeder neuen Finalisierung ausgegeben.
-  Entwurfsvorschauen dürfen Kennung und Hinweis getrennt ausblenden und tragen
+  Entwurfsvorschauen dürfen Kennung und Hinweis unabhängig von der späteren
+  Kennungspflicht getrennt ausblenden und tragen
   das sichtbare ENTWURF-Wasserzeichen. Der alternative Ort „Fußzeile“ ist die
   Rechtstextzeile direkt bei der Endsumme, nicht die spätere Schlusszeile:
   Summe, Kennung und diese Fußzeile bilden im Druck eine zusammengehaltene

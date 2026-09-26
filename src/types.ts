@@ -10,6 +10,7 @@ export type TaxNoticePosition = 'tax-block' | 'footer'
 
 export interface TaxPresentation {
   showIdentifier: boolean
+  showIdentifierInDraft: boolean
   showNoticeInDraft: boolean
   noticePosition: TaxNoticePosition
 }

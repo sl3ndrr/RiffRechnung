@@ -125,7 +125,7 @@ test('AP4 Browser/PDF: Steuerblock und Fußzeile halten den einzigen Befreiungsh
       const state = documentFamily()
       const draft = documentDraft()
       const issued = saveInvoiceDraft(state, {
-        ...draft, invoiceKind: 'standard', taxPresentation: { showIdentifier: true, showNoticeInDraft: true, noticePosition },
+        ...draft, invoiceKind: 'standard', taxPresentation: { showIdentifier: true, showIdentifierInDraft: true, showNoticeInDraft: true, noticePosition },
         legalText: 'Synthetischer Rechtstext ohne Steuerhinweis',
         items: Array.from({ length: count }, (_, i) => ({
           ...draft.items[0], id: `ap4-pdf-${i}`, serviceDate: `2026-09-${String(i % 28 + 1).padStart(2, '0')}`,
@@ -150,7 +150,7 @@ test('AP4 Browser/PDF: Kleinbetrag ohne Kennung druckt den Hinweis; Entwurf kann
   state.settings.taxIdentifier.value = ''
   const draft = documentDraft()
   const choice: InvoiceDraft = {
-    ...draft, invoiceKind: 'small-amount', taxPresentation: { showIdentifier: false, showNoticeInDraft: false, noticePosition: 'tax-block' },
+    ...draft, invoiceKind: 'small-amount', taxPresentation: { showIdentifier: false, showIdentifierInDraft: false, showNoticeInDraft: false, noticePosition: 'tax-block' },
     items: [{ ...draft.items[0], quantity: 1, unitPrice: 249.99 }],
   }
   const saved = saveInvoiceDraft(state, choice, false, documentAt)
@@ -168,7 +168,7 @@ test('AP4 Browser: Editor speichert getrennte Schalter und warnt bei möglichem 
   const base = documentFamily()
   const saved = saveInvoiceDraft(base, {
     ...documentDraft(), invoiceKind: 'standard',
-    taxPresentation: { showIdentifier: true, showNoticeInDraft: true, noticePosition: 'tax-block' },
+    taxPresentation: { showIdentifier: true, showIdentifierInDraft: true, showNoticeInDraft: true, noticePosition: 'tax-block' },
   }, false, documentAt)
   await seed(page, saved)
   await page.getByRole('button', { name: /^Rechnungen/ }).first().click()
@@ -181,6 +181,7 @@ test('AP4 Browser: Editor speichert getrennte Schalter und warnt bei möglichem 
   await expect(identifier).toBeEnabled()
   await identifier.uncheck()
   await editor.getByRole('combobox', { name: 'Befreiungshinweis' }).selectOption('footer')
+  await editor.getByRole('checkbox', { name: 'Steuerkennung auch in der Entwurfsvorschau zeigen' }).uncheck()
   await editor.getByRole('checkbox', { name: 'Befreiungshinweis auch in der Entwurfsvorschau zeigen' }).uncheck()
   await editor.getByRole('textbox', { name: /Fußzeile \/ Rechtstext/ }).fill('Eigener Hinweis zu § 19')
   await expect(editor.getByText(/Fußzeilentext enthält möglicherweise/)).toBeVisible()
@@ -188,7 +189,7 @@ test('AP4 Browser: Editor speichert getrennte Schalter und warnt bei möglichem 
   await expect(editor).not.toBeVisible()
   await expect(page.locator('.invoice-detail').getByText(/Vorschauhinweis: Der freie Fußzeilentext/)).toBeVisible()
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('riffrechnung-state-v4')!).data.invoices[0])
-  expect(persisted.taxPresentation).toEqual({ showIdentifier: false, showNoticeInDraft: false, noticePosition: 'footer' })
+  expect(persisted.taxPresentation).toEqual({ showIdentifier: false, showIdentifierInDraft: false, showNoticeInDraft: false, noticePosition: 'footer' })
   expect(persisted.legalText).toBe('Eigener Hinweis zu § 19')
 })
 

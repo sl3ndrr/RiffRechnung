@@ -371,7 +371,9 @@ export function uid(prefix: string): string {
 export { cleanIban, formatIban, germanIbanError, isValidGermanIban as isValidIban } from './paymentData'
 
 export function isInvoiceSetupComplete(settings: Settings): boolean {
-  return invoiceSetupErrors(settings).length === 0
+  // Dashboard readiness means an invoice can be started; the chosen kind
+  // determines the additional identifier requirement at finalization.
+  return invoiceSetupErrors(settings, false).length === 0
 }
 
 function sanitizeEpc(value: string, maxLength: number): string {

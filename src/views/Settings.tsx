@@ -96,7 +96,7 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
         <div className="settings-content" >
           <section id="profile" className="surface settings-section">
             <div className="settings-section__heading"><span><ShieldCheck aria-hidden="true" /></span><div><h2>Rechnungssteller</h2><p>Diese Angaben erscheinen im Briefkopf und werden beim Finalisieren eingefroren.</p></div></div>
-            {setupErrors.length > 0 && <div className="form-errors" role="status"><strong>Für neue Finalisierungen fehlen:</strong><ul>{setupErrors.map((error) => <li key={error.field}>{error.message}</li>)}</ul></div>}
+            {setupErrors.length > 0 && <div className="form-errors" role="status"><strong>Für Standardrechnungen fehlen:</strong><ul>{setupErrors.map((error) => <li key={error.field}>{error.message}</li>)}</ul><p>Bei einer ausdrücklich gewählten Kleinbetragsrechnung kann nur die Steuerkennung entfallen; die übrigen Angaben bleiben erforderlich.</p></div>}
             <div className="form-grid form-grid--2">
               <label className="field field--full"><span>Name / Geschäftsbezeichnung</span><input value={form.issuer.name} onChange={(event) => setForm({ ...form, issuer: { ...form.issuer, name: event.target.value } })} /></label>
               <label className="field field--full"><span>Straße & Hausnummer</span><input value={form.issuer.street} onChange={(event) => setForm({ ...form, issuer: { ...form.issuer, street: event.target.value } })} /></label>

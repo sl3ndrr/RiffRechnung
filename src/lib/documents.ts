@@ -131,6 +131,10 @@ export function createCorrectionDraft(state: AppState, invoiceId: string, reason
     items: copyItemsWithFreshIds(parent.content.items, new Set(state.invoices.flatMap((entry) => entry.items.map((item) => item.id))), uid),
     correction: { replacesId: parent.id, reason: reason.trim() }, createdAt: at, updatedAt: at,
   }
+  if (draft.taxPresentation && draft.draftPrintSnapshot?.taxOutput) {
+    if (!draft.taxPresentation.showIdentifierInDraft) draft.draftPrintSnapshot.taxOutput.identifier = null
+    if (!draft.taxPresentation.showNoticeInDraft) draft.draftPrintSnapshot.taxOutput.noticeText = null
+  }
   const next = { ...state, invoices: [...state.invoices, persistentInvoice(draft)] }
   validateBackupState(next)
   return next

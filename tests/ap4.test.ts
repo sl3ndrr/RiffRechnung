@@ -9,7 +9,7 @@ import { saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { hasPossibleTaxNotice, SMALL_BUSINESS_TAX_NOTICE, TAX_IDENTIFIER_LABELS } from '../src/lib/invoiceProfile'
 import { inspectImport } from '../src/lib/importState'
 import { serializeBackup } from '../src/lib/storage'
-import { invoiceFinalizationErrors } from '../src/lib/utils'
+import { invoiceFinalizationErrors, isInvoiceSetupComplete } from '../src/lib/utils'
 import { validateBackupState } from '../src/lib/validation'
 import { requireSuccess } from '../src/lib/result'
 import type { AppState, InvoiceDraft, InvoiceKind, TaxNoticePosition } from '../src/types'
@@ -32,7 +32,7 @@ test('AP4 Charakterisierung vor dem Umbau: Altbeleg ohne Ausgabeoptionen behält
 function ap4Draft(price: number, invoiceKind: InvoiceKind, showIdentifier: boolean, noticePosition: TaxNoticePosition = 'tax-block', showNoticeInDraft = true): InvoiceDraft {
   const draft = documentDraft()
   return {
-    ...draft, invoiceKind, taxPresentation: { showIdentifier, noticePosition, showNoticeInDraft },
+    ...draft, invoiceKind, taxPresentation: { showIdentifier, showIdentifierInDraft: true, noticePosition, showNoticeInDraft },
     items: [{ ...draft.items[0], quantity: 1, unitPrice: price }],
     legalText: 'Individueller Rechtstext',
   }
@@ -46,6 +46,9 @@ function printedText(state: AppState): string {
 }
 
 test('AP4: 249,99/250,00 ohne Kennung, 250,01 gesperrt; Hinweis bleibt genau einmal', () => {
+  const readyForSmallAmount = documentFamily()
+  readyForSmallAmount.settings.taxIdentifier.value = ''
+  assert.equal(isInvoiceSetupComplete(readyForSmallAmount.settings), true)
   for (const price of [249.99, 250]) {
     const state = documentFamily()
     state.settings.taxIdentifier.value = ''
@@ -72,6 +75,11 @@ test('AP4: Standard verlangt Ausgabe und für jeden Kennungstyp eine gefüllte F
     assert.ok(errors.includes(TAX_IDENTIFIER_LABELS[kind]), errors)
     assert.match(errors, /Steuerliche Identifikationsangabe fehlt/)
     assert.throws(() => saveInvoiceDraft(state, ap4Draft(30, 'standard', true), true, documentAt), /Steuerliche Identifikationsangabe fehlt/)
+    assert.throws(() => saveInvoiceDraft(state, ap4Draft(30, 'standard', false), false, documentAt), /nur bei Kleinbetragsrechnungen/)
+    state.settings.taxIdentifier.value = 'SYNTHETISCH-123'
+    const issued = saveInvoiceDraft(state, ap4Draft(30, 'standard', true), true, documentAt)
+    assert.deepEqual(issued.documentVersions[0].outputSnapshot.taxOutput?.identifier, { kind, value: 'SYNTHETISCH-123' })
+    assert.ok(printedText(issued).includes(`${TAX_IDENTIFIER_LABELS[kind]}: SYNTHETISCH-123`))
   }
 })
 
@@ -79,7 +87,7 @@ test('AP4: Block und Fußzeile frieren Ausgabe und Text ein, gespeicherte Einste
   for (const noticePosition of ['tax-block', 'footer'] as const) {
     const issued = saveInvoiceDraft(documentFamily(), ap4Draft(30, 'standard', true, noticePosition), true, documentAt)
     const version = issued.documentVersions[0]
-    assert.deepEqual(version.content.taxPresentation, { showIdentifier: true, showNoticeInDraft: true, noticePosition })
+    assert.deepEqual(version.content.taxPresentation, { showIdentifier: true, showIdentifierInDraft: true, showNoticeInDraft: true, noticePosition })
     assert.deepEqual(version.outputSnapshot.taxOutput, {
       identifier: { kind: 'tax-number', value: '12/345/67890' },
       noticeText: SMALL_BUSINESS_TAX_NOTICE, noticePosition,
@@ -114,6 +122,22 @@ test('AP4: Entwurf blendet beide Angaben aus, finaler Beleg nie den Befreiungshi
   assert.equal(printedText(issued).split(SMALL_BUSINESS_TAX_NOTICE).length - 1, 1)
 })
 
+test('AP4: Standardentwurf kann beide Angaben verbergen; Finalisierung druckt Kennung und Hinweis', () => {
+  const draft = ap4Draft(30, 'standard', true)
+  draft.taxPresentation = { ...draft.taxPresentation!, showIdentifierInDraft: false, showNoticeInDraft: false }
+  const saved = saveInvoiceDraft(documentFamily(), draft, false, documentAt)
+  assert.deepEqual(saved.invoices[0].draftPrintSnapshot?.taxOutput, { identifier: null, noticeText: null, noticePosition: 'tax-block' })
+  assert.match(printedText(saved), /ENTWURF/)
+  assert.doesNotMatch(printedText(saved), /Steuernummer:|Steuerbefreiung für Kleinunternehmer/)
+  const issued = saveInvoiceDraft(saved, { ...draft, id: saved.invoices[0].id }, true, documentAt)
+  assert.deepEqual(issued.documentVersions[0].outputSnapshot.taxOutput?.identifier, { kind: 'tax-number', value: '12/345/67890' })
+  assert.equal(issued.documentVersions[0].outputSnapshot.taxOutput?.noticeText, SMALL_BUSINESS_TAX_NOTICE)
+  const correction = createCorrectionDraft(issued, issued.invoices[0].id, 'Synthetische Änderung', documentAt)
+  const correctionDraft = correction.invoices.find((invoice) => invoice.status === 'draft')!
+  assert.deepEqual(correctionDraft.draftPrintSnapshot?.taxOutput, { identifier: null, noticeText: null, noticePosition: 'tax-block' })
+  validateBackupState(correction)
+})
+
 test('AP4: Korrektur über der Kleinbetragsgrenze prüft erneut; Warnung verändert keinen Fußzeilentext', () => {
   const issued = saveInvoiceDraft(documentFamily(), ap4Draft(250, 'small-amount', false), true, documentAt)
   const corrected = createCorrectionDraft(issued, issued.invoices[0].id, 'Synthetische Korrektur', documentAt)
@@ -128,4 +152,14 @@ test('AP4: Korrektur über der Kleinbetragsgrenze prüft erneut; Warnung veränd
   assert.equal(hasPossibleTaxNotice('Kleinunternehmerregelung'), true)
   assert.equal(hasPossibleTaxNotice('Individueller Rechtstext'), false)
   assert.equal(documentFamily().settings.defaultLegalText, '')
+})
+
+test('AP4: Backup eines Altbelegs erhält fehlende Optionsfelder und denselben Drucktext', () => {
+  const old = saveInvoiceDraft(documentFamily(), { ...documentDraft(), legalText: 'Historischer Rechtstext' }, true, documentAt)
+  const before = printedText(old)
+  const restored = requireSuccess(inspectImport(serializeBackup(old)))
+  assert.equal(restored.report, null)
+  assert.equal(restored.state.invoices[0].taxPresentation, undefined)
+  assert.equal(restored.state.documentVersions[0].outputSnapshot.taxOutput, undefined)
+  assert.equal(printedText(restored.state), before)
 })

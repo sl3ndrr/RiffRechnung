@@ -20,8 +20,10 @@ nach Korrektur. [CI 36204634782](https://github.com/sl3ndrr/RiffRechnung/actions
 auf `65b97fd8` bestand unter Node 22.23.2 Installation, Lint,
 161/161 Fachtests, Typecheck, Build, 47/47 Browserprüfungen mit
 Endsumme-Seitenvergleich sowie vollständiges Audit ohne gemeldete
-Schwachstellen. Der ergänzte Editor-Browsertest erhält einen eigenen
-Abschlusslauf. Lokales `npm ci` erhielt Registry HTTP 403,
+Schwachstellen. Der ergänzte Editor-Browsertest bestand auf `eddf3dca` in
+[CI 36205098812](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36205098812)
+mit 161/161 Fach- und 48/48 Browserprüfungen sowie allen übrigen Gates.
+Lokales `npm ci` erhielt Registry HTTP 403,
 Node ist hier 24 statt 22. Native Freigabegrenzen unten bleiben offen.
 
 # AP3 – Prüfstand 25.09.2026

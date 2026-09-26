@@ -24,7 +24,12 @@ auf `65b97fd8` unter Node 22.23.2 bestand danach `npm ci`, Lint,
 `npm run test:browser` (47/47 mit Chromium-PDF, Firefox und WebKit) und das
 vollständige Dependency-Audit (0 gemeldete Schwachstellen). Block- und
 Fußzeilenposition wurden im mehrseitigen PDF auf der Endsumme-Seite gezählt.
-Ein zusätzlicher Editor-Browsertest wird am Abschlusscommit geprüft.
+Der zusätzliche Editor-Browsertest bestand in
+[CI 36205098812](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36205098812)
+auf `eddf3dca`: 161/161 Fach- und 48/48 Browserprüfungen, alle übrigen
+Gates und Audit ebenfalls grün. Er prüft die Standard-Sperre, die
+Kleinbetragswahl, beide Entwurfsschalter, die gespeicherte Fußzeilenposition
+und die nicht blockierende Freitextwarnung.
 
 # AP3 – zusätzliche Gate-Notiz 25.09.2026
 
