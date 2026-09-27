@@ -43,7 +43,12 @@ test('AP6 Browser/PDF: eingefrorene Schema-7-Belege bleiben nach Migration, Druc
   for (const original of [gold.issuedCorrected, gold.oldestSeparate]) {
     await page.goto('/')
     await page.evaluate(() => localStorage.clear())
-    await seed(page, original)
+    await page.evaluate(async (raw) => {
+      const path = '/src/lib/storage.ts'
+      const { StorageSession } = await import(path)
+      await new StorageSession().restore(raw)
+    }, JSON.stringify(original))
+    await page.reload()
     const after = await stateOf(page)
     expect({ ...after, schemaVersion: 7 }).toEqual(original)
     const separate = after.invoices.find((entry) => entry.recipientStrategy === 'separate')!
