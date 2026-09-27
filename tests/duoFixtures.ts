@@ -14,7 +14,8 @@ export function duoFamily(): AppState {
   const state = documentFamily()
   households.forEach((household, index) => {
     Object.assign(state.students[index], { name: household.student, billingCode: household.code, note: household.note, guardianIds: [state.guardians[index].id] })
-    Object.assign(state.guardians[index], { name: household.guardian, email: `${household.code}@example.org`, paymentNote: household.note })
+    const [firstName, lastName] = household.guardian.split(' ')
+    Object.assign(state.guardians[index], { firstName, lastName, name: household.guardian, email: `${household.code}@example.org`, paymentNote: household.note })
     state.guardians[index].address.street = `${household.code.toUpperCase()}-Weg ${index + 1}`
   })
   state.nextStudentCodeIndex = Math.max(...households.map((household) => studentCodeIndex(household.code))) + 1

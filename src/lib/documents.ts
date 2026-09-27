@@ -5,7 +5,7 @@ import { copyItemsWithFreshIds, freshId } from './identities'
 import { billingPeriodFromItems, guardianName, uid } from './utils'
 import { validateBackupState } from './validation'
 import { snapshotTaxData, snapshotTaxOutput } from './invoiceProfile'
-import { liveRecipient } from './recipients'
+import { liveRecipient, recipientRefs } from './recipients'
 
 export function documentContent(invoice: Invoice): DocumentContent {
   const content = structuredClone(invoice)

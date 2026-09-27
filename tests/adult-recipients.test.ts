@@ -143,6 +143,10 @@ test('AP5: Kombinationszähler beachtet Legacy-Schlüssel, Reservierungen und ei
 test('AP5: Schema 7→8 ist additiv, idempotent, berichtet und archiviert Rohdaten', async () => {
   const state = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
   const old = { ...structuredClone(state), schemaVersion: 7 }
+  for (const guardian of old.guardians) {
+    delete guardian.firstName
+    delete guardian.lastName
+  }
   validateLegacyV7Structure(old)
   const raw = JSON.stringify(old)
   const preview = requireSuccess(inspectImport(raw))
