@@ -1,3 +1,166 @@
+# AP4 – Gate-Notiz 26.09.2026
+
+Arbeitsbranch `codex/ap4-tax-output-options` basiert auf dem offenen AP3-
+Head `c010cf4d`. Der Charakterisierungstest in `tests/ap4.test.ts` wurde
+vor dem Umbau aus `tests/logic.test.ts` importiert. Der PDF-Test in
+`tests/browser/print.spec.ts` prüfte den gerenderten Text des Altbelegs.
+[CI 36203816712](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36203816712)
+auf `1684225f` unter Node 22: Installation, Lint, alle Fachtests (mit
+ausdrücklich protokollierter AP4-Charakterisierung), Typecheck und Build
+bestanden; die Chromium-PDF-Charakterisierung ebenfalls. 44/45 Browserfälle
+bestanden. Der bestehende AP1-JSON-Download in WebKit scheiterte an der
+Export-Rückmeldung; die bekannte Download-Instabilität aus AP3 bleibt ein
+Risiko. Kein Test wurde abgeschwächt. Lokales `npm ci` scheiterte mit HTTP
+403 für `yocto-queue`; die Folge-Gates werden dort nicht als bestanden
+gewertet.
+
+Der erste Implementierungslauf `d3051eab` bestand Installation und Lint,
+entdeckte aber im AP4-Fachtest eine fehlende Hinweiszeile: Der finale Snapshot
+wurde mit dem vorherigen Entwurfsstatus erstellt. Die Reihenfolge im zentralen
+Finalisierungsbefehl wurde korrigiert; der Test blieb unverändert.
+[CI 36204634782](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36204634782)
+auf `65b97fd8` unter Node 22.23.2 bestand danach `npm ci`, Lint,
+`npm test` (161/161, darunter alle AP4-Fälle), Typecheck, Build,
+`npm run test:browser` (47/47 mit Chromium-PDF, Firefox und WebKit) und das
+vollständige Dependency-Audit (0 gemeldete Schwachstellen). Block- und
+Fußzeilenposition wurden im mehrseitigen PDF auf der Endsumme-Seite gezählt.
+Der zusätzliche Editor-Browsertest bestand in
+[CI 36205098812](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36205098812)
+auf `eddf3dca`: 161/161 Fach- und 48/48 Browserprüfungen, alle übrigen
+Gates und Audit ebenfalls grün. Er prüft die Standard-Sperre, die
+Kleinbetragswahl, beide Entwurfsschalter, die gespeicherte Fußzeilenposition
+und die nicht blockierende Freitextwarnung.
+
+# AP3 – zusätzliche Gate-Notiz 25.09.2026
+
+`npm ci` in der bereitgestellten Laufzeit (Node 24.19.0) scheiterte an HTTP 403
+für `yocto-queue-0.1.0.tgz`; darauf aufbauende lokale Gates werden nur nach
+wirklich erfolgreicher Installation als bestanden bezeichnet. Die neue
+`tests/ap3.test.ts` wird ausdrücklich aus `tests/logic.test.ts` importiert.
+Die CI-Prüfungen des eigenen AP3-Branches sind gesondert zu bewerten.
+[CI 36176504548](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36176504548)
+auf `03803019`: Node 22.23.2, `npm ci`, Lint, 154/154 Fachtests,
+Typecheck, Build, 44/44 Browserprüfungen mit Chromium/Firefox/WebKit,
+`pdftotext` und vollständiges Audit erfolgreich. Die AP3-Fälle laufen über
+den Import in `tests/logic.test.ts` und sind im Fachtestprotokoll benannt.
+
+Spätere Zwischenläufe [36176645864](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36176645864),
+[36176832409](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36176832409)
+und [36176988150](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36176988150)
+bestanden jeweils Installation, Lint, Fachtests, Typecheck und Build, aber nur
+43/44 Browserfälle: Der bestehende AP1-Export-/Importtest erhielt im Download
+ungültiges JSON. Als Ursache kommt der beim Klick noch im selben Task
+widerrufene Objekt-URL infrage. Der Export gibt ihn nun zeitversetzt frei;
+der Test blieb inhaltlich unverändert.
+[CI 36177190418](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36177190418)
+deckte mit dem neuen Browserfall auf, dass der Editor beim Öffnen eines
+Korrekturentwurfs die gespeicherte Rechnungsart nicht übernahm. `App.tsx`
+übernimmt sie nun; der Grenzfall erwartet die sichtbare Sperr- und
+Adressmeldung. Auch hier blieben die Testaussagen erhalten.
+[CI 36177972747](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36177972747)
+zeigte danach sieben Roundtrip-Differenzen: Ein Testadapter setzte bei
+Altbelegen `invoiceKind: undefined`, das JSON naturgemäß entfernt. UI und
+Adapter übernehmen den Schlüssel jetzt nur bei vorhandenem Wert, damit die
+Legacy-Bedeutung auch byte- und objektseitig erhalten bleibt.
+[CI 36178221455](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36178221455)
+bestand 155 Fachtests und 43/44 Browserfälle einschließlich des neuen
+AP3-Korrekturfalls und des zuvor betroffenen Chromium-Backups. WebKit meldete
+beim JSON-Fallback keinen Download innerhalb von 10 s. Der Klick wurde laut
+Playwright-Trace ausgeführt; der kurzlebige Download-Anker wurde bisher direkt
+entfernt. Anker und Objekt-URL bleiben jetzt bis zur verzögerten Freigabe
+erhalten. Der unveränderte WebKit-Roundtrip bestand im folgenden Ergebnislauf.
+
+**Ergebniscommit `b8ff8b91d9a337d7b6c79d218936212216aedd0d`:**
+[CI 36179170530](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36179170530)
+unter Node 22.23.2: `npm ci`, `npm run lint`, `npm test` (155/155),
+`npm run typecheck`, `npm run build`, Browserinstallation und `pdftotext`,
+`npm run test:browser` (44/44 einschließlich AP3-Korrektur und AP1-JSON-
+Fallback in Chromium, Firefox und WebKit) sowie vollständiges Audit ohne
+Schwachstellen bestanden. Kein Test wurde abgeschwächt.
+
+Der erste und der unveränderte zweite Versuch von
+[CI 36180058758](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36180058758)
+scheiterten jeweils mit 43/44 Browserfällen: erst am ausbleibenden WebKit-
+Download-Ereignis, dann an ungültigen Downloadbytes im Chromium-AP1-Test.
+Der Test sichert nun nur im Fehlerfall die synthetischen Bytes und prüft
+zusätzlich die Export-Rückmeldung; alle Roundtrip-Vergleiche bleiben bestehen.
+[CI 36181722538](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36181722538)
+auf `0e5c54bf4d2097eca62d7e0da6e35773c345dec8` bestand erneut alle Gates
+mit 155/155 Fach- und 44/44 Browserprüfungen sowie Audit. Die wechselnden
+Download-Timeouts bleiben ein Reproduzierbarkeitsrisiko für die Browser-CI;
+ein einzelner grüner Lauf beweist keine dauerhafte Stabilität.
+
+## AP2 – Nachweis (2026-09-25)
+
+Ausgang: `main` `47f491eecbebb788bf6f63aea2b1342bc3dfbd85`, AP1 integriert.
+Keine AGENTS.md im bereitgestellten Tree. Terminal-Clone: HTTP 403; lokaler
+Git-Verlauf kennzeichnet deshalb ausdrücklich die Dateimaterialisierung statt
+eines angeblichen vollständigen Checkouts. Eigener GitHub-Arbeitsbranch:
+`codex/ap2-duo-households`. Keine Änderung an Merge-/Deploy-Workflows.
+
+Lokale Gates in der vorgeschriebenen Reihenfolge versucht:
+`npm ci --fetch-retries=0 --fetch-timeout=20000` → E403 beim Registry-Abruf;
+Lint → `eslint: not found`; Tests → `esbuild: not found`; Typecheck/Build →
+`tsc: not found`; Browserprüfung → origin-Fetch des historischen Commits
+`ba7857fd9180fa392c42a0235643e478e5077ee5` HTTP 403. Node 24.19.0 statt 22.
+Diese Gates sind **nicht ausführbar**, nicht bestanden. Bestehende Node-22-PR-CI
+muss Installation, Lint, Fachtests, Test-Typecheck, Build, Playwright/Poppler und
+Browserprüfungen für den konkreten Ergebniscommit ausführen.
+
+Erster Lauf [CI 36111901834](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36111901834)
+auf `6a453da63d027c077d12c99b9d03b560125f9eb2`: Installation, Lint, 159/159
+Fachtests, Typecheck und Build erfolgreich; Browser 48/49. Die AP2-Testnamen
+sind im npm-Testprotokoll enthalten. Ein neuer Browserselektor erwartete
+„Einzelpreis“, während das bestehende Label „Einzelpreis €“ lautet. Preis- und
+Rechtstextselektor berücksichtigen nun das vollständige Label einschließlich
+Suffix bzw. Zeichenzähler. Keine Assertion, kein Zeitbudget wurde abgeschwächt.
+Der Folgelauf prüfte zusätzlich beide vorhandenen Demo-Duos, mehrere ausdrückliche
+Empfänger pro Ziel, den Erhalt ihrer historischen Versionen und Änderungszeitpunkte.
+
+[PR #37](https://github.com/sl3ndrr/RiffRechnung/pull/37), Implementierungsstand
+`adf99f5d830e0fc639175f8d3a250cd0c3716920`,
+[CI 36112913179](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36112913179):
+Node 22.23.2 / npm 10.9.8; `npm ci`, Lint, **160/160 Fachtests**, Typecheck,
+Build und **49/49 Browserprüfungen** erfolgreich. Chromium 153.0.8010.12,
+Firefox 155.0 und Playwright-WebKit 26.6 unter Ubuntu; Poppler und historischer
+origin-Commit verfügbar. Vollständiges Dependency-Audit: 0 gemeldete Schwachstellen.
+Der abschließende Commit ergänzt direkte Adress-/E-Mail-Leakmarker sowie die
+Kontodatenprüfung in Vorschau und PDF. Er erhält einen eigenen vollständigen
+CI-Lauf; dessen exakte SHA/Laufzuordnung wird im PR-Abschluss festgehalten.
+
+Dieser Lauf [CI 36138790679](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36138790679)
+auf `e9605952625fa849da567dd7fc937b7d2e274c61` bestand die 160 Fachtests sowie
+alle Duo-PDF-/Adress-/Kontoprüfungen, endete aber mit 48/49 Browserprüfungen.
+Der AP2-WebKit-JSON-Test erhielt nach dem Exportklick kein Download-Ereignis.
+Das heruntergeladene Trace-Artefakt zeigt Bewegung/Außerhalb-des-Viewports beim
+automatischen Scrollen und einen ausgeführten Klick, während die Bildfolge
+weiter scrollt. Kein Backup-Zeitstempel wurde gesetzt: der Exporthandler lief
+nicht. Der AP2-Test nutzt nun den festen Seitenleistenknopf „Backup exportieren“
+mit demselben Handler; der AP1-Test behält den Einstellungs-Knopf bei. Echter
+Mausklick, nativer Download, Zeitbudgets und alle vollständigen Datenvergleiche
+bleiben erhalten. Keine Force-Clicks, Sleeps oder Retries im Test ergänzt.
+Der Folgestand wird erneut durch sämtliche Gates geprüft; Zuordnung im PR.
+
+Neue Fachdatei `tests/duo.test.ts` ist im tatsächlichen Testeinstieg
+`tests/logic.test.ts` importiert; ihre `AP2:`-/`AP2 Leak:`-/`AP2 Speicher:`-
+Testnamen stehen im npm-Testprotokoll des erfolgreichen Laufs (12 neue Tests).
+Damit ist die tatsächliche Ausführung belegt. Keine Testauslassungen
+oder Retries ergänzt. Bestehende Schema-Grenzerwartungen in `logic`, `documents`,
+`money-calendar`, `payment-reporting` sowie Browser-`documents`/`stabilization`
+wurden gezielt von aktuellem Schema 7 auf 8 und Zukunftsschema 8 auf 9 angepasst;
+die ursprünglichen Original-/Migrations-/Sperrassertionen bleiben erhalten.
+`storageHarness.seedState` übernimmt jetzt die tatsächliche Zustandsversion.
+
+## AP5 – Prüfauftrag (2026-09-26)
+
+Neue `tests/adult-recipients.test.ts` wird ausdrücklich aus `tests/logic.test.ts` importiert. Sie prüft Selbstzahler und zwei Erziehungsberechtigte über Entwurf, Finalisierung, Zahlung, Snapshot, HTML-Druck, JSON und Reload; neue Kopien alter Belege, Moduswechsel, Korrektur, typgleiche IDs, segmentierte Kombinationszähler/Legacy-Schlüssel und reservierte Nummern sowie Schema-7→8-Migration und Roharchiv. Der Browserfall in `tests/browser/documents.spec.ts` legt beide Personenarten über die sichtbare Oberfläche an und prüft echte PDF-Texte sowie Export/Import/Reload. Umbenannte sichtbare Bezeichnungen wurden in den bestehenden Playwright-Selektoren einschließlich der Inventur von `accessibility.spec.ts` geprüft; geänderte Versions- und Fehlermeldungserwartungen sind gezielt angepasst.
+
+GitHub [CI 36253116923](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36253116923) auf `6183cb31ef6ec3dd1c07fd5dc44d26ec4c38ea44` (Ubuntu 24.04, Node 22.23.2): `npm ci`, Lint, 155/155 Fachtests (sieben AP5-Fälle), Typecheck, Build, Playwright-Installation für Chromium/Firefox/WebKit, `poppler-utils`, 44/44 Browserprüfungen einschließlich PDF-Text und vollständiges `npm audit --json` (0 gemeldete Schwachstellen) erfolgreich. Die beiden synthetischen AP5-PDFs im [Browser-Artefakt 10909314626](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36253116923/artifacts/10909314626) wurden mit Poppler als jeweils eine A4-Seite bei 1500 Pixeln gerendert und visuell auf Anschrift, Anrede, Nummer, Betrag, Zahlungsblock, Ränder und Fußzeile geprüft: keine Überlappung oder Abschneidung sichtbar. Das belegt diese Chromium-Ausgaben, nicht den nativen Druckdialog oder Safari.
+
+Frühere Läufe zeigten zwei Browserfehler: versteckte Chip-Eingaben wurden direkt bedient, und ein Importtest lud vor Abschluss des asynchronen Speicherns neu. Danach stoppte ein Lauf an einer veralteten Fehlermeldungserwartung. Die Tests verwenden jetzt sichtbare Beschriftungen, warten auf den bestätigten Speicherabschluss und prüfen weiterhin den vollständigen Zustand nach Reload; kein Test wurde abgeschwächt.
+
+Lokal: Node 24.19.0 statt 22.x; `npm ci` scheitert mit HTTP 403 für `yocto-queue`. Ohne installierte Projektabhängigkeiten sind Lint, Fachtests, Typecheck, Build und Browserlauf lokal nicht ausführbar. Die AP1-Nachweise unten gelten nur für den alten Stand. Für jeden weiteren Commit ist erneut der vollständige Node-22-Lauf erforderlich.
+
 ## AP1 – Nachweis (2026-09-24)
 
 [PR #36](https://github.com/sl3ndrr/RiffRechnung/pull/36), Implementierungscommit `02e712c519d4f833552837a66b63bad06fd73ad9`: [CI 36063143264](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36063143264) unter Node 22.23.2 / npm 10.9.8. `npm ci`, `npm run lint`, `npm test` (148/148; die AP1-Testnamen sind im Protokoll und die Testdatei ist in `tests/logic.test.ts` importiert), `npm run typecheck`, `npm run build`, Installation aller Playwright-Browser und `pdftotext`, `npm run test:browser` (43/43) sowie vollständiges Dependency-Audit erfolgreich. Der abschließende Dokumentationscommit benötigt einen eigenen CI-Lauf.
@@ -643,4 +806,3 @@ Force-Clicks, Testauslassungen oder schwächeren Datenvergleiche. Grundlage:
 [Playwright-Testzeitbudgets](https://playwright.dev/docs/test-timeouts) schließen
 Fixture-Setup ein und sind vom Assertion-Zeitbudget getrennt. Der neue Ergebnis-
 Commit wird vollständig geprüft und im PR mit exakter SHA/CI-Lauf verknüpft.
-

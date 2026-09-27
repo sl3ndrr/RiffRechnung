@@ -77,7 +77,7 @@ export function unknownPaymentDayLabel(payment: InvoicePayment): string {
 /** CSV is built from the same financial report, never from a separate date rule. */
 export function financialReportToCsv(state: AppState, year: number): string {
   const report = financialReport(state, year)
-  const header = ['Datensatz', 'Rechnungsnummer', 'Rechnungsdatum', 'Zahlungsdatum', 'Zahlungsdatum-Status', 'Erfassungszeitpunkt', 'Empfänger', 'Kind(er)', 'Forderungsstatus', 'Rechnungsvolumen EUR', 'Zahlungseingang EUR', 'Ursprungsbeleg', 'Aktuelle Zuordnung']
+  const header = ['Datensatz', 'Rechnungsnummer', 'Rechnungsdatum', 'Zahlungsdatum', 'Zahlungsdatum-Status', 'Erfassungszeitpunkt', 'Empfänger', 'Lernende', 'Forderungsstatus', 'Rechnungsvolumen EUR', 'Zahlungseingang EUR', 'Ursprungsbeleg', 'Aktuelle Zuordnung']
   const invoiceRows = report.invoices
     .sort((a, b) => a.invoiceDate.localeCompare(b.invoiceDate) || (a.number ?? '').localeCompare(b.number ?? ''))
     .map((invoice) => [
@@ -87,7 +87,7 @@ export function financialReportToCsv(state: AppState, year: number): string {
       '',
       '',
       '',
-      guardianName(invoice, state.guardians),
+      guardianName(invoice, state.guardians, state.students),
       studentName(invoice, state.students),
       invoice.claimState === 'replaced' ? 'Ersetzt – keine zusätzliche Forderung' : statusLabel[invoice.status],
       (invoiceTotalCents(invoice) / 100).toFixed(2).replace('.', ','),
@@ -108,7 +108,7 @@ export function financialReportToCsv(state: AppState, year: number): string {
         payment.paidAt ?? '',
         paymentHasConfirmedDay(payment) ? 'Bestätigt' : unknownPaymentDayLabel(payment),
         payment.recordedAt,
-        source ? source.outputSnapshot.guardians.map((guardian) => guardian.name).join(', ') : '',
+        source ? (source.outputSnapshot.recipients ?? source.outputSnapshot.guardians).map((recipient) => recipient.name).join(', ') : '',
         source ? source.outputSnapshot.students.map((student) => student.name).join(', ') : '',
         allocated ? 'Zugeordnet' : 'Zur Klärung nicht zugeordnet',
         '',

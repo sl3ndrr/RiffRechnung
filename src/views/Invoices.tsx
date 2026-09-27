@@ -1,9 +1,11 @@
+import { duoForInvoice } from '../lib/duoModel'
 import { invoiceTotalCents, sumCents } from '../lib/money'
 import { outputItemTotal } from '../lib/utils'
 import { DocumentHistory, HistoricalSnapshotEvidence, type DocumentHistoryActions } from '../components/DocumentHistory'
 import { activeInvoices, isActiveClaim, openCents, selectedInvoices } from '../lib/documents'
 import { commandResult } from '../lib/result'
 import { needsHistoricalSplitReview } from '../lib/historicalSplit'
+import { hasPossibleTaxNotice } from '../lib/invoiceProfile'
 import { FINALIZED_INVOICE_BLOCKED, isFinalizedInvoice } from '../lib/safety'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -18,6 +20,7 @@ interface InvoicesProps extends DocumentHistoryActions {
   selectedId: string | null
   onSelect: (id: string | null) => void
   onNew: () => void
+  onDuo: (groupId?: string) => void
   onEdit: (invoice: Invoice) => void
   onDuplicate: (invoice: Invoice) => void
   onDelete: (invoice: Invoice) => void
@@ -26,7 +29,7 @@ interface InvoicesProps extends DocumentHistoryActions {
   onToast: (message: string, tone?: 'success' | 'error' | 'info') => void
 }
 
-export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplicate, onDelete, onSetStatus, onPrint, onToast, onCorrection, onAllocatePayment, onResolveConflicts }: InvoicesProps) {
+export function Invoices({ state, selectedId, onSelect, onNew, onDuo, onEdit, onDuplicate, onDelete, onSetStatus, onPrint, onToast, onCorrection, onAllocatePayment, onResolveConflicts }: InvoicesProps) {
   const [search, setSearch] = useState('')
   const [showArchived, setShowArchived] = useState(false)
   const invoices = useMemo(() => selectedInvoices(state), [state])
@@ -50,7 +53,7 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
         if (status !== 'all' && actualStatus !== status) return false
         if (year !== 'all' && String(invoice.year) !== year) return false
         if (!needle) return true
-        const haystack = [invoice.number, billingPeriodFromItems(invoice.items, invoice.invoiceDate), guardianName(invoice, state.guardians), studentName(invoice, state.students), ...invoice.items.map((item) => item.description)].join(' ').toLocaleLowerCase('de-DE')
+        const haystack = [invoice.number, billingPeriodFromItems(invoice.items, invoice.invoiceDate), guardianName(invoice, state.guardians, state.students), studentName(invoice, state.students), ...invoice.items.map((item) => item.description)].join(' ').toLocaleLowerCase('de-DE')
         return haystack.includes(needle)
       })
     return sortInvoices(matches, sort.key, sort.direction, state.guardians, state.students)
@@ -145,6 +148,7 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
     <div className="page invoice-page">
       <header className="page-header">
         <div><p className="eyebrow">Verwaltung</p><h1>Rechnungen</h1><p>{state.invoices.length} Vorgänge · {euro.format(sumCents(activeInvoices(state).map(invoiceTotalCents)) / 100)} aktives Belegvolumen</p></div>
+        <button className="button button--tonal" onClick={() => onDuo()}>Duo · zwei Haushalte</button>
         <button className="button button--primary button--large" onClick={onNew}><FilePlus2 aria-hidden="true" /> Neue Rechnung</button>
       </header>
 
@@ -152,7 +156,7 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
         <label className="search-field">
           <Search aria-hidden="true" />
           <span className="sr-only">Rechnungen durchsuchen</span>
-          <input id="invoice-search" type="search" placeholder="Nummer, Familie, Kind oder Thema …" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <input id="invoice-search" type="search" placeholder="Nummer, Rechnungsempfänger, Lernende oder Thema …" value={search} onChange={(event) => setSearch(event.target.value)} />
         </label>
         <label className="select-field select-field--compact"><span className="sr-only">Status</span><select value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">Alle Status</option>{Object.entries(statusLabel).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select><ChevronDown aria-hidden="true" /></label>
         <label className="select-field select-field--compact"><span className="sr-only">Jahr</span><select value={year} onChange={(event) => setYear(event.target.value)}><option value="all">Alle Jahre</option>{years.map((item) => <option value={item} key={item}>{item}</option>)}</select><ChevronDown aria-hidden="true" /></label>
@@ -160,7 +164,7 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
 
       {!state.invoices.length ? (
         <section className="surface">
-          <EmptyState icon={FilePlus2} title="Die erste Rechnung wartet" description="Sobald eine Familie angelegt ist, kannst du Unterrichtspositionen erfassen und die Rechnung finalisieren." action={<button className="button button--primary" onClick={onNew}>Rechnung anlegen</button>} />
+          <EmptyState icon={FilePlus2} title="Die erste Rechnung wartet" description="Sobald eine lernende Person angelegt ist, kannst du Unterrichtspositionen erfassen und die Rechnung finalisieren." action={<button className="button button--primary" onClick={onNew}>Rechnung anlegen</button>} />
         </section>
       ) : (
         <div className={`invoice-workspace ${selected ? 'invoice-workspace--detail' : ''}`}>
@@ -168,14 +172,14 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
             <div className="invoice-list-summary"><span>{filtered.length} Ergebnisse</span>{(search || status !== 'all' || year !== 'all') && <button className="button button--text" onClick={() => { setSearch(''); setStatus('all'); setYear('all') }}>Filter zurücksetzen</button>}</div>
             <div className="table-scroll">
               <table className="data-table invoice-list-table">
-                <thead><tr><SortableHeader label="Rechnung" sortKey="number" sort={sort} onSort={toggleSort} /><SortableHeader label="Familie / Kind" sortKey="family" sort={sort} onSort={toggleSort} /><SortableHeader label="Zeitraum" sortKey="period" sort={sort} onSort={toggleSort} /><SortableHeader label="Status" sortKey="status" sort={sort} onSort={toggleSort} /><SortableHeader label="Betrag" sortKey="amount" sort={sort} onSort={toggleSort} alignRight /><th><span className="sr-only">Aktion</span></th></tr></thead>
+                <thead><tr><SortableHeader label="Rechnung" sortKey="number" sort={sort} onSort={toggleSort} /><SortableHeader label="Empfänger / Lernende" sortKey="family" sort={sort} onSort={toggleSort} /><SortableHeader label="Zeitraum" sortKey="period" sort={sort} onSort={toggleSort} /><SortableHeader label="Status" sortKey="status" sort={sort} onSort={toggleSort} /><SortableHeader label="Betrag" sortKey="amount" sort={sort} onSort={toggleSort} alignRight /><th><span className="sr-only">Aktion</span></th></tr></thead>
                 <tbody>{filtered.map((invoice) => {
                   const actualStatus = effectiveStatus(invoice)
                   const period = invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate)
                   return (
                     <tr className={invoice.id === selectedId ? 'is-selected' : ''} key={invoice.id} onClick={() => openDetails(invoice)}>
                       <td><button ref={(node) => { if (node && invoice.id === selectedId && !detailTriggerRef.current) detailTriggerRef.current = node }} className="button button--text invoice-detail-link" type="button" onClick={(event) => { event.stopPropagation(); openDetails(invoice, event.currentTarget) }}>{invoice.number ?? 'Entwurf'}</button>{invoice.versionId && !isActiveClaim(state, invoice) && <small>Ersetzt</small>}<small>{formatDate(invoice.invoiceDate)}</small></td>
-                      <td>{guardianName(invoice, state.guardians)}<small>{studentName(invoice, state.students)}</small></td>
+                      <td>{guardianName(invoice, state.guardians, state.students)}<small>{studentName(invoice, state.students)}</small></td>
                       <td>{period}</td>
                       <td><span className={`status-chip status-chip--${actualStatus}`}><i />{statusLabel[actualStatus]}</span></td>
                       <td className="align-right"><strong>{euro.format(invoiceTotal(invoice))}</strong></td>
@@ -198,6 +202,7 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
               state={state}
               onClose={closeDetails}
               onEdit={() => onEdit(selected)}
+              onDuo={duoForInvoice(state, selected.id) ? () => onDuo(duoForInvoice(state, selected.id)!.id) : undefined}
               onDuplicate={() => onDuplicate(selected)}
               onDelete={() => onDelete(selected)}
               onSetStatus={(next, paymentDay) => onSetStatus(selected, next, paymentDay)}
@@ -249,12 +254,13 @@ function SortableHeader({ label, sortKey, sort, onSort, alignRight = false }: {
   )
 }
 
-function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete, onSetStatus, onPrint, onToast, onSelect, onCorrection, onAllocatePayment, onResolveConflicts }: DocumentHistoryActions & {
+function InvoiceDetail({ invoice, state, onClose, onEdit, onDuo, onDuplicate, onDelete, onSetStatus, onPrint, onToast, onSelect, onCorrection, onAllocatePayment, onResolveConflicts }: DocumentHistoryActions & {
   invoice: Invoice
   state: AppState
   onSelect: (id: string) => void
   onClose: () => void
   onEdit: () => void
+  onDuo?: () => void
   onDuplicate: () => void
   onDelete: () => void
   onSetStatus: (status: InvoiceStatus, paymentDay?: string) => void
@@ -293,9 +299,10 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
   return (
     <aside className="surface invoice-detail" aria-label={`Details zu ${invoice.number ?? 'Entwurf'}`}>
       <header className="invoice-detail__header">
-        <div><p className="eyebrow">Rechnung</p><h2>{invoice.number ?? 'Entwurf'}</h2><p>{guardianName(invoice, state.guardians)}</p></div>
+        <div><p className="eyebrow">Rechnung</p><h2>{invoice.number ?? 'Entwurf'}</h2><p>{guardianName(invoice, state.guardians, state.students)}</p></div>
         <button ref={closeButtonRef} className="icon-button" type="button" onClick={onClose} aria-label="Detailansicht schließen">×</button>
       </header>
+      {onDuo && <button className="button button--tonal" onClick={onDuo}>Duo-Verknüpfung öffnen</button>}
       <div className="invoice-detail__amount"><strong>{euro.format(invoiceTotal(invoice))}</strong><span className={`status-chip status-chip--${status}`}><i />{statusLabel[status]}</span></div>
       <dl className="detail-list">
         <div><dt><CalendarDays aria-hidden="true" /> Leistungszeitraum</dt><dd>{period}</dd></div>
@@ -305,6 +312,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
         <div><dt>Positionen</dt><dd>{invoice.items.length}</dd></div>
       </dl>
 
+      {invoice.taxPresentation && hasPossibleTaxNotice(invoice.legalText) && <p className="notice" role="status">Vorschauhinweis: Der freie Fußzeilentext enthält möglicherweise bereits „§ 19“ oder „Kleinunternehmer“. Bitte eine mögliche Doppelung mit dem automatisch ausgegebenen Befreiungshinweis prüfen.</p>}
       <div className="detail-actions">
         {invoice.status === 'draft' ? (
           <>{invoice.recipientStrategy === 'separate' && !invoice.correction ? <p className="notice" role="status">Historischer Aufteilungsentwurf: Bitte öffnen, alle Angaben prüfen und ausdrücklich als gemeinsamen Entwurf übernehmen. Eine direkte Finalisierung ist gesperrt.</p> : <button className="button button--primary" type="button" onClick={() => onSetStatus('sent')}><Send aria-hidden="true" /> Finalisieren</button>}<button className="button button--tonal" type="button" onClick={onPrint}><Printer aria-hidden="true" /> Vorschau</button><button className="button button--text" type="button" onClick={onEdit}><Edit3 aria-hidden="true" /> Bearbeiten</button></>
@@ -329,7 +337,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
       </div>
 
       <DocumentHistory key={invoice.id} state={state} invoice={invoice} onSelect={onSelect} onCorrection={onCorrection} onAllocatePayment={onAllocatePayment} onResolveConflicts={onResolveConflicts} />
-      {needsHistoricalSplitReview(state, invoice) && <p className="notice" role="status">Historische Aufteilung ungeklärt: Dieser übernommene Beleg wird nicht automatisch zusammengelegt oder umgeschrieben. Prüfe Empfänger, Kind, Positionen und Betrag; notwendige Änderungen erfolgen über den Korrekturweg.</p>}
+      {needsHistoricalSplitReview(state, invoice) && <p className="notice" role="status">Historische Aufteilung ungeklärt: Dieser übernommene Beleg wird nicht automatisch zusammengelegt oder umgeschrieben. Prüfe Empfänger, Lernende, Positionen und Betrag; notwendige Änderungen erfolgen über den Korrekturweg.</p>}
       {isFinalizedInvoice(invoice) && <p className="field-hint" role="status">{FINALIZED_INVOICE_BLOCKED}</p>}
 
       {canRemind && (

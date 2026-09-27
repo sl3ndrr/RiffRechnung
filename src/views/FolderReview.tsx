@@ -18,7 +18,7 @@ export function FolderReview({ review, current, onClose, onChoose, onConnect, on
     {inspection.conflict && <p role="alert">{inspection.conflict}</p>}
     {inspection.entries.length === 0 ? <p>Dieser Ordner enthält noch keine JSON-Sicherungen.</p> : <ul>{inspection.entries.map((entry) => <li key={entry.name}>
       <strong>{entry.name}</strong>
-      {entry.preview ? <><p>{entry.preview.state.students.length} Kinder, {entry.preview.state.invoices.length} Rechnungen. {entry.preview.envelope ? `Bestand ${entry.preview.envelope.datasetId}, Revision ${entry.preview.envelope.revision}` : 'Altbackup ohne Bestands-ID – ausdrückliche Zuordnung erforderlich.'}</p>
+      {entry.preview ? <><p>{entry.preview.state.students.length} Lernende, {entry.preview.state.invoices.length} Rechnungen. {entry.preview.envelope ? `Bestand ${entry.preview.envelope.datasetId}, Revision ${entry.preview.envelope.revision}` : 'Altbackup ohne Bestands-ID – ausdrückliche Zuordnung erforderlich.'}</p>
         <button className="button button--tonal" onClick={() => onRestore(entry.preview!)}>Diese Sicherung wiederherstellen{!entry.preview.envelope && ' und zuordnen'}</button></> : <p role="alert">{entry.error}</p>}
     </li>)}</ul>}
     <p>Ein Ordner führt einen Bestand. Widersprüchliche oder extern synchronisierte Dateien bleiben erhalten und sperren das Schreiben. Tabsperren koordinieren nur diesen Browser-Origin, keine anderen Geräte.</p>

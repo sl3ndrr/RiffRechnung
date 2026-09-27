@@ -28,7 +28,7 @@ export function ImportReviewContent({ review, onApply }: { review: ImportReviewD
       <div className="form-section">
         {!review.result.ok && <div className="form-errors" role="alert"><strong>Keine Übernahme möglich</strong><ul>{review.result.errors.map((error, index) => <li key={index}>{error.message}</li>)}</ul><p>Der aktuelle Bestand bleibt unverändert. Exportiere die Originaldatei und korrigiere eine separate Kopie bewusst. Es werden keine Personen erfunden, Preise ersetzt oder Positionen gelöscht.</p></div>}
         {preview && <>
-          <p>Geprüft: {preview.state.students.length} Kinder und {preview.state.invoices.length} Rechnungen.</p>
+          <p>Geprüft: {preview.state.students.length} Lernende und {preview.state.invoices.length} Rechnungen.</p>
           {preview.report && <>
             <p>Altformat {preview.report.fromSchema} → Format 4: {preview.report.idMappings.length} Positions-IDs werden ersetzt. Beträge, Belegnummern, Texte und vorhandene Snapshots bleiben erhalten.</p>
             <table><thead><tr><th>Rechnung / Position</th><th>Alte ID</th><th>Neue ID</th></tr></thead><tbody>{preview.report.idMappings.map((mapping) => <tr key={`${mapping.invoiceId}-${mapping.itemIndex}`}><td>{mapping.invoiceId} / {mapping.itemIndex + 1}</td><td>{mapping.oldId}</td><td>{mapping.newId}</td></tr>)}</tbody></table>

@@ -1,3 +1,4 @@
+import { DuoWorkflow } from './views/DuoWorkflow'
 import { deleteGuardianState, deleteStudentState, deleteInvoiceDraftState, resetUnissuedState, recordActivity } from './lib/commands'
 import { allocatePayment, archiveInvoice, createCorrectionDraft, resolveDocumentConflicts, selectInvoice } from './lib/documents'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -32,7 +33,7 @@ import { isCurrentPrintRequest, type PrintRequest } from './lib/printJob'
 const navItems: Array<{ key: PageKey; label: string; icon: typeof LayoutDashboard }> = [
   { key: 'dashboard', label: 'Übersicht', icon: LayoutDashboard },
   { key: 'invoices', label: 'Rechnungen', icon: ReceiptText },
-  { key: 'people', label: 'Familien', icon: BookUser },
+  { key: 'people', label: 'Personen', icon: BookUser },
   { key: 'reports', label: 'Auswertung', icon: BarChart3 },
   { key: 'settings', label: 'Einstellungen', icon: SettingsIcon },
 ]
@@ -79,6 +80,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 820px)').matches)
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
   const [editor, setEditor] = useState<InvoiceEditorState>({ open: false, draft: createEmptyInvoiceDraft(state.settings), editing: false, finalized: false, invoiceNumber: null })
+  const [duoDialog, setDuoDialog] = useState<string | null>(null)
   const [editorDirty, setEditorDirty] = useState(false)
   const [printRequest, setPrintRequest] = useState<PrintRequest | null>(null)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
@@ -250,8 +252,11 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         dueDate: invoice.dueDate,
         period: invoice.period,
         guardianIds: invoice.guardianIds,
+        ...(invoice.recipients ? { recipients: structuredClone(invoice.recipients) } : {}),
         studentIds: invoice.studentIds,
         recipientStrategy: invoice.recipientStrategy,
+        ...(invoice.invoiceKind ? { invoiceKind: invoice.invoiceKind } : {}),
+        ...(invoice.taxPresentation ? { taxPresentation: structuredClone(invoice.taxPresentation) } : {}),
         items: structuredClone(invoice.items),
         introText: invoice.introText,
         freeText: invoice.freeText,
@@ -325,15 +330,15 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
 
   const saveGuardian = async (guardian: Guardian): Promise<boolean> => {
     const exists = stateRef.current.guardians.some((item) => item.id === guardian.id)
-    const saved = await commit((current) => requireSuccess(saveGuardianState(current, guardian)), exists ? 'Elternteil aktualisiert' : 'Elternteil angelegt', 'person', guardian.id)
+    const saved = await commit((current) => requireSuccess(saveGuardianState(current, guardian)), exists ? 'Erziehungsberechtigte Person aktualisiert' : 'Erziehungsberechtigte Person angelegt', 'person', guardian.id)
     if (saved) toast(exists ? 'Kontakt aktualisiert.' : 'Kontakt angelegt.', 'success')
     return saved
   }
 
   const saveStudent = async (student: Student): Promise<boolean> => {
     const exists = stateRef.current.students.some((item) => item.id === student.id)
-    const saved = await commit((current) => requireSuccess(saveStudentState(current, student)), exists ? 'Kind aktualisiert' : 'Kind angelegt', 'person', student.id)
-    if (saved) toast(exists ? 'Kind aktualisiert.' : 'Kind angelegt.', 'success')
+    const saved = await commit((current) => requireSuccess(saveStudentState(current, student)), exists ? 'Lernende Person aktualisiert' : 'Lernende Person angelegt', 'person', student.id)
+    if (saved) toast(exists ? 'Lernende Person aktualisiert.' : 'Lernende Person angelegt.', 'success')
     return saved
   }
 
@@ -342,18 +347,18 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     message: 'Die Person wird aus Stammdaten, Zuordnungen und offenen Entwürfen entfernt. Finalisierte Rechnungen behalten ihren eingefrorenen Empfängerstand.',
     label: 'Kontakt löschen', danger: true,
     action: async () => {
-      if (!await commit((current) => requireSuccess(deleteGuardianState(current, guardian.id)), 'Elternteil gelöscht', 'person', guardian.id)) return
+      if (!await commit((current) => requireSuccess(deleteGuardianState(current, guardian.id)), 'Erziehungsberechtigte Person gelöscht', 'person', guardian.id)) return
       toast('Kontakt gelöscht.', 'success')
     },
   })
 
   const deleteStudent = (student: Student) => setConfirmation({
     title: `${student.name} löschen?`,
-    message: 'Das Kind und zugehörige Positionen in normalen Entwürfen werden entfernt. Originalbelege und Korrekturentwürfe bleiben erhalten; dort ist gegebenenfalls eine Neuzuordnung nötig.',
-    label: 'Kind löschen', danger: true,
+    message: 'Die lernende Person und zugehörige Positionen in normalen Entwürfen werden entfernt. Originalbelege und Korrekturentwürfe bleiben erhalten; dort ist gegebenenfalls eine Neuzuordnung nötig.',
+    label: 'Lernende Person löschen', danger: true,
     action: async () => {
-      if (!await commit((current) => requireSuccess(deleteStudentState(current, student.id)), 'Kind gelöscht', 'person', student.id)) return
-      toast('Kind gelöscht.', 'success')
+      if (!await commit((current) => requireSuccess(deleteStudentState(current, student.id)), 'Lernende Person gelöscht', 'person', student.id)) return
+      toast('Lernende Person gelöscht.', 'success')
     },
   })
 
@@ -485,7 +490,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const confirmImport = (preview: ImportPreview) => {
     setConfirmation({
       title: 'Backup als neuen Stand wiederherstellen?',
-      message: `${preview.state.students.length} Kinder, ${preview.state.invoices.length} Rechnungen. ${preview.envelope ? `Bestand ${preview.envelope.datasetId}, Revision ${preview.envelope.revision}.` : 'Ohne Bestands-ID: Mit der Bestätigung ordnest du dieses Altbackup ausdrücklich zu; eine gemeinsame Herkunft ist nicht nachgewiesen.'} Der aktuelle Stand und die unveränderten Eingangsdaten werden zuerst lokal aufbewahrt. Bekannte Originalbelege dürfen nicht verändert werden.`,
+      message: `${preview.state.students.length} Lernende, ${preview.state.invoices.length} Rechnungen. ${preview.envelope ? `Bestand ${preview.envelope.datasetId}, Revision ${preview.envelope.revision}.` : 'Ohne Bestands-ID: Mit der Bestätigung ordnest du dieses Altbackup ausdrücklich zu; eine gemeinsame Herkunft ist nicht nachgewiesen.'} Der aktuelle Stand und die unveränderten Eingangsdaten werden zuerst lokal aufbewahrt. Bekannte Originalbelege dürfen nicht verändert werden.`,
       label: 'Wiederherstellung bestätigen', danger: true,
       action: async () => { if (await applyRestore(preview)) setImportReview(null) },
     })
@@ -705,7 +710,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
 
         <main ref={mainContentRef} id="main-content" tabIndex={-1}>
           {page === 'dashboard' && <Dashboard state={state} onNavigate={setCurrentPage} onNewInvoice={openNewInvoice} onLoadDemo={loadDemo} demoBlockedReason={mode === 'demo' ? 'Du bist bereits in der isolierten Demo.' : null} onOpenInvoice={openInvoice} />}
-          {page === 'invoices' && <Invoices state={state} selectedId={selectedInvoiceId} onSelect={setSelectedInvoiceId} onNew={openNewInvoice} onEdit={editInvoice} onDuplicate={duplicateInvoice} onDelete={requestDeleteInvoice} onSetStatus={setInvoiceStatus} onCorrection={startCorrection} onAllocatePayment={(paymentId, versionId, reason) => { void commit((current) => allocatePayment(current, paymentId, versionId, reason), 'Zahlung manuell zugeordnet', 'invoice') }} onResolveConflicts={(versionId, reason) => { void commit((current) => resolveDocumentConflicts(current, versionId, reason), 'Historische Abweichung geklärt', 'invoice') }} onPrint={print} onToast={toast} />}
+          {page === 'invoices' && <Invoices state={state} selectedId={selectedInvoiceId} onSelect={setSelectedInvoiceId} onNew={openNewInvoice} onDuo={(id) => setDuoDialog(id ?? 'new')} onEdit={editInvoice} onDuplicate={duplicateInvoice} onDelete={requestDeleteInvoice} onSetStatus={setInvoiceStatus} onCorrection={startCorrection} onAllocatePayment={(paymentId, versionId, reason) => { void commit((current) => allocatePayment(current, paymentId, versionId, reason), 'Zahlung manuell zugeordnet', 'invoice') }} onResolveConflicts={(versionId, reason) => { void commit((current) => resolveDocumentConflicts(current, versionId, reason), 'Historische Abweichung geklärt', 'invoice') }} onPrint={print} onToast={toast} />}
           {page === 'people' && <People state={state} onSaveGuardian={saveGuardian} onSaveStudent={saveStudent} onDeleteGuardian={deleteGuardian} onDeleteStudent={deleteStudent} />}
           {page === 'reports' && <Reports state={state} />}
           {page === 'about' && <About />}
@@ -717,6 +722,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
 
       <FolderReview review={folderReview} current={session.revision} onClose={() => setFolderReview(null)} onChoose={connectFolder} onConnect={() => void acceptFolder()} onRestore={(preview) => setConfirmation({ title: 'Sicherung zuordnen und wiederherstellen?', message: 'Mit der Bestätigung wird die gewählte Sicherung als neuer lokaler Stand eingeführt. Altbackups ohne Bestands-ID werden ausdrücklich zugeordnet; eine gemeinsame Herkunft wird nicht behauptet. Vorhandene Originale und Rohdaten bleiben geschützt.', label: 'Zuordnung und Wiederherstellung bestätigen', action: async () => { await acceptFolder(preview) } })} />
       <ImportReview review={importReview} onClose={() => setImportReview(null)} onApply={confirmImport} />
+      {duoDialog && <DuoWorkflow key={duoDialog} state={state} groupId={duoDialog} onClose={() => setDuoDialog(null)} onGroup={setDuoDialog} onEdit={editInvoice} onCommit={(producer, label) => commit(producer, label, 'invoice')} />}
       <InvoiceEditor state={state} open={editor.open} draft={editor.draft} editing={editor.editing} finalized={editor.finalized} invoiceNumber={editor.invoiceNumber} guardians={state.guardians} students={state.students} settings={state.settings} onClose={requestCloseEditor} onDirtyChange={setEditorDirty} onSave={saveInvoice} onConvert={convertLegacyDraft} />
       <ChangelogModal open={changelogOpen} onClose={() => setChangelogOpen(false)} />
       <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} cancelLabel={confirmation?.cancelLabel} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />

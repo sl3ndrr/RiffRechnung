@@ -699,6 +699,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .invoice-total-row { border-top: .7pt solid #333; background: rgb(220 230 245); font-weight: 750; }
 .invoice-total-row td { padding-block: 6pt; }
 .invoice-total-row td:first-child { text-align: right; }
+.invoice-final-rows { break-inside: avoid; page-break-inside: avoid; }
+.invoice-tax-row td, .invoice-total-footer-row td { text-align: left !important; padding: 3pt 5pt; }
+.invoice-tax-row p, .invoice-total-footer-row p { margin: 2pt 0; }
+.invoice-total-footer { color: #555; font-size: 8pt; white-space: pre-wrap; overflow-wrap: anywhere; border-top: .5pt solid rgb(30 90 160); padding-top: 4pt; }
 .invoice-payment-block { break-inside: auto; page-break-inside: auto; }
 .invoice-payment-copy { margin-top: 7mm; break-inside: avoid; page-break-inside: avoid; }
 .invoice-payment-copy p { margin: 0; }
@@ -876,6 +880,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .invoice-table thead { display: table-header-group; }
   .invoice-table tbody { display: table-row-group; }
   .invoice-table tr, .invoice-table th, .invoice-table td { break-inside: avoid !important; page-break-inside: avoid !important; }
+  .invoice-final-rows { break-inside: avoid !important; page-break-inside: avoid !important; }
   .invoice-group-heading { break-after: avoid; page-break-after: avoid; }
   .invoice-payment-block { break-inside: auto; page-break-inside: auto; }
   .invoice-payment-copy { break-after: avoid; page-break-after: avoid; }
@@ -895,3 +900,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .document-history table { width: 100%; border-collapse: collapse; font-size: .8rem; }
 .document-history th, .document-history td { padding: .5rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--outline-variant); }
 .payment-allocation { display: grid; gap: .7rem; padding: 1rem 0; border-top: 1px solid var(--outline-variant); }
+
+.duo-paper-scroll { max-width: 100%; overflow-x: auto; margin-block: 1rem; border: 1px solid var(--outline-variant); }
+.duo-confirm { display: flex; align-items: flex-start; gap: .75rem; margin-block: 1rem 2rem; font-weight: 600; }
+.duo-confirm input { width: 1.25rem; height: 1.25rem; flex-shrink: 0; }

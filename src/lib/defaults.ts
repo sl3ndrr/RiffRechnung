@@ -1,6 +1,7 @@
 import { localToday, paymentDay } from './calendar'
 import { calculateDueDate } from './utils'
 import { captureLegacyDocuments } from './importState'
+import { newTaxPresentation } from './invoiceProfile'
 import type { AppState, Guardian, Invoice, InvoiceDraft, InvoiceItem, LessonType, Settings, Student } from '../types'
 
 export const defaultSettings: Settings = {
@@ -23,14 +24,14 @@ export const defaultSettings: Settings = {
   numberPattern: '{YYYY}-{K}-{NNNN}',
   resetNumberAnnually: true,
   paymentTermDays: 14,
-  defaultLegalText: 'Privatrechnung | Umsatzsteuerbefreit gemäß § 19 UStG (Kleinunternehmerregelung).',
+  defaultLegalText: '',
   theme: 'system',
   reducedMotion: false,
 }
 
 export function emptyState(): AppState {
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     documentVersions: [], invoiceAdministration: [], payments: [], historicalSnapshotCorrections: [],
     guardians: [],
     students: [],
@@ -58,8 +59,11 @@ export function createEmptyInvoiceDraft(settings: Settings, reference = new Date
     dueDate: calculateDueDate(localToday(invoiceDate), settings.paymentTermDays),
     period: monthName,
     guardianIds: [],
+    recipients: [],
     studentIds: [],
     recipientStrategy: 'joint',
+    invoiceKind: 'standard',
+    taxPresentation: newTaxPresentation(),
     items: [],
     introText: 'Hiermit stelle ich die Unterrichtseinheiten im Fach Gitarre für den genannten Zeitraum in Rechnung.',
     freeText: '',
@@ -286,5 +290,6 @@ export function createDemoState(referenceDate = new Date()): AppState {
     const payment = demo.payments.find((entry) => entry.allocations.at(-1)?.versionId === invoice.versionId && entry.paymentDayStatus === 'confirmed')
     return payment?.paidAt ? { ...invoice, paidAt: payment.paidAt } : invoice
   })
+  demo.schemaVersion = 8
   return demo
 }

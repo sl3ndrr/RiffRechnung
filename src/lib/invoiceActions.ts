@@ -1,3 +1,4 @@
+import { duoAudienceErrors, duoForInvoice, duoInvoices, previewDuo } from './duoModel'
 import { calendarParts } from './calendar'
 import { draftAmountChange, moneyErrors } from './money'
 import { allocatedCents, captureDocument, correctionErrors, snapshotFor, persistentInvoice } from './documents'
@@ -8,6 +9,7 @@ import type { AppState, Invoice, InvoiceDraft, InvoiceStatus } from '../types'
 import { assertInvoiceEditable, assertOriginalsPreserved } from './safety'
 import { validateBackupState } from './validation'
 import { billingPeriodFromItems, invoiceFinalizationErrors, nextInvoiceAllocation, parseDate, uid } from './utils'
+import { guardianIdsFor, recipientCanBillStudent, recipientRefs } from './recipients'
 
 function requiredPaymentDay(value: string | undefined): string {
   if (!value) throw new Error('Bitte den tatsächlichen Zahlungstag eingeben.')
@@ -21,7 +23,9 @@ function paymentForFullClaim(state: AppState, versionId: string): { id: string; 
   return candidates.length === 1 ? candidates[0] : null
 }
 
-function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatus, at: string, createId: (prefix: string) => string, paymentDay?: string): AppState {
+function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatus, at: string, createId: (prefix: string) => string, paymentDay?: string, duoGroupId?: string): AppState {
+  const group = duoForInvoice(state, invoice.id)
+  if (group && duoInvoices(state, group).length === 2 && group.id !== duoGroupId) throw new Error('Bitte beide Duo-Rechnungen in der gemeinsamen Vorschau abschließen.')
   if (invoice.recipientStrategy === 'separate' && (!invoice.correction ||
     state.documentVersions.find((version) => version.id === invoice.correction?.replacesId)?.content.recipientStrategy !== 'separate')) {
     throw new Error('Historische getrennte Entwürfe dürfen nicht finalisiert werden. Bitte ausdrücklich in einen gemeinsamen Entwurf umwandeln.')
@@ -34,9 +38,11 @@ function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatu
   const allocation = nextInvoiceAllocation(state, invoice.invoiceDate, invoice.studentIds)
   const finalized: Invoice = {
     ...invoice, calculation: 'decimal-v1', number: allocation.number, sequence: allocation.sequence, status,
-    snapshot: snapshotFor(state, invoice), sentAt: at, updatedAt: at,
+    sentAt: at, updatedAt: at,
     ...(confirmedPaymentDay ? { paidAt: confirmedPaymentDay } : {}),
   }
+  finalized.snapshot = snapshotFor(state, finalized)
+  Reflect.deleteProperty(finalized, 'draftPrintSnapshot')
   const version = captureDocument(state, finalized, freshId('version', new Set(state.documentVersions.map((entry) => entry.id)), createId), false)
   finalized.versionId = version.id
   return {
@@ -67,11 +73,23 @@ export function saveInvoiceDraft(state: AppState, draft: InvoiceDraft, finalize:
   if (errors.length) throw new Error(errors.join(' '))
   const saved: Invoice = {
     ...structuredClone(draft), id: existing?.id ?? freshId('invoice', new Set(state.invoices.map((invoice) => invoice.id)), createId), number: null, sequence: null,
+    guardianIds: draft.recipients ? guardianIdsFor(draft.recipients) : [...draft.guardianIds],
     year: parseDate(draft.invoiceDate).getFullYear(), period: billingPeriodFromItems(draft.items, draft.invoiceDate),
     status: 'draft', calculation: 'decimal-v1', createdAt: existing?.createdAt ?? at, updatedAt: at,
   }
+  // A saved draft freezes its print data at this save, including deliberately empty address lines.
+  // A correction with missing live contacts keeps its earlier captured evidence until reassigned.
+  Reflect.deleteProperty(saved, 'snapshot')
+  saved.draftPrintSnapshot = saved.guardianIds.every((id) => state.guardians.some((person) => person.id === id))
+    ? snapshotFor(state, saved)
+    : existing?.draftPrintSnapshot
   let next = { ...state, invoices: [...state.invoices.filter((invoice) => invoice.id !== saved.id), persistentInvoice(saved)] }
   validateBackupState(next)
+  const group = duoForInvoice(next, saved.id)
+  if (group && duoInvoices(next, group).length === 2) {
+    const errors = duoAudienceErrors(next, duoInvoices(next, group))
+    if (errors.length) throw new Error(errors.join(' '))
+  }
   if (finalize) next = finalizeInvoice(next, saved, 'sent', at, createId)
   validateBackupState(next)
   return next
@@ -133,15 +151,41 @@ export function changeInvoiceStatus(state: AppState, invoiceId: string, status: 
 }
 
 function draftAudienceErrors(state: AppState, draft: InvoiceDraft): string[] {
+  if (draft.recipients) {
+    const refs = recipientRefs(draft)
+    if (draft.guardianIds.join('\0') !== guardianIdsFor(refs).join('\0')) return ['Der Empfängerbezug und die Erziehungsberechtigten-Projektion widersprechen sich.']
+    if (draft.studentIds.length && refs.some((ref) => {
+      if (draft.correction && !state[ref.type === 'guardian' ? 'guardians' : 'students'].some((person) => person.id === ref.id)) return false
+      return !draft.studentIds.some((id) => {
+        const student = state.students.find((entry) => entry.id === id)
+        return student && recipientCanBillStudent(ref, student)
+      })
+    })) return ['Jeder Rechnungsempfänger muss mindestens einem ausgewählten Lernenden zugeordnet sein.']
+    return []
+  }
   if (draft.studentIds.length && draft.guardianIds.some((id) => draft.studentIds.some((studentId) => {
     if (draft.correction && !state.guardians.some((guardian) => guardian.id === id)) return false
     const student = state.students.find((entry) => entry.id === studentId)
     return student && !student.guardianIds.includes(id)
-  }))) return ['Alle empfangenden Personen müssen jedem ausgewählten Kind zugeordnet sein.']
+  }))) return ['Alle empfangenden Personen müssen jedem ausgewählten Lernenden zugeordnet sein.']
   return []
 }
 
 export function invoiceDraftErrors(state: AppState, draft: InvoiceDraft): string[] {
   const result = commandResult(() => saveInvoiceDraft(state, draft, false))
   return result.ok ? [] : result.errors.map((error) => error.message)
+}
+
+/** A pure transition: the caller persists both results with ONE StorageSession.change. */
+export function finalizeDuoGroup(state: AppState, groupId: string, token: string, confirmedInvoiceIds: string[], at = new Date().toISOString(), createId = uid): AppState {
+  const preview = previewDuo(state, groupId)
+  if (preview.token !== token) throw new Error('Die Vorschau ist nicht mehr aktuell. Bitte beide Rechnungen erneut prüfen.')
+  if (preview.errors.length) throw new Error(preview.errors.join(' '))
+  if (confirmedInvoiceIds.length !== 2 || !preview.invoices.every((invoice) => confirmedInvoiceIds.includes(invoice.id))) throw new Error('Bitte den eigenen Preis und die vollständige Ausgabe jeder Zielrechnung ausdrücklich bestätigen.')
+  // All validation precedes even the first in-memory allocation. No storage side effects here.
+  let next = state
+  for (const invoice of preview.invoices) next = finalizeInvoice(next, state.invoices.find((entry) => entry.id === invoice.id)!, 'sent', at, createId, undefined, groupId)
+  validateBackupState(next)
+  assertOriginalsPreserved(state, next)
+  return next
 }

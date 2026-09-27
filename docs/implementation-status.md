@@ -1,3 +1,79 @@
+# AP4 – Ausgabe der Steuerkennung und des Befreiungshinweises
+
+Stand 26.09.2026: Arbeitsbranch `codex/ap4-tax-output-options` auf AP3-Head
+`c010cf4d`, gestapelter [Entwurfs-PR #39](https://github.com/sl3ndrr/RiffRechnung/pull/39).
+AP1 liegt auf `main`; AP2 hat einen getrennten offenen Branch, AP5 ist nicht
+integriert. Schema 8 wird vor seiner Freigabe additiv genutzt. Neue
+Rechnungen wählen Kennungsausgabe und Hinweisposition je Beleg; der konkrete
+Drucktext und die Kennung werden in der Belegversion gesichert. Der
+Altbeleg-Druck wurde vor dem Umbau mit Fach- und PDF-Test charakterisiert.
+Die mehrseitige Fußzeile ist bei der Endsumme verankert. Keine
+Empfängeranschriftänderung über AP3 hinaus. Kein Merge und kein Deployment.
+
+# AP3 – Empfängerkontakte und Rechnungsart
+
+Stand 25.09.2026: Ausgang `main` 47f491eecbebb788bf6f63aea2b1342bc3dfbd85
+(AP1 integriert; AP2/AP4/AP5 nicht integriert). Der lokale Arbeitsbereich war
+kein Checkout; die Repositorydateien wurden über den verbundenen GitHub-Zugriff
+geprüft. Schema 8 für optionale getrennte Kontaktnamen und Rechnungsart;
+Speicherprotokoll 4 und Archivformat 1 bleiben. Schema 7→8 erfolgt mit
+kontrolliertem Bericht und Originalarchiv. Noch nicht zusammengeführt oder
+bereitgestellt. [Entwurfs-PR #38](https://github.com/sl3ndrr/RiffRechnung/pull/38)
+und Ergebniscommits `b8ff8b91` / `0e5c54bf` mit
+[CI 36179170530](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36179170530) /
+[CI 36181722538](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36181722538):
+jeweils 155 Fach- und 44 Browserprüfungen, Lint, Typecheck, Build und Audit
+bestanden. Wechselnde Downloadfehler in Zwischenläufen sind weiterhin ein
+CI-Reproduzierbarkeitsrisiko; Details stehen in den Qualitätsschranken. Weitere
+Testergebnisse und Grenzen stehen in
+[release-readiness.md](release-readiness.md).
+
+Neue Kontakte benötigen Vor- und Nachname. Historische Anzeigenamen bleiben
+unverändert und werden erst bei einer späteren Bearbeitung ausdrücklich
+aufgeteilt oder bestätigt. Kinder behalten ihren einzelnen Leistungsnamen.
+Standardrechnungen verlangen weiterhin Empfängeranschriften. Die ausdrücklich
+gewählte Kleinbetragsrechnung erlaubt fehlende Empfängeranschriften nur bis
+25.000 Cent. Die gemeinsame Abschlussfunktion prüft auch Korrekturen; die
+Rechnungsart steht in Beleginhalt und Snapshot. Neue gespeicherte Entwürfe
+halten ihren Druckstand fest, ohne eine Nummer zu vergeben.
+
+Die frühere Folge 00–17 und AP1 stehen nachfolgend als historische Abschnitte.
+
+# AP2 – Duo, zwei Haushalte
+
+Stand 2026-09-25, Branch `codex/ap2-duo-households`, Ausgang `main`
+`47f491eecbebb788bf6f63aea2b1342bc3dfbd85` (AP1 integriert, AP2–AP5 zuvor nicht).
+Der Auditstand `1449d596…` war überholt. Kein lokaler Git-Checkout vorhanden;
+GitHub-Dateien wurden bereitgestellt und lokal als explizite Materialisierung
+versioniert. Die Ergebniscommits auf GitHub bauen auf dem tatsächlichen main auf.
+
+Implementiert: Schema 8 mit optionalen Duo-Verwaltungsgruppen und 7→8-Migration;
+gemeinsame Erfassung, getrennte gespeicherte Zielentwürfe, eigener Preis und eigene
+Texte, gebundener Änderungsvergleich, vollständige `InvoicePrint`-Vorschau und
+atomarer Zweierabschluss. AP1-Sperren für neue `separate`-Belege bleiben bestehen.
+Gruppenmetadaten stehen bewusst außerhalb des eingefrorenen `DocumentContent`.
+Fehlender/gelöschter Partner lässt den verbleibenden Entwurf eigenständig.
+
+Neue Prüfungen: `tests/duo.test.ts` (in `tests/logic.test.ts` importiert),
+`tests/duoFixtures.ts`, `tests/browser/duo.spec.ts` und Duo-JSON-Fallback in
+Chromium, Firefox und WebKit. Prüfstatus und konkrete CI-Nachweise werden in
+[quality-gates.md](quality-gates.md) und [release-readiness.md](release-readiness.md)
+festgehalten. Implementierungsstand `adf99f5d830e0fc639175f8d3a250cd0c3716920`
+bestand [CI 36112913179](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36112913179)
+mit Node 22.23.2, allen Gates, 160 Fachtests und 49 Browserprüfungen.
+Der Abschlusscommit ergänzt Adress-/Kontoprüfungen; seinen eigenen vollständigen
+CI-Nachweis hält [PR #37](https://github.com/sl3ndrr/RiffRechnung/pull/37) fest.
+APP_VERSION und Changelog: 1.4. AP3–AP5 nicht begonnen.
+Kein Merge, kein Deployment, ausschließlich synthetische Daten.
+
+# AP5 – Erwachsene Lernende als Rechnungsempfänger
+
+Stand 2026-09-26: Branch `codex/ap5-adult-learners` basiert auf `main` `47f491eecbebb788bf6f63aea2b1342bc3dfbd85`; [Entwurf PR #40](https://github.com/sl3ndrr/RiffRechnung/pull/40). AP1 ist integriert; AP2–AP4 sind nicht integriert. Die AP-Serie ist von den historischen Paketen 00–17 getrennt. Die Codebasis hatte Schema 7, Speicherprotokoll 4, Archivformat 1 und APP_VERSION 1.3 (der Auditstand 1.2 ist überholt). Ein lokaler Git-Checkout war anfangs nicht vorhanden; der GitHub-Tree wurde blobgleich für die Bearbeitung materialisiert. Der Stand `6183cb31ef6ec3dd1c07fd5dc44d26ec4c38ea44` bestand [CI 36253116923](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36253116923) mit 155 Fach- und 44 Browserprüfungen. Die zwei synthetischen AP5-PDFs wurden zusätzlich als A4-Seiten visuell geprüft; spätere Commits erfordern einen neuen vollständigen Lauf.
+
+AP5 ergänzt den Selbstzahlmodus und optionale Kontaktdaten in einem Lernendendatensatz. Neue Rechnungen erhalten typisierte Empfängerreferenzen und typisierte, unveränderliche Empfänger-Snapshots. Historische `guardianIds`/`guardians` bleiben erhalten, ebenso Nummern, Zahlungen und Korrekturketten. Schema 7→8 ändert nur die Versionskennung und wird mit Migrationsbericht sowie unverändertem Roharchiv kontrolliert übernommen; spätere Importe/Ladevorgänge auf Schema 8 sind idempotent. Speicherprotokoll 4 und Archivformat 1 bleiben. Gemischte gemeinsame Rechnungen benötigen ausdrücklich ausgewählte, je Lernendem berechtigte Empfänger; die Oberfläche weist auf die gemeinsame Einsicht hin.
+
+AP2-Duo-Gruppen und AP3-Rechnungsarten/Namensfelder existieren hier nicht. Die AP3-Kleinbetragsrechnung ist deshalb nicht Teil dieses Branches; das vorhandene Kleinunternehmerprofil wird weiter geprüft. Bestehende Doppelanlagen werden nicht zusammengeführt. Test- und Freigabegrenzen stehen in [quality-gates.md](quality-gates.md) und [release-readiness.md](release-readiness.md). Kein Merge und kein Deployment.
+
 # AP1 – Neue Rechnungsaufteilung entfernen
 
 Stand 2026-09-24: Arbeitsbranch `codex/ap1-remove-invoice-split`, Ausgang `main` 1449d596e6538d32f4c22ef3a0b2f845ef1aed71. AP2–AP5 noch nicht integriert. [PR #36](https://github.com/sl3ndrr/RiffRechnung/pull/36): Implementierungscommit `02e712c519d4f833552837a66b63bad06fd73ad9`; [CI 36063143264](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36063143264) mit 148 Fach- und 43 Browserprüfungen, Lint, Typecheck, Build und Audit erfolgreich. Lokal war kein Git-Checkout verfügbar; die Auditdateien wurden über den verbundenen GitHub-Zugriff bereitgestellt.
@@ -98,4 +174,3 @@ Paketdetails bleiben im Git-Verlauf dieser Datei. Produktregeln:
 
 Nächstes vorgesehenes Paket: **13 – Wiederherstellung mit Versionsvergleich**,
 optional und nur auf gesonderten Auftrag. Zuerst verbleibende P12-Freigaben klären.
-

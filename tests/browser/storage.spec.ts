@@ -13,7 +13,7 @@ test('echter Browser: Einstellung, sofortiger Ansichtswechsel, Schließen und er
   await page.goto('/')
   await settings(page)
   await page.getByLabel('Name / Geschäftsbezeichnung', { exact: true }).fill('Synthetischer bestätigter Stand')
-  await page.getByRole('button', { name: 'Familien', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Personen', exact: true }).first().click()
   await expect(page.locator('.save-indicator')).toContainText('Lokal gespeichert')
   const raw = await stored(page)
   await page.close()
