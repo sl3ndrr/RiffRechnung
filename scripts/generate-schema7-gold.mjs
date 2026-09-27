@@ -16,7 +16,7 @@ try {
   try { execFileSync('git', ['cat-file', '-e', commit + '^{commit}'], { stdio: 'ignore' }) }
   catch { execFileSync('git', ['fetch', '--no-tags', '--depth=1', 'origin', commit], { stdio: 'ignore' }) }
   mkdirSync(source)
-  execFileSync('tar', ['-x', '-C', source], { input: execFileSync('git', ['archive', commit]) })
+  execFileSync('tar', ['-x', '-C', source], { input: execFileSync('git', ['archive', commit], { maxBuffer: 32 * 1024 * 1024 }) })
   writeFileSync(entry, [
     "import { documentAt, documentFamily, documentDraft, editable, legacyFixture } from './tests/documentFixtures'",
     "import { saveInvoiceDraft, changeInvoiceStatus } from './src/lib/invoiceActions'",
