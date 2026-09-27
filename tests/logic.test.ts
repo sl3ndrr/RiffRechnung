@@ -9,6 +9,7 @@ import './ap3.test'
 import './ap4.test'
 
 import './adult-recipients.test'
+import './ap6-gold.probe.test'
 import { legacyFixture } from './documentFixtures'
 import { captureLegacyDocuments } from '../src/lib/importState'
 import { seedState, sharedLock, fakeDirectory } from './storageHarness'

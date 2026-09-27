@@ -167,7 +167,7 @@ test('AP2 Leak: jede Ausgabe enthält nur den eigenen Haushalt, keine Notizen od
     }
     const csv = invoicesToCsv([invoice], state.guardians, state.students).split('\r\n')
     const headers = csv[0].split(';'), row = csv[1].split(';')
-    for (const [column, expected] of [['Empfänger', own.guardian], ['Kind(er)', own.student], ['Korrekturgrund', '']]) {
+    for (const [column, expected] of [['Empfänger', own.guardian], ['Lernende', own.student], ['Korrekturgrund', '']]) {
       const index = headers.findIndex((cell) => cell.includes(column))
       assert.ok(index >= 0)
       assert.equal(row[index], `"${expected}"`)
@@ -250,8 +250,12 @@ test('AP2: Löschen oder fehlender Importpartner lässt die andere Rechnung eige
 
 test('AP2 Schema 7→8: keine rückwirkenden Gruppen oder Änderungen an historischen Originalen; Roharchiv und Idempotenz', async () => {
   const issued = finish(duoDrafts())
-  const legacy: Record<string, unknown> = { ...issued, schemaVersion: 7 }
+  const legacy: Record<string, unknown> = structuredClone({ ...issued, schemaVersion: 7 })
   delete legacy.duoGroups
+  for (const guardian of (legacy.guardians as AppState['guardians'])) {
+    delete guardian.firstName
+    delete guardian.lastName
+  }
   const raw = '\uFEFF' + JSON.stringify(legacy, null, 2) + '\r\n'
   const preview = requireSuccess(inspectImport(raw))
   assert.equal(preview.report?.fromSchema, 7)
@@ -259,7 +263,7 @@ test('AP2 Schema 7→8: keine rückwirkenden Gruppen oder Änderungen an histori
   assert.equal('duoGroups' in preview.state, false)
   assert.deepEqual(preview.state.documentVersions, issued.documentVersions)
   assert.deepEqual(preview.state.invoices, issued.invoices)
-  assert.deepEqual(preview.report?.changes, [{ path: 'schemaVersion', before: 7, after: 8, reason: 'Optionaler Duo-Verwaltungsrahmen; keine Gruppen, Texte, Personen oder Preise aus Altbeständen abgeleitet.' }])
+  assert.deepEqual(preview.report?.changes, [{ path: 'schemaVersion', before: 7, after: 8, reason: 'Optionale Kontaktnamen, typisierte Empfänger, Rechnungsart, Steueranzeige und Duo-Verwaltung; keine historischen Angaben aus aktuellen Daten abgeleitet.' }])
   assert.equal(requireSuccess(inspectImport(serializeBackup(preview.state))).report, null)
   const storage = memoryStorage(), session = new StorageSession({ storage, lock: sharedLock() })
   await session.restore(raw)
