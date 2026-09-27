@@ -1,3 +1,4 @@
+import { DuoWorkflow } from './views/DuoWorkflow'
 import { deleteGuardianState, deleteStudentState, deleteInvoiceDraftState, resetUnissuedState, recordActivity } from './lib/commands'
 import { allocatePayment, archiveInvoice, createCorrectionDraft, resolveDocumentConflicts, selectInvoice } from './lib/documents'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -79,6 +80,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 820px)').matches)
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
   const [editor, setEditor] = useState<InvoiceEditorState>({ open: false, draft: createEmptyInvoiceDraft(state.settings), editing: false, finalized: false, invoiceNumber: null })
+  const [duoDialog, setDuoDialog] = useState<string | null>(null)
   const [editorDirty, setEditorDirty] = useState(false)
   const [printRequest, setPrintRequest] = useState<PrintRequest | null>(null)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
@@ -705,7 +707,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
 
         <main ref={mainContentRef} id="main-content" tabIndex={-1}>
           {page === 'dashboard' && <Dashboard state={state} onNavigate={setCurrentPage} onNewInvoice={openNewInvoice} onLoadDemo={loadDemo} demoBlockedReason={mode === 'demo' ? 'Du bist bereits in der isolierten Demo.' : null} onOpenInvoice={openInvoice} />}
-          {page === 'invoices' && <Invoices state={state} selectedId={selectedInvoiceId} onSelect={setSelectedInvoiceId} onNew={openNewInvoice} onEdit={editInvoice} onDuplicate={duplicateInvoice} onDelete={requestDeleteInvoice} onSetStatus={setInvoiceStatus} onCorrection={startCorrection} onAllocatePayment={(paymentId, versionId, reason) => { void commit((current) => allocatePayment(current, paymentId, versionId, reason), 'Zahlung manuell zugeordnet', 'invoice') }} onResolveConflicts={(versionId, reason) => { void commit((current) => resolveDocumentConflicts(current, versionId, reason), 'Historische Abweichung geklärt', 'invoice') }} onPrint={print} onToast={toast} />}
+          {page === 'invoices' && <Invoices state={state} selectedId={selectedInvoiceId} onSelect={setSelectedInvoiceId} onNew={openNewInvoice} onDuo={(id) => setDuoDialog(id ?? 'new')} onEdit={editInvoice} onDuplicate={duplicateInvoice} onDelete={requestDeleteInvoice} onSetStatus={setInvoiceStatus} onCorrection={startCorrection} onAllocatePayment={(paymentId, versionId, reason) => { void commit((current) => allocatePayment(current, paymentId, versionId, reason), 'Zahlung manuell zugeordnet', 'invoice') }} onResolveConflicts={(versionId, reason) => { void commit((current) => resolveDocumentConflicts(current, versionId, reason), 'Historische Abweichung geklärt', 'invoice') }} onPrint={print} onToast={toast} />}
           {page === 'people' && <People state={state} onSaveGuardian={saveGuardian} onSaveStudent={saveStudent} onDeleteGuardian={deleteGuardian} onDeleteStudent={deleteStudent} />}
           {page === 'reports' && <Reports state={state} />}
           {page === 'about' && <About />}
@@ -717,6 +719,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
 
       <FolderReview review={folderReview} current={session.revision} onClose={() => setFolderReview(null)} onChoose={connectFolder} onConnect={() => void acceptFolder()} onRestore={(preview) => setConfirmation({ title: 'Sicherung zuordnen und wiederherstellen?', message: 'Mit der Bestätigung wird die gewählte Sicherung als neuer lokaler Stand eingeführt. Altbackups ohne Bestands-ID werden ausdrücklich zugeordnet; eine gemeinsame Herkunft wird nicht behauptet. Vorhandene Originale und Rohdaten bleiben geschützt.', label: 'Zuordnung und Wiederherstellung bestätigen', action: async () => { await acceptFolder(preview) } })} />
       <ImportReview review={importReview} onClose={() => setImportReview(null)} onApply={confirmImport} />
+      {duoDialog && <DuoWorkflow key={duoDialog} state={state} groupId={duoDialog} onClose={() => setDuoDialog(null)} onGroup={setDuoDialog} onEdit={editInvoice} onCommit={(producer, label) => commit(producer, label, 'invoice')} />}
       <InvoiceEditor state={state} open={editor.open} draft={editor.draft} editing={editor.editing} finalized={editor.finalized} invoiceNumber={editor.invoiceNumber} guardians={state.guardians} students={state.students} settings={state.settings} onClose={requestCloseEditor} onDirtyChange={setEditorDirty} onSave={saveInvoice} onConvert={convertLegacyDraft} />
       <ChangelogModal open={changelogOpen} onClose={() => setChangelogOpen(false)} />
       <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} cancelLabel={confirmation?.cancelLabel} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />

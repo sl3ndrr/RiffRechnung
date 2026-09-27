@@ -1,3 +1,4 @@
+import { duoForInvoice } from '../lib/duoModel'
 import { invoiceTotalCents, sumCents } from '../lib/money'
 import { outputItemTotal } from '../lib/utils'
 import { DocumentHistory, HistoricalSnapshotEvidence, type DocumentHistoryActions } from '../components/DocumentHistory'
@@ -18,6 +19,7 @@ interface InvoicesProps extends DocumentHistoryActions {
   selectedId: string | null
   onSelect: (id: string | null) => void
   onNew: () => void
+  onDuo: (groupId?: string) => void
   onEdit: (invoice: Invoice) => void
   onDuplicate: (invoice: Invoice) => void
   onDelete: (invoice: Invoice) => void
@@ -26,7 +28,7 @@ interface InvoicesProps extends DocumentHistoryActions {
   onToast: (message: string, tone?: 'success' | 'error' | 'info') => void
 }
 
-export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplicate, onDelete, onSetStatus, onPrint, onToast, onCorrection, onAllocatePayment, onResolveConflicts }: InvoicesProps) {
+export function Invoices({ state, selectedId, onSelect, onNew, onDuo, onEdit, onDuplicate, onDelete, onSetStatus, onPrint, onToast, onCorrection, onAllocatePayment, onResolveConflicts }: InvoicesProps) {
   const [search, setSearch] = useState('')
   const [showArchived, setShowArchived] = useState(false)
   const invoices = useMemo(() => selectedInvoices(state), [state])
@@ -145,6 +147,7 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
     <div className="page invoice-page">
       <header className="page-header">
         <div><p className="eyebrow">Verwaltung</p><h1>Rechnungen</h1><p>{state.invoices.length} Vorgänge · {euro.format(sumCents(activeInvoices(state).map(invoiceTotalCents)) / 100)} aktives Belegvolumen</p></div>
+        <button className="button button--tonal" onClick={() => onDuo()}>Duo · zwei Haushalte</button>
         <button className="button button--primary button--large" onClick={onNew}><FilePlus2 aria-hidden="true" /> Neue Rechnung</button>
       </header>
 
@@ -198,6 +201,7 @@ export function Invoices({ state, selectedId, onSelect, onNew, onEdit, onDuplica
               state={state}
               onClose={closeDetails}
               onEdit={() => onEdit(selected)}
+              onDuo={duoForInvoice(state, selected.id) ? () => onDuo(duoForInvoice(state, selected.id)!.id) : undefined}
               onDuplicate={() => onDuplicate(selected)}
               onDelete={() => onDelete(selected)}
               onSetStatus={(next, paymentDay) => onSetStatus(selected, next, paymentDay)}
@@ -249,12 +253,13 @@ function SortableHeader({ label, sortKey, sort, onSort, alignRight = false }: {
   )
 }
 
-function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete, onSetStatus, onPrint, onToast, onSelect, onCorrection, onAllocatePayment, onResolveConflicts }: DocumentHistoryActions & {
+function InvoiceDetail({ invoice, state, onClose, onEdit, onDuo, onDuplicate, onDelete, onSetStatus, onPrint, onToast, onSelect, onCorrection, onAllocatePayment, onResolveConflicts }: DocumentHistoryActions & {
   invoice: Invoice
   state: AppState
   onSelect: (id: string) => void
   onClose: () => void
   onEdit: () => void
+  onDuo?: () => void
   onDuplicate: () => void
   onDelete: () => void
   onSetStatus: (status: InvoiceStatus, paymentDay?: string) => void
@@ -296,6 +301,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
         <div><p className="eyebrow">Rechnung</p><h2>{invoice.number ?? 'Entwurf'}</h2><p>{guardianName(invoice, state.guardians)}</p></div>
         <button ref={closeButtonRef} className="icon-button" type="button" onClick={onClose} aria-label="Detailansicht schließen">×</button>
       </header>
+      {onDuo && <button className="button button--tonal" onClick={onDuo}>Duo-Verknüpfung öffnen</button>}
       <div className="invoice-detail__amount"><strong>{euro.format(invoiceTotal(invoice))}</strong><span className={`status-chip status-chip--${status}`}><i />{statusLabel[status]}</span></div>
       <dl className="detail-list">
         <div><dt><CalendarDays aria-hidden="true" /> Leistungszeitraum</dt><dd>{period}</dd></div>

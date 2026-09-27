@@ -1,5 +1,14 @@
 [
   {
+    "version": "1.4",
+    "date": "2026-09-25",
+    "changes": [
+      "Duo-Unterricht für zwei Haushalte: gemeinsame Leistung erfassen, zwei eigenständige Rechnungen getrennt bearbeiten und gemeinsam abschließen.",
+      "Eigene Preise und vollständige Ausgaben je Haushalt prüfen; ein ausdrücklich erfasster Gruppenbetrag wird centgenau abgeglichen.",
+      "Schema 8 speichert die Duo-Verknüpfung nur als Verwaltungsdatum. Historische Belege bleiben unverändert; Altbestände werden mit Rohdatenarchiv und Bericht übernommen."
+    ]
+  },
+  {
     "version": "1.3",
     "date": "2026-09-24",
     "changes": [
@@ -90,4 +99,3 @@
     ]
   }
 ]
-

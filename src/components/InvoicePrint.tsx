@@ -12,6 +12,7 @@ interface InvoicePrintProps {
   guardians: Guardian[]
   students: Student[]
   settings: Settings
+  pendingNumberLabel?: string
   requestId?: string
   includeGiroCode?: boolean
   giroCodeFallbackReason?: string
@@ -43,7 +44,7 @@ async function waitForPrintFonts(): Promise<void> {
   try { await document.fonts.ready } catch { /* A fallback font is still printable. */ }
 }
 
-export function InvoicePrint({ invoice, guardians, students, settings, requestId, includeGiroCode = true, giroCodeFallbackReason, onPrintReady, onPrintError, qrEncoder }: InvoicePrintProps) {
+export function InvoicePrint({ invoice, guardians, students, settings, pendingNumberLabel, requestId, includeGiroCode = true, giroCodeFallbackReason, onPrintReady, onPrintError, qrEncoder }: InvoicePrintProps) {
   const [qrCode, setQrCode] = useState<GeneratedQrCode | null>(null)
   const total = invoice ? invoiceTotal(invoice) : 0
   const period = invoice ? invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate) : ''
@@ -166,7 +167,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, requestId
             <h1>RECHNUNG</h1>
             <div className="invoice-meta__rule" />
             <dl>
-              <dt>Nr.:</dt><dd><strong>{invoice.number ?? 'ENTWURF'}</strong></dd>
+              <dt>Nr.:</dt><dd><strong>{invoice.number ?? pendingNumberLabel ?? 'ENTWURF'}</strong></dd>
               <dt>Datum:</dt><dd>{formatDateLong(invoice.invoiceDate)}</dd>
               <dt>Zeitraum:</dt><dd>{period}</dd>
               <dt>Fällig:</dt><dd><strong>{formatDateLong(invoice.dueDate)}</strong></dd>

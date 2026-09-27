@@ -111,7 +111,7 @@ function validateIssuer(value: unknown, path: string, historical = false): void 
   backupString(issuer.phone, `${path}.phone`)
 }
 
-function validateInvoiceSnapshot(value: unknown, path: string, schema: 2 | 3 | 4 | 5 | 6 | 7 = 7): { guardianIds: Set<string>; studentIds: Set<string> } {
+function validateInvoiceSnapshot(value: unknown, path: string, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 = 7): { guardianIds: Set<string>; studentIds: Set<string> } {
   const snapshot = backupObject(value, path)
   knownKeys(snapshot, path, 'issuer guardians students accountHolder iban bic bankName legalText' + (schema >= 6 ? ' invoiceProfile taxIdentifier' : ''))
   validateIssuer(snapshot.issuer, `${path}.issuer`, true)
@@ -150,7 +150,7 @@ function validateTaxIdentifier(value: unknown, path: string): void {
   backupString(identifier.value, `${path}.value`)
 }
 
-function validateSettings(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7): void {
+function validateSettings(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8): void {
   const settings = backupObject(value, 'settings')
   knownKeys(settings, 'settings', 'issuer accountHolder iban bic bankName privateRate duoRate numberPattern resetNumberAnnually paymentTermDays defaultLegalText theme reducedMotion' + (schema >= 6 ? ' invoiceProfile taxIdentifier' : ''))
   validateIssuer(settings.issuer, 'settings.issuer')
@@ -172,11 +172,11 @@ function validateSettings(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7): void {
   backupBoolean(settings.reducedMotion, 'settings.reducedMotion')
 }
 
-function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7, localItemIds: boolean): void {
+function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8, localItemIds: boolean): void {
   const legacy = schema === 2
   const versioned = schema >= 4
   const data = backupObject(value, 'data')
-  knownKeys(data, 'data', 'schemaVersion guardians students invoices voidedInvoiceNumbers settings counters nextStudentCodeIndex audit updatedAt' + (versioned ? ' documentVersions invoiceAdministration payments historicalSnapshotCorrections' : ''))
+  knownKeys(data, 'data', 'schemaVersion guardians students invoices voidedInvoiceNumbers settings counters nextStudentCodeIndex audit updatedAt' + (versioned ? ' documentVersions invoiceAdministration payments historicalSnapshotCorrections' : '') + (schema >= 8 ? ' duoGroups' : ''))
   if (data.schemaVersion !== schema) throw new Error('Die Datei hat kein unterstütztes Backup-Format.')
 
   const guardianIds = new Set<string>()
@@ -354,11 +354,12 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7, localItemI
       if (backupObject(entry, path).snapshotCorrection === undefined) invalidBackup(path, 'benötigt die vorhandene Snapshot-Differenz')
     })
   }
+  if (schema >= 8 && data.duoGroups !== undefined) validateDuoGroups(data.duoGroups)
   backupTimestamp(data.updatedAt, 'updatedAt')
   if (versioned) validateDocuments(data as unknown as AppState)
 }
 
-function validateActivity(entry: unknown, path: string, ids: Set<string>, schema: 2 | 3 | 4 | 5 | 6 | 7): void {
+function validateActivity(entry: unknown, path: string, ids: Set<string>, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8): void {
   const event = backupObject(entry, path)
   knownKeys(event, path, 'id at label entityType entityId snapshotCorrection')
   registerId(event.id, `${path}.id`, ids)
@@ -381,7 +382,7 @@ function validateEmail(value: unknown, path: string, historical = false): void {
 }
 
 export function validateBackupState(value: unknown): asserts value is AppState {
-  validateState(value, 7, false)
+  validateState(value, 8, false)
 }
 
 // Never used by the ordinary validator. Must be followed by lineage checks,
@@ -401,6 +402,35 @@ export function validateLegacyV4Structure(value: unknown): void {
 
 export function validateLegacyV5Structure(value: unknown): void {
   validateState(value, 5, false)
+}
+
+export function validateLegacyV7Structure(value: unknown): void {
+  validateState(value, 7, false)
+}
+
+function validateDuoGroups(value: unknown): void {
+  const groups = new Set<string>(), invoices = new Set<string>(), items = new Set<string>()
+  backupArray(value, 'duoGroups').forEach((entry, index) => {
+    const path = `duoGroups[${index}]`, group = backupObject(entry, path)
+    knownKeys(group, path, 'id targets lesson totalCents')
+    registerId(group.id, `${path}.id`, groups)
+    const targets = backupArray(group.targets, `${path}.targets`)
+    if (targets.length !== 2) invalidBackup(`${path}.targets`, 'benötigt genau zwei verschiedene Zielrechnungen')
+    targets.forEach((entry, i) => {
+      const p = `${path}.targets[${i}]`, target = backupObject(entry, p)
+      knownKeys(target, p, 'invoiceId itemId')
+      registerId(target.invoiceId, `${p}.invoiceId`, invoices)
+      registerId(target.itemId, `${p}.itemId`, items)
+      // Missing partners/items are valid: deleting a draft must not delete its partner.
+    })
+    const lesson = backupObject(group.lesson, `${path}.lesson`)
+    knownKeys(lesson, `${path}.lesson`, 'serviceDate description quantity unit')
+    backupCalendarDate(lesson.serviceDate, `${path}.lesson.serviceDate`)
+    backupString(lesson.description, `${path}.lesson.description`, true)
+    if (!validQuantity(lesson.quantity)) invalidBackup(`${path}.lesson.quantity`, 'benötigt eine gültige Menge')
+    backupEnum(lesson.unit, `${path}.lesson.unit`, ITEM_UNITS)
+    if (group.totalCents !== undefined) backupInteger(group.totalCents, `${path}.totalCents`, 0)
+  })
 }
 
 export function validateLegacyV6Structure(value: unknown): void {

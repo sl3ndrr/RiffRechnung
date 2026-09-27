@@ -129,7 +129,7 @@ test('P12 Browser: unterbrochene Migration erhält Rohdaten und lässt sich nach
 })
 
 test('P12 Browser: unbekanntes neueres Format bleibt auch bei Wiederherstellungsversuch bytegleich', async ({ page }) => {
-  const future = JSON.stringify({ schemaVersion: 8, data: 'Synthetisches unbekanntes Format' })
+  const future = JSON.stringify({ schemaVersion: 9, data: 'Synthetisches unbekanntes Format' })
   await page.goto('/')
   await page.evaluate(({ key, future }) => localStorage.setItem(key, future), { key: STORAGE_KEY, future })
   await page.reload()

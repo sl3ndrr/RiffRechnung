@@ -9,7 +9,7 @@ ihre technische Umsetzung wird pro Paket im [Umsetzungsstatus](implementation-st
 | Architektur | Statische React-/TypeScript-App, lokale Datenhaltung, deutsche Oberfläche; kein zusätzliches Backend. | In allen Paketen erhalten. |
 | IBAN | Ausschließlich deutsche IBANs für neue/geänderte Kontoeinstellungen und neue Finalisierungen. Keine Ausweitung auf weitere SEPA-Länder. | In Paket 07 zentral normalisiert und nach DE-Struktur, 22 Stellen und Modulo-97 geprüft; Nicht-DE erhält eine eigene Fehlermeldung. |
 | Historische Kontodaten | Alte Belege originalgetreu lesen; fremde oder leere Kontofelder weder löschen noch umschreiben noch durch aktuelle Kontodaten ersetzen. | In 04 erhalten; Profil-/EPC-Ausbau in 07. |
-| Getrennte Rechnungen | AP1 entfernt die Neuanlage getrennter Rechnungen. Eine Rechnung kann einen oder mehrere berechtigte Empfänger haben; sie erzeugt eine Nummer und eine Forderung. Historische `separate`-Belege bleiben originalgetreu. | Die frühere Zuordnung aus Paket 06 ist ausschließlich historisch dokumentiert und aus UI und Fachbefehlen entfernt. |
+| Getrennte Rechnungen | AP1 entfernt die alte Aufteilung und neue `separate`-Belege. AP2 ergänzt einen eigenständigen Duo-Ablauf für zwei Haushalte: zwei einzeln bepreiste `joint`-Rechnungen, je genau ein verschiedener Lernender. Eine gemeinsame Rechnung mit mehreren berechtigten Empfängern bleibt eine Forderung. | Die frühere Zuordnung aus Paket 06 bleibt ausschließlich historisch. AP2 teilt keinen Gesamtbetrag automatisch. |
 | Rechnungskopien | Weitere Ausgabe desselben Belegs erzeugt weder neue Forderung noch zweiten Umsatz. | AP1 sperrt Kopien historischer `separate`-Belege wegen möglicher Teilbetragspositionen und gemeinsamer Texte; Korrekturen desselben Vorgangs bleiben möglich. |
 | Finalisierte Belege | Originalinhalt erhalten; Änderungen über verknüpften Korrekturentwurf mit neuer Nummer. Zahlungs- und Versandstatus separat pflegen. Fehlende Historie nicht erfinden. | In 04 umgesetzt; Details unten. |
 | Nummern und Export | Getrennte Nummernkreise, dauerhaft reservierte Nummern und CSV-Formelabwehr erhalten. | In allen betroffenen Paketen prüfen. |
@@ -467,6 +467,64 @@ und [Bundesbank-IBAN-Regeln](https://www.bundesbank.de/de/aufgaben/unbarer-zahlu
   Linux-WebKit gibt Safari/macOS nicht frei. Native Datei-/Druck-, Banking-App-,
   visuelle PDF-/Theme- und Screenreaderabnahmen bleiben vor Produktfreigabe offen.
 
+
+## AP2 – Duo-Ablauf für zwei Haushalte (2026-09-25)
+
+- Zwei **gespeicherte** Entwürfe mit eigenen IDs und global eindeutigen Positionen.
+  Termin, neutrale Leistungsbeschreibung, Menge und Einheit werden einmal erfasst.
+  Beide Positionen tragen `lessonType: duo`; dies ersetzt weder den vorhandenen
+  Typ noch `Settings.duoRate`. Jeder Einzelpreis wird unabhängig aus `duoRate`
+  vorbelegt, ist separat editierbar und wird mit der vollständigen Zielausgabe
+  ausdrücklich bestätigt. Einleitung, Freitext und Rechtstext beginnen leer;
+  keine Partnertexte oder Stammdatennotizen werden übernommen. Empfänger werden
+  je Rechnung ausdrücklich gewählt, auch wenn nur eine berechtigte Person existiert.
+- Eine gemeinsame empfangende Person in den Zuordnungen der beiden Lernenden
+  verweist auf **eine gemeinsame Rechnung**. Der Duo-Ablauf schätzt keine Haushalte
+  aus Namen oder Anschriften. Pro Ziel genau ein verschiedener Lernender; bekannte
+  Partner-/Empfängernamen in Ausgabetexten sperren den Abschluss. Diese Prüfung ist
+  kein allgemeiner Inhalts-/Datenschutzfilter für frei eingegebene Texte.
+- Der optionale ausdrücklich eingegebene Gruppenbetrag ist eine Kontrolle, kein
+  Rechenursprung. Beide Zielbeträge entstehen ausschließlich aus ihren eigenen
+  Positionen mit `money.ts`; jede Centdifferenz sperrt mit Betrag und Vorzeichen.
+- **Verwaltungsmodell:** Optionales `AppState.duoGroups` mit Gruppen-ID, zwei
+  Ziel-/Positionsverweisen, gemeinsamer Arbeitsgrundlage und optionalem Centbetrag.
+  Begründete Abweichung vom empfohlenen Feld direkt auf `Invoice`: Ein separater
+  Verwaltungsdatensatz trennt Arbeitsgrundlage und Summenkontrolle ausdrücklich
+  von beiden Belegen. `DocumentContent`, Snapshots und `documentVersions` enthalten
+  weder Gruppenkennung noch Partnerdaten. `createCorrectionDraft` kopiert weiterhin
+  nur den eigenen Beleginhalt; Korrekturen und normale Rechnungskopien sind nicht
+  an die frühere Duo-Gruppe gebunden. Druck, Titel/Dateiname, EPC, Erinnerungen,
+  CSV und `DocumentHistory` verwenden unverändert ihre Einzelbelegprojektion.
+- Gemeinsame Änderungen zeigen je Ziel die bisherigen und neuen Werte. Nur nach
+  ausdrücklicher, an genau diesen Stand gebundener Bestätigung werden Termin,
+  Beschreibung, Menge und Einheit übernommen. Preise, Empfänger, Rechnungsdatum,
+  Einleitung, Freitext und Rechtstext bleiben erhalten. Wurde die ursprüngliche
+  Position entfernt, ist keine gemeinsame Aktualisierung möglich; einzeln bearbeiten.
+- Die vollständigen beiden Abschlussvorschauen verwenden `snapshotFor` und
+  `InvoicePrint`, dieselben Positionen, Zahlungsdaten und Texte wie die Finalisierung.
+  Nummern werden noch nicht reserviert und lauten „wird beim Abschluss vergeben“.
+  Die Bestätigungen sind an den gesamten geprüften Zustand gebunden; jede Änderung
+  verlangt erneute Prüfung. Beide Finalisierungen laufen nacheinander auf dem
+  fortgeschriebenen Zustand innerhalb **eines** `StorageSession.change`. Validierungs-,
+  Quota-/Schreibfehler und Revisionskonflikte hinterlassen keine Teilforderung und
+  keinen verbrauchten Zähler. Eine Nummernvorschau wird nicht vorab berechnet.
+- Zahlung, Versandstatus, Korrektur und Archivierung sind danach unabhängig.
+  Entwurflöschung entfernt nur den gewählten Entwurf. Fehlende Partner sind auch
+  beim Import erlaubt; der verbleibende Entwurf wird eigenständig abgeschlossen,
+  ohne den Gruppenbetrag weiter als Zweier-Summenkontrolle anzuwenden. Die alte
+  Verwaltungsverknüpfung bleibt mit sichtbarem Hinweis erhalten.
+- **Schema 8 / Migration 7→8:** Ausgang `main` ist `47f491eecbebb788bf6f63aea2b1342bc3dfbd85`
+  mit AP1, Schema 7, APP_VERSION 1.3. AP2–AP5 und Schema 8 waren nicht integriert
+  oder ausgeliefert. AP2 eröffnet den gemeinsamen Schema-8-Rahmen; AP3–AP5 bleiben
+  eigenständig und dürfen ihn nur vor Integration/Auslieferung additiv erweitern.
+  `duoGroups` fehlt in Altbeständen weiterhin: keine Gruppenableitung aus Duo-Typen,
+  Notizen, Namen oder heutigen Einstellungen. Strikte Schlüsselzulassung erst ab
+  Schema 8. Die bisherige Migrationskette endet jetzt in 7→8 mit Bericht; vorhandene
+  Originalbelege und bestätigte Zahlungstage bleiben unverändert. Erneuter Import
+  von Schema 8 erzeugt keinen Bericht. Speicherprotokoll 4 und Archivformat 1 bleiben;
+  vor Übernahme archiviert der bestehende Restorepfad unveränderte Rohdaten und
+  Bericht. Unbekanntes Schema 9+ bleibt schreibgeschützt. Rückweg nur über die
+  unabhängige Originaldatei und passenden alten Code in getrenntem Profil.
 
 ## AP1 – Keine neuen getrennten Rechnungen (2026-09-24)
 
