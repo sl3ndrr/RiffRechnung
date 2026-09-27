@@ -5,6 +5,11 @@ import './invoice-split.test'
 import './payment-data.test'
 import './payment-reporting.test'
 import './invoice-profile.test'
+import './ap3.test'
+import './ap4.test'
+
+import './adult-recipients.test'
+import './ap6-integration.test'
 import { legacyFixture } from './documentFixtures'
 import { captureLegacyDocuments } from '../src/lib/importState'
 import { seedState, sharedLock, fakeDirectory } from './storageHarness'
@@ -113,6 +118,7 @@ function validImportState() {
     items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-a')],
   }))
   const current = captureLegacyDocuments(legacyFixture(state))
+  current.schemaVersion = 8
   current.settings = {
     ...current.settings,
     issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', email: 'studio@example.de', phone: '' },
@@ -227,7 +233,7 @@ test('Onboarding priorisiert die Einrichtung und hält den Demo-Zugang sichtbar'
 
   const emptyMarkup = renderDashboard()
   assert.match(emptyMarkup, /0 von 2 Schritten abgeschlossen/)
-  assert.ok(emptyMarkup.indexOf('Absender &amp; Konto') < emptyMarkup.indexOf('Familie anlegen'))
+  assert.ok(emptyMarkup.indexOf('Absender &amp; Konto') < emptyMarkup.indexOf('Personen anlegen'))
   assert.match(emptyMarkup, /Lieber erst mit Beispieldaten testen\?/)
   assert.match(emptyMarkup, /Mit Beispieldaten starten/)
 
@@ -702,7 +708,7 @@ test('Entwürfe lassen sich aus der Detailansicht nur mit vollständigen aktuell
   assert.deepEqual(invoiceFinalizationErrors(state, draft), [])
   assert.match(invoiceFinalizationErrors(state, { ...draft, guardianIds: [] }).join(' '), /empfangende Person/)
   assert.match(invoiceFinalizationErrors(state, { ...draft, guardianIds: ['guardian-missing'] }).join(' '), /Stammdaten/)
-  assert.match(invoiceFinalizationErrors(state, { ...draft, studentIds: [] }).join(' '), /Kind/)
+  assert.match(invoiceFinalizationErrors(state, { ...draft, studentIds: [] }).join(' '), /lernende/i)
   assert.match(invoiceFinalizationErrors(state, { ...draft, studentIds: ['student-missing'] }).join(' '), /Stammdaten/)
   assert.match(invoiceFinalizationErrors(state, { ...draft, items: [] }).join(' '), /Position/)
   assert.match(invoiceFinalizationErrors(state, { ...draft, items: [{ ...draft.items[0], description: '' }] }).join(' '), /vollständig/)
@@ -740,7 +746,7 @@ test('Editor-Finalisierung wird vor Nummern- und Snapshot-Vergabe zentral validi
     { name: 'kein Empfänger', draft: { ...validDraft, guardianIds: [] }, expected: /empfangende Person/ },
     { name: 'gelöschter Empfänger', draft: { ...validDraft, guardianIds: ['guardian-missing'] }, expected: /Stammdaten/ },
     { name: 'nicht zugeordneter Empfänger', draft: { ...validDraft, guardianIds: ['guardian-unlinked'] }, guardians: [...state.guardians, unlinkedGuardian], expected: /zugeordnet/ },
-    { name: 'kein Kind', draft: { ...validDraft, studentIds: [] }, expected: /Kind/ },
+    { name: 'kein Kind', draft: { ...validDraft, studentIds: [] }, expected: /lernende/i },
     { name: 'gelöschtes Kind', draft: { ...validDraft, studentIds: ['student-missing'] }, expected: /Stammdaten/ },
     { name: 'keine Position', draft: { ...validDraft, items: [] }, expected: /Position/ },
     { name: 'Position mit gelöschtem Kind', draft: { ...validDraft, items: [{ ...validDraft.items[0], studentId: 'student-missing' }] }, expected: /aktuellen Stammdaten/ },
@@ -833,7 +839,7 @@ test('Kinderliste startet mit aktivem Aktiv-Filter', () => {
   const source = readFileSync(new URL('../src/views/People.tsx', import.meta.url), 'utf8')
   const stylesheet = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8')
   assert.match(source, /\[onlyActiveStudents, setOnlyActiveStudents\] = useState\(true\)/)
-  assert.match(source, /Nur aktive Kinder anzeigen/)
+  assert.match(source, /Nur aktive Lernende anzeigen/)
   assert.match(source, /!onlyActiveStudents \|\| student\.active/)
   assert.match(source, /switch-row switch-row--compact people-active-filter[\s\S]*type="checkbox"[\s\S]*<i \/>/)
   assert.match(stylesheet, /\.switch-row input:checked \+ i \{[^}]*background: var\(--primary\);/)

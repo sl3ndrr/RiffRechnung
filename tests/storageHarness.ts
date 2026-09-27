@@ -65,4 +65,3 @@ export function fakeDirectory(initial: Record<string, string> = {}) {
   } as unknown as FileSystemDirectoryHandle
   return { handle, files, controls }
 }
-

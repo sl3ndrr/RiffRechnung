@@ -87,6 +87,10 @@ test('P08: Schema 6 übernimmt Vollzahlungen mit unbekanntem Zahlungstag einmali
   current = changeInvoiceStatus(current, current.invoices[0].id, 'paid', '2026-01-04T08:15:00.000Z', '2026-01-03')
   const legacy = structuredClone(current) as unknown as { schemaVersion: number; payments: Array<Record<string, unknown>> }
   legacy.schemaVersion = 6
+  for (const guardian of (legacy as unknown as { guardians: Array<Record<string, unknown>> }).guardians) {
+    Reflect.deleteProperty(guardian, 'firstName')
+    Reflect.deleteProperty(guardian, 'lastName')
+  }
   legacy.payments.forEach((payment) => {
     Reflect.deleteProperty(payment, 'paymentDayStatus')
     Reflect.deleteProperty(payment, 'legacyPaymentDay')

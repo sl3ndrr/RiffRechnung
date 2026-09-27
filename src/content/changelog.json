@@ -1,11 +1,12 @@
 [
   {
     "version": "1.4",
-    "date": "2026-09-25",
+    "date": "2026-09-27",
     "changes": [
-      "Duo-Unterricht für zwei Haushalte: gemeinsame Leistung erfassen, zwei eigenständige Rechnungen getrennt bearbeiten und gemeinsam abschließen.",
-      "Eigene Preise und vollständige Ausgaben je Haushalt prüfen; ein ausdrücklich erfasster Gruppenbetrag wird centgenau abgeglichen.",
-      "Schema 8 speichert die Duo-Verknüpfung nur als Verwaltungsdatum. Historische Belege bleiben unverändert; Altbestände werden mit Rohdatenarchiv und Bericht übernommen."
+      "Duo-Unterricht für zwei Haushalte mit zwei getrennt prüfbaren, eigenständig zahlbaren Rechnungen und atomarem Abschluss.",
+      "Empfängerkontakte mit getrenntem Vor- und Nachnamen; bestehende Anzeigenamen bleiben erhalten. Erwachsene Lernende können selbst Rechnungsempfänger sein.",
+      "Kleinbetragsrechnungen bis 250,00 € sind ausdrücklich wählbar; Steuerkennung und Befreiungshinweis werden je Beleg gesteuert und im Original gesichert.",
+      "Schema-7-Bestände wechseln kontrolliert und mit Rohdatenarchiv zu Schema 8; historische Belege werden nicht ergänzt."
     ]
   },
   {

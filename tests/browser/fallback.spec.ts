@@ -65,6 +65,7 @@ test('AP1 Fallback: gemeinsame Rechnung an zwei Personen als JSON exportieren, i
   await expect(page.getByText('Dieser Browser unterstützt die Ordnerauswahl nicht.', { exact: true })).toBeVisible()
   const downloading = page.waitForEvent('download')
   await page.getByRole('button', { name: 'JSON exportieren', exact: true }).click()
+  await expect(page.getByText('JSON-Export des zuletzt bestätigten Stands gestartet.')).toBeVisible()
   const buffer = await readFile((await (await downloading).path())!)
   expect(parseBackup(buffer.toString())).toEqual(result)
   const destination = await browser.newContext({ baseURL: 'http://127.0.0.1:4173' })

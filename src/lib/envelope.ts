@@ -71,4 +71,3 @@ export async function descendsFrom(candidate: StorageEnvelope, ancestor: Storage
   const ref = await reference(ancestor)
   return candidate.ancestors.some((entry) => entry.commitId === ref.commitId && entry.revision === ref.revision && entry.fingerprint === ref.fingerprint)
 }
-

@@ -25,7 +25,7 @@ function family(count = 1): AppState {
   state.updatedAt = at
   state = requireSuccess(saveSettingsState(state, { ...state.settings, issuer: { ...state.settings.issuer, name: 'Synthetisches Teststudio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', email: 'studio+test@example.org' }, accountHolder: 'Teststudio', iban: 'DE02120300000000202051', invoiceProfile: 'small-business', taxIdentifier: { kind: 'tax-number', value: '12/345/67890' } }))
   for (let index = 0; index < count; index++) state = requireSuccess(saveGuardianState(state, {
-    id: `g${index}`, name: `Testperson ${index}`, email: `test${index}@example.org`, phone: '', address: { street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }, iban: '', paymentNote: '', createdAt: at, updatedAt: at,
+    id: `g${index}`, firstName: 'Testperson', lastName: String(index), name: `Testperson ${index}`, email: `test${index}@example.org`, phone: '', address: { street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }, iban: '', paymentNote: '', createdAt: at, updatedAt: at,
   }))
   return requireSuccess(saveStudentState(state, { id: 's0', name: 'Testkind', billingCode: '', guardianIds: state.guardians.map((guardian) => guardian.id), note: '', active: true, createdAt: at, updatedAt: at }))
 }

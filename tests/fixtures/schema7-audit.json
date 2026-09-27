@@ -1,0 +1,1084 @@
+{
+  "sourceCommit": "1449d596e6538d32f4c22ef3a0b2f845ef1aed71",
+  "issuedCorrected": {
+    "schemaVersion": 7,
+    "documentVersions": [
+      {
+        "id": "version-gold-2",
+        "invoiceId": "invoice-gold-1",
+        "originalId": "version-gold-2",
+        "replacesId": null,
+        "cancelsId": null,
+        "reason": "",
+        "provenance": "issued",
+        "sourceUpdatedAt": "2026-09-07T12:00:00.000Z",
+        "content": {
+          "invoiceDate": "2026-09-01",
+          "dueDate": "2026-09-15",
+          "period": "August 2026",
+          "guardianIds": [
+            "g-a"
+          ],
+          "studentIds": [
+            "s-a"
+          ],
+          "recipientStrategy": "joint",
+          "items": [
+            {
+              "id": "original-position",
+              "studentId": "s-a",
+              "serviceDate": "2026-08-15",
+              "lessonType": "solo",
+              "description": "Originaler Unterricht",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 10.1
+            }
+          ],
+          "introText": "Originale Einleitung",
+          "freeText": "Originaler Hinweis",
+          "legalText": "",
+          "id": "invoice-gold-1",
+          "number": "2026-a-0001",
+          "sequence": 1,
+          "year": 2026,
+          "calculation": "decimal-v1",
+          "createdAt": "2026-09-07T12:00:00.000Z",
+          "snapshot": {
+            "issuer": {
+              "name": "Synthetisches Studio",
+              "street": "Testweg 1",
+              "postalCode": "12345",
+              "city": "Teststadt",
+              "phone": "",
+              "email": "studio@example.org"
+            },
+            "guardians": [
+              {
+                "id": "g-a",
+                "name": "Empfaenger A",
+                "email": "a@example.org",
+                "street": "Testweg 2",
+                "postalCode": "12345",
+                "city": "Teststadt"
+              }
+            ],
+            "students": [
+              {
+                "id": "s-a",
+                "name": "Testkind A"
+              }
+            ],
+            "accountHolder": "Studio",
+            "iban": "DE02120300000000202051",
+            "bic": "",
+            "bankName": "",
+            "legalText": "",
+            "invoiceProfile": "small-business",
+            "taxIdentifier": {
+              "kind": "tax-number",
+              "value": "12/345/67890"
+            }
+          }
+        },
+        "outputSnapshot": {
+          "issuer": {
+            "name": "Synthetisches Studio",
+            "street": "Testweg 1",
+            "postalCode": "12345",
+            "city": "Teststadt",
+            "phone": "",
+            "email": "studio@example.org"
+          },
+          "guardians": [
+            {
+              "id": "g-a",
+              "name": "Empfaenger A",
+              "email": "a@example.org",
+              "street": "Testweg 2",
+              "postalCode": "12345",
+              "city": "Teststadt"
+            }
+          ],
+          "students": [
+            {
+              "id": "s-a",
+              "name": "Testkind A"
+            }
+          ],
+          "accountHolder": "Studio",
+          "iban": "DE02120300000000202051",
+          "bic": "",
+          "bankName": "",
+          "legalText": "",
+          "invoiceProfile": "small-business",
+          "taxIdentifier": {
+            "kind": "tax-number",
+            "value": "12/345/67890"
+          }
+        },
+        "outputPeriod": "August 2026",
+        "outputLegalText": "",
+        "amounts": {
+          "itemCents": [
+            758
+          ],
+          "totalCents": 758,
+          "legacyCalculatedTotalCents": 758,
+          "source": "decimal-output",
+          "calculation": "decimal-v1"
+        },
+        "conflicts": [],
+        "snapshotHistory": [],
+        "registerEntries": []
+      },
+      {
+        "id": "version-gold-3",
+        "invoiceId": "invoice-00f4a1ca-e891-432c-bfce-8e4aea20c9cf",
+        "originalId": "version-gold-2",
+        "replacesId": "version-gold-2",
+        "cancelsId": null,
+        "reason": "Synthetische Korrektur",
+        "provenance": "issued",
+        "sourceUpdatedAt": "2026-09-13T12:00:00.000Z",
+        "content": {
+          "id": "invoice-00f4a1ca-e891-432c-bfce-8e4aea20c9cf",
+          "invoiceDate": "2026-09-01",
+          "dueDate": "2026-09-15",
+          "period": "August 2026",
+          "guardianIds": [
+            "g-a"
+          ],
+          "studentIds": [
+            "s-a"
+          ],
+          "recipientStrategy": "joint",
+          "items": [
+            {
+              "id": "item-22e07f74-45e6-44af-90f2-3b5dd4516174",
+              "studentId": "s-a",
+              "serviceDate": "2026-08-15",
+              "lessonType": "solo",
+              "description": "Originaler Unterricht",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 10.1
+            }
+          ],
+          "introText": "Originale Einleitung",
+          "freeText": "Originaler Hinweis",
+          "legalText": "",
+          "number": "2026-a-0002",
+          "sequence": 2,
+          "year": 2026,
+          "calculation": "decimal-v1",
+          "createdAt": "2026-09-13T12:00:00.000Z",
+          "snapshot": {
+            "issuer": {
+              "name": "Synthetisches Studio",
+              "street": "Testweg 1",
+              "postalCode": "12345",
+              "city": "Teststadt",
+              "phone": "",
+              "email": "studio@example.org"
+            },
+            "guardians": [
+              {
+                "id": "g-a",
+                "name": "Empfaenger A",
+                "email": "a@example.org",
+                "street": "Testweg 2",
+                "postalCode": "12345",
+                "city": "Teststadt"
+              }
+            ],
+            "students": [
+              {
+                "id": "s-a",
+                "name": "Testkind A"
+              }
+            ],
+            "accountHolder": "Studio",
+            "iban": "DE02120300000000202051",
+            "bic": "",
+            "bankName": "",
+            "legalText": "",
+            "invoiceProfile": "small-business",
+            "taxIdentifier": {
+              "kind": "tax-number",
+              "value": "12/345/67890"
+            }
+          }
+        },
+        "outputSnapshot": {
+          "issuer": {
+            "name": "Synthetisches Studio",
+            "street": "Testweg 1",
+            "postalCode": "12345",
+            "city": "Teststadt",
+            "phone": "",
+            "email": "studio@example.org"
+          },
+          "guardians": [
+            {
+              "id": "g-a",
+              "name": "Empfaenger A",
+              "email": "a@example.org",
+              "street": "Testweg 2",
+              "postalCode": "12345",
+              "city": "Teststadt"
+            }
+          ],
+          "students": [
+            {
+              "id": "s-a",
+              "name": "Testkind A"
+            }
+          ],
+          "accountHolder": "Studio",
+          "iban": "DE02120300000000202051",
+          "bic": "",
+          "bankName": "",
+          "legalText": "",
+          "invoiceProfile": "small-business",
+          "taxIdentifier": {
+            "kind": "tax-number",
+            "value": "12/345/67890"
+          }
+        },
+        "outputPeriod": "August 2026",
+        "outputLegalText": "",
+        "amounts": {
+          "itemCents": [
+            758
+          ],
+          "totalCents": 758,
+          "legacyCalculatedTotalCents": 758,
+          "source": "decimal-output",
+          "calculation": "decimal-v1"
+        },
+        "conflicts": [],
+        "snapshotHistory": [],
+        "registerEntries": []
+      },
+      {
+        "id": "version-gold-5",
+        "invoiceId": "invoice-gold-4",
+        "originalId": "version-gold-5",
+        "replacesId": null,
+        "cancelsId": null,
+        "reason": "",
+        "provenance": "issued",
+        "sourceUpdatedAt": "2026-09-14T12:00:00.000Z",
+        "content": {
+          "invoiceDate": "2026-09-01",
+          "dueDate": "2026-09-15",
+          "period": "August 2026",
+          "guardianIds": [
+            "g-b"
+          ],
+          "studentIds": [
+            "s-a"
+          ],
+          "recipientStrategy": "separate",
+          "items": [
+            {
+              "id": "separate-gold-position",
+              "studentId": "s-a",
+              "serviceDate": "2026-08-15",
+              "lessonType": "solo",
+              "description": "Originaler Unterricht",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 10.1
+            }
+          ],
+          "introText": "Nur Haushalt B",
+          "freeText": "Synthetischer Einzelbeleg",
+          "legalText": "",
+          "id": "invoice-gold-4",
+          "number": "2026-a-0003",
+          "sequence": 3,
+          "year": 2026,
+          "calculation": "decimal-v1",
+          "createdAt": "2026-09-14T12:00:00.000Z",
+          "snapshot": {
+            "issuer": {
+              "name": "Synthetisches Studio",
+              "street": "Testweg 1",
+              "postalCode": "12345",
+              "city": "Teststadt",
+              "phone": "",
+              "email": "studio@example.org"
+            },
+            "guardians": [
+              {
+                "id": "g-b",
+                "name": "Empfaenger B",
+                "email": "b@example.org",
+                "street": "Testweg 3",
+                "postalCode": "12345",
+                "city": "Teststadt"
+              }
+            ],
+            "students": [
+              {
+                "id": "s-a",
+                "name": "Testkind A"
+              }
+            ],
+            "accountHolder": "Studio",
+            "iban": "DE02120300000000202051",
+            "bic": "",
+            "bankName": "",
+            "legalText": "",
+            "invoiceProfile": "small-business",
+            "taxIdentifier": {
+              "kind": "tax-number",
+              "value": "12/345/67890"
+            }
+          }
+        },
+        "outputSnapshot": {
+          "issuer": {
+            "name": "Synthetisches Studio",
+            "street": "Testweg 1",
+            "postalCode": "12345",
+            "city": "Teststadt",
+            "phone": "",
+            "email": "studio@example.org"
+          },
+          "guardians": [
+            {
+              "id": "g-b",
+              "name": "Empfaenger B",
+              "email": "b@example.org",
+              "street": "Testweg 3",
+              "postalCode": "12345",
+              "city": "Teststadt"
+            }
+          ],
+          "students": [
+            {
+              "id": "s-a",
+              "name": "Testkind A"
+            }
+          ],
+          "accountHolder": "Studio",
+          "iban": "DE02120300000000202051",
+          "bic": "",
+          "bankName": "",
+          "legalText": "",
+          "invoiceProfile": "small-business",
+          "taxIdentifier": {
+            "kind": "tax-number",
+            "value": "12/345/67890"
+          }
+        },
+        "outputPeriod": "August 2026",
+        "outputLegalText": "",
+        "amounts": {
+          "itemCents": [
+            758
+          ],
+          "totalCents": 758,
+          "legacyCalculatedTotalCents": 758,
+          "source": "decimal-output",
+          "calculation": "decimal-v1"
+        },
+        "conflicts": [],
+        "snapshotHistory": [],
+        "registerEntries": []
+      }
+    ],
+    "invoiceAdministration": [
+      {
+        "versionId": "version-gold-2",
+        "archived": false,
+        "events": [
+          {
+            "at": "2026-09-07T12:00:00.000Z",
+            "status": "sent",
+            "kind": "status",
+            "reason": "Beleg finalisiert."
+          },
+          {
+            "at": "2026-09-12T12:00:00.000Z",
+            "status": "paid",
+            "kind": "status",
+            "reason": "Verwaltungsstatus ausdrücklich geändert."
+          }
+        ],
+        "resolutions": []
+      },
+      {
+        "versionId": "version-gold-3",
+        "archived": false,
+        "events": [
+          {
+            "at": "2026-09-13T12:00:00.000Z",
+            "status": "sent",
+            "kind": "status",
+            "reason": "Beleg finalisiert."
+          }
+        ],
+        "resolutions": []
+      },
+      {
+        "versionId": "version-gold-5",
+        "archived": false,
+        "events": [
+          {
+            "at": "2026-09-14T12:00:00.000Z",
+            "status": "sent",
+            "kind": "status",
+            "reason": "Beleg finalisiert."
+          }
+        ],
+        "resolutions": []
+      }
+    ],
+    "payments": [
+      {
+        "id": "payment-5ec25e40-6b41-4c35-81f4-3d00f634a02f",
+        "sourceVersionId": "version-gold-2",
+        "amountCents": 758,
+        "paidAt": "2026-09-12",
+        "paymentDayStatus": "confirmed",
+        "recordedAt": "2026-09-12T12:00:00.000Z",
+        "provenance": "recorded",
+        "allocations": [
+          {
+            "versionId": "version-gold-2",
+            "at": "2026-09-12T12:00:00.000Z",
+            "reason": "Vollzahlung ausdrücklich mit tatsächlichem Zahlungstag erfasst."
+          }
+        ]
+      }
+    ],
+    "historicalSnapshotCorrections": [],
+    "guardians": [
+      {
+        "id": "g-a",
+        "name": "Empfaenger A",
+        "email": "a@example.org",
+        "phone": "",
+        "address": {
+          "street": "Testweg 2",
+          "postalCode": "12345",
+          "city": "Teststadt"
+        },
+        "iban": "",
+        "paymentNote": "",
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z"
+      },
+      {
+        "id": "g-b",
+        "name": "Empfaenger B",
+        "email": "b@example.org",
+        "phone": "",
+        "address": {
+          "street": "Testweg 3",
+          "postalCode": "12345",
+          "city": "Teststadt"
+        },
+        "iban": "",
+        "paymentNote": "",
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z"
+      }
+    ],
+    "students": [
+      {
+        "id": "s-a",
+        "name": "Testkind A",
+        "billingCode": "a",
+        "guardianIds": [
+          "g-a",
+          "g-b"
+        ],
+        "note": "",
+        "active": true,
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z"
+      },
+      {
+        "id": "s-b",
+        "name": "Testkind B",
+        "billingCode": "b",
+        "guardianIds": [
+          "g-a",
+          "g-b"
+        ],
+        "note": "",
+        "active": true,
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z"
+      }
+    ],
+    "invoices": [
+      {
+        "invoiceDate": "2026-09-01",
+        "dueDate": "2026-09-15",
+        "period": "August 2026",
+        "guardianIds": [
+          "g-a"
+        ],
+        "studentIds": [
+          "s-a"
+        ],
+        "recipientStrategy": "joint",
+        "items": [
+          {
+            "id": "original-position",
+            "studentId": "s-a",
+            "serviceDate": "2026-08-15",
+            "lessonType": "solo",
+            "description": "Originaler Unterricht",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 10.1
+          }
+        ],
+        "introText": "Originale Einleitung",
+        "freeText": "Originaler Hinweis",
+        "legalText": "",
+        "id": "invoice-gold-1",
+        "number": "2026-a-0001",
+        "sequence": 1,
+        "year": 2026,
+        "status": "paid",
+        "calculation": "decimal-v1",
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-12T12:00:00.000Z",
+        "snapshot": {
+          "issuer": {
+            "name": "Synthetisches Studio",
+            "street": "Testweg 1",
+            "postalCode": "12345",
+            "city": "Teststadt",
+            "phone": "",
+            "email": "studio@example.org"
+          },
+          "guardians": [
+            {
+              "id": "g-a",
+              "name": "Empfaenger A",
+              "email": "a@example.org",
+              "street": "Testweg 2",
+              "postalCode": "12345",
+              "city": "Teststadt"
+            }
+          ],
+          "students": [
+            {
+              "id": "s-a",
+              "name": "Testkind A"
+            }
+          ],
+          "accountHolder": "Studio",
+          "iban": "DE02120300000000202051",
+          "bic": "",
+          "bankName": "",
+          "legalText": "",
+          "invoiceProfile": "small-business",
+          "taxIdentifier": {
+            "kind": "tax-number",
+            "value": "12/345/67890"
+          }
+        },
+        "sentAt": "2026-09-07T12:00:00.000Z",
+        "versionId": "version-gold-2",
+        "paidAt": "2026-09-12"
+      },
+      {
+        "id": "invoice-00f4a1ca-e891-432c-bfce-8e4aea20c9cf",
+        "correction": {
+          "replacesId": "version-gold-2",
+          "reason": "Synthetische Korrektur"
+        },
+        "invoiceDate": "2026-09-01",
+        "dueDate": "2026-09-15",
+        "period": "August 2026",
+        "guardianIds": [
+          "g-a"
+        ],
+        "studentIds": [
+          "s-a"
+        ],
+        "recipientStrategy": "joint",
+        "items": [
+          {
+            "id": "item-22e07f74-45e6-44af-90f2-3b5dd4516174",
+            "studentId": "s-a",
+            "serviceDate": "2026-08-15",
+            "lessonType": "solo",
+            "description": "Originaler Unterricht",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 10.1
+          }
+        ],
+        "introText": "Originale Einleitung",
+        "freeText": "Originaler Hinweis",
+        "legalText": "",
+        "number": "2026-a-0002",
+        "sequence": 2,
+        "year": 2026,
+        "status": "sent",
+        "calculation": "decimal-v1",
+        "createdAt": "2026-09-13T12:00:00.000Z",
+        "updatedAt": "2026-09-13T12:00:00.000Z",
+        "snapshot": {
+          "issuer": {
+            "name": "Synthetisches Studio",
+            "street": "Testweg 1",
+            "postalCode": "12345",
+            "city": "Teststadt",
+            "phone": "",
+            "email": "studio@example.org"
+          },
+          "guardians": [
+            {
+              "id": "g-a",
+              "name": "Empfaenger A",
+              "email": "a@example.org",
+              "street": "Testweg 2",
+              "postalCode": "12345",
+              "city": "Teststadt"
+            }
+          ],
+          "students": [
+            {
+              "id": "s-a",
+              "name": "Testkind A"
+            }
+          ],
+          "accountHolder": "Studio",
+          "iban": "DE02120300000000202051",
+          "bic": "",
+          "bankName": "",
+          "legalText": "",
+          "invoiceProfile": "small-business",
+          "taxIdentifier": {
+            "kind": "tax-number",
+            "value": "12/345/67890"
+          }
+        },
+        "sentAt": "2026-09-13T12:00:00.000Z",
+        "versionId": "version-gold-3"
+      },
+      {
+        "invoiceDate": "2026-09-01",
+        "dueDate": "2026-09-15",
+        "period": "August 2026",
+        "guardianIds": [
+          "g-b"
+        ],
+        "studentIds": [
+          "s-a"
+        ],
+        "recipientStrategy": "separate",
+        "items": [
+          {
+            "id": "separate-gold-position",
+            "studentId": "s-a",
+            "serviceDate": "2026-08-15",
+            "lessonType": "solo",
+            "description": "Originaler Unterricht",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 10.1
+          }
+        ],
+        "introText": "Nur Haushalt B",
+        "freeText": "Synthetischer Einzelbeleg",
+        "legalText": "",
+        "id": "invoice-gold-4",
+        "number": "2026-a-0003",
+        "sequence": 3,
+        "year": 2026,
+        "status": "sent",
+        "calculation": "decimal-v1",
+        "createdAt": "2026-09-14T12:00:00.000Z",
+        "updatedAt": "2026-09-14T12:00:00.000Z",
+        "snapshot": {
+          "issuer": {
+            "name": "Synthetisches Studio",
+            "street": "Testweg 1",
+            "postalCode": "12345",
+            "city": "Teststadt",
+            "phone": "",
+            "email": "studio@example.org"
+          },
+          "guardians": [
+            {
+              "id": "g-b",
+              "name": "Empfaenger B",
+              "email": "b@example.org",
+              "street": "Testweg 3",
+              "postalCode": "12345",
+              "city": "Teststadt"
+            }
+          ],
+          "students": [
+            {
+              "id": "s-a",
+              "name": "Testkind A"
+            }
+          ],
+          "accountHolder": "Studio",
+          "iban": "DE02120300000000202051",
+          "bic": "",
+          "bankName": "",
+          "legalText": "",
+          "invoiceProfile": "small-business",
+          "taxIdentifier": {
+            "kind": "tax-number",
+            "value": "12/345/67890"
+          }
+        },
+        "sentAt": "2026-09-14T12:00:00.000Z",
+        "versionId": "version-gold-5"
+      }
+    ],
+    "voidedInvoiceNumbers": [],
+    "settings": {
+      "issuer": {
+        "name": "Synthetisches Studio",
+        "street": "Testweg 1",
+        "postalCode": "12345",
+        "city": "Teststadt",
+        "phone": "",
+        "email": "studio@example.org"
+      },
+      "accountHolder": "Studio",
+      "iban": "DE02120300000000202051",
+      "bic": "",
+      "bankName": "",
+      "invoiceProfile": "small-business",
+      "taxIdentifier": {
+        "kind": "tax-number",
+        "value": "12/345/67890"
+      },
+      "privateRate": 30,
+      "duoRate": 20,
+      "numberPattern": "{YYYY}-{K}-{NNNN}",
+      "resetNumberAnnually": true,
+      "paymentTermDays": 14,
+      "defaultLegalText": "Privatrechnung | Umsatzsteuerbefreit gemäß § 19 UStG (Kleinunternehmerregelung).",
+      "theme": "system",
+      "reducedMotion": false
+    },
+    "counters": {
+      "2026:a": 4
+    },
+    "nextStudentCodeIndex": 2,
+    "audit": [],
+    "updatedAt": "2026-09-07T12:00:00.000Z"
+  },
+  "oldestSeparate": {
+    "schemaVersion": 7,
+    "guardians": [
+      {
+        "id": "g-a",
+        "name": "Empfaenger A",
+        "email": "a@example.org",
+        "phone": "",
+        "address": {
+          "street": "Testweg 2",
+          "postalCode": "12345",
+          "city": "Teststadt"
+        },
+        "iban": "",
+        "paymentNote": "",
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z"
+      },
+      {
+        "id": "g-b",
+        "name": "Empfaenger B",
+        "email": "b@example.org",
+        "phone": "",
+        "address": {
+          "street": "Testweg 3",
+          "postalCode": "12345",
+          "city": "Teststadt"
+        },
+        "iban": "",
+        "paymentNote": "",
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z"
+      }
+    ],
+    "students": [
+      {
+        "id": "s-a",
+        "name": "Testkind A",
+        "billingCode": "a",
+        "guardianIds": [
+          "g-a",
+          "g-b"
+        ],
+        "note": "",
+        "active": true,
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z"
+      },
+      {
+        "id": "s-b",
+        "name": "Testkind B",
+        "billingCode": "b",
+        "guardianIds": [
+          "g-a",
+          "g-b"
+        ],
+        "note": "",
+        "active": true,
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z"
+      }
+    ],
+    "invoices": [
+      {
+        "invoiceDate": "2026-09-01",
+        "dueDate": "2026-09-15",
+        "period": "August 2026",
+        "guardianIds": [
+          "g-b"
+        ],
+        "studentIds": [
+          "s-a"
+        ],
+        "recipientStrategy": "separate",
+        "items": [
+          {
+            "id": "separate-gold-position",
+            "studentId": "s-a",
+            "serviceDate": "2026-08-15",
+            "lessonType": "solo",
+            "description": "Originaler Unterricht",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 10.1
+          }
+        ],
+        "introText": "Nur Haushalt B",
+        "freeText": "Synthetischer Einzelbeleg",
+        "legalText": "",
+        "id": "invoice-gold-6",
+        "number": "2026-a-0001",
+        "sequence": 1,
+        "year": 2026,
+        "status": "sent",
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z",
+        "snapshot": {
+          "issuer": {
+            "name": "Synthetisches Studio",
+            "street": "Testweg 1",
+            "postalCode": "12345",
+            "city": "Teststadt",
+            "phone": "",
+            "email": "studio@example.org"
+          },
+          "guardians": [
+            {
+              "id": "g-b",
+              "name": "Empfaenger B",
+              "email": "b@example.org",
+              "street": "Testweg 3",
+              "postalCode": "12345",
+              "city": "Teststadt"
+            }
+          ],
+          "students": [
+            {
+              "id": "s-a",
+              "name": "Testkind A"
+            }
+          ],
+          "accountHolder": "Studio",
+          "iban": "DE02120300000000202051",
+          "bic": "",
+          "bankName": "",
+          "legalText": ""
+        },
+        "sentAt": "2026-09-07T12:00:00.000Z",
+        "versionId": "version-v4-0"
+      }
+    ],
+    "voidedInvoiceNumbers": [],
+    "settings": {
+      "issuer": {
+        "name": "Synthetisches Studio",
+        "street": "Testweg 1",
+        "postalCode": "12345",
+        "city": "Teststadt",
+        "phone": "",
+        "email": "studio@example.org"
+      },
+      "accountHolder": "Studio",
+      "iban": "DE02120300000000202051",
+      "bic": "",
+      "bankName": "",
+      "privateRate": 30,
+      "duoRate": 20,
+      "numberPattern": "{YYYY}-{K}-{NNNN}",
+      "resetNumberAnnually": true,
+      "paymentTermDays": 14,
+      "defaultLegalText": "Privatrechnung | Umsatzsteuerbefreit gemäß § 19 UStG (Kleinunternehmerregelung).",
+      "theme": "system",
+      "reducedMotion": false,
+      "invoiceProfile": "small-business",
+      "taxIdentifier": {
+        "kind": "tax-number",
+        "value": ""
+      }
+    },
+    "counters": {
+      "2026:a": 2
+    },
+    "nextStudentCodeIndex": 2,
+    "audit": [],
+    "updatedAt": "2026-09-07T12:00:00.000Z",
+    "documentVersions": [
+      {
+        "id": "version-v4-0",
+        "invoiceId": "invoice-gold-6",
+        "originalId": "version-v4-0",
+        "replacesId": null,
+        "cancelsId": null,
+        "reason": "",
+        "provenance": "oldest-available",
+        "sourceUpdatedAt": "2026-09-07T12:00:00.000Z",
+        "content": {
+          "invoiceDate": "2026-09-01",
+          "dueDate": "2026-09-15",
+          "period": "August 2026",
+          "guardianIds": [
+            "g-b"
+          ],
+          "studentIds": [
+            "s-a"
+          ],
+          "recipientStrategy": "separate",
+          "items": [
+            {
+              "id": "separate-gold-position",
+              "studentId": "s-a",
+              "serviceDate": "2026-08-15",
+              "lessonType": "solo",
+              "description": "Originaler Unterricht",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 10.1
+            }
+          ],
+          "introText": "Nur Haushalt B",
+          "freeText": "Synthetischer Einzelbeleg",
+          "legalText": "",
+          "id": "invoice-gold-6",
+          "number": "2026-a-0001",
+          "sequence": 1,
+          "year": 2026,
+          "createdAt": "2026-09-07T12:00:00.000Z",
+          "snapshot": {
+            "issuer": {
+              "name": "Synthetisches Studio",
+              "street": "Testweg 1",
+              "postalCode": "12345",
+              "city": "Teststadt",
+              "phone": "",
+              "email": "studio@example.org"
+            },
+            "guardians": [
+              {
+                "id": "g-b",
+                "name": "Empfaenger B",
+                "email": "b@example.org",
+                "street": "Testweg 3",
+                "postalCode": "12345",
+                "city": "Teststadt"
+              }
+            ],
+            "students": [
+              {
+                "id": "s-a",
+                "name": "Testkind A"
+              }
+            ],
+            "accountHolder": "Studio",
+            "iban": "DE02120300000000202051",
+            "bic": "",
+            "bankName": "",
+            "legalText": ""
+          }
+        },
+        "outputSnapshot": {
+          "issuer": {
+            "name": "Synthetisches Studio",
+            "street": "Testweg 1",
+            "postalCode": "12345",
+            "city": "Teststadt",
+            "phone": "",
+            "email": "studio@example.org"
+          },
+          "guardians": [
+            {
+              "id": "g-b",
+              "name": "Empfaenger B",
+              "email": "b@example.org",
+              "street": "Testweg 3",
+              "postalCode": "12345",
+              "city": "Teststadt"
+            }
+          ],
+          "students": [
+            {
+              "id": "s-a",
+              "name": "Testkind A"
+            }
+          ],
+          "accountHolder": "Studio",
+          "iban": "DE02120300000000202051",
+          "bic": "",
+          "bankName": "",
+          "legalText": ""
+        },
+        "outputPeriod": "August 2026",
+        "outputLegalText": "Privatrechnung | Umsatzsteuerbefreit gemäß § 19 UStG (Kleinunternehmerregelung).",
+        "amounts": {
+          "itemCents": [
+            757
+          ],
+          "totalCents": 757,
+          "legacyCalculatedTotalCents": 757,
+          "source": "legacy-output",
+          "calculation": "legacy-v1"
+        },
+        "conflicts": [],
+        "snapshotHistory": [],
+        "registerEntries": []
+      }
+    ],
+    "invoiceAdministration": [
+      {
+        "versionId": "version-v4-0",
+        "archived": false,
+        "events": [
+          {
+            "at": "2026-09-07T12:00:00.000Z",
+            "status": "sent",
+            "kind": "imported",
+            "reason": "Ältester verfügbarer Verwaltungsstand; frühere Versand-/Statusereignisse unbekannt."
+          }
+        ],
+        "resolutions": []
+      }
+    ],
+    "payments": [],
+    "historicalSnapshotCorrections": []
+  }
+}

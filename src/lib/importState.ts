@@ -73,8 +73,8 @@ function upgradeToV7(value: unknown, report?: Pick<MigrationReport, 'changes'>):
 function upgradeToV8(value: AppState, report?: Pick<MigrationReport, 'changes'>): AppState {
   const state = structuredClone(value)
   if (state.schemaVersion !== 8) {
-    report?.changes.push({ path: 'schemaVersion', before: 7, after: 8, reason: 'Optionaler Duo-Verwaltungsrahmen; keine Gruppen, Texte, Personen oder Preise aus Altbeständen abgeleitet.' })
     state.schemaVersion = 8
+    report?.changes.push({ path: 'schemaVersion', before: 7, after: 8, reason: 'Optionale Kontaktnamen, typisierte Empfänger, Rechnungsart, Steueranzeige und Duo-Verwaltung; keine historischen Angaben aus aktuellen Daten abgeleitet.' })
   }
   return state
 }
@@ -151,12 +151,12 @@ function migrateV2(data: unknown, source: MigrationReport['source']): { state: L
     if (student.billingCode) return
     while (used.has(studentCodeForIndex(cursor))) cursor++
     const code = studentCodeForIndex(cursor++)
-    record(`students[${index}].billingCode`, student.billingCode, code, 'Fehlendes Alt-Kinderkennzeichen; keine Person erzeugt')
+    record(`students[${index}].billingCode`, student.billingCode, code, 'Fehlendes altes Lernendenkennzeichen; keine Person erzeugt')
     student.billingCode = code
     used.add(code)
   })
   const nextIndex = Math.max(state.nextStudentCodeIndex ?? 0, ...state.students.map((student) => studentCodeIndex(student.billingCode) + 1), 0)
-  record('nextStudentCodeIndex', state.nextStudentCodeIndex, nextIndex, 'Kinderkennzeichen reservieren')
+  record('nextStudentCodeIndex', state.nextStudentCodeIndex, nextIndex, 'Lernendenkennzeichen reservieren')
   state.nextStudentCodeIndex = nextIndex
   state.invoices.forEach((invoice, invoiceIndex) => invoice.items.forEach((item: InvoiceItem, itemIndex) => {
     if (item.lessonType !== undefined) return
@@ -176,7 +176,7 @@ function migrateV2(data: unknown, source: MigrationReport['source']): { state: L
     }
   }
   const pattern = ensureStudentCodePattern(state.settings.numberPattern)
-  record('settings.numberPattern', state.settings.numberPattern, pattern, 'Kinderkennzeichen im Muster für künftige Nummern')
+  record('settings.numberPattern', state.settings.numberPattern, pattern, 'Lernendenkennzeichen im Muster für künftige Nummern')
   state.settings.numberPattern = pattern
   if (state.voidedInvoiceNumbers === undefined) {
     record('voidedInvoiceNumbers', undefined, [], 'Altformat ohne Reservierungsliste; keine fehlende Historie rekonstruiert')
@@ -252,8 +252,7 @@ export function inspectImport(rawData: string): CommandResult<ImportPreview> {
       if (version === 2) ({ state: legacy, report } = migrateV2(data, source))
       else { validateLegacyV3Structure(data); legacy = structuredClone(data) as LegacyState }
       report ??= { migration: 'riffrechnung-to-v8', version: 1, fromSchema: 3, toSchema: 8, source, changes: [], idMappings: [] }
-      state = captureLegacyDocuments(legacy)
-      state.schemaVersion = 7 as never
+      state = captureLegacyDocumentsV7(legacy)
       report.changes.push({ path: 'schemaVersion', before: version, after: 7, reason: 'Vollständige älteste verfügbare Belegstände, getrennte Verwaltung und unbekannte historische Zahlungstage sichern; frühere Inhalte bleiben unbekannt' })
       for (const document of state.documentVersions) report.changes.push({ path: `documentVersions.${document.id}`, before: null, after: document, reason: 'Jetzt verfügbarer historischer Inhalt, alte Ausgabebeträge und Snapshot-/Registerbelege; keine Wiederherstellung verlorener Originale' })
       for (const invoice of state.invoices.filter((entry) => entry.versionId)) report.changes.push({ path: `invoices.${invoice.id}.versionId`, before: null, after: invoice.versionId, reason: 'Verweis auf den gesicherten vollständigen Belegstand' })
@@ -300,7 +299,7 @@ export function serializeMigrationReport(preview: ImportPreview): string {
 export type LegacyState = Omit<AppState, 'schemaVersion' | 'documentVersions' | 'invoiceAdministration' | 'payments' | 'historicalSnapshotCorrections'> & { schemaVersion: 3 }
 
 /** Deterministic capture: sourceUpdatedAt is a source timestamp, not a guessed issuance date. */
-export function captureLegacyDocuments(legacy: LegacyState): AppState {
+function captureLegacyDocumentsV7(legacy: LegacyState): AppState {
   const state: AppState = { ...upgradeToV6(legacy), documentVersions: [], invoiceAdministration: [], payments: [], historicalSnapshotCorrections: structuredClone(legacy.audit.filter((event) => event.snapshotCorrection)) }
   state.invoices.forEach((invoice, index) => {
     if (invoice.status === 'draft') return
@@ -316,5 +315,9 @@ export function captureLegacyDocuments(legacy: LegacyState): AppState {
       allocations: [{ versionId: invoice.status === 'paid' ? version.id : null, at: invoice.updatedAt, reason: 'Aus historischem Vollzahlungsstatus übernommen; Zahlungsdatum bleibt unbekannt, wenn es nicht gespeichert war.' }],
     })
   })
-  return upgradeToV8(upgradeToV7(state))
+  return upgradeToV7(state)
+}
+
+export function captureLegacyDocuments(legacy: LegacyState): AppState {
+  return upgradeToV8(captureLegacyDocumentsV7(legacy))
 }

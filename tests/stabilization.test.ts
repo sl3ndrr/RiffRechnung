@@ -109,7 +109,7 @@ test('P12: Fachbefehle bleiben nach jedem Übergang speicherbar, exportierbar, i
     assert.equal(requireSuccess(inspectImport(session.export())).report, null)
   }
   await apply((s) => requireSuccess(saveSettingsState(s, { ...s.settings, privateRate: 10.10 })))
-  await apply((s) => requireSuccess(saveGuardianState(s, { ...s.guardians[0], name: 'Synthetische Familie A' })))
+  await apply((s) => requireSuccess(saveGuardianState(s, { ...s.guardians[0], firstName: 'Synthetische Familie', lastName: 'A', name: 'Synthetische Familie A' })))
   await apply((s) => requireSuccess(saveStudentState(s, { ...s.students[0], active: false })))
   await apply((s) => requireSuccess(saveStudentState(s, { ...s.students[0], active: true })))
   await apply((s) => saveInvoiceDraft(s, documentDraft(), false, documentAt))

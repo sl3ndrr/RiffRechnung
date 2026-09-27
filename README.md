@@ -4,14 +4,16 @@ Eine vollständig clientseitige Web-App für Rechnungen rund um Gitarrenunterric
 
 ## Funktionsumfang
 
-- Kinder und mehrere Erziehungsberechtigte verwalten, filtern, sortieren und miteinander verknüpfen
+- Lernende mit optionalen Erziehungsberechtigten verwalten; Erwachsene können mit einem Datensatz selbst Rechnungsempfänger sein
 - gemeinsame Rechnungen an eine oder mehrere berechtigte Personen erstellen; historische getrennte Belege und Korrekturen weiterhin lesen
 - Duo-Unterricht für zwei Haushalte einmal erfassen, zwei gespeicherte Rechnungsentwürfe mit eigenen Empfängern, Preisen und Texten bearbeiten und nach vollständiger Vorschau atomar abschließen
-- mehrere Kinder und automatisch berechnete Zwischensummen auf einer Rechnung
+- mehrere Lernende und automatisch berechnete Zwischensummen auf einer gemeinsamen Rechnung
 - frei definierbare Positionen, Zahlungsziel und Textbausteine
-- strukturiertes Kleinunternehmerprofil mit vollständigen Aussteller-/Empfängeranschriften und ausdrücklich typisierter Steuerkennung
+- Kleinunternehmerprofil mit vollständiger Ausstelleranschrift; typisierte Steuerkennung bei Standardrechnungen verpflichtend, bei ausdrücklich gewählten Kleinbetragsrechnungen bis 250,00 € ausblendbar; Empfängeranschrift nur bei Standardrechnungen
+- Befreiungshinweis je Rechnung im Steuerblock oder in einer Fußzeile an der Endsumme; finale Belege sichern Kennungsentscheidung, Hinweistext und Position
+- neue Empfängerkontakte mit getrenntem Vor- und Nachnamen; alle übrigen Kontaktangaben optional, alte Anzeigenamen bleiben erhalten
 - Entwurf, versendet, bezahlt und automatisch erkanntes „überfällig“; verknüpfte Korrekturentwürfe erhalten den vollständigen Originalbeleg
-- konfigurierbarer Nummernkreis mit dauerhaftem Kinderkennzeichen (`a`, `b`, `c` …); jedes Kind bzw. jede Kindkombination zählt getrennt und Nummern werden erst bei Finalisierung vergeben
+- konfigurierbarer Nummernkreis mit dauerhaftem Kennzeichen je lernender Person (`a`, `b`, `c` …); Kombinationen zählen getrennt und Nummern werden erst bei Finalisierung vergeben
 - unveränderliche vollständige Belegversionen mit damaligen Positionen, Beträgen, Personen, Konto und Texten; einsehbare Korrekturgründe und Snapshot-Differenzen
 - A4-Druckansicht mit Entwurfswasserzeichen, gemeinsamer Rechtstext-/Seitenzahl-Fußzeile und Rechnungsnummer auf Folgeseiten
 - clientseitig erzeugter EPC-GiroCode (EPC069-12 / Version 002) für SEPA-Überweisungen
@@ -66,6 +68,8 @@ Vite verwendet für den Produktions-Build relative Asset-Pfade. Dadurch funktion
 
 „PDF / Drucken“ öffnet den nativen Druckdialog des Browsers. Dort **Als PDF speichern** wählen. Das Druck-CSS setzt A4 mit **16 mm oben, 20 mm links/rechts und 22 mm unten**, Inter-Typografie, Briefkopf, Tabellenfarben und Bankdaten um. Entwürfe tragen ein Wasserzeichen. Rechtstext, Rechnungsreferenz und Hinweise stehen zusätzlich im normalen Dokumentfluss: Selbst wenn ein Browser die optionalen `@page`-Randbereiche nicht unterstützt, bleiben die wesentlichen Angaben im PDF erhalten. In Chromium ergänzen die Randbereiche auf jeder Seite Rechnungsreferenz und „Seite x von y“. Lange Namen, Anschriften, Kontoangaben und mehrzeilige Freitexte bleiben umbruchfähig statt abgeschnitten zu werden.
 
+Die Fußzeilenoption stellt Rechtstext und Befreiungshinweis als eigene Zeilen direkt an die Endsumme; dadurch bleiben beide auch bei mehrseitigen Rechnungen auf deren Seite. Die spätere Schlusszeile enthält dann nur noch die Belegreferenz. Der frei eingegebene Rechtstext wird nicht automatisch gekürzt oder auf mögliche Dopplungen hin verändert; Editor und Rechnungsdetail weisen auf „§ 19“ oder „Kleinunternehmer“ darin hin. Neue Standardeinstellungen enthalten keinen zusätzlichen Befreiungstext. Bereits gespeicherte Rechtstexte bleiben erhalten.
+
 Der GiroCode füllt Empfänger, deutsche IBAN, optional eingegebene BIC, Betrag und Rechnungsnummer aus derselben gebundenen Belegversion in unterstützten Banking-Apps aus. Bei einer fehlerhaften EPC-Payload oder abgelehnter QR-Erzeugung erklärt die App den Grund und bietet ausdrücklich **„Ohne GiroCode drucken“** an; das fehlerhafte Bild wird nicht übernommen. Das ändert weder die Finalisierungsprüfung noch Rechnungsdaten. Für neue Verwendung werden ausschließlich deutsche Empfänger-IBANs unterstützt. IBAN-Prüfsumme und BIC-Format bestätigen weder Kontoinhaber noch Erreichbarkeit. Der EPC-Standard selbst kann keine Echtzeitüberweisung erzwingen; diese Option wird – sofern verfügbar – in der Banking-App ausgewählt.
 
 Automatisch geprüft ist **Chromium 153.0.8010.12 unter Ubuntu 24.04** in CI, einschließlich echter PDF-Erzeugung und Textprüfung. Native Druckdialoge und die visuelle Druckabnahme bleiben offen. Der normale Dokumentfluss ist der vorgesehene Druckfallback für Firefox/Safari; deren PDF-Ausgabe und dynamische `@page`-Seitenzahlen wurden nicht abgenommen. Chrome und Edge werden nicht als eigene Versionen freigegeben. Banking-App-Scans bleiben manuell: eine synthetische finale PDF öffnen bzw. den QR-Code scannen und Empfänger, DE-IBAN, optionale BIC, Betrag sowie Rechnungsnummer gegen den Bankblock prüfen, ohne eine Überweisung auszulösen. Die [Freigabematrix](docs/release-readiness.md) hält Versionen und offene Prüfungen fest.
@@ -85,6 +89,18 @@ Wird ein Gruppenentwurf gelöscht oder fehlt er nach Import, bleibt der andere
 eigenständig. Zahlung, Korrektur und Archivierung betreffen stets nur die gewählte
 Rechnung. Die Gruppenkennung und Partnernotizen erscheinen in keinem Einzelbeleg.
 
+Unter **Personen** kann eine erwachsene lernende Person **Zahlt selbst** wählen und
+optionale E-Mail- und Anschriftdaten hinterlegen. Name und Kontaktdaten werden
+nicht als zweiter Elternteil erfasst. Eine finale Standardrechnung benötigt die
+vollständige Anschrift jedes ausgewählten Empfängers. Eine ausdrücklich gewählte
+Kleinbetragsrechnung bis 250,00 € kann ohne Empfängeranschrift abgeschlossen
+werden. Bei Minderjährigen bleiben mehrere
+Erziehungsberechtigte möglich. Neue gemeinsame Rechnungen können ausdrücklich
+Empfänger beider Arten enthalten; alle ausgewählten Empfänger sehen dann die
+Namen und Positionen aller ausgewählten Lernenden. Freitexte vor dem Abschluss
+prüfen. Das Kennzeichen einer lernenden Person bleibt beim Zahlmoduswechsel
+gleich; ausgestellte Belege behalten ihren damaligen Empfänger-Snapshot.
+
 Finalisieren sichert den vollständigen Beleg. Spätere Änderungen an Stammdaten,
 Konten oder Textbausteinen verändern ihn nicht. Ansicht, Druck, Erinnerung und
 Export verwenden dieselbe ausgewählte Version, auch bei leeren historischen
@@ -92,7 +108,7 @@ Kontofeldern. Bereits gesicherte Beträge bleiben bei der Rechenumstellung erhal
 ältere Formate ohne Belegversion sichern zunächst ihren bisherigen Ausgabestand.
 
 In den Rechnungsdetails einen **Korrekturgrund** eingeben und **Korrekturentwurf
-erzeugen** wählen. Der Entwurf übernimmt sämtliche Positionen. Gelöschte Kinder
+erzeugen** wählen. Der Entwurf übernimmt sämtliche Positionen. Gelöschte Lernende
 und empfangende Personen ausdrücklich neu zuordnen; bis dahin lässt sich der
 Entwurf speichern, aber nicht finalisieren. Historische Abweichungen zuerst mit
 dem Ergebnis der Klärung dokumentieren. Die Finalisierung vergibt eine neue Nummer
@@ -162,9 +178,9 @@ beschreibt Migration, Wiederholung nach Fehlern und Kontrolle nach Reload.
 
 - Rechnungen, Einstellungen und Historie liegen im verwendeten Browserprofil. Ein Geräteschutz, ein gesperrtes Benutzerkonto und ein geschütztes Browserprofil sind deshalb Teil des Schutzmodells. Inkognito-Modus, das Löschen von Website-Daten oder ein Geräteverlust können lokale Daten entfernen.
 - Browser-Speicher ist an den **Origin** (Schema, Host und Port), nicht an den Repository-Unterpfad gebunden. Die konfigurierte GitHub-Pages-Auslieferung hat ohne `CNAME` den Origin `https://sl3ndrr.github.io`; RiffRechnung liegt darunter unter `/RiffRechnung/`. Andere dort ausgelieferte Projekte teilen den Origin und sind kein getrenntes Speicher-Sicherheitsgebiet. Die im Eigentümerkonto vorhandenen weiteren Repositories belegen nicht, dass sie auch dort ausgeliefert werden; das konnte aus der Repository-Konfiguration nicht abschließend festgestellt werden. Wenn nicht vertrauenswürdige Anwendungen unter diesem Origin betrieben werden sollen, ist ein separater Origin eine Betriebsoption.
-- JSON-Exports und Ordner-Backups sind normale Klartextdateien. Sie enthalten Familien-/Kontaktangaben, Rechnungen, Einstellungen, Freitexte und Notizen, vollständige Belegversionen sowie Änderungs- und Zahlungszuordnungshistorie. Sicherungen nur geschützt ablegen und vor dem Weitergeben prüfen.
+- JSON-Exports und Ordner-Backups sind normale Klartextdateien. Sie enthalten Personen-/Kontaktangaben, Rechnungen, Einstellungen, Freitexte und Notizen, vollständige Belegversionen sowie Änderungs- und Zahlungszuordnungshistorie. Sicherungen nur geschützt ablegen und vor dem Weitergeben prüfen.
 - Die App nutzt keine Cloud-API. Wird ein lokal synchronisierter Ordner gewählt, kann dessen installierte Desktop-Synchronisation die Klartextdateien an den jeweiligen Dienst übertragen; dessen Datenschutz- und Freigaberegeln gelten zusätzlich.
-- Rechnungsnummern sind innerhalb jedes Kinderkennzeichens monoton und eindeutig. Das erste angelegte Kind erhält `a`, das zweite `b`; eine gemeinsame Rechnung für beide verwendet `a+b`. `ab` kann dagegen das Kennzeichen eines einzelnen später angelegten Kindes sein. Parallel genutzte Browserprofile/Geräte teilen keinen Nummernkreis; für einen lückenlosen gemeinsamen Nummernkreis darf nur ein führender Datenbestand verwendet werden.
+- Rechnungsnummern sind innerhalb jedes Lernendenkennzeichens monoton und eindeutig. Die erste angelegte lernende Person erhält `a`, die zweite `b`; eine gemeinsame Rechnung für beide verwendet `a+b`. `ab` kann dagegen das Kennzeichen einer einzelnen später angelegten Person sein. Parallel genutzte Browserprofile/Geräte teilen keinen Nummernkreis; für einen lückenlosen gemeinsamen Nummernkreis darf nur ein führender Datenbestand verwendet werden.
 - Finalisierte Rechnungen bleiben erhalten; inhaltliche Änderungen erzeugen Korrekturen. Archivierung und Zahlungs-/Versandverwaltung ändern den gesicherten Inhalt nicht. Originalnummern und frühere Registereinträge bleiben dauerhaft reserviert.
 - Ein migrierter Beleg ist nur der älteste verfügbare Stand. Fehlende frühere Versionen werden nicht rekonstruiert. Lokale Versionierung garantiert weder Manipulationssicherheit noch automatische GoBD-Konformität.
 - Für neue Rechnungen ist nach ausdrücklicher Produktentscheidung das Kleinunternehmerprofil nach § 19 UStG vorgesehen. Vor Finalisierung sind vollständige Aussteller-/Empfängeranschriften und eine ausdrücklich typisierte Steuerkennung erforderlich. Andere Steuerprofile oder Ausnahmen werden nicht automatisch angenommen. Die App ersetzt keine Steuer- oder Rechtsberatung.
@@ -231,6 +247,11 @@ begrenzen etwa den 31. Januar auf den 28./29. Februar. Details und Nachweise:
 
 
 ### Rechnungsprofil und deutsche IBAN (Paket 07)
+
+Der folgende Paket-07-Abschnitt beschreibt den damaligen Stand. Aktuell gelten
+die oben beschriebenen AP3/AP4-Regeln: Bei ausdrücklich gewählten
+Kleinbetragsrechnungen bis 250,00 € sind Empfängeranschrift und ausgegebene
+Steuerkennung entbehrlich; der Befreiungshinweis bleibt Pflicht.
 
 Unvollständige Einstellungen und Rechnungsentwürfe sind speicherbar. Finalisieren
 ist erst mit vollständigem Kleinunternehmerprofil, Aussteller- und

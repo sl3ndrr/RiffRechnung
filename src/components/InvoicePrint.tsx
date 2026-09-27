@@ -6,6 +6,7 @@ import { billingPeriodFromItems, buildInvoicePrintPageStyle, euro, footerTextFor
 import { paymentDataForInvoice } from '../lib/paymentData'
 import { SMALL_BUSINESS_TAX_NOTICE, TAX_IDENTIFIER_LABELS, taxDataForInvoice } from '../lib/invoiceProfile'
 import { generateGiroCode, resolveGiroCode, type GiroCodeEncoder } from '../lib/printJob'
+import { liveRecipient, recipientKey, recipientRefs, snapshotRecipients } from '../lib/recipients'
 
 interface InvoicePrintProps {
   invoice: Invoice | null
@@ -48,28 +49,36 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
   const [qrCode, setQrCode] = useState<GeneratedQrCode | null>(null)
   const total = invoice ? invoiceTotal(invoice) : 0
   const period = invoice ? invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate) : ''
-  const source = invoice?.snapshot
-  const footerText = invoice ? footerTextForPrint(invoice.versionId || source ? invoice.legalText : invoice.legalText || settings.defaultLegalText) : ''
+  const source = invoice?.snapshot ?? invoice?.draftPrintSnapshot
+  const legacyDraftWithoutPrintData = invoice?.status === 'draft' && !source
+  const printInvoice = useMemo(() => invoice?.status === 'draft' && source ? { ...invoice, snapshot: source } : invoice, [invoice, source])
+  const footerText = invoice ? footerTextForPrint(invoice.legalText) : ''
   const pageStyle = invoice ? buildInvoicePrintPageStyle(footerText, invoice.number) : ''
-  const issuer = source?.issuer ?? settings.issuer
-  const account = invoice ? paymentDataForInvoice(invoice, settings) : { accountHolder: '', iban: '', bic: '', bankName: '' }
-  const taxData = invoice ? taxDataForInvoice(invoice, settings) : { invoiceProfile: null, taxIdentifier: null }
+  const issuer = source?.issuer ?? (legacyDraftWithoutPrintData ? { name: '', street: '', postalCode: '', city: '', email: '', phone: '' } : settings.issuer)
+  const account = printInvoice && !legacyDraftWithoutPrintData ? paymentDataForInvoice(printInvoice, settings) : { accountHolder: '', iban: '', bic: '', bankName: '' }
+  const taxData = printInvoice && !legacyDraftWithoutPrintData ? taxDataForInvoice(printInvoice, settings) : { invoiceProfile: null, taxIdentifier: null }
+  const taxOutput = source?.taxOutput
+  const printedIdentifier = taxOutput ? taxOutput.identifier : taxData.invoiceProfile === 'small-business' ? taxData.taxIdentifier : null
+  const printedNotice = taxOutput ? taxOutput.noticeText : taxData.invoiceProfile === 'small-business' && taxData.taxIdentifier?.value ? SMALL_BUSINESS_TAX_NOTICE : null
+  const noticeInFooter = taxOutput?.noticePosition === 'footer'
   const recipientList = useMemo(() => {
     if (!invoice) return []
-    if (source) return source.guardians
-    return invoice.guardianIds.flatMap((id) => {
-      const guardian = guardians.find((item) => item.id === id)
-      return guardian ? [{ id: guardian.id, name: guardian.name, email: guardian.email, ...guardian.address }] : []
+    if (source) return snapshotRecipients(source)
+    if (legacyDraftWithoutPrintData) return []
+    return recipientRefs(invoice).flatMap((ref) => {
+      const person = liveRecipient(ref, guardians, students)
+      return person ? [person] : []
     })
-  }, [guardians, invoice, source])
+  }, [guardians, invoice, legacyDraftWithoutPrintData, source, students])
   const studentList = useMemo(() => {
     if (!invoice) return []
     if (source) return source.students
+    if (legacyDraftWithoutPrintData) return []
     return invoice.studentIds.flatMap((id) => {
       const student = students.find((item) => item.id === id)
       return student ? [{ id: student.id, name: student.name }] : []
     })
-  }, [invoice, source, students])
+  }, [invoice, legacyDraftWithoutPrintData, source, students])
 
   const groups = useMemo(() => {
     if (!invoice) return []
@@ -92,10 +101,10 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
     })
   }, [invoice, period, studentList])
 
-  const giroCode = useMemo(() => invoice
-    ? resolveGiroCode(invoice, settings, includeGiroCode)
-    : { kind: 'unavailable' as const, reason: 'Keine Rechnung ausgewählt.' },
-  [includeGiroCode, invoice, settings])
+  const giroCode = useMemo(() => printInvoice && !legacyDraftWithoutPrintData
+    ? resolveGiroCode(printInvoice, settings, includeGiroCode)
+    : { kind: 'unavailable' as const, reason: legacyDraftWithoutPrintData ? 'Historischer Entwurf ohne gesicherte Zahlungsdaten.' : 'Keine Rechnung ausgewählt.' },
+  [includeGiroCode, legacyDraftWithoutPrintData, printInvoice, settings])
 
   useEffect(() => {
     setQrCode(null)
@@ -144,6 +153,12 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
       : giroCode.kind === 'unavailable'
         ? `Kein GiroCode: ${giroCode.reason}`
         : `GiroCode nicht verfügbar: ${giroCode.reason}`
+  const totalRow = <tr className="invoice-total-row">
+    <td colSpan={2}>Summe</td>
+    <td>{number.format(invoice.items.reduce((sum, item) => sum + item.quantity, 0))}</td>
+    <td />
+    <td>{euro.format(total)}</td>
+  </tr>
 
   return (
     <article className="invoice-paper" aria-label={`Rechnung ${invoice.number ?? 'Entwurf'}`}>
@@ -152,30 +167,31 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
       <div className="invoice-paper__body">
         <header className="invoice-letterhead">
           <section className="invoice-recipient">
-            <p className="invoice-senderline">{[issuer.name, issuer.street, `${issuer.postalCode} ${issuer.city}`].filter(Boolean).join(' · ')}</p>
-            <p className="invoice-to">AN</p>
+            {(issuer.name || issuer.street || issuer.postalCode || issuer.city) && <p className="invoice-senderline">{[issuer.name, issuer.street, [issuer.postalCode, issuer.city].filter(Boolean).join(' ')].filter(Boolean).join(' · ')}</p>}
+            {recipientList.length > 0 && <p className="invoice-to">AN</p>}
             {recipientList.map((recipient) => (
-              <div className="invoice-address" key={recipient.id}>
+              <div className="invoice-address" key={recipientKey(recipient)}>
                 <strong>{recipient.name}</strong>
-                <span>{recipient.street}</span>
-                <span>{recipient.postalCode} {recipient.city}</span>
-                <small>{recipient.email}</small>
+                {recipient.street && <span>{recipient.street}</span>}
+                {(recipient.postalCode || recipient.city) && <span>{[recipient.postalCode, recipient.city].filter(Boolean).join(' ')}</span>}
+                {recipient.email && <small>{recipient.email}</small>}
               </div>
             ))}
           </section>
           <section className="invoice-meta">
             <h1>RECHNUNG</h1>
+            {(source?.invoiceKind ?? invoice.invoiceKind) === 'small-amount' && <p>Kleinbetragsrechnung nach § 33 UStDV</p>}
             <div className="invoice-meta__rule" />
             <dl>
               <dt>Nr.:</dt><dd><strong>{invoice.number ?? pendingNumberLabel ?? 'ENTWURF'}</strong></dd>
               <dt>Datum:</dt><dd>{formatDateLong(invoice.invoiceDate)}</dd>
               <dt>Zeitraum:</dt><dd>{period}</dd>
               <dt>Fällig:</dt><dd><strong>{formatDateLong(invoice.dueDate)}</strong></dd>
-              <dt>Von:</dt><dd><strong>{issuer.name || '–'}</strong></dd>
-              <dt>Straße:</dt><dd>{issuer.street || '–'}</dd>
-              <dt>PLZ/Ort:</dt><dd>{issuer.postalCode} {issuer.city}</dd>
-              <dt>Tel.:</dt><dd>{issuer.phone || '–'}</dd>
-              <dt>E-Mail:</dt><dd>{issuer.email || '–'}</dd>
+              {(invoice.status !== 'draft' || issuer.name) && <><dt>Von:</dt><dd><strong>{issuer.name || '–'}</strong></dd></>}
+              {(invoice.status !== 'draft' || issuer.street) && <><dt>Straße:</dt><dd>{issuer.street || '–'}</dd></>}
+              {(invoice.status !== 'draft' || issuer.postalCode || issuer.city) && <><dt>PLZ/Ort:</dt><dd>{issuer.postalCode} {issuer.city}</dd></>}
+              {(invoice.status !== 'draft' || issuer.phone) && <><dt>Tel.:</dt><dd>{issuer.phone || '–'}</dd></>}
+              {(invoice.status !== 'draft' || issuer.email) && <><dt>E-Mail:</dt><dd>{issuer.email || '–'}</dd></>}
             </dl>
           </section>
         </header>
@@ -194,16 +210,22 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
             {groups.map((group) => (
               <PrintGroup invoice={invoice} key={group.key} label={group.label} items={group.items} showSubtotal={groups.length > 1} />
             ))}
-            <tr className="invoice-total-row">
-              <td colSpan={2}>Summe</td>
-              <td>{number.format(invoice.items.reduce((sum, item) => sum + item.quantity, 0))}</td>
-              <td />
-              <td>{euro.format(total)}</td>
-            </tr>
+            {!taxOutput && totalRow}
           </tbody>
+          {taxOutput && <tbody className="invoice-final-rows">
+            {totalRow}
+            {(printedIdentifier?.value || printedNotice && !noticeInFooter) && <tr className="invoice-tax-row"><td colSpan={5}><section className="invoice-tax-data" aria-label="Steuerliche Angaben">
+              {printedIdentifier?.value && <p><strong>{TAX_IDENTIFIER_LABELS[printedIdentifier.kind]}:</strong> {printedIdentifier.value}</p>}
+              {printedNotice && !noticeInFooter && <p>{printedNotice}</p>}
+            </section></td></tr>}
+            {noticeInFooter && <tr className="invoice-total-footer-row"><td colSpan={5}><footer className="invoice-total-footer" aria-label="Fußzeile zur Endsumme">
+              {footerText && <p>{footerText}</p>}
+              {printedNotice && <p>{printedNotice}</p>}
+            </footer></td></tr>}
+          </tbody>}
         </table>
 
-        {taxData.invoiceProfile === 'small-business' && taxData.taxIdentifier?.value && <section className="invoice-tax-data" aria-label="Steuerliche Angaben"><p><strong>{TAX_IDENTIFIER_LABELS[taxData.taxIdentifier.kind]}:</strong> {taxData.taxIdentifier.value}</p><p>{SMALL_BUSINESS_TAX_NOTICE}</p></section>}
+        {!taxOutput && taxData.invoiceProfile === 'small-business' && taxData.taxIdentifier?.value && <section className="invoice-tax-data" aria-label="Steuerliche Angaben"><p><strong>{TAX_IDENTIFIER_LABELS[taxData.taxIdentifier.kind]}:</strong> {taxData.taxIdentifier.value}</p><p>{SMALL_BUSINESS_TAX_NOTICE}</p></section>}
 
         <section className="invoice-payment-block">
           <section className="invoice-payment-copy">
@@ -230,7 +252,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
             <div className="invoice-thanks"><p>Vielen Dank</p><strong>{issuer.name}</strong></div>
             <footer className="invoice-footer">
               <div className="invoice-footer__rule" />
-              <div className="invoice-footer__content"><p>{footerText}</p><span className="invoice-footer__reference">Rechnung {invoice.number ?? 'Entwurf'} · Seitenzahl im Seitenrand</span></div>
+              <div className="invoice-footer__content">{!noticeInFooter && <p>{footerText}</p>}<span className="invoice-footer__reference">Rechnung {invoice.number ?? 'Entwurf'} · Seitenzahl im Seitenrand</span></div>
             </footer>
           </section>
         </section>

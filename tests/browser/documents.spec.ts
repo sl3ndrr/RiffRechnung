@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
 import type { AppState } from '../../src/types'
 import { documentDraft, documentFamily, documentAt, legacyFixture } from '../documentFixtures'
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
@@ -37,6 +38,63 @@ async function pdfText(page: Page, state: AppState, invoiceId: string): Promise<
   } finally { await rendering.close() }
 }
 
+test('AP6 Browser/PDF: eingefrorene Schema-7-Belege bleiben nach Migration, Druck und Reload erhalten', async ({ page }, testInfo) => {
+  const gold = JSON.parse(readFileSync('tests/fixtures/schema7-audit.json', 'utf8')) as { issuedCorrected: AppState; oldestSeparate: AppState }
+  for (const original of [gold.issuedCorrected, gold.oldestSeparate]) {
+    await page.goto('/')
+    await page.evaluate(() => localStorage.clear())
+    await page.evaluate(async (raw) => {
+      const path = '/src/lib/storage.ts'
+      const { StorageSession } = await import(path)
+      await new StorageSession().restore(raw)
+    }, JSON.stringify(original))
+    await page.reload()
+    const after = await stateOf(page)
+    expect({ ...after, schemaVersion: 7 }).toEqual(original)
+    const separate = after.invoices.find((entry) => entry.recipientStrategy === 'separate')!
+    const printed = await pdfText(page, after, separate.id)
+    expect(printed.text).toContain(separate.number!)
+    expect(printed.text).toContain('Empfaenger B')
+    expect(printed.text).not.toContain('Empfaenger A')
+    await testInfo.attach(`ap6-${after.documentVersions.find((entry) => entry.id === separate.versionId)!.provenance}.pdf`, { body: printed.pdf, contentType: 'application/pdf' })
+    await page.reload()
+    expect(await stateOf(page)).toEqual(after)
+  }
+})
+
+test('AP3 Browser/PDF: Adressloser Entwurf und 250-Euro-Beleg bleiben nach Stammdatenänderung druckgleich', async ({ page }) => {
+  const state = documentFamily()
+  state.guardians[0].address = { street: '', postalCode: '', city: '' }
+  const base = documentDraft()
+  const draft = { ...base, invoiceKind: 'small-amount' as const, items: base.items.map((item) => ({ ...item, quantity: 1, unitPrice: 250 })) }
+  const saved = saveInvoiceDraft(state, draft, false, documentAt)
+  await seed(page, saved)
+  const draftPrint = await pdfText(page, saved, saved.invoices[0].id)
+  expect(draftPrint.text).toContain('ENTWURF')
+  expect(draftPrint.text).toContain('Empfaenger A')
+  expect(draftPrint.text).not.toContain('Adresse fehlt')
+  const issued = saveInvoiceDraft(saved, { ...draft, id: saved.invoices[0].id }, true, documentAt)
+  const first = await pdfText(page, issued, issued.invoices[0].id)
+  const after = structuredClone(issued)
+  after.guardians[0].firstName = 'Anderer'
+  after.guardians[0].lastName = 'Name'
+  after.guardians[0].name = 'Anderer Name'
+  after.guardians[0].address = { street: 'Neuer Weg 9', postalCode: '99999', city: 'Anderswo' }
+  const second = await pdfText(page, after, after.invoices[0].id)
+  expect(second.text).toBe(first.text)
+  expect(second.text).not.toContain('Neuer Weg 9')
+  await seed(page, issued)
+  await invoices(page)
+  await page.getByRole('button', { name: issued.invoices[0].number!, exact: true }).click()
+  await page.getByLabel('Korrekturgrund', { exact: true }).fill('Synthetische Preisberichtigung')
+  await page.getByRole('button', { name: 'Korrekturentwurf erzeugen', exact: true }).click()
+  const correction = page.getByRole('dialog', { name: 'Korrekturentwurf bearbeiten' })
+  await correction.getByLabel(/Einzelpreis/).fill('250,01')
+  await expect(correction.getByRole('button', { name: 'Finalisieren', exact: true })).toBeDisabled()
+  await expect(correction.locator('.form-errors[role="status"]')).toContainText('Standardrechnung erforderlich')
+  await expect(correction.locator('.form-errors[role="status"]')).toContainText('Straße & Hausnummer fehlt')
+})
+
 test('P04 Browser/PDF: finalisieren, Personen löschen, Original drucken, korrigieren, neu zuordnen und reload', async ({ page }, testInfo) => {
   await seed(page, saveInvoiceDraft(documentFamily(), documentDraft(), false, documentAt))
   await invoices(page)
@@ -49,9 +107,9 @@ test('P04 Browser/PDF: finalisieren, Personen löschen, Original drucken, korrig
   expect(first.text).toContain('Empfaenger A')
   expect(first.text).toContain('7,58')
   await testInfo.attach('original.pdf', { body: first.pdf, contentType: 'application/pdf' })
-  await page.getByRole('button', { name: 'Familien', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Personen', exact: true }).first().click()
   await page.getByRole('button', { name: 'Testkind A löschen', exact: true }).click()
-  await page.getByRole('button', { name: 'Kind löschen', exact: true }).click()
+  await page.getByRole('button', { name: 'Lernende Person löschen', exact: true }).click()
   await page.getByRole('button', { name: 'Empfaenger A löschen', exact: true }).click()
   await page.getByRole('button', { name: 'Kontakt löschen', exact: true }).click()
   await invoices(page)
@@ -71,7 +129,7 @@ test('P04 Browser/PDF: finalisieren, Personen löschen, Original drucken, korrig
   await invoices(page)
   await page.getByRole('button', { name: 'Entwurf', exact: true }).click()
   await page.locator('.invoice-detail').getByRole('button', { name: 'Bearbeiten', exact: true }).click()
-  await dialog.getByLabel(/Kind neu zuordnen/).selectOption('s-b')
+  await dialog.getByLabel(/Lernende Person neu zuordnen/).selectOption('s-b')
   await dialog.getByLabel(/Gelöschte empfangende Person/).selectOption('g-b')
   await dialog.getByLabel(/Einzelpreis/).fill('20')
   await dialog.getByLabel('Datum', { exact: true }).fill('2026-09-02')
@@ -175,7 +233,11 @@ test('AP1 Browser/PDF: gemeinsame Rechnung ohne Aufteilung, Export und Import', 
   const downloading = page.waitForEvent('download')
   await page.getByRole('button', { name: 'JSON exportieren', exact: true }).click()
   const buffer = await readFile((await (await downloading).path())!)
-  expect(parseBackup(buffer.toString())).toEqual(finalized)
+  try { expect(parseBackup(buffer.toString())).toEqual(finalized) }
+  catch (error) {
+    await testInfo.attach('failed-synthetic-backup.json', { body: buffer, contentType: 'application/json' })
+    throw new Error(`Exportdatei mit ${buffer.length} Byte konnte nicht geprüft werden: ${error instanceof Error ? error.message : String(error)}`)
+  }
   const destination = await page.context().browser()!.newContext({ baseURL: 'http://127.0.0.1:4173' })
   try {
     const imported = await destination.newPage()
@@ -184,6 +246,7 @@ test('AP1 Browser/PDF: gemeinsame Rechnung ohne Aufteilung, Export und Import', 
     await imported.locator('#backup input[type=file]').setInputFiles({ name: 'gemeinsam.json', mimeType: 'application/json', buffer })
     await imported.getByRole('button', { name: 'Wiederherstellung vorbereiten', exact: true }).click()
     await imported.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
+    await expect(imported.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
     await imported.reload()
     expect(await stateOf(imported)).toEqual(finalized)
   } finally { await destination.close() }
@@ -203,7 +266,7 @@ test('AP1 Browser: ein offener Altentwurf verlangt sichtbare Prüfung und ausdr�
   await expect(dialog.getByText('Nach Empfänger:innen aufteilen')).toHaveCount(0)
   await dialog.getByRole('button', { name: 'Als gemeinsamen Entwurf übernehmen' }).click()
   await expect(dialog.getByRole('alert')).toContainText('alle fünf Angaben')
-  for (const field of ['Empfänger', 'Kind', 'Positionen', 'Einleitung', 'Freitext']) await dialog.getByRole('checkbox', { name: `${field} geprüft` }).check()
+  for (const field of ['Empfänger', 'Lernende', 'Positionen', 'Einleitung', 'Freitext']) await dialog.getByRole('checkbox', { name: `${field} geprüft` }).check()
   await dialog.getByRole('button', { name: 'Als gemeinsamen Entwurf übernehmen' }).click()
   await expect(dialog).not.toBeVisible()
   const converted = await stateOf(page)
@@ -228,7 +291,7 @@ test('AP1 Browser: importierter Altentwurf mit mehreren Empfängern braucht neue
   const chooser = dialog.getByRole('group', { name: 'Empfänger für den neuen gemeinsamen Entwurf ausdrücklich wählen' })
   await chooser.getByText('Empfaenger A').click()
   await chooser.getByText('Empfaenger B').click()
-  for (const field of ['Empfänger', 'Kind', 'Positionen', 'Einleitung', 'Freitext']) await dialog.getByRole('checkbox', { name: `${field} geprüft` }).check()
+  for (const field of ['Empfänger', 'Lernende', 'Positionen', 'Einleitung', 'Freitext']) await dialog.getByRole('checkbox', { name: `${field} geprüft` }).check()
   await dialog.getByRole('button', { name: 'Als gemeinsamen Entwurf übernehmen' }).click()
   await expect(dialog).not.toBeVisible()
   const converted = await stateOf(page)
@@ -326,7 +389,7 @@ test('P05 Browser/PDF: historisch gesicherter Halbcentfehler bleibt nach Import 
   const { captureLegacyDocuments } = await import('../../src/lib/importState')
   const legacy = captureLegacyDocuments(legacyFixture(saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)))
   expect(legacy.documentVersions[0].amounts.totalCents).toBe(757)
-  await seed(page, legacy)
+  await seed(page, parseBackup(JSON.stringify(legacy)))
   await page.reload()
   const restored = await stateOf(page)
   expect(restored.documentVersions).toEqual(legacy.documentVersions)
@@ -336,3 +399,93 @@ test('P05 Browser/PDF: historisch gesicherter Halbcentfehler bleibt nach Import 
   await testInfo.attach('historisch-7-57.pdf', { body: pdf.pdf, contentType: 'application/pdf' })
 })
 
+test('AP5 Browser/PDF: Selbstzahlerin und Minderjähriger mit zwei Empfängern von Anlage bis Import/Reload', async ({ page, context }, testInfo) => {
+  const state = documentFamily()
+  state.guardians = []; state.students = []; state.nextStudentCodeIndex = 0
+  await seed(page, state)
+  await page.getByRole('button', { name: 'Personen', exact: true }).first().click()
+  for (const name of ['Alex Beispiel', 'Robin Beispiel']) {
+    await page.getByRole('button', { name: 'Erziehungsberechtigte Person', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: 'Erziehungsberechtigte Person anlegen' })
+    const [firstName, lastName] = name.split(' ')
+    await dialog.getByLabel('Vorname *').fill(firstName)
+    await dialog.getByLabel('Nachname *').fill(lastName)
+    await dialog.getByLabel('E-Mail').fill(name.startsWith('Alex') ? 'alex@example.org' : 'robin@example.org')
+    await dialog.getByLabel('Straße & Hausnummer').fill('Beispielweg 3')
+    await dialog.getByLabel('PLZ').fill('12345')
+    await dialog.getByLabel('Ort').fill('Teststadt')
+    await dialog.getByRole('button', { name: 'Speichern' }).click()
+    await expect(dialog).not.toBeVisible()
+  }
+  await page.getByRole('button', { name: 'Lernende Person anlegen', exact: true }).click()
+  const adult = page.getByRole('dialog', { name: 'Lernende Person anlegen' })
+  await adult.getByLabel('Name *').fill('Eva Selbst')
+  await adult.getByText('Zahlt selbst', { exact: true }).click()
+  await expect(adult.getByRole('radio', { name: 'Zahlt selbst' })).toBeChecked()
+  await adult.getByLabel('E-Mail').fill('eva@example.org')
+  await adult.getByLabel('Straße & Hausnummer').fill('Erwachsenenweg 8')
+  await adult.getByLabel('PLZ').fill('12345')
+  await adult.getByLabel('Ort').fill('Teststadt')
+  await adult.getByRole('button', { name: 'Speichern' }).click()
+  await expect(adult).not.toBeVisible()
+  await page.getByRole('button', { name: 'Lernende Person anlegen', exact: true }).click()
+  const minor = page.getByRole('dialog', { name: 'Lernende Person anlegen' })
+  await minor.getByLabel('Name *').fill('Mika Beispiel')
+  await minor.getByRole('group', { name: 'Erziehungsberechtigte *' }).locator('label').filter({ hasText: 'Alex Beispiel' }).click()
+  await minor.getByRole('group', { name: 'Erziehungsberechtigte *' }).locator('label').filter({ hasText: 'Robin Beispiel' }).click()
+  await expect(minor.getByRole('checkbox', { name: /Alex Beispiel/ })).toBeChecked()
+  await expect(minor.getByRole('checkbox', { name: /Robin Beispiel/ })).toBeChecked()
+  await minor.getByRole('button', { name: 'Speichern' }).click()
+  await expect(minor).not.toBeVisible()
+  let saved = await stateOf(page)
+  expect(saved.students).toHaveLength(2)
+  expect(saved.guardians).toHaveLength(2)
+  expect(saved.students.find((student) => student.name === 'Eva Selbst')?.guardianIds).toEqual([])
+
+  await invoices(page)
+  for (const [learner, expectedRecipients, address] of [['Eva Selbst', ['Eva Selbst'], 'Erwachsenenweg 8'], ['Mika Beispiel', ['Alex Beispiel', 'Robin Beispiel'], 'Beispielweg 3']] as const) {
+    await page.getByRole('button', { name: 'Neue Rechnung', exact: true }).click()
+    const editor = page.getByRole('dialog', { name: 'Neue Rechnung' })
+    await editor.getByRole('group', { name: 'Lernende' }).locator('label').filter({ hasText: learner }).click()
+    await expect(editor.getByRole('group', { name: 'Lernende' }).getByRole('checkbox', { name: new RegExp(learner) })).toBeChecked()
+    const audience = editor.getByRole('group', { name: 'Rechnungsempfänger' })
+    for (const name of expectedRecipients) await expect(audience.getByRole('checkbox', { name: new RegExp(name) })).toBeChecked()
+    if (learner === 'Eva Selbst') await expect(audience.getByRole('checkbox', { name: /Alex Beispiel/ })).toHaveCount(0)
+    await editor.getByRole('button', { name: 'Als Entwurf speichern' }).click()
+    await expect(editor).not.toBeVisible()
+    await page.locator('.invoice-detail').getByRole('button', { name: 'Bearbeiten' }).click()
+    const draftEditor = page.getByRole('dialog', { name: 'Entwurf bearbeiten' })
+    await draftEditor.getByRole('button', { name: 'Finalisieren' }).click()
+    await expect(draftEditor).not.toBeVisible()
+    saved = await stateOf(page)
+    const invoice = saved.invoices.at(-1)!
+    expect(invoice.snapshot?.recipients?.map((recipient) => recipient.name)).toEqual(expectedRecipients)
+    await page.getByLabel('Tatsächlicher Zahlungstag', { exact: true }).fill('2026-09-20')
+    await page.getByRole('button', { name: 'Vollzahlung erfassen' }).click()
+    saved = await stateOf(page)
+    const pdf = await pdfText(page, saved, invoice.id)
+    expect(pdf.text).toContain(`Sehr geehrte/r ${expectedRecipients.join(' und ')}`)
+    expect(pdf.text).toContain(address)
+    await writeFile(testInfo.outputPath(`ap5-${learner.replace(' ', '-')}.pdf`), pdf.pdf)
+    await testInfo.attach(`ap5-${learner.replace(' ', '-')}.pdf`, { body: pdf.pdf, contentType: 'application/pdf' })
+  }
+  expect(saved.payments).toHaveLength(2)
+  const before = saved
+  await page.getByRole('button', { name: 'Einstellungen', exact: true }).click()
+  const download = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'JSON exportieren', exact: true }).click()
+  const buffer = await readFile((await (await download).path())!)
+  expect(parseBackup(buffer.toString())).toEqual(before)
+  const destination = await context.browser()!.newContext({ baseURL: 'http://127.0.0.1:4173' })
+  try {
+    const imported = await destination.newPage()
+    await imported.goto('/')
+    await imported.getByRole('button', { name: 'Einstellungen', exact: true }).click()
+    await imported.locator('#backup input[type=file]').setInputFiles({ name: 'ap5-synthetisch.json', mimeType: 'application/json', buffer })
+    await imported.getByRole('button', { name: 'Wiederherstellung vorbereiten' }).click()
+    await imported.getByRole('button', { name: 'Wiederherstellung bestätigen' }).click()
+    await expect(imported.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
+    await imported.reload()
+    expect(await stateOf(imported)).toEqual(before)
+  } finally { await destination.close() }
+})

@@ -1,3 +1,96 @@
+# AP6 – integrierte Freigabematrix, 27.09.2026
+
+Der [AP6-Branch/Entwurfs-PR #41](https://github.com/sl3ndrr/RiffRechnung/pull/41)
+integriert AP1–AP5 auf `main` `47f491e`; AP2–AP5 sind in `main` weiterhin nicht
+enthalten. Schema 7→8, Speicherprotokoll 4 und Archivformat 1 sind der geprüfte
+Umstieg. Die [Fallmatrix](ap6-integration-matrix.md) ordnet Altbestände und neue
+Fälle zu. Branch-CI gilt nur für die bezeichnete Head-SHA und ersetzt weder
+Merge- noch Deploymentauftrag.
+
+[CI 36283723964](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36283723964)
+auf `bc94c2724c858c81731dfaeb4e6079dbc9cfa6c9` bestand unter Node
+22.23.2 Installation, Lint, 186/186 Fachtests, Typecheck, Build, 56/56
+Browserprüfungen und Audit (0 gemeldete Schwachstellen). Davon sind **50
+Chromium-Fälle**, darunter echte PDF-Erzeugung mit `pdftotext` für Goldbelege
+und Mehrseitenfall; **zwei Chromium-, zwei Firefox- und zwei Linux-WebKit-
+JSON-Fallbacks** prüfen Export/Import und Reload getrennt. Die geprüften
+Versionen sind Chromium 153.0.8010.12, Firefox 155.0 und Linux-WebKit 26.6.
+Der abschließende Dokumentationscommit wird im PR separat auf seiner eigenen
+SHA geprüft.
+
+| Bereich | Automatischer Nachweis im AP6-Branch | Offene Grenze |
+| --- | --- | --- |
+| Goldbestände des unveränderten Auditcommits | `tests/fixtures/schema7-audit.json`: bezahlter Originalbeleg, Korrektur, historischer `separate` mit `issued`, zweiter mit `oldest-available`; kanonischer 7→8-Vergleich, wiederholter Import, JSON-Roundtrip, Roharchiv, Reload | Unbekannte reale Bestände bleiben individuell vor Übernahme zu prüfen |
+| Datenschutz/Schreibpfad | `tests/ap6-integration.test.ts`, AP1-, AP2- und Storage-Tests: neue `separate`-Finalisierung gesperrt; Originale/Korrektur erhalten; Vorschau ohne Schreibzugriff, Abbruch, Quota, konkurrierender Tab, Zukunftsschema 99 | Geräte- und Dateisystemfehler nicht vollständig simulierbar |
+| Mehrpersonenforderung und Duo | Fach- und Browserfälle mit zwei eigenständigen Duo-Forderungen, Einzel-PDFs, Text-/CSV-/EPC-/Erinnerungsgrenzen und JSON-Reload; ein gemeinsamer Mehrpersonenbeleg bleibt eine Forderung | Das Voll-Backup enthält systembedingt beide Haushalte |
+| Kontaktname, Rechnungsart und Steueranzeige | Schema-7-Altname unverändert; fehlende Pflichtangaben sperren fallbezogen; 249,99/250,00/250,01 €, Steuerblock/Fußzeile und mehrseitiger Chromium-PDF-Text in AP3/AP4-Tests | Steuerliche Einzelfallberatung und OS-Druck offen |
+| Selbstzahler | AP5-Fach- und Browserfall mit Anlage, Zahlung, PDF und Export/Import/Reload; alte Empfänger-Snapshots bleiben | Native Geräteabnahme offen |
+| Chromium / PDF | Echte Headless-PDF-Erzeugung und `pdftotext`, Mehrseitenfall und Goldbeleg werden gesondert zum JSON-Fallback bewertet | OS-Druckdialog, visuelle Ausgabe und Banking-App-Scan offen |
+| Firefox / Linux-WebKit | JSON-Fallback und Reload in beiden Browsern | Linux-WebKit ist keine Safari/macOS-Abnahme; PDF/Druck dort offen |
+| Zugänglichkeit | Automatische Tastatur-, Fokus- und Kontrasttests | Screenreader mit NVDA/VoiceOver offen |
+
+Die synthetischen CI-Artefakte aus
+[Lauf 36283017799](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36283017799)
+wurden ergänzend gesichtet: Selbstzahlerin und gemeinsamer Minderjährigenbeleg
+sind je eine lesbare A4-Seite; bei vierseitiger Ausgabe stehen Steuerkennung,
+Hinweis, Summe und Bankblock ohne sichtbare Überlagerung auf der Schlussseite.
+Diese Stichprobe ersetzt keinen OS-Druckdialog und keine Geräteabnahme.
+
+**Freigabeempfehlung:** Die automatisierte Integration ist auf `bc94c272…`
+bestanden. Produktive Freigabe bleibt wegen OS-Druckdialog, Safari/macOS,
+Banking-App-Scan, Screenreader, nativer Dateiberechtigungen und des administrativ
+fehlenden verpflichtenden Statuschecks (R23) gesperrt; diese Prüfungen sind
+offen und nicht bestanden. Kein Merge und kein Deployment in AP6.
+
+# AP4 – Prüfstand 26.09.2026
+
+AP4 ist ein gestapelter Entwurfs-PR auf AP3 und noch nicht freigegeben.
+Die gesetzlichen Voraussetzungen aus §§ 33 und 34a UStDV wurden für den
+dokumentierten Produktumfang erneut geprüft. Die neue Fußzeilenwahl wird als
+Zeile bei der Endsumme gedruckt, damit ein mehrseitiger Beleg den Hinweis
+nicht erst auf einer späteren Seite zeigt. Der bestehende Rechtstext bleibt
+unverändert, sodass ein nutzereigener Steuerhinweis zusätzlich vorkommen
+kann; Editor und Rechnungsdetail warnen ohne Inhaltsänderung.
+
+Der Charakterisierungscommit `1684225f` bestand `npm ci`, Lint,
+Fachtests einschließlich importiertem AP4-Test, Typecheck, Build und den
+Altbeleg-PDF-Test in Chromium in
+[CI 36203816712](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36203816712).
+Der vollständige Browserlauf endete mit 44/45: Der bekannte instabile
+AP1-JSON-Download in WebKit erhielt keine Export-Rückmeldung; die AP4-
+Charakterisierung bestand. Der erste Implementierungslauf fand eine
+Statusreihenfolge beim finalen Snapshot; der unveränderte Test bestand
+nach Korrektur. [CI 36204634782](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36204634782)
+auf `65b97fd8` bestand unter Node 22.23.2 Installation, Lint,
+161/161 Fachtests, Typecheck, Build, 47/47 Browserprüfungen mit
+Endsumme-Seitenvergleich sowie vollständiges Audit ohne gemeldete
+Schwachstellen. Der ergänzte Editor-Browsertest bestand auf `eddf3dca` in
+[CI 36205098812](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36205098812)
+mit 161/161 Fach- und 48/48 Browserprüfungen sowie allen übrigen Gates.
+Lokales `npm ci` erhielt Registry HTTP 403,
+Node ist hier 24 statt 22. Native Freigabegrenzen unten bleiben offen.
+
+# AP3 – Prüfstand 25.09.2026
+
+AP3 beruht auf `main` 47f491e (AP1 integriert). Schema 8 ist noch nicht
+freigegeben oder gemergt. Die lokalen Node/npm-Gates waren wegen Node 24
+(statt 22) und eines 403 beim `npm ci` nicht vollständig ausführbar.
+Der Ergebniscommit `b8ff8b91` bestand [CI 36179170530](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36179170530)
+unter Node 22.23.2 mit `npm ci`, Lint, 155/155 Fachtests, Typecheck, Build,
+44/44 Browserprüfungen, `pdftotext` und vollständigem Audit. Der Fehler bei
+der Korrektur-Rechnungsart ist behoben; die Download-Zwischenläufe sind in
+[quality-gates.md](quality-gates.md) zugeordnet. Native Freigaben der älteren
+Paketfolge bleiben offen. § 14 UStG wurde über die amtliche Gesamtausgabe
+vollständig geprüft; siehe Produktentscheidungen.
+Ein späterer unveränderter Dokumentationslauf hatte zweimal wechselnde
+Downloadfehler in WebKit und Chromium; [CI 36181722538](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36181722538)
+bestand mit zusätzlicher Fehlerdiagnose erneut 155/155 und 44/44. Die
+Browser-Downloadprüfung ist deshalb trotz grünem Stand als instabil markiert.
+
+Die bisherige Schemanummer 7 und die pauschale Empfängeranschriftspflicht in
+den folgenden historischen Freigabeabschnitten beschreiben den Stand vor AP3.
+Rückweg von Schema 8 nur mit gesichertem Schema-7-Original in getrenntem Profil.
+
 # AP2 – Prüfstand (2026-09-25)
 
 Arbeitsstand auf `codex/ap2-duo-households`, Ausgang `47f491e…`, APP_VERSION 1.4,
@@ -34,6 +127,12 @@ im PR dokumentiert und ersetzt diesen fehlgeschlagenen Nachweis nicht rückwirke
 Native Dateirechte, OS-Druckdialog, visuelle PDF-Abnahme, Banking-Scan,
 Screenreader und Safari/macOS bleiben wie bisher separate offene Freigaben.
 Kein Merge und kein Deployment.
+
+# AP5 – Prüfstand (2026-09-26)
+
+Schema 8 trennt neue typisierte Rechnungsempfänger von unveränderten Schema-7-Altbelegen. Selbstzahler erhalten ihr dauerhaftes Lernendenkennzeichen; der Wechsel des Zahlmodus ändert keine früheren Nummern oder Belegversionen. Neue gemischte gemeinsame Rechnungen zeigen allen ausdrücklich ausgewählten Empfängern die Namen und Positionen aller ausgewählten Lernenden. AP2-Gruppen und AP3-Rechnungsarten einschließlich Kleinbetragsrechnung fehlen in der Ausgangsbasis und können hier nicht als geprüft gelten. Historische Doppelanlagen werden nicht automatisch bereinigt.
+
+Lokal steht Node 24.19.0 statt `.nvmrc` 22 bereit; `npm ci` endet mit HTTP 403 beim Paketabruf. Lokale Folge-Gates dürfen daher nicht als bestanden gelten. [CI 36253116923](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36253116923) auf `6183cb31ef6ec3dd1c07fd5dc44d26ec4c38ea44` prüfte unter Node 22 alle 155 Fachtests und 44 Browserprüfungen einschließlich PDF-Text, Migration, Export/Import und Reload erfolgreich; Lint, Typecheck, Build und Audit bestanden ebenfalls. Die synthetischen AP5-PDFs für Selbstzahlerin und Minderjährigen mit zwei Empfängern wurden als einzelne A4-Seiten visuell geprüft, ohne sichtbare Kollisionen oder Abschneidungen. Native Druckdialoge, Safari/macOS und weitere Freigabepunkte unten bleiben offen. Jeder weitere Commit benötigt einen eigenen vollständigen Lauf. Kein Merge oder Deployment.
 
 # AP1 – Prüfstand (2026-09-24)
 

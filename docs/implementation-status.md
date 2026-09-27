@@ -1,3 +1,75 @@
+# AP6 – integrierter Arbeitsstand, 27.09.2026
+
+Ausgang `main` `47f491eecbebb788bf6f63aea2b1342bc3dfbd85`: AP1 integriert,
+AP2 ([PR #37](https://github.com/sl3ndrr/RiffRechnung/pull/37)), AP3
+([PR #38](https://github.com/sl3ndrr/RiffRechnung/pull/38)), AP4 als
+AP3-Folge ([PR #39](https://github.com/sl3ndrr/RiffRechnung/pull/39)) und AP5
+([PR #40](https://github.com/sl3ndrr/RiffRechnung/pull/40)) lagen getrennt.
+Die Codebasis der AP6-Prüfung ist ein eigener
+[Entwurfs-PR #41](https://github.com/sl3ndrr/RiffRechnung/pull/41), kein
+Integrationsnachweis für `main`. Kein lokales `.git`-Checkout war bereitgestellt;
+der GitHub-Tree von `main` wurde blobgleich materialisiert und die Branches
+aus ihren tatsächlichen Dateien integriert. Auditcommit `1449d596…` war älter
+als `main` (APP_VERSION 1.3). Keine `AGENTS.md` im geprüften Tree.
+
+Ein gemeinsamer Schema-8-Übergang und die Schlüsselprüfung verbinden Duo-Gruppen,
+getrennte Kontaktnamen, Rechnungsart/Steueranzeige und typisierte Empfänger.
+`tests/fixtures/schema7-audit.json` wurde mit dem unveränderten Auditcommit
+aus dessen Fachbefehlen erzeugt; `tests/ap6-integration.test.ts` prüft
+Originale, Migration, Archiv, idempotenten Export/Import, Schreibfehler und
+Zukunftsformat. Die neue Datei ist in `tests/logic.test.ts` registriert; ein
+absichtlich roter CI-Lauf belegte ihre Ausführung und wurde anschließend
+entfernt. Die [Matrix](ap6-integration-matrix.md) und
+[Freigabematrix](release-readiness.md) halten Umfang und Ergebnisse fest.
+Die branchbezogenen AP2–AP5-Abschnitte unten sind historische Momentaufnahmen
+vor dieser Integration. `APP_VERSION`/Changelog stehen gemeinsam auf 1.4;
+Speicherprotokoll 4 und Archivformat 1 bleiben. Der Code-Head `bc94c272…`
+bestand [CI 36283723964](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36283723964)
+mit 186 Fach- und 56 Browserfällen sowie Lint, Typecheck, Build und Audit.
+Nativer Druck, Safari/macOS, Banking-Scan, Screenreader, Dateirechte und R23
+bleiben offen. Kein Merge oder Deployment.
+
+# AP4 – Ausgabe der Steuerkennung und des Befreiungshinweises
+
+Stand 26.09.2026: Arbeitsbranch `codex/ap4-tax-output-options` auf AP3-Head
+`c010cf4d`, gestapelter [Entwurfs-PR #39](https://github.com/sl3ndrr/RiffRechnung/pull/39).
+AP1 liegt auf `main`; AP2 hat einen getrennten offenen Branch, AP5 ist nicht
+integriert. Schema 8 wird vor seiner Freigabe additiv genutzt. Neue
+Rechnungen wählen Kennungsausgabe und Hinweisposition je Beleg; der konkrete
+Drucktext und die Kennung werden in der Belegversion gesichert. Der
+Altbeleg-Druck wurde vor dem Umbau mit Fach- und PDF-Test charakterisiert.
+Die mehrseitige Fußzeile ist bei der Endsumme verankert. Keine
+Empfängeranschriftänderung über AP3 hinaus. Kein Merge und kein Deployment.
+
+# AP3 – Empfängerkontakte und Rechnungsart
+
+Stand 25.09.2026: Ausgang `main` 47f491eecbebb788bf6f63aea2b1342bc3dfbd85
+(AP1 integriert; AP2/AP4/AP5 nicht integriert). Der lokale Arbeitsbereich war
+kein Checkout; die Repositorydateien wurden über den verbundenen GitHub-Zugriff
+geprüft. Schema 8 für optionale getrennte Kontaktnamen und Rechnungsart;
+Speicherprotokoll 4 und Archivformat 1 bleiben. Schema 7→8 erfolgt mit
+kontrolliertem Bericht und Originalarchiv. Noch nicht zusammengeführt oder
+bereitgestellt. [Entwurfs-PR #38](https://github.com/sl3ndrr/RiffRechnung/pull/38)
+und Ergebniscommits `b8ff8b91` / `0e5c54bf` mit
+[CI 36179170530](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36179170530) /
+[CI 36181722538](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36181722538):
+jeweils 155 Fach- und 44 Browserprüfungen, Lint, Typecheck, Build und Audit
+bestanden. Wechselnde Downloadfehler in Zwischenläufen sind weiterhin ein
+CI-Reproduzierbarkeitsrisiko; Details stehen in den Qualitätsschranken. Weitere
+Testergebnisse und Grenzen stehen in
+[release-readiness.md](release-readiness.md).
+
+Neue Kontakte benötigen Vor- und Nachname. Historische Anzeigenamen bleiben
+unverändert und werden erst bei einer späteren Bearbeitung ausdrücklich
+aufgeteilt oder bestätigt. Kinder behalten ihren einzelnen Leistungsnamen.
+Standardrechnungen verlangen weiterhin Empfängeranschriften. Die ausdrücklich
+gewählte Kleinbetragsrechnung erlaubt fehlende Empfängeranschriften nur bis
+25.000 Cent. Die gemeinsame Abschlussfunktion prüft auch Korrekturen; die
+Rechnungsart steht in Beleginhalt und Snapshot. Neue gespeicherte Entwürfe
+halten ihren Druckstand fest, ohne eine Nummer zu vergeben.
+
+Die frühere Folge 00–17 und AP1 stehen nachfolgend als historische Abschnitte.
+
 # AP2 – Duo, zwei Haushalte
 
 Stand 2026-09-25, Branch `codex/ap2-duo-households`, Ausgang `main`
@@ -24,6 +96,14 @@ Der Abschlusscommit ergänzt Adress-/Kontoprüfungen; seinen eigenen vollständi
 CI-Nachweis hält [PR #37](https://github.com/sl3ndrr/RiffRechnung/pull/37) fest.
 APP_VERSION und Changelog: 1.4. AP3–AP5 nicht begonnen.
 Kein Merge, kein Deployment, ausschließlich synthetische Daten.
+
+# AP5 – Erwachsene Lernende als Rechnungsempfänger
+
+Stand 2026-09-26: Branch `codex/ap5-adult-learners` basiert auf `main` `47f491eecbebb788bf6f63aea2b1342bc3dfbd85`; [Entwurf PR #40](https://github.com/sl3ndrr/RiffRechnung/pull/40). AP1 ist integriert; AP2–AP4 sind nicht integriert. Die AP-Serie ist von den historischen Paketen 00–17 getrennt. Die Codebasis hatte Schema 7, Speicherprotokoll 4, Archivformat 1 und APP_VERSION 1.3 (der Auditstand 1.2 ist überholt). Ein lokaler Git-Checkout war anfangs nicht vorhanden; der GitHub-Tree wurde blobgleich für die Bearbeitung materialisiert. Der Stand `6183cb31ef6ec3dd1c07fd5dc44d26ec4c38ea44` bestand [CI 36253116923](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36253116923) mit 155 Fach- und 44 Browserprüfungen. Die zwei synthetischen AP5-PDFs wurden zusätzlich als A4-Seiten visuell geprüft; spätere Commits erfordern einen neuen vollständigen Lauf.
+
+AP5 ergänzt den Selbstzahlmodus und optionale Kontaktdaten in einem Lernendendatensatz. Neue Rechnungen erhalten typisierte Empfängerreferenzen und typisierte, unveränderliche Empfänger-Snapshots. Historische `guardianIds`/`guardians` bleiben erhalten, ebenso Nummern, Zahlungen und Korrekturketten. Schema 7→8 ändert nur die Versionskennung und wird mit Migrationsbericht sowie unverändertem Roharchiv kontrolliert übernommen; spätere Importe/Ladevorgänge auf Schema 8 sind idempotent. Speicherprotokoll 4 und Archivformat 1 bleiben. Gemischte gemeinsame Rechnungen benötigen ausdrücklich ausgewählte, je Lernendem berechtigte Empfänger; die Oberfläche weist auf die gemeinsame Einsicht hin.
+
+AP2-Duo-Gruppen und AP3-Rechnungsarten/Namensfelder existieren hier nicht. Die AP3-Kleinbetragsrechnung ist deshalb nicht Teil dieses Branches; das vorhandene Kleinunternehmerprofil wird weiter geprüft. Bestehende Doppelanlagen werden nicht zusammengeführt. Test- und Freigabegrenzen stehen in [quality-gates.md](quality-gates.md) und [release-readiness.md](release-readiness.md). Kein Merge und kein Deployment.
 
 # AP1 – Neue Rechnungsaufteilung entfernen
 

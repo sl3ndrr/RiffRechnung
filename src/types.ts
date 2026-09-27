@@ -4,7 +4,24 @@ export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue'
 export type RecipientStrategy = 'joint' | 'separate'
 export type LessonType = 'solo' | 'duo'
 export type InvoiceProfile = 'unconfigured' | 'small-business'
+export type InvoiceKind = 'standard' | 'small-amount'
 export type TaxIdentifierKind = 'tax-number' | 'vat-id' | 'small-business-id'
+export type TaxNoticePosition = 'tax-block' | 'footer'
+
+export interface TaxPresentation {
+  showIdentifier: boolean
+  showIdentifierInDraft: boolean
+  showNoticeInDraft: boolean
+  noticePosition: TaxNoticePosition
+}
+
+export interface TaxOutput {
+  /** null is an explicit decision not to print an identifier. */
+  identifier: TaxIdentifier | null
+  /** null is permitted only in draft print data. Issued versions always carry text. */
+  noticeText: string | null
+  noticePosition: TaxNoticePosition
+}
 
 export interface TaxIdentifier {
   kind: TaxIdentifierKind
@@ -20,6 +37,8 @@ export interface Address {
 export interface Guardian {
   id: string
   name: string
+  firstName?: string
+  lastName?: string
   email: string
   phone: string
   address: Address
@@ -34,6 +53,10 @@ export interface Student {
   name: string
   billingCode: string
   guardianIds: string[]
+  /** Absent means the historical billing mode through guardians. */
+  selfPayer?: true
+  /** Optional master data; required address parts are checked only at finalization. */
+  contact?: { email: string; phone: string; address: Address }
   note: string
   active: boolean
   createdAt: string
@@ -63,6 +86,9 @@ export interface GuardianSnapshot extends Address {
   email: string
 }
 
+export interface RecipientRef { type: 'guardian' | 'student'; id: string }
+export interface RecipientSnapshot extends GuardianSnapshot { type: RecipientRef['type'] }
+
 export interface StudentSnapshot {
   id: string
   name: string
@@ -71,6 +97,8 @@ export interface StudentSnapshot {
 export interface InvoiceSnapshot {
   issuer: IssuerSnapshot
   guardians: GuardianSnapshot[]
+  /** Absent on historical output; never resolved from live master data. */
+  recipients?: RecipientSnapshot[]
   students: StudentSnapshot[]
   accountHolder: string
   iban: string
@@ -81,9 +109,15 @@ export interface InvoiceSnapshot {
   invoiceProfile?: InvoiceProfile
   /** Absent on historical snapshots; never filled from current settings. */
   taxIdentifier?: TaxIdentifier
+  /** Absent on historical documents: standard invoice under its original rules. */
+  invoiceKind?: InvoiceKind
+  /** Absent on historical documents; the old renderer must keep its original output. */
+  taxOutput?: TaxOutput
 }
 
 export interface Invoice {
+  invoiceKind?: InvoiceKind
+  taxPresentation?: TaxPresentation
   calculation?: 'decimal-v1'
   id: string
   number: string | null
@@ -94,6 +128,8 @@ export interface Invoice {
   period: string
   status: InvoiceStatus
   guardianIds: string[]
+  /** Authoritative when present; guardianIds remains the legacy projection. */
+  recipients?: RecipientRef[]
   studentIds: string[]
   recipientStrategy: RecipientStrategy
   items: InvoiceItem[]
@@ -101,6 +137,8 @@ export interface Invoice {
   freeText: string
   legalText: string
   snapshot?: InvoiceSnapshot
+  /** Frozen print data of a saved draft; distinct from an issued original. */
+  draftPrintSnapshot?: InvoiceSnapshot
   paidAt?: string
   sentAt?: string
   createdAt: string
@@ -247,12 +285,15 @@ export interface ToastMessage {
 }
 
 export interface InvoiceDraft {
+  invoiceKind?: InvoiceKind
+  taxPresentation?: TaxPresentation
   id?: string
   correction?: { replacesId: string; reason: string }
   invoiceDate: string
   dueDate: string
   period: string
   guardianIds: string[]
+  recipients?: RecipientRef[]
   studentIds: string[]
   recipientStrategy: RecipientStrategy
   items: InvoiceItem[]
