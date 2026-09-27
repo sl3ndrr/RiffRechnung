@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
 import { readFile, writeFile } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
 import type { AppState } from '../../src/types'
 import { documentDraft, documentFamily, documentAt, legacyFixture } from '../documentFixtures'
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
@@ -36,6 +37,25 @@ async function pdfText(page: Page, state: AppState, invoiceId: string): Promise<
     return { text, pdf }
   } finally { await rendering.close() }
 }
+
+test('AP6 Browser/PDF: eingefrorene Schema-7-Belege bleiben nach Migration, Druck und Reload erhalten', async ({ page }, testInfo) => {
+  const gold = JSON.parse(readFileSync('tests/fixtures/schema7-audit.json', 'utf8')) as { issuedCorrected: AppState; oldestSeparate: AppState }
+  for (const original of [gold.issuedCorrected, gold.oldestSeparate]) {
+    await page.goto('/')
+    await page.evaluate(() => localStorage.clear())
+    await seed(page, original)
+    const after = await stateOf(page)
+    expect({ ...after, schemaVersion: 7 }).toEqual(original)
+    const separate = after.invoices.find((entry) => entry.recipientStrategy === 'separate')!
+    const printed = await pdfText(page, after, separate.id)
+    expect(printed.text).toContain(separate.number!)
+    expect(printed.text).toContain('Empfaenger B')
+    expect(printed.text).not.toContain('Empfaenger A')
+    await testInfo.attach(`ap6-${after.documentVersions.find((entry) => entry.id === separate.versionId)!.provenance}.pdf`, { body: printed.pdf, contentType: 'application/pdf' })
+    await page.reload()
+    expect(await stateOf(page)).toEqual(after)
+  }
+})
 
 test('AP3 Browser/PDF: Adressloser Entwurf und 250-Euro-Beleg bleiben nach Stammdatenänderung druckgleich', async ({ page }) => {
   const state = documentFamily()

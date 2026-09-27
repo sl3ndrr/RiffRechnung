@@ -1,5 +1,32 @@
 # Produktentscheidungen
 
+## AP6 – gemeinsamer Migrationsrahmen (27.09.2026)
+
+`main` enthielt AP1 und Schema 7; AP2, AP3/AP4 und AP5 waren getrennte,
+unveröffentlichte Entwicklungszweige. Der AP6-Arbeitsbranch integriert ihre
+optionalen Felder **in Schema 8 mit genau einem Übergang 7→8**. Der Übergang
+ändert nur `schemaVersion` und berichtet diesen Schritt; er zerlegt keinen
+historischen Anzeigenamen, erzeugt keine Duo-Gruppe oder typisierte Empfänger,
+ordnet keinem Altbeleg eine Rechnungsart oder Steueranzeige zu und übernimmt
+keine aktuellen Einstellungen in alte Snapshots. Fehlende optionale Werte
+behalten die jeweilige Legacy-Bedeutung. Strenge Schlüsselzulassung nach Schema
+in `validation.ts`, Rohtext und Bericht im bestehenden Archivformat 1 sowie
+ausdrücklich bestätigter Import bleiben verbindlich. Schema 8 aus diesen
+Zweigen war weder in `main` noch in einem Release; die früheren branchbezogenen
+Abschnitte unten beschreiben deren damaligen, noch nicht integrierten Stand.
+
+Gemeinsame Rechnung mit mehreren berechtigten Empfängern bleibt **eine**
+Forderung; eine Duo-Gruppe erzeugt dagegen zwei eigenständige `joint`-Forderungen
+für zwei Haushalte. Auch ein selbstzahlender Erwachsener ist ein typisierter
+Empfänger, ohne einen zweiten Personendatensatz anzulegen. Die explizite
+Kleinbetragswahl gilt höchstens bis einschließlich 250,00 €, Standardrechnungen
+brauchen die Empfängeranschrift; der Steuerkennungs- und Hinweisstand wird bei
+neuen Abschlüssen eingefroren. AP1 schützt weiterhin neue Abschlüsse gegen
+`separate`; alte Versionen bleiben lesbar und korrigierbar. Originale,
+Centbeträge, Nummern, Zahlungszuordnungen und Korrekturketten bleiben unverändert.
+Ein Rückweg nach Schema 7 verwendet ausschließlich eine vor dem Umstieg
+gesicherte Originaldatei mit altem Code in einem getrennten Profil.
+
 Stand: Pakete 00–12, 2026-09-09. Quelle: beauftragter Umsetzungsplan zur Analyse von
 `ba7857fd9180fa392c42a0235643e478e5077ee5`. Diese Regeln sind verbindliche Ziele;
 ihre technische Umsetzung wird pro Paket im [Umsetzungsstatus](implementation-status.md) belegt.

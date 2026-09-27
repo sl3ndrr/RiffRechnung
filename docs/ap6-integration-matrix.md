@@ -30,3 +30,11 @@ Schlüssel ausschließlich ab Schema 8; registrierte Testdateien; gültige Demo-
 eine Rechnungsart-/Steuerentscheidung; APP_VERSION und Changelog; deutsche
 Begriffe/Playwright-Selektoren. Native Druckdialoge, Safari/macOS, Banking-App
 und Screenreader bleiben gesonderte Abnahmen.
+
+Die bestehende Demo bleibt ein **historischer Schema-8-Regressionsbestand** mit
+unverändertem Personen- und Beleginhalt. Sie wird validiert und enthält bereits
+zwei Duo-Lernpaarungen, aber keine nachträglich erfundenen Gruppen, Selbstzahler
+oder Steuerentscheidungen in alten Versionen. Neue AP2–AP5-Abläufe stehen als
+ausdrücklich synthetische Fach- und Browserfixtures in `tests/duoFixtures.ts`,
+`tests/adult-recipients.test.ts`, `tests/ap3.test.ts`, `tests/ap4.test.ts` und
+`tests/browser/`.

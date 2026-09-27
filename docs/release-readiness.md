@@ -1,3 +1,27 @@
+# AP6 – integrierte Freigabematrix, 27.09.2026
+
+Der [AP6-Branch/Entwurfs-PR #41](https://github.com/sl3ndrr/RiffRechnung/pull/41)
+integriert AP1–AP5 auf `main` `47f491e`; AP2–AP5 sind in `main` weiterhin nicht
+enthalten. Schema 7→8, Speicherprotokoll 4 und Archivformat 1 sind der geprüfte
+Umstieg. Die [Fallmatrix](ap6-integration-matrix.md) ordnet Altbestände und neue
+Fälle zu. Branch-CI gilt nur für die bezeichnete Head-SHA und ersetzt weder
+Merge- noch Deploymentauftrag.
+
+| Bereich | Automatischer Nachweis im AP6-Branch | Offene Grenze |
+| --- | --- | --- |
+| Goldbestände des unveränderten Auditcommits | `tests/fixtures/schema7-audit.json`: bezahlter Originalbeleg, Korrektur, historischer `separate` mit `issued`, zweiter mit `oldest-available`; kanonischer 7→8-Vergleich, wiederholter Import, JSON-Roundtrip, Roharchiv, Reload | Unbekannte reale Bestände bleiben individuell vor Übernahme zu prüfen |
+| Datenschutz/Schreibpfad | `tests/ap6-integration.test.ts`, AP1-, AP2- und Storage-Tests: neue `separate`-Finalisierung gesperrt; Originale/Korrektur erhalten; Vorschau ohne Schreibzugriff, Abbruch, Quota, konkurrierender Tab, Zukunftsschema 99 | Geräte- und Dateisystemfehler nicht vollständig simulierbar |
+| Mehrpersonenforderung und Duo | Fach- und Browserfälle mit zwei eigenständigen Duo-Forderungen, Einzel-PDFs, Text-/CSV-/EPC-/Erinnerungsgrenzen und JSON-Reload; ein gemeinsamer Mehrpersonenbeleg bleibt eine Forderung | Das Voll-Backup enthält systembedingt beide Haushalte |
+| Kontaktname, Rechnungsart und Steueranzeige | Schema-7-Altname unverändert; fehlende Pflichtangaben sperren fallbezogen; 249,99/250,00/250,01 €, Steuerblock/Fußzeile und mehrseitiger Chromium-PDF-Text in AP3/AP4-Tests | Steuerliche Einzelfallberatung und OS-Druck offen |
+| Selbstzahler | AP5-Fach- und Browserfall mit Anlage, Zahlung, PDF und Export/Import/Reload; alte Empfänger-Snapshots bleiben | Native Geräteabnahme offen |
+| Chromium / PDF | Echte Headless-PDF-Erzeugung und `pdftotext`, Mehrseitenfall und Goldbeleg werden gesondert zum JSON-Fallback bewertet | OS-Druckdialog, visuelle Ausgabe und Banking-App-Scan offen |
+| Firefox / Linux-WebKit | JSON-Fallback und Reload in beiden Browsern | Linux-WebKit ist keine Safari/macOS-Abnahme; PDF/Druck dort offen |
+| Zugänglichkeit | Automatische Tastatur-, Fokus- und Kontrasttests | Screenreader mit NVDA/VoiceOver offen |
+
+**Freigabeempfehlung:** Bis zum vollständigen Node-22-Gate auf dem letzten
+AP6-Commit sowie den unten bezeichneten nativen und administrativen Abnahmen
+keine produktive Freigabe. Kein Merge und kein Deployment in AP6.
+
 # AP4 – Prüfstand 26.09.2026
 
 AP4 ist ein gestapelter Entwurfs-PR auf AP3 und noch nicht freigegeben.

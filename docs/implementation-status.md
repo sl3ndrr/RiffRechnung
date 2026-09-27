@@ -1,3 +1,29 @@
+# AP6 – integrierter Arbeitsstand, 27.09.2026
+
+Ausgang `main` `47f491eecbebb788bf6f63aea2b1342bc3dfbd85`: AP1 integriert,
+AP2 ([PR #37](https://github.com/sl3ndrr/RiffRechnung/pull/37)), AP3
+([PR #38](https://github.com/sl3ndrr/RiffRechnung/pull/38)), AP4 als
+AP3-Folge ([PR #39](https://github.com/sl3ndrr/RiffRechnung/pull/39)) und AP5
+([PR #40](https://github.com/sl3ndrr/RiffRechnung/pull/40)) lagen getrennt.
+Die Codebasis der AP6-Prüfung ist ein eigener
+[Entwurfs-PR #41](https://github.com/sl3ndrr/RiffRechnung/pull/41), kein
+Integrationsnachweis für `main`. Kein lokales `.git`-Checkout war bereitgestellt;
+der GitHub-Tree von `main` wurde blobgleich materialisiert und die Branches
+aus ihren tatsächlichen Dateien integriert. Auditcommit `1449d596…` war älter
+als `main` (APP_VERSION 1.3). Keine `AGENTS.md` im geprüften Tree.
+
+Ein gemeinsamer Schema-8-Übergang und die Schlüsselprüfung verbinden Duo-Gruppen,
+getrennte Kontaktnamen, Rechnungsart/Steueranzeige und typisierte Empfänger.
+`tests/fixtures/schema7-audit.json` wurde mit dem unveränderten Auditcommit
+aus dessen Fachbefehlen erzeugt; `tests/ap6-integration.test.ts` prüft
+Originale, Migration, Archiv, idempotenten Export/Import, Schreibfehler und
+Zukunftsformat. Die neue Datei ist in `tests/logic.test.ts` registriert; ein
+absichtlich roter CI-Lauf belegte ihre Ausführung und wurde anschließend
+entfernt. Die [Matrix](ap6-integration-matrix.md) und
+[Freigabematrix](release-readiness.md) halten Umfang und Ergebnisse fest.
+Die branchbezogenen AP2–AP5-Abschnitte unten sind historische Momentaufnahmen
+vor dieser Integration. Kein Merge oder Deployment.
+
 # AP4 – Ausgabe der Steuerkennung und des Befreiungshinweises
 
 Stand 26.09.2026: Arbeitsbranch `codex/ap4-tax-output-options` auf AP3-Head

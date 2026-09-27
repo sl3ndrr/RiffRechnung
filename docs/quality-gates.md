@@ -1,3 +1,40 @@
+# AP6 – integrierte Node-22-Gates (27.09.2026)
+
+`main` `47f491e` enthielt nur AP1; AP2–AP5 wurden im Entwurfs-PR #41
+zusammengeführt. Der Auditcommit `1449d596…` ist Goldfixture-Quelle,
+kein Nachweis für die neue Änderung. Die Matrix und Zuordnung stehen in
+[ap6-integration-matrix.md](ap6-integration-matrix.md) und
+[release-readiness.md](release-readiness.md).
+
+Die lokalen Befehle wurden in der verlangten Reihenfolge angesetzt: `node
+--version` meldete v24.19.0 statt 22; `npm ci --fetch-retries=0
+--fetch-timeout=20000` erhielt HTTP 403 bei `yocto-queue`. Abhängige lokale
+Lint-, Fachtest-, Typecheck-, Build- und Browser-Gates sind damit **nicht
+ausführbar**. `pdftotext` ist vorhanden, der historische origin-Commit ist
+hier per `git ls-remote` nicht erreichbar. Für den konkreten Branch-Head
+führt die GitHub-CI dieselbe Gatefolge unter Node 22.23.2 mit Browsern,
+Poppler und historischem origin aus; nur der dortige tatsächliche Lauf
+zählt als automatischer Nachweis.
+
+Zwischenläufe belegen Fehlerbehebung, keinen grünen Gesamtstand:
+
+- [CI 36282280237](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36282280237)
+  fand widersprüchliche AP2/AP3-Fixturen und eine fehlende Empfänger-Hilfsfunktion
+  im integrierten Dokumentpfad.
+- [CI 36282445270](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36282445270)
+  fand einen CSV-Spaltennamen und ein unzulässiges Schema-7-Testfeld.
+- [CI 36282746739](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36282746739)
+  führte den absichtlich roten, aus `tests/logic.test.ts` importierten
+  Goldfixture-Probetest aus. Er bewies die Registrierung und erzeugte die
+  eingefrorenen Auditdaten; der Probetest wurde entfernt.
+- [CI 36282919298](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36282919298)
+  bestand Installation, Lint und 186/186 Fachtests; Typecheck deckte drei
+  Typfehler ausschließlich im neuen AP6-Test auf. Sie wurden korrigiert.
+
+Die endgültige SHA-/Gate-Zuordnung wird hier nach dem vollständigen
+Ergebnislauf eingetragen. Die früheren AP1–AP5-Einzelläufe belegen den
+zusammengeführten Branch nicht.
+
 # AP4 – Gate-Notiz 26.09.2026
 
 Arbeitsbranch `codex/ap4-tax-output-options` basiert auf dem offenen AP3-
