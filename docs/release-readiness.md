@@ -7,6 +7,17 @@ Umstieg. Die [Fallmatrix](ap6-integration-matrix.md) ordnet Altbestände und neu
 Fälle zu. Branch-CI gilt nur für die bezeichnete Head-SHA und ersetzt weder
 Merge- noch Deploymentauftrag.
 
+[CI 36283723964](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36283723964)
+auf `bc94c2724c858c81731dfaeb4e6079dbc9cfa6c9` bestand unter Node
+22.23.2 Installation, Lint, 186/186 Fachtests, Typecheck, Build, 56/56
+Browserprüfungen und Audit (0 gemeldete Schwachstellen). Davon sind **50
+Chromium-Fälle**, darunter echte PDF-Erzeugung mit `pdftotext` für Goldbelege
+und Mehrseitenfall; **zwei Chromium-, zwei Firefox- und zwei Linux-WebKit-
+JSON-Fallbacks** prüfen Export/Import und Reload getrennt. Die geprüften
+Versionen sind Chromium 153.0.8010.12, Firefox 155.0 und Linux-WebKit 26.6.
+Der abschließende Dokumentationscommit wird im PR separat auf seiner eigenen
+SHA geprüft.
+
 | Bereich | Automatischer Nachweis im AP6-Branch | Offene Grenze |
 | --- | --- | --- |
 | Goldbestände des unveränderten Auditcommits | `tests/fixtures/schema7-audit.json`: bezahlter Originalbeleg, Korrektur, historischer `separate` mit `issued`, zweiter mit `oldest-available`; kanonischer 7→8-Vergleich, wiederholter Import, JSON-Roundtrip, Roharchiv, Reload | Unbekannte reale Bestände bleiben individuell vor Übernahme zu prüfen |
@@ -18,9 +29,18 @@ Merge- noch Deploymentauftrag.
 | Firefox / Linux-WebKit | JSON-Fallback und Reload in beiden Browsern | Linux-WebKit ist keine Safari/macOS-Abnahme; PDF/Druck dort offen |
 | Zugänglichkeit | Automatische Tastatur-, Fokus- und Kontrasttests | Screenreader mit NVDA/VoiceOver offen |
 
-**Freigabeempfehlung:** Bis zum vollständigen Node-22-Gate auf dem letzten
-AP6-Commit sowie den unten bezeichneten nativen und administrativen Abnahmen
-keine produktive Freigabe. Kein Merge und kein Deployment in AP6.
+Die synthetischen CI-Artefakte aus
+[Lauf 36283017799](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36283017799)
+wurden ergänzend gesichtet: Selbstzahlerin und gemeinsamer Minderjährigenbeleg
+sind je eine lesbare A4-Seite; bei vierseitiger Ausgabe stehen Steuerkennung,
+Hinweis, Summe und Bankblock ohne sichtbare Überlagerung auf der Schlussseite.
+Diese Stichprobe ersetzt keinen OS-Druckdialog und keine Geräteabnahme.
+
+**Freigabeempfehlung:** Die automatisierte Integration ist auf `bc94c272…`
+bestanden. Produktive Freigabe bleibt wegen OS-Druckdialog, Safari/macOS,
+Banking-App-Scan, Screenreader, nativer Dateiberechtigungen und des administrativ
+fehlenden verpflichtenden Statuschecks (R23) gesperrt; diese Prüfungen sind
+offen und nicht bestanden. Kein Merge und kein Deployment in AP6.
 
 # AP4 – Prüfstand 26.09.2026
 

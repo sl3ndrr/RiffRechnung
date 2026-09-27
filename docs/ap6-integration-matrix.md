@@ -38,3 +38,10 @@ oder Steuerentscheidungen in alten Versionen. Neue AP2–AP5-Abläufe stehen als
 ausdrücklich synthetische Fach- und Browserfixtures in `tests/duoFixtures.ts`,
 `tests/adult-recipients.test.ts`, `tests/ap3.test.ts`, `tests/ap4.test.ts` und
 `tests/browser/`.
+
+**Abgearbeitet auf `bc94c272…`:** [CI 36283723964](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36283723964)
+bestand 186/186 Fach- und 56/56 Browserfälle. Der Goldvergleich prüft beide
+eingefrorenen Schema-7-Bestände feldgenau außer der Versionskennung, bewahrt
+den exakten Rohtext in Archivformat 1 und druckt beide `separate`-Provenienzen
+nach Import/Reload. Native Freigaben bleiben gemäß
+[release-readiness.md](release-readiness.md) offen.

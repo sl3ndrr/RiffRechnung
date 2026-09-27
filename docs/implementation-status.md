@@ -22,7 +22,12 @@ absichtlich roter CI-Lauf belegte ihre Ausführung und wurde anschließend
 entfernt. Die [Matrix](ap6-integration-matrix.md) und
 [Freigabematrix](release-readiness.md) halten Umfang und Ergebnisse fest.
 Die branchbezogenen AP2–AP5-Abschnitte unten sind historische Momentaufnahmen
-vor dieser Integration. Kein Merge oder Deployment.
+vor dieser Integration. `APP_VERSION`/Changelog stehen gemeinsam auf 1.4;
+Speicherprotokoll 4 und Archivformat 1 bleiben. Der Code-Head `bc94c272…`
+bestand [CI 36283723964](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36283723964)
+mit 186 Fach- und 56 Browserfällen sowie Lint, Typecheck, Build und Audit.
+Nativer Druck, Safari/macOS, Banking-Scan, Screenreader, Dateirechte und R23
+bleiben offen. Kein Merge oder Deployment.
 
 # AP4 – Ausgabe der Steuerkennung und des Befreiungshinweises
 

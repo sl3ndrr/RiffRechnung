@@ -6,9 +6,10 @@ kein Nachweis für die neue Änderung. Die Matrix und Zuordnung stehen in
 [ap6-integration-matrix.md](ap6-integration-matrix.md) und
 [release-readiness.md](release-readiness.md).
 
-Die lokalen Befehle wurden in der verlangten Reihenfolge angesetzt: `node
---version` meldete v24.19.0 statt 22; `npm ci --fetch-retries=0
---fetch-timeout=20000` erhielt HTTP 403 bei `yocto-queue`. Abhängige lokale
+Die lokalen Befehle wurden in der verlangten Reihenfolge angesetzt:
+`node --version` meldete v24.19.0 statt 22;
+`npm ci --fetch-retries=0 --fetch-timeout=20000` erhielt HTTP 403 bei
+`yocto-queue`. Abhängige lokale
 Lint-, Fachtest-, Typecheck-, Build- und Browser-Gates sind damit **nicht
 ausführbar**. `pdftotext` ist vorhanden, der historische origin-Commit ist
 hier per `git ls-remote` nicht erreichbar. Für den konkreten Branch-Head
@@ -30,10 +31,29 @@ Zwischenläufe belegen Fehlerbehebung, keinen grünen Gesamtstand:
 - [CI 36282919298](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36282919298)
   bestand Installation, Lint und 186/186 Fachtests; Typecheck deckte drei
   Typfehler ausschließlich im neuen AP6-Test auf. Sie wurden korrigiert.
+- [CI 36283017799](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36283017799)
+  auf `6f7c47bd` bestand unter Node 22.23.2 `npm ci`, Lint, 186/186
+  Fachtests, Typecheck, Build, 55/55 Browserfälle mit Chromium-PDF und
+  Firefox/WebKit-JSON sowie das vollständige Audit (0 Schwachstellen).
+- [CI 36283374560](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36283374560)
+  auf `4b6295a2` bestand Installation, Lint, 186/186 Fachtests, Typecheck
+  und Build; 55/56 Browserfälle bestanden. Der neue AP6-Browserfall gab
+  Schema-7-Goldrohzustände irrtümlich an den aktuellen Schema-8-Exporter,
+  bevor die Migration startete. Der Testadapter übergibt sie jetzt direkt
+  an `StorageSession.restore`; die fachliche Aussage bleibt erhalten.
 
-Die endgültige SHA-/Gate-Zuordnung wird hier nach dem vollständigen
-Ergebnislauf eingetragen. Die früheren AP1–AP5-Einzelläufe belegen den
-zusammengeführten Branch nicht.
+[CI 36283723964](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36283723964)
+auf `bc94c2724c858c81731dfaeb4e6079dbc9cfa6c9` bestand unter Node
+22.23.2 die Folge `npm ci`, `npm run lint`, `npm test` (186/186),
+`npm run typecheck`, `npm run build`, Playwright-Installation, `pdftotext`,
+`npm run test:browser` (56/56) und das vollständige `npm audit` (0 gemeldete
+Schwachstellen). Darunter: der echte historische origin-Commit
+`ba7857fd…`, zwei migrierte Schema-7-Goldbelege in Chromium-PDF mit Reload,
+AP2-Privatausgaben, AP3/AP4-Steuergrenzen und Mehrseiten-PDF sowie AP5-
+Selbstzahlung. Die JSON-Fallbacks liefen in Chromium 153.0.8010.12,
+Firefox 155.0 und Linux-WebKit 26.6. Der nachfolgende reine Dokumentations-
+commit benötigt seinen eigenen Head-Lauf; dessen Ergebnis steht im PR.
+Die früheren AP1–AP5-Einzelläufe belegen den zusammengeführten Branch nicht.
 
 # AP4 – Gate-Notiz 26.09.2026
 
