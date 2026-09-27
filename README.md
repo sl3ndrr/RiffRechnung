@@ -7,8 +7,6 @@ Eine vollständig clientseitige Web-App für Rechnungen rund um Gitarrenunterric
 - Lernende mit optionalen Erziehungsberechtigten verwalten; Erwachsene können mit einem Datensatz selbst Rechnungsempfänger sein
 - gemeinsame Rechnungen an eine oder mehrere berechtigte Personen erstellen; historische getrennte Belege und Korrekturen weiterhin lesen
 - Duo-Unterricht für zwei Haushalte einmal erfassen, zwei gespeicherte Rechnungsentwürfe mit eigenen Empfängern, Preisen und Texten bearbeiten und nach vollständiger Vorschau atomar abschließen
-- mehrere Kinder und automatisch berechnete Zwischensummen auf einer Rechnung
-
 - mehrere Lernende und automatisch berechnete Zwischensummen auf einer gemeinsamen Rechnung
 - frei definierbare Positionen, Zahlungsziel und Textbausteine
 - Kleinunternehmerprofil mit vollständiger Ausstelleranschrift; typisierte Steuerkennung bei Standardrechnungen verpflichtend, bei ausdrücklich gewählten Kleinbetragsrechnungen bis 250,00 € ausblendbar; Empfängeranschrift nur bei Standardrechnungen
@@ -93,8 +91,10 @@ Rechnung. Die Gruppenkennung und Partnernotizen erscheinen in keinem Einzelbeleg
 
 Unter **Personen** kann eine erwachsene lernende Person **Zahlt selbst** wählen und
 optionale E-Mail- und Anschriftdaten hinterlegen. Name und Kontaktdaten werden
-nicht als zweiter Elternteil erfasst. Eine finale Rechnung benötigt die vollständige
-Anschrift jedes ausgewählten Empfängers. Bei Minderjährigen bleiben mehrere
+nicht als zweiter Elternteil erfasst. Eine finale Standardrechnung benötigt die
+vollständige Anschrift jedes ausgewählten Empfängers. Eine ausdrücklich gewählte
+Kleinbetragsrechnung bis 250,00 € kann ohne Empfängeranschrift abgeschlossen
+werden. Bei Minderjährigen bleiben mehrere
 Erziehungsberechtigte möglich. Neue gemeinsame Rechnungen können ausdrücklich
 Empfänger beider Arten enthalten; alle ausgewählten Empfänger sehen dann die
 Namen und Positionen aller ausgewählten Lernenden. Freitexte vor dem Abschluss

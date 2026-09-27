@@ -7,6 +7,7 @@ import { loadState, serializeBackup, StorageSession, STORAGE_KEY } from '../src/
 import { saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { createCorrectionDraft } from '../src/lib/documents'
 import { validateBackupState, validateLegacyV7Structure } from '../src/lib/validation'
+import { requireSuccess } from '../src/lib/result'
 import { memoryStorage, sharedLock } from './storageHarness'
 
 // Frozen output of scripts/generate-schema7-gold.mjs against the unmodified
@@ -20,10 +21,7 @@ const fixture = JSON.parse(readFileSync('tests/fixtures/schema7-audit.json', 'ut
 function migrated(original: AppState) {
   const raw = JSON.stringify(original)
   validateLegacyV7Structure(original)
-  const preview = inspectImport(raw)
-  assert.equal(preview.ok, true)
-  if (!preview.ok) assert.fail(preview.errors.map((entry) => entry.message).join('; '))
-  return { raw, preview: preview.value }
+  return { raw, preview: requireSuccess(inspectImport(raw)) }
 }
 
 test('AP6: eingefrorene Schema-7-Originale und Verwaltungsdaten bleiben bei 7→8 kanonisch gleich', () => {
@@ -35,7 +33,7 @@ test('AP6: eingefrorene Schema-7-Originale und Verwaltungsdaten bleiben bei 7→
     assert.deepEqual(preview.report?.changes.map((entry) => entry.path), ['schemaVersion'])
     assert.equal(preview.state.schemaVersion, 8)
     const restoredV7Shape = structuredClone(preview.state) as AppState
-    restoredV7Shape.schemaVersion = 7
+    restoredV7Shape.schemaVersion = 7 as never
     assert.deepEqual(restoredV7Shape, original)
     for (const key of ['guardians', 'students', 'invoices', 'documentVersions', 'invoiceAdministration', 'payments', 'counters', 'voidedInvoiceNumbers', 'audit', 'historicalSnapshotCorrections'] as const) {
       assert.deepEqual(preview.state[key], original[key], key)

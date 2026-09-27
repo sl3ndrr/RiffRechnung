@@ -382,7 +382,9 @@ test('AP5 Browser/PDF: Selbstzahlerin und Minderjähriger mit zwei Empfängern v
   for (const name of ['Alex Beispiel', 'Robin Beispiel']) {
     await page.getByRole('button', { name: 'Erziehungsberechtigte Person', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: 'Erziehungsberechtigte Person anlegen' })
-    await dialog.getByLabel('Name *').fill(name)
+    const [firstName, lastName] = name.split(' ')
+    await dialog.getByLabel('Vorname *').fill(firstName)
+    await dialog.getByLabel('Nachname *').fill(lastName)
     await dialog.getByLabel('E-Mail').fill(name.startsWith('Alex') ? 'alex@example.org' : 'robin@example.org')
     await dialog.getByLabel('Straße & Hausnummer').fill('Beispielweg 3')
     await dialog.getByLabel('PLZ').fill('12345')
