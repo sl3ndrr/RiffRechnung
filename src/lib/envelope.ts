@@ -1,3 +1,5 @@
+import { canonical } from './canonical'
+export { canonical } from './canonical'
 import type { AppState } from '../types'
 import { validateBackupState } from './validation'
 import { validateLegacyV3Structure, validateLegacyV4Structure, validateLegacyV5Structure, validateLegacyV6Structure, validateLegacyV7Structure, validateLegacyV8Structure, validateLegacyV9Structure, validateLegacyV10Structure, validateLegacyV11Structure } from './legacyValidation'
@@ -16,13 +18,6 @@ export interface StorageEnvelope {
   ancestors: RevisionRef[]
   source: { datasetId: string | null; revision: number | null; fingerprint: string } | null
   data: AppState
-}
-
-// Content equality never depends on a clock, revision, object key order or ID alone.
-export function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`
-  if (value && typeof value === 'object') return `{${Object.entries(value).filter(([, item]) => item !== undefined).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(',')}}`
-  return JSON.stringify(value) ?? 'null'
 }
 
 export async function fingerprint(raw: string): Promise<string> {

@@ -1,18 +1,12 @@
+import { documentContent } from './documentProjection'
+export { documentContent } from './documentProjection'
 import { invoiceTotalCents, itemTotalCents, legacyItemCents } from './money'
-import type { AppState, DocumentContent, DocumentVersion, Invoice, InvoiceDraft, InvoiceSnapshot, InvoicePayment } from '../types'
-import { canonical } from './envelope'
+import type { AppState, DocumentVersion, Invoice, InvoiceDraft, InvoiceSnapshot, InvoicePayment } from '../types'
+import { canonical } from './canonical'
 import { copyItemsWithFreshIds, freshId } from './identities'
 import { billingPeriodFromItems, guardianName, uid } from './utils'
 import { validateBackupState } from './validation'
 import { liveRecipient } from './recipients'
-
-export function documentContent(invoice: Invoice): DocumentContent {
-  const content = structuredClone(invoice)
-  const administrationKeys = ['status', 'paidAt', 'sentAt', 'updatedAt', 'versionId', 'correction', 'issuedAmounts', 'claimState', 'archived']
-  for (const key of administrationKeys) Reflect.deleteProperty(content, key)
-  return content
-
-}
 
 export function snapshotFor(state: Pick<AppState, 'guardians' | 'students' | 'settings'>, invoice: Invoice): InvoiceSnapshot {
   const recipients = invoice.recipients.flatMap((ref) => {
