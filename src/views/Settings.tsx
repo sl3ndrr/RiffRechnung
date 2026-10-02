@@ -70,20 +70,6 @@ export function Settings({ state, onSave, onDirty, onExport, onImport, onReset, 
 
   const setTheme = (theme: ThemeMode) => setForm({ ...form, theme })
 
-  return () => onRegisterFlush(null)
-  }, [onRegisterFlush, persist])
-
-  useEffect(() => { void persist() }, [form, paymentTermInput, rateInputs, persist])
-
-  useLayoutEffect(() => { onDirty(buffer.dirty) }, [buffer, form, paymentTermInput, rateInputs, saveStatus, onDirty])
-
-  const setTheme = (theme: ThemeMode) => {
-    const next = { ...form, theme }
-    setForm(next)
-    formRef.current = next
-    void persist()
-  }
-
   return (
     <div className="page settings-page">
       <header className="page-header">

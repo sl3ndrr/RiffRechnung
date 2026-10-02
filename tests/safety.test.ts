@@ -187,7 +187,7 @@ test('P01: reservierte Nummern bleiben nach abgewiesenem Austausch und Reload be
   assert.doesNotThrow(() => assertReplacementAllowed(emptyState()))
 }))
 
-test('P03 ersetzt P01: Demo erhält jede begonnene Einstellung, Nutzerdaten und Ordnerkonfiguration', async () => withStorage(async () => {
+test('P04: Demo erhält jede begonnene Einstellung und den realen Datenbestand', async () => withStorage(async () => {
   for (const initial of [emptyState(), families(), { ...emptyState(), settings: { ...emptyState().settings, issuer: { ...emptyState().settings.issuer, name: 'Begonnen' } } }]) {
     seedState(initial)
     const before = localStorage.getItem(STORAGE_KEY)

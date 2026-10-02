@@ -75,11 +75,10 @@ test('AP1 Fallback: gemeinsame Rechnung an zwei Personen als JSON exportieren, i
     items: ['a', 'b'].map((id) => ({ ...documentDraft().items[0], id: `position-${id}`, studentId: `s-${id}`, quantity: 1, unitPrice: 30 })) }
   const result = saveInvoiceDraft(state, draft, true, documentAt)
   await page.goto('/')
-  expect(await page.evaluate(() => typeof Reflect.get(window, 'showDirectoryPicker'))).toBe('undefined')
+  await expect(page.getByRole('button', { name: 'Ordner wählen', exact: true })).toHaveCount(0)
   expect(await page.evaluate(() => Boolean(navigator.locks))).toBe(true)
   await restore(page, Buffer.from(serializeBackup(result)))
   await settings(page)
-  await expect(page.getByText('Dieser Browser unterstützt die Ordnerauswahl nicht.', { exact: true })).toBeVisible()
   const downloading = page.waitForEvent('download')
   await page.getByRole('button', { name: 'JSON exportieren', exact: true }).click()
   await expect(page.getByText('JSON-Export des zuletzt bestätigten Stands gestartet.')).toBeVisible()
