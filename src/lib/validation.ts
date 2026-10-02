@@ -21,7 +21,7 @@ const THEME_MODES = ['system', 'light', 'dark'] as const
 const AUDIT_ENTITY_TYPES = ['invoice', 'person', 'settings', 'backup', 'system'] as const
 const VOID_REASONS = ['deleted', 'reopened'] as const
 
-function invalidBackup(path: string, expectation: string): never {
+export function invalidBackup(path: string, expectation: string): never {
   throw new ValidationError(path, expectation)
 }
 
@@ -30,12 +30,12 @@ export function backupObject(value: unknown, path: string): BackupObject {
   return value as BackupObject
 }
 
-function backupArray(value: unknown, path: string): unknown[] {
+export function backupArray(value: unknown, path: string): unknown[] {
   if (!Array.isArray(value)) invalidBackup(path, 'muss ein Array sein')
   return value
 }
 
-function backupString(value: unknown, path: string, nonEmpty = false): string {
+export function backupString(value: unknown, path: string, nonEmpty = false): string {
   if (typeof value !== 'string') invalidBackup(path, 'muss eine Zeichenkette sein')
   if (nonEmpty && !value.trim()) invalidBackup(path, 'darf nicht leer sein')
   return value
@@ -50,7 +50,7 @@ function backupNumber(value: unknown, path: string): number {
   return value
 }
 
-function backupInteger(value: unknown, path: string, minimum?: number): number {
+export function backupInteger(value: unknown, path: string, minimum?: number): number {
   const number = backupNumber(value, path)
   if (!Number.isSafeInteger(number) || minimum !== undefined && number < minimum) {
     invalidBackup(path, minimum === undefined ? 'muss eine ganze Zahl sein' : `muss eine ganze Zahl ab ${minimum} sein`)
@@ -63,7 +63,7 @@ export function backupEnum(value: unknown, path: string, allowed: readonly strin
   return value
 }
 
-function backupCalendarDate(value: unknown, path: string): string {
+export function backupCalendarDate(value: unknown, path: string): string {
   const dateValue = backupString(value, path)
   if (!/^\d{4}-\d{2}-\d{2}$/u.test(dateValue)) invalidBackup(path, 'muss ein gültiges Kalenderdatum im Format YYYY-MM-DD sein')
   const date = new Date(`${dateValue}T00:00:00.000Z`)

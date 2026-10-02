@@ -4,9 +4,7 @@ import { serializeBackup, parseBackup, STORAGE_KEY } from '../../src/lib/storage
 import { documentDraft, documentFamily, documentAt } from '../documentFixtures'
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
 import { invoiceTotalCents } from '../../src/lib/money'
-import { duoDrafts } from '../duoFixtures'
-import { previewDuo } from '../../src/lib/duoModel'
-import { finalizeDuoGroup } from '../../src/lib/invoiceActions'
+import { duoIssued } from '../duoFixtures'
 
 async function withoutFolder(context: BrowserContext, browserName: string) {
   // Firefox/WebKit run with their native absence of the picker; Chromium tests
@@ -22,10 +20,9 @@ async function restore(page: Page, buffer: Buffer) {
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
 }
 
-test('AP2 Fallback: vollständige Duo-Gruppe als JSON exportieren, importieren und reload', async ({ page, context, browser, browserName }) => {
+test('P03 Fallback: zwei unabhängige Duo-Rechnungen als JSON exportieren, importieren und reload', async ({ page, context, browser, browserName }) => {
   await withoutFolder(context, browserName)
-  const drafts = duoDrafts(), group = drafts.duoGroups![0], preview = previewDuo(drafts, group.id)
-  const state = finalizeDuoGroup(drafts, group.id, preview.token, preview.invoices.map((invoice) => invoice.id))
+  const state = duoIssued()
   await page.goto('/')
   await restore(page, Buffer.from(serializeBackup(state)))
   // The fixed sidebar uses the same export handler without racing WebKit's
@@ -44,7 +41,7 @@ test('AP2 Fallback: vollständige Duo-Gruppe als JSON exportieren, importieren u
     await imported.reload()
     expect(await imported.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(raw)
     expect(parseBackup(raw!)).toEqual(state)
-    expect(parseBackup(raw!).duoGroups).toEqual(state.duoGroups)
+    expect('duoGroups' in parseBackup(raw!)).toBe(false)
   } finally { await destination.close() }
 })
 

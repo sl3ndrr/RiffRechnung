@@ -133,7 +133,7 @@ test('P04: kontrollierte Migration eines Protokoll-4/Schema-3-Bestands bewahrt R
   assert.equal(session.revision!.datasetId, old.datasetId)
   const archive = JSON.parse(JSON.parse(session.exportRecoveryArchive()).recoveries[0].raw)
   assert.equal(archive.previousRaw, raw); assert.equal(archive.sourceRaw, raw)
-  assert.equal(archive.report.toSchema, 9)
+  assert.equal(archive.report.toSchema, 10)
   assert.equal(new StorageSession({ storage, lock: sharedLock() }).initial.status, 'ready')
   const future = JSON.stringify({ ...old, schemaVersion: 10, data: { ...old.data, schemaVersion: 10 } })
   storage.setItem(STORAGE_KEY, future)

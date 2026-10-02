@@ -88,7 +88,7 @@ test('P08: Schema 6 übernimmt Vollzahlungen mit unbekanntem Zahlungstag einmali
 
   const preview = inspectImport(JSON.stringify(legacy))
   assert.ok(preview.ok)
-  assert.equal(preview.value.report?.migration, 'riffrechnung-to-v9')
+  assert.equal(preview.value.report?.migration, 'riffrechnung-to-v10')
   assert.equal(preview.value.report?.fromSchema, 6)
   assert.equal(preview.value.state.payments[0].paidAt, null)
   assert.equal(preview.value.state.payments[0].paymentDayStatus, 'unknown')
@@ -96,7 +96,7 @@ test('P08: Schema 6 übernimmt Vollzahlungen mit unbekanntem Zahlungstag einmali
   assert.equal(preview.value.state.payments[0].amountCents, 3000)
 
   const reloaded = parseBackup(serializeBackup(preview.value.state))
-  assert.equal(reloaded.schemaVersion, 9)
+  assert.equal(reloaded.schemaVersion, 10)
   const repeatImport = inspectImport(serializeBackup(reloaded))
   assert.ok(repeatImport.ok)
   if (repeatImport.ok) assert.equal(repeatImport.value.report, null)

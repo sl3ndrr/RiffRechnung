@@ -24,7 +24,7 @@ function print(state: AppState): string {
 
 /** Independent comparison of all protected values, including nested JSON evidence. */
 function assertProtectedValues(before: unknown, after: unknown, path = ''): void {
-  if (path === 'schemaVersion') { assert.equal(after, 9); return }
+  if (path === 'schemaVersion') { assert.equal(after, 10); return }
   if (Array.isArray(before)) {
     assert.ok(Array.isArray(after), path)
     const entries = path.endsWith('.conflicts') ? before.filter((entry) => entry.path !== 'snapshot.taxIdentifier') : before
@@ -114,7 +114,7 @@ test('P01: beide gemeinsamen Empfängeranschriften, GiroCode-Daten und Namen ble
 test('P01: 8→9 entfernt nur benannte Steuerfelder und Steuer-Konfliktbelege; Quelle und Freitexte bleiben gleich', () => {
   const old = oldTaxStock(), raw = JSON.stringify(old)
   const preview = requireSuccess(inspectImport(raw))
-  assert.equal(preview.report?.fromSchema, 8); assert.equal(preview.report?.toSchema, 9)
+  assert.equal(preview.report?.fromSchema, 8); assert.equal(preview.report?.toSchema, 10)
   assertProtectedValues(old, preview.state)
   assert.equal(JSON.stringify(old), raw)
   assert.equal(preview.rawData, raw)
@@ -176,7 +176,7 @@ test('P01: erfolgreiche Übernahme bereinigt Hauptbestand, Vorgänger, Legacy-Sc
   await session.restore(raw)
   for (const [key, value] of storage.entries) assert.doesNotMatch(value, /SYNTHETIC-TAX-SECRET|SYNTHETIC-TAX-NOTICE/, key)
   assert.doesNotMatch(session.exportRecoveryArchive(), /SYNTHETIC-TAX-SECRET|SYNTHETIC-TAX-NOTICE/)
-  assert.equal(new StorageSession({ storage, lock: sharedLock() }).state.schemaVersion, 9)
+  assert.equal(new StorageSession({ storage, lock: sharedLock() }).state.schemaVersion, 10)
 })
 
 test('P01: fehlgeschlagene Speicherung und unlesbare Nebenstruktur lassen alle Ausgangsschlüssel unverändert', async () => {

@@ -95,7 +95,7 @@ test('P05/P08: Schema 4 → 7 bewahrt Originale; Entwürfe zeigen Änderungen, I
   const preview = requireSuccess(inspectImport(raw))
   assert.equal(preview.rawData, raw)
   assert.equal(preview.report?.fromSchema, 4)
-  assert.equal(preview.report?.toSchema, 9)
+  assert.equal(preview.report?.toSchema, 10)
   assert.ok(preview.report?.changes.some((change) => change.path.endsWith('amountReview') && change.before === 757 && change.after === 758))
   assert.deepEqual(preview.state.documentVersions, old.documentVersions)
   assert.equal(invoiceTotal(selectInvoice(preview.state, preview.state.invoices[0])), 7.57)
