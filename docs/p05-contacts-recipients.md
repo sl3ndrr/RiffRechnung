@@ -2,15 +2,19 @@
 
 ## Ergebnis und Abnahmegrenze
 
-Lokaler Branch: `simplify/p05-contacts-recipients`. Umgesetzt sind E38–E41 mit
+Branch: `simplify/p05-contacts-recipients`. Umgesetzt sind E38–E41 mit
 den verbindlichen Konkretisierungen des Auftrags. Schema **11** ersetzt Schema
 10; Speicherprotokoll 4 und Archivformat 1 bleiben bestehen.
 
-Die Implementierung und ergänzende Logikprüfungen sind abgeschlossen. Die
-verlangte vollständige Abnahme ist **offen**: Build, regulärer Testlauf, Lint
-und Browsertests konnten wegen der unten beschriebenen Umgebungssperren nicht
-erfolgreich ausgeführt werden. Aus den ergänzenden Prüfungen wird keine grüne
-Gesamtabnahme abgeleitet. Es wurde nichts gepusht, gemergt oder veröffentlicht.
+Der ursprüngliche Auftrag endete mit lokaler Implementierung und ergänzenden
+Logikprüfungen; die vollständige lokale Abnahme war wegen der unten beschriebenen
+Umgebungssperren offen. Der ausdrückliche Folgeauftrag autorisiert den Merge nach
+`main`. Die identischen Dateibäume der drei lokalen Commits wurden auf dem echten
+GitHub-Ausgangscommit veröffentlicht und mit zusätzlichen CI-Korrekturen geprüft.
+Die vollständige Node-22-Gesamtabnahme und die Merge-Zuordnung stehen in
+[PR 47](https://github.com/sl3ndrr/RiffRechnung/pull/47). Beim Merge startet der
+vorhandene Pages-Workflow automatisch; kein zusätzlicher Deployment-Lauf wird
+manuell ausgelöst.
 
 Ausgang ist das integrierte `main` mit Commit
 `10a2906f9ecf8c21518d7fe862adada06e80d2fa` nach P04/PR 46. P01–P03 sind
@@ -126,8 +130,8 @@ Verzeichnis.
 | Bestehende Browsertests | `tests/browser/documents.spec.ts`, `duo.spec.ts`, `fallback.spec.ts`, `print.spec.ts`, `stabilization.spec.ts`: ein Namensfeld, aktuelle Empfängerlisten, Schema 11 und neuere unbekannte Version 12 |
 | Dokumentation | `README.md`, `docs/p05-contacts-recipients.md`: aktueller Kontakt-/Empfängerumfang und Abschlussbericht |
 
-Grob gegenüber dem Ausgang: **208 Quellzeilen entfernt, 329 hinzugefügt** in
-20 Quelldateien; netto 121 Zeilen zusätzlich, vor allem für begrenzte Migration
+Grob gegenüber dem Ausgang: **209 Quellzeilen entfernt, 333 hinzugefügt** in
+20 Quelldateien; netto 124 Zeilen zusätzlich, vor allem für begrenzte Migration
 und sichere Kopienbereinigung. Entfernt sind fünf skalare Kontaktfelder,
 Rechnungs-/Entwurfs-`guardianIds`, Snapshot-`guardians`, die getrennte
 Namenszusammensetzung im normalen Speichern, `keepLegacyName` und die dazugehörigen
@@ -138,6 +142,13 @@ Thematische lokale Commits:
 1. `57c65fd` – Kontaktfelder, Schema 11 und Empfängernormalisierung.
 2. `64de8f1` – Bereinigung, eingefrorene Empfänger und Originalschutz testen.
 3. Abschließender Commit – Browserregressionen, README und dieser Bericht.
+
+Die entsprechenden ersten GitHub-Commits sind `58dc247`, `3152d25` und `13eb04f`.
+Weitere thematische Commits beheben zwei Lintbefunde, einen verbliebenen
+Altformat-Snapshotvergleich, Typen historischer Snapshot-Nachweise und
+Browser-Fixtures/-Selektoren. Die echte historische Anwendung erhält ausschließlich
+in ihrer Testeingabe die damals verpflichtenden, heute entfernten Kontaktfelder;
+aktuelle Fixtures und Produktdaten erhalten sie nicht zurück.
 
 ## Prüfergebnisse
 
@@ -184,9 +195,9 @@ Temporäre Hilfsdateien sind kein Teil der Änderung.
 - Die bestehenden Altmigrationen für Daten vor eingeführten Belegversionen bleiben
   erhalten. Die neue Empfängernormalisierung selbst liest ausschließlich die
   vorhandenen eingefrorenen Darstellungen.
-- Die vollständige Node-22-Abnahme mit installierten Projektabhängigkeiten,
-  Typprüfung/Build, regulärem Testlauf, Lint und echten Browser-/Dokumentfällen
-  muss nachgeholt werden. Bis dahin sind die Fertig-Kriterien „Build und Tests
-  grün“ und die vollständige Browserabnahme ausdrücklich nicht erfüllt.
+- Die lokalen Umgebungssperren bestehen weiterhin. Für die Gesamtabnahme ist
+  der vollständige Node-22-Lauf in PR 47 mit installierten Projektabhängigkeiten,
+  Typprüfung/Build, regulärem Testlauf, Lint, Browser-/Dokumentfällen und Audit
+  maßgebend. Lokale Ersatzprüfungen allein erlauben keine grüne Gesamtabnahme.
 - Keine PDF-Neugestaltung, Zusatzfunktion, Preis-/Zahlungs-/Nummerierungsänderung,
   App-Neuaufteilung oder automatische Veröffentlichung.

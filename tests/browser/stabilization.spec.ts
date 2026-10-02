@@ -157,6 +157,9 @@ test('P12 Browser: unbekanntes neueres Format bleibt auch bei Wiederherstellungs
 
 test('P12 Browser: unabhängige Originaldatei kehrt mit echtem alten Code in getrenntem Profil zurück', async ({ page, browser }, testInfo) => {
   const legacy = { ...legacyFixture(saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)), schemaVersion: 2 }
+  // The unchanged historical app requires these retired master-data fields.
+  legacy.guardians.forEach((guardian: Record<string, unknown>) => Object.assign(guardian, { iban: '', paymentNote: '' }))
+  legacy.students.forEach((student: Record<string, unknown>) => Object.assign(student, { note: '' }))
   await page.goto('/legacy/index.html')
   await page.evaluate(({ key, source }) => localStorage.setItem(key, source), { key: LEGACY_STORAGE_KEY, source: JSON.stringify(legacy) })
   await page.reload()
