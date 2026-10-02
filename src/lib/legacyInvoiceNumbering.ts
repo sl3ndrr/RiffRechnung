@@ -47,6 +47,7 @@ export function migrateInvoiceNumbering(value: AppState, changes: Change[] = [],
   const state = structuredClone(value)
   const settings = state.settings as LegacyNumberSettings
   const pattern = settings.numberPattern ?? ''
+  const nonAnnual = settings.resetNumberAnnually === false
   const documents = [...state.invoices, ...state.documentVersions.map((version) => version.content)]
   const reservations = [...state.voidedInvoiceNumbers, ...state.documentVersions.flatMap((version) => version.registerEntries)]
   const years = [...new Set([migrationYear, ...documents.map((entry) => entry.year), ...reservations.map((entry) => entry.year),
@@ -62,24 +63,25 @@ export function migrateInvoiceNumbering(value: AppState, changes: Change[] = [],
   }
   for (const [key, count] of Object.entries(value.counters)) {
     const match = /^(global|\d{4})(?:[:-]([a-z]+(?:\+[a-z]+)*|\*))?$/.exec(key)
-    const scopes = !match || match[1] === 'global' ? years : [Number(match[1])]
+    const scopes = !match || match[1] === 'global' || nonAnnual ? years : [Number(match[1])]
     const circles = match?.[2] && match[2] !== '*' ? legacyCircles(match[2], codes) : ['*']
     for (const year of scopes) for (const code of circles) reserve(year, code, count,
       !match || !match[2] || match[2] === '*' ? `Nicht personenbezogener Altzähler ${key}: jährlicher Mindeststand für alle Kreise; keine Folge zurücksetzen.`
-        : match[1] === 'global' ? `Globalen Altzähler ${key} in Umstiegsjahr und bekannte Rechnungs-/Reservierungsjahre übernehmen; spätere neue Jahre zählen jährlich.`
+        : match[1] === 'global' || nonAnnual ? `Nichtjährlichen Altzähler ${key} in Umstiegsjahr und bekannte Rechnungs-/Reservierungsjahre übernehmen; spätere neue Jahre zählen jährlich.`
           : `Altzähler ${key} kanonisch übernehmen; mehrdeutige unsegmentierte Kombinationen konservativ zusätzlich reservieren.`)
   }
   for (const document of documents) {
     if (!document.number) continue
     const sequence = Math.max(document.sequence ?? 0, numberEvidence(document.number, pattern).sequence ?? 0)
-    if (sequence) reserve(document.year, invoiceStudentCode(state, document.studentIds), sequence + 1, 'Vergebene Belegfolge unverändert schützen, auch bei niedrigerem gespeichertem Zähler.')
+    if (sequence) for (const year of nonAnnual ? years : [document.year]) reserve(year, invoiceStudentCode(state, document.studentIds), sequence + 1,
+      nonAnnual ? 'Nichtjährliche bekannte Belegfolge auch ohne globalen Altzähler im Umstiegsjahr und bekannten Jahren fortsetzen.' : 'Vergebene Belegfolge unverändert schützen, auch bei niedrigerem gespeichertem Zähler.')
   }
   for (const entry of reservations) {
     const evidence = numberEvidence(entry.number, pattern)
     const sequence = Math.max(entry.sequence ?? 0, evidence.sequence ?? 0)
     if (sequence) {
-      for (const code of evidence.code ? legacyCircles(evidence.code, codes) : ['*']) reserve(entry.year, code, sequence + 1,
-        evidence.code ? 'Reservierte Nummer unverändert schützen; erkennbare Kennung konservativ zuordnen.' : 'Reservierung ohne eindeutige Kennung: Mindestfolge für alle Kreise dieses Jahres bewahren.')
+      for (const year of nonAnnual ? years : [entry.year]) for (const code of evidence.code ? legacyCircles(evidence.code, codes) : ['*']) reserve(year, code, sequence + 1,
+        nonAnnual ? 'Nichtjährliche reservierte Folge auch ohne globalen Altzähler im Umstiegsjahr und bekannten Jahren schützen.' : evidence.code ? 'Reservierte Nummer unverändert schützen; erkennbare Kennung konservativ zuordnen.' : 'Reservierung ohne eindeutige Kennung: Mindestfolge für alle Kreise dieses Jahres bewahren.')
     }
   }
   for (const key of ['numberPattern', 'resetNumberAnnually'] as const) {

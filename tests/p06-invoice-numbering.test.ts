@@ -135,3 +135,20 @@ test('P06: fehlgeschlagene Migration verändert den gespeicherten Bestand nicht;
   const invalid = documentFamily(); Reflect.set(invalid.settings, 'numberPattern', '{NNNN}')
   assert.equal(inspectImport(JSON.stringify(invalid)).ok, false)
 })
+
+
+test('P06: nichtjährliche Konfiguration schützt bekannte Folgen auch ohne globalen Zählerschlüssel', () => {
+  const draft = documentDraft()
+  const issued = saveInvoiceDraft(documentFamily(), { ...draft, invoiceDate: '2025-09-01', dueDate: '2025-09-15', items: draft.items.map((item) => ({ ...item, serviceDate: '2025-08-15' })) }, true, documentAt)
+  const old = oldV11(issued)
+  old.settings.resetNumberAnnually = false; old.counters = {}
+  for (const invoice of [old.invoices[0], old.documentVersions[0].content]) { invoice.number = '2025-a-0017'; invoice.sequence = 17 }
+  old.voidedInvoiceNumbers.push({ number: 'ALT-19', sequence: 19, year: 2025, invoiceDate: '2025-09-01', deletedAt: documentAt, amount: 1, recipient: 'Synthetisch' })
+  const state = migrateInvoiceNumbering(old, [], 2026)
+  assert.equal(allocation(state).sequence, 20)
+  assert.equal(allocation(state, ['s-b']).sequence, 20)
+  assert.equal(allocation(state, ['s-a', 's-b']).sequence, 20)
+  assert.equal(allocation(state, ['s-a'], 2027).sequence, 1)
+  assert.equal(state.invoices[0].number, '2025-a-0017')
+  assert.deepEqual(state.voidedInvoiceNumbers, old.voidedInvoiceNumbers)
+})
