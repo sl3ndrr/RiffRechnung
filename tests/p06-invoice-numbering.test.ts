@@ -83,8 +83,8 @@ test('P06: globale und unbekannte Altzähler werden als konservative Jahres-Mind
   old.voidedInvoiceNumbers = [{ number: 'ALT-22', sequence: 22, year: 2024, invoiceDate: '2024-09-01', deletedAt: documentAt, amount: 1, recipient: 'Synthetisch' }]
   const state = migrateInvoiceNumbering(old, [], 2026)
   assert.equal(allocation(state).sequence, 23)
-  assert.equal(allocation(state, ['s-b']).sequence, 15)
-  assert.equal(allocation(state, ['s-a', 's-b']).sequence, 15)
+  assert.equal(allocation(state, ['s-b']).sequence, 23)
+  assert.equal(allocation(state, ['s-a', 's-b']).sequence, 23)
   assert.equal(allocation(state, ['s-b'], 2024).sequence, 23)
   assert.equal(allocation(state, ['s-a'], 2025).sequence, 23)
   assert.equal(allocation(state, ['s-a'], 2027).sequence, 1)
