@@ -166,5 +166,5 @@ test('AP5: Schema 7→8 ist additiv, idempotent, berichtet und archiviert Rohdat
   assert.match(session.exportRecoveryArchive(), /schemaVersion/)
   assert.equal(loadState(storage).status, 'ready')
   assert.equal(inspectImport(JSON.stringify({ ...old, recipients: [] })).ok, false)
-  assert.equal(inspectImport(JSON.stringify({ ...old, schemaVersion: 10 })).ok, false)
+  assert.equal(inspectImport(JSON.stringify({ ...old, schemaVersion: 11 })).ok, false)
 })
