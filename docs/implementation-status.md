@@ -5,11 +5,14 @@ Basis: integriertes P01/P02 auf `main@83c7474`. Branch
 Partnersperren und atomaren Zweierabschluss. Schema 10 löst Schema-8/9-Gruppen
 unter Erhaltung aller vorhandenen Rechnungen; Metadaten bleiben im Bericht und
 Roharchiv. Gemeinsame Empfänger, Selbstzahler und Duo-Preis bleiben.
-71 ergänzende Fachtests unter Node 24 bestanden. Vollständige Node-22-Prüfung
-mit Build, Lint, Typecheck, React-/Browser-/PDF-Tests noch offen: lokale
-Registry-/Git-Fetch-Sperre; Draft-PR durch automatische Freigabeprüfung abgelehnt.
+71 ergänzende Fachtests unter Node 24 bestanden. Die vollständige
+[Node-22-CI](https://github.com/sl3ndrr/RiffRechnung/actions/runs/37012014120)
+besteht Build, Lint, Typecheck, 174 Logiktests und 56 Browser-/PDF-Fälle;
+Audit ohne Sicherheitsfunde. Lokale Registry-/Git-Fetch-Sperren sind dokumentiert.
 Details und geänderte Dateien: [P03-Bericht](p03-remove-duo-workflow.md).
-Kein PR, Merge oder Deployment. Die folgenden Abschnitte sind historische Stände.
+[PR #45](https://github.com/sl3ndrr/RiffRechnung/pull/45); der Folgeauftrag
+autorisiert den Merge nach grüner Abschluss-CI. Der vorhandene Pages-Workflow
+startet danach automatisch. Die folgenden Abschnitte sind historische Stände.
 
 # AP6 – integrierter Arbeitsstand, 27.09.2026
 

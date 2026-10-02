@@ -1,7 +1,7 @@
 # P03 – Duo-Gruppenworkflow entfernen
 
 Stand: 02.10.2026. Branch: `simplify/p03-remove-duo-workflow`.
-Implementierung vorhanden, vollständige Abnahme noch offen. Kein Merge, kein Deployment, kein Pull Request.
+PR [#45](https://github.com/sl3ndrr/RiffRechnung/pull/45). Der Folgeauftrag autorisiert den Merge nach vollständig erfolgreicher Abnahme; der vorhandene Pages-Workflow startet danach automatisch. Kein zusätzlicher Deployment-Lauf wird manuell ausgelöst.
 
 ## Basis und Vorgänger
 
@@ -50,7 +50,7 @@ Ein lokaler Schema-9-Stand öffnet zunächst den bestehenden Wiederherstellungsm
 
 `tests/browser/duo.spec.ts` prüft ausdrückliche Auswahl zweier Erziehungsberechtigter auf **einem** Beleg, Duo-Preiswahl, den tatsächlichen lokalen Umstieg mit Einzelabschlüssen und zwei privaten PDFs, Originalexport bei ungültiger Gruppe sowie Quota/Tabkonflikte. `tests/browser/fallback.spec.ts` exportiert/importiert zwei unabhängige Duo-Rechnungen in Chromium/Firefox/WebKit. Bestehende Selbstzahler-/Empfänger-Browserfälle in `documents.spec.ts` bleiben.
 
-Zusätzlich ausschließlich Versions-/Berichtsassertionen angepasst: `tests/adult-recipients.test.ts`, `tests/ap3.test.ts`, `tests/ap6-integration.test.ts`, `tests/browser/documents.spec.ts`, `tests/documents.test.ts`, `tests/logic.test.ts`, `tests/money-calendar.test.ts`, `tests/payment-reporting.test.ts`, `tests/private-invoices.test.ts`.
+Zusätzlich ausschließlich Versions-/Berichtsassertionen angepasst: `tests/adult-recipients.test.ts`, `tests/ap3.test.ts`, `tests/ap6-integration.test.ts`, `tests/browser/documents.spec.ts`, `tests/browser/stabilization.spec.ts`, `tests/documents.test.ts`, `tests/logic.test.ts`, `tests/money-calendar.test.ts`, `tests/payment-reporting.test.ts`, `tests/private-invoices.test.ts`.
 
 Dokumentation: Duo-Beschreibung in `README.md`, aktueller Eintrag in `docs/implementation-status.md`, dieser Bericht. Paketdateien und Abhängigkeiten unverändert.
 
@@ -72,6 +72,14 @@ Vor Änderungen wurde der vorhandene komplette erfolgreiche P02-Browserlauf gepr
 
 **Ergänzende Fachprüfung: 71/71 bestanden, 0 übersprungen.** Die vorhandenen TypeScript-Dateien wurden ohne Codeänderung mit der eingebauten Node-24-Funktion `stripTypeScriptTypes` in einen temporären, nicht eingecheckten Testpfad überführt. Ausgeführt wurden `duo.test.ts`, `storage.test.ts`, `safety.test.ts`, `stabilization.test.ts`, `ap6-integration.test.ts`, `payment-data.test.ts`, `payment-reporting.test.ts` und `print-job.test.ts`. Keine Ersatzbibliotheken oder abgeschwächten Assertions. Der erste ergänzende Lauf fand eine falsche Indexannahme im neuen Bearbeitungstest: der bestehende Speicherbefehl sortiert bearbeitete Entwürfe um; Vergleich jetzt anhand der unveränderten Rechnungs-ID. Ein zusätzlicher Testdateiaufruf war mangels React nicht startbar und wird nicht als bestanden gezählt. Danach vollständiger Wiederholungslauf aller acht ausführbaren Dateien grün.
 
-Diese Prüfung ersetzt weder Typecheck/Lint/Build noch React-Ausgabe-/Browser-/PDF-Prüfungen. Deren vollständige Abnahme unter Node 22 ist offen. Es wurden keine Prüfschranken entfernt oder CI-Auslöser verändert.
+Diese ergänzende Prüfung ersetzt weder Typecheck/Lint/Build noch React-Ausgabe-/Browser-/PDF-Prüfungen. Die vollständige Abnahme unter Node 22 wurde anschließend in GitHub Actions ausgeführt. Es wurden keine Prüfschranken entfernt oder CI-Auslöser verändert.
 
-Das Öffnen eines Draft-PRs wurde von der automatischen Freigabeprüfung abgelehnt, weil die Anweisung „nicht automatisch … veröffentlichen“ dafür keine Freigabe enthält. Der bestehende Quality-Workflow startet über Pull Requests; für den P03-Stand läuft deshalb noch keine vollständige CI. Ein Draft-PR muss ausdrücklich freigegeben werden, bevor dieser Prüfweg genutzt werden kann. Kein Merge oder Deployment wurde angefordert oder durchgeführt.
+Die ursprüngliche automatische Freigabeprüfung lehnte einen Draft-PR unter der damaligen Anweisung ab. Der Folgeauftrag „wenn der PR bereit ist, merge ihn mit main“ autorisiert PR und Merge nach Abnahme; PR #45 wurde daraufhin geöffnet.
+
+Erster CI-Lauf [37010614612](https://github.com/sl3ndrr/RiffRechnung/actions/runs/37010614612): Installation und Lint erfolgreich, 171/174 Logiktests bestanden. Drei Zukunftsformat-Tests verwendeten noch Schema 10; ihre erwartete unbekannte Version wurde auf 11 gesetzt, ebenso der entsprechende Browserfall. Keine Produktionslogik geändert. Der nachfolgende Node-22-Lauf besteht alle 174 Logiktests, Lint, Typecheck und Build. Die Empfängerwahl im neuen Browsertest erfolgt über die sichtbaren Auswahlchips mit anschließender Prüfung der Checkboxen.
+
+Der Browserlauf [37010926083](https://github.com/sl3ndrr/RiffRechnung/actions/runs/37010926083) bestand 55/56 Fälle. Der neue gemeinsame-Empfänger-Test verwendete einen nicht auflösbaren exakten Label-Locator für die Unterrichtsart. Der protokollierte Browserzustand weist die Combobox „Art“ aus; der Test greift jetzt über deren Rolle und Namen zu. Seine Preis-, Empfänger-, Beleganzahl- und Nummernassertionen bleiben unverändert.
+
+**Vollständige Abnahme erfolgreich:** [Quality 37012014120](https://github.com/sl3ndrr/RiffRechnung/actions/runs/37012014120), geprüfter Produkt-/Teststand `0b4520302322f9eb9c8315e8034f7a7bb946214c`, Node **22.23.3**, npm **10.9.9**. Installation, Lint, **174/174 Logiktests**, Typecheck und Build bestanden. **56/56 Browser-/PDF-Fälle** bestanden, einschließlich P03-Umstieg, gemeinsamer Empfänger, Duo-Preis, Datenschutz, Selbstzahler und JSON-Fallback in Chromium/Firefox/WebKit. Audit: **0 Sicherheitsfunde**. Synthetische Browser-/PDF-Nachweise sind als CI-Artefakt gesichert. Keine fehlenden Prüfvoraussetzungen mehr in CI; die beschriebenen lokalen Einschränkungen bleiben.
+
+Dieser Abschlussbericht ergänzt ausschließlich Dokumentation zum erfolgreich geprüften Produktstand. Vor dem autorisierten Merge wird auch die CI des endgültigen PR-Heads abgewartet; der Nachweis wird im PR hinterlegt. Keine zusätzlichen Bestandsentscheidungen und keine ausstehenden Produktänderungen. Reale unklare Altbestände können weiterhin nur anhand ihrer erhaltenen Rohdaten im bestehenden Klärungspfad entschieden werden.
