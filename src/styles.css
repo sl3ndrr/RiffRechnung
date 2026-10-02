@@ -602,7 +602,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .sidebar__privacy { padding: 10px; }
   .sidebar__secondary-actions { justify-items: center; }
   .sidebar__secondary-actions button, .sidebar__secondary-actions a { width: 48px; height: 44px; justify-content: center; padding: 0; }
-  .app-main { margin-left: 88px; }.people-layout { grid-template-columns: 1fr; }.guardian-section { position: static; }
+  .app-main { margin-left: 88px; }
+  .people-layout { grid-template-columns: 1fr; }
+  .guardian-section { position: static; }
   .invoice-workspace--detail { grid-template-columns: 1fr; }
   .invoice-detail { position: fixed; z-index: 50; top: 82px; right: 16px; bottom: 16px; width: min(410px, calc(100vw - 120px)); overflow-y: auto; box-shadow: var(--shadow-3); }
   .settings-layout { grid-template-columns: 150px minmax(0, 1fr); }
