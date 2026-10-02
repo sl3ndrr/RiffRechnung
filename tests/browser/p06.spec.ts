@@ -30,7 +30,7 @@ test('P06 Browser: geschützter Schema-11-Umstieg, festes Format, gemeinsame Emp
     const { nextInvoiceAllocation, buildEpcPayload } = await import(utilsPath)
     const session = new StorageSession()
     const base = session.state.invoices[0]
-    const draft = { ...base, id: undefined, number: null, sequence: null, recipients: [{ type: 'guardian', id: 'g-a' }, { type: 'guardian', id: 'g-b' }], items: base.items.map((item: { id: string }) => ({ ...item, id: 'p06-single-item' })) }
+    const draft = { invoiceDate: base.invoiceDate, dueDate: base.dueDate, period: base.period, studentIds: base.studentIds, recipientStrategy: 'joint', introText: base.introText, freeText: base.freeText, legalText: base.legalText, recipients: [{ type: 'guardian', id: 'g-a' }, { type: 'guardian', id: 'g-b' }], items: base.items.map((item: { id: string }) => ({ ...item, id: 'p06-single-item' })) }
     await session.change((state: Parameters<typeof saveInvoiceDraft>[0]) => saveInvoiceDraft(state, draft, true))
     const single = session.state.invoices.at(-1)
     const reverse = nextInvoiceAllocation(session.state, base.invoiceDate, ['s-b', 's-a'])

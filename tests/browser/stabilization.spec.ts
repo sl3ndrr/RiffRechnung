@@ -191,7 +191,7 @@ test('P12 Browser: unabhängige Originaldatei kehrt mit echtem alten Code in get
     expect(await raw(rollback)).toBeNull()
     expect(await raw(page)).toBe(migrated)
     await rollback.getByRole('button', { name: /^Rechnungen(?:\s*\d+)?$/ }).first().click()
-    await expect(rollback.locator('.invoice-list-table')).toContainText('2026-a-0001')
+    await expect(rollback.locator('.invoice-list-table')).toContainText(originalData.invoices[0].number!)
   } finally { await isolated.close() }
 })
 
