@@ -157,6 +157,6 @@ test('AP5: Schema 7→11 normalisiert Empfänger, idempotent, berichtet und arch
   assert.match(session.exportRecoveryArchive(), /schemaVersion/)
   assert.equal(loadState(storage).status, 'ready')
   assert.equal(inspectImport(JSON.stringify({ ...old, recipients: [] })).ok, false)
-  assert.equal(inspectImport(JSON.stringify({ ...old, schemaVersion: 12 })).ok, false)
+  assert.equal(inspectImport(JSON.stringify({ ...old, schemaVersion: 13 })).ok, false)
 })
 

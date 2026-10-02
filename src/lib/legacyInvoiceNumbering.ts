@@ -50,7 +50,7 @@ export function migrateInvoiceNumbering(value: AppState, changes: Change[] = [],
   const documents = [...state.invoices, ...state.documentVersions.map((version) => version.content)]
   const reservations = [...state.voidedInvoiceNumbers, ...state.documentVersions.flatMap((version) => version.registerEntries)]
   const years = [...new Set([migrationYear, ...documents.map((entry) => entry.year), ...reservations.map((entry) => entry.year),
-    ...Object.keys(state.counters).flatMap((key) => { const match = /^(\d{4})(?:[:\-]|$)/.exec(key); return match ? [Number(match[1])] : [] })])]
+    ...Object.keys(state.counters).flatMap((key) => { const match = /^(\d{4})(?:[:-]|$)/.exec(key); return match ? [Number(match[1])] : [] })])]
   const codes = state.students.map((student) => student.billingCode).sort((a, b) => studentCodeIndex(a) - studentCodeIndex(b))
   const reserve = (year: number, code: string, next: number, reason: string) => {
     if (!Number.isSafeInteger(next) || next < 1) throw new Error('Alte Rechnungsfolge kann nicht sicher übernommen werden. Originaldaten bleiben geschützt.')
@@ -61,7 +61,7 @@ export function migrateInvoiceNumbering(value: AppState, changes: Change[] = [],
     changes.push({ path: `counters.${key}`, before: before ?? null, after: next, reason })
   }
   for (const [key, count] of Object.entries(value.counters)) {
-    const match = /^(global|\d{4})(?:[:\-]([a-z]+(?:\+[a-z]+)*|\*))?$/.exec(key)
+    const match = /^(global|\d{4})(?:[:-]([a-z]+(?:\+[a-z]+)*|\*))?$/.exec(key)
     const scopes = !match || match[1] === 'global' ? years : [Number(match[1])]
     const circles = match?.[2] && match[2] !== '*' ? legacyCircles(match[2], codes) : ['*']
     for (const year of scopes) for (const code of circles) reserve(year, code, count,

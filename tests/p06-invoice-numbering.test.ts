@@ -49,6 +49,7 @@ test('P06: mehrstellige Kennungen behalten Vergabereihenfolge unabhängig von Na
 test('P06: Schema 11 migriert geschützt, behält Originale und Reservierungen exakt und ist idempotent', async () => {
   const issued = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
   const old = oldV11(issued)
+  old.invoices[0].number = '2026-a-0001'; old.documentVersions[0].content.number = '2026-a-0001'
   old.counters = { '2026:a': 7, '2026:b+a': 4, '2026:ab': 9 }
   old.voidedInvoiceNumbers.push({ number: '2026-a-0011', sequence: 11, year: 2026, invoiceDate: '2026-09-01', deletedAt: documentAt, amount: 30, recipient: 'Synthetisch' })
   const raw = JSON.stringify(old), before = structuredClone(old)
