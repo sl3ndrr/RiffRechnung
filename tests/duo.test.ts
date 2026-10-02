@@ -159,7 +159,7 @@ test('AP2 Leak: jede Ausgabe enthält nur den eigenen Haushalt, keine Notizen od
     const invoice = selectInvoice(state, raw), own = households[i], foreign = households[1 - i]
     const print = renderToStaticMarkup(createElement(InvoicePrint, { invoice, guardians: state.guardians, students: state.students, settings: state.settings, includeGiroCode: false }))
     const history = renderToStaticMarkup(createElement(DocumentHistory, { state, invoice, onSelect: () => {}, onCorrection: () => {}, onAllocatePayment: () => {}, onResolveConflicts: () => {} }))
-    const outputs = [print, history, invoicePdfTitle(invoice, state.students), buildEpcPayload(invoice, state.settings, invoiceTotalCents(invoice) / 100), JSON.stringify(raw.snapshot), JSON.stringify(state.documentVersions[i])([invoice], state.guardians, state.students), invoice.introText, invoice.freeText, invoice.legalText, ...invoice.items.map((item) => item.description)]
+    const outputs = [print, history, invoicePdfTitle(invoice, state.students), buildEpcPayload(invoice, state.settings, invoiceTotalCents(invoice) / 100), JSON.stringify(raw.snapshot), JSON.stringify(state.documentVersions[i]), invoice.introText, invoice.freeText, invoice.legalText, ...invoice.items.map((item) => item.description)]
     assert.ok(print.includes(own.student) && print.includes(own.guardian))
     for (const output of outputs) {
       for (const marker of [foreign.student, foreign.guardian, `-${foreign.code}-`, `${foreign.code.toUpperCase()}-Weg`, `${foreign.code}@example.org`, foreign.intro, foreign.free, foreign.legal, foreign.note, own.note, 'GEHEIM_', group.id]) assert.ok(!output.includes(marker), `Leak ${marker}: ${output}`)
@@ -216,7 +216,7 @@ test('AP2 Leak: vorhandene Demo-Duos Jonas/Elif und Sophie/Noah übernehmen kein
       assert.deepEqual(invoice.snapshot!.guardians.map((guardian) => guardian.id), students[i].guardianIds)
       const version = state.documentVersions.find((entry) => entry.id === invoice.versionId)!
       const html = renderToStaticMarkup(createElement(InvoicePrint, { invoice, guardians: state.guardians, students: state.students, settings: state.settings, includeGiroCode: false }))
-      for (const output of [html, JSON.stringify(version), invoicePdfTitle(invoice, state.students)([invoice], state.guardians, state.students)]) {
+      for (const output of [html, JSON.stringify(version), invoicePdfTitle(invoice, state.students)]) {
         assert.ok(!output.includes(names[1 - i]))
         assert.ok(!output.includes(students[i].note))
         assert.ok(!output.includes(group.id))
