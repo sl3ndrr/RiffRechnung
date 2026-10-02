@@ -351,7 +351,7 @@ test('P02: fehlerhafte importierte Mailboxen sind sichtbar, historische Werte bl
   const legacyHistorical = legacyFixture(historical)
   const preview = requireSuccess(inspectImport(JSON.stringify(legacyHistorical)))
   assert.equal(preview.warnings.length, 1)
-  assert.deepEqual(preview.state.invoices[0].snapshot, legacyHistorical.invoices[0].snapshot)
+  assert.deepEqual(preview.state.invoices[0].snapshot, historical.invoices[0].snapshot)
 })
 
 test('P03: Import prüft den aktuellen Zielzustand erneut und erhält Nummernreservierungen', async () => withStorage(async () => {
