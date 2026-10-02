@@ -2,9 +2,9 @@
 
 ## Stand und Ausgangsprüfung
 
-P07 ist auf `simplify/p07-document-output` implementiert. Der Nutzer hat am
-2. Oktober 2026 den Merge mit `main` ausdrücklich beauftragt. Vor dem Merge
-läuft die vollständige GitHub-Schlussprüfung mit Build, Lint und Browser-/PDF-Tests.
+P07 ist auf `simplify/p07-document-output` implementiert und vollständig geprüft.
+Der Nutzer hat am 2. Oktober 2026 den Merge mit `main` ausdrücklich beauftragt.
+PR: [49](https://github.com/sl3ndrr/RiffRechnung/pull/49).
 
 Ausgangspunkt ist `aa150b9d99d6d84a4fb47ff8d737a414ec5e7cf8` auf `main`.
 P01 bis P06 sind integriert (PRs 43–48). Der Repository-Baum enthält keine
@@ -72,13 +72,13 @@ Die bestehenden Re-Exports vermeiden unnötige Aufruferänderungen.
 
 ## Geänderte Dateien und Abbau
 
-31 Produkt-/Testdateien; dieser Bericht kommt als Dokumentationsdatei hinzu.
+32 Produkt-/Testdateien; dieser Bericht kommt als Dokumentationsdatei hinzu.
 
 | Dateien | Änderung |
 |---|---|
 | `src/types.ts`, `src/lib/documentProjection.ts`, `src/lib/documents.ts` | Vier redundante Inhaltsfelder entfallen; Korrekturen übernehmen die verbindliche Ausgabe |
 | `src/lib/canonical.ts`, `src/lib/legacyContactsRecipients.ts` | Unveränderte Kanonisierung ohne Import auf Validator-/Umschlagmodule |
-| `src/lib/legacyDocumentOutput.ts`, `src/lib/importState.ts`, `src/lib/legacyValidation.ts`, `src/lib/validation.ts` | Strenge Altprüfung, eng begrenzte Migration und Schema-13-Invarianten |
+| `src/lib/legacyDocumentOutput.ts`, `src/lib/legacyInvoiceNumbering.ts`, `src/lib/importState.ts`, `src/lib/legacyValidation.ts`, `src/lib/validation.ts` | Strenge Altprüfung, eng begrenzte Migration und Schema-13-Invarianten |
 | `src/lib/envelope.ts`, `src/lib/storage.ts`, `src/lib/defaults.ts` | Notwendige aktuelle Schemaannahmen und Altformatannahme |
 | `tests/p07-document-output.test.ts`, `tests/documentFixtures.ts`, `tests/logic.test.ts` | Vier neue P07-Fälle, echte Alt-Kopien in historischen Fixtures, Einbindung in die Gesamtsuite |
 | `tests/documents.test.ts`, `tests/private-invoices.test.ts`, `tests/adult-recipients.test.ts`, `tests/ap3.test.ts`, `tests/ap6-integration.test.ts`, `tests/duo.test.ts`, `tests/money-calendar.test.ts`, `tests/p05-contacts-recipients.test.ts`, `tests/p06-invoice-numbering.test.ts`, `tests/payment-reporting.test.ts` | Schemaannahmen und ausdrücklich erlaubte Repräsentationsentfernung angepasst; geschützte Werte weiterhin vollständig geprüft |
@@ -86,14 +86,15 @@ Die bestehenden Re-Exports vermeiden unnötige Aufruferänderungen.
 
 Grob: vier gespeicherte Kopiefelder pro Belegversion entfernt; zwei reine
 Funktionen verschoben, keine fachliche Funktion abgeschafft. Vor diesem Bericht
-umfasst der Diff 325 hinzugefügte und 97 entfernte Zeilen, überwiegend Migration
+umfasst der Diff 326 hinzugefügte und 98 entfernte Zeilen, überwiegend Migration
 und Regressionstests. Das Paket reduziert doppelte gespeicherte Ausgabedaten,
 ist insgesamt kein Netto-Zeilenabbau. App, Layout und CI-Konfiguration sind unverändert.
 
-Lokale thematische Commits:
+Thematische Produkt-/Testcommits:
 
-- `8233ac4`: reine Kanonisierung und Projektion auslagern.
-- `cd40814`: Ausgabe konsolidieren, Schema 13, Migration und Regressionen.
+- `a7101008`: reine Kanonisierung und Projektion auslagern.
+- `2751ca60`: Ausgabe konsolidieren, Schema 13, Migration und Regressionen.
+- `f9ff4f20`: notwendige Typisierung der P06-Zwischenstufe und des Browsertestzustands; Verhalten unverändert.
 
 ## Prüfergebnisse
 
@@ -116,12 +117,14 @@ geprüft: Node 22.23.3, Lint, **185/185 Logiktests**, Typecheck, Build und
 | Dokument-/Druck-Browsertests | Lokal blockiert: historischer Git-Commit kann nicht geladen werden |
 | Direkt ausführbare Tests mit nativer Node-TS-Transformation | **93/93 bestanden**, darunter vier P07-Fälle, P05/P06, Speicher-/Originalschutz, Import-/Reload- und Goldbestandsprüfungen |
 | `git diff --check` | Bestanden |
-| Vollständige GitHub-Schlussprüfung | Wird vor dem ausdrücklich beauftragten Merge auf dem PR-Head ausgeführt |
+| Vollständige GitHub-Schlussprüfung | **Bestanden**: Installation, Lint, **189/189 Logiktests**, Typprüfung, Build, **63/63 Browser-/PDF-Fälle**, Audit mit 0 Schwachstellen |
 
-Der Produkt-/Testbaum ist `b5e45bcfca5680775e73a6de5ddd433d0afa34d4`.
-Der über das GitHub-Plugin vorbereitete Baum wurde mit dem lokal geprüften
-Git-Tree verglichen und ist identisch.
-
-Der Merge mit `main` ist ausdrücklich beauftragt. Build, Lint und die vollständigen
-Browser-/PDF-Tests werden vor dem Merge durch den bestehenden Quality-Workflow
-geprüft. Ein Push auf `main` löst anschließend den vorhandenen Quality-/Pages-Workflow aus.
+Die vollständige Schlussabnahme ist in
+[Quality 37064158356](https://github.com/sl3ndrr/RiffRechnung/actions/runs/37064158356)
+für Commit `f9ff4f20e4a931441acf2e953ac46c932e4fe533` dokumentiert.
+Auch der neue P07-Browser-/PDF-Fall bestanden; die PDF-Evidenz liegt im
+Workflow-Artefakt. Der geprüfte Git-Tree ist
+`0188c645030997c4e5767250bf2258fb087a1e23` und entspricht dem lokalen Stand.
+Der abschließende Dokumentationscommit ändert ausschließlich diesen Bericht.
+Es gibt keine offenen funktionalen P07-Punkte oder fehlenden Pflichtprüfungen.
+Ein Push auf `main` löst den vorhandenen Quality-/Pages-Workflow aus.
