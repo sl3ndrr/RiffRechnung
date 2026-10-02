@@ -177,15 +177,6 @@ test('P04 Browser: Zahlungen manuell zuordnen, archivieren und vollständiges Ba
   expect(before.payments).toHaveLength(1)
   expect(before.payments[0].allocations).toHaveLength(2)
   expect(before.invoiceAdministration[1].archived).toBe(true)
-  await page.getByRole('button', { name: 'Auswertung', exact: true }).click()
-  await page.getByRole('combobox', { name: 'Jahr wählen', exact: true }).selectOption('2026')
-  const csvDownloading = page.waitForEvent('download')
-  await page.getByRole('button', { name: 'CSV exportieren', exact: true }).click()
-  const csvFile = await csvDownloading
-  const oldYearCsv = await readFile((await csvFile.path())!, 'utf8')
-  expect(oldYearCsv).toContain('2026-a-0001')
-  expect(oldYearCsv).toContain('Zahlungseingang')
-  expect(oldYearCsv).not.toContain('2027-a-0001')
   await page.getByRole('button', { name: 'Einstellungen', exact: true }).click()
   const downloading = page.waitForEvent('download')
   await page.getByRole('button', { name: /JSON.*exportieren|Backup exportieren|JSON-Backup/i }).first().click()
@@ -328,10 +319,6 @@ test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unverändert
   await page.getByText('Gesicherte Ausgabeangaben', { exact: true }).click()
   await expect(page.locator('.document-history dd').filter({ hasText: /^Leer$/ })).toHaveCount(4)
   await expect(page.locator('.invoice-detail__header')).toContainText('Empfaenger A')
-  const reminder = decodeURIComponent((await page.getByRole('link', { name: 'E-Mail öffnen', exact: true }).getAttribute('href'))!)
-  expect(reminder).toContain('mailto:a@example.org')
-  expect(reminder).toContain('Empfaenger A')
-  expect(reminder).not.toContain('Empfaenger B')
   const printed = await pdfText(page, state, state.invoices[0].id)
   expect(printed.text).toContain('Empfaenger A')
   expect(printed.text).not.toMatch(/Empfaenger B|HEUTIGES KONTO|HEUTIGE BANK|MARKDEF1100|DE02/)
@@ -343,7 +330,7 @@ test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unverändert
 })
 
 
-test('P05 Browser: Altentwurf prüfen; Editor, Liste, Dashboard, Bericht, CSV, Erinnerung, EPC und PDF auf Cent', async ({ page }, testInfo) => {
+test('P05 Browser: Altentwurf prüfen; Editor, Liste, EPC und PDF auf Cent', async ({ page }, testInfo) => {
   const state = saveInvoiceDraft(documentFamily(), documentDraft(), false, documentAt)
   delete state.invoices[0].calculation // synthetic pre-P05 draft after migration
   await seed(page, state)
@@ -362,8 +349,6 @@ test('P05 Browser: Altentwurf prüfen; Editor, Liste, Dashboard, Bericht, CSV, E
   await invoices(page)
   await page.getByRole('button', { name: '2026-a-0001', exact: true }).click()
   await expect(page.locator('.invoice-detail__amount')).toContainText('7,58')
-  const mailto = await page.getByRole('link', { name: 'E-Mail öffnen', exact: true }).getAttribute('href')
-  expect(decodeURIComponent(mailto!)).toContain('7,58')
   const saved = await stateOf(page)
   const epc = await page.evaluate(async (state) => {
     const utilsPath = '/src/lib/utils.ts', docsPath = '/src/lib/documents.ts'
@@ -376,13 +361,7 @@ test('P05 Browser: Altentwurf prüfen; Editor, Liste, Dashboard, Bericht, CSV, E
   const pdf = await pdfText(page, saved, saved.invoices[0].id)
   expect(pdf.text).toContain('7,58')
   await testInfo.attach('dezimal-7-58.pdf', { body: pdf.pdf, contentType: 'application/pdf' })
-  await page.getByRole('button', { name: 'Übersicht', exact: true }).first().click()
-  await expect(page.locator('.metric-card').filter({ hasText: 'Offene Forderungen am' })).toContainText('7,58')
-  await page.getByRole('button', { name: 'Auswertung', exact: true }).first().click()
-  await expect(page.locator('.report-hero')).toContainText('7,58')
-  const download = page.waitForEvent('download')
-  await page.getByRole('button', { name: 'CSV exportieren', exact: true }).click()
-  expect(await readFile((await (await download).path())!, 'utf8')).toContain('"7,58"')
+
 })
 
 test('P05 Browser/PDF: historisch gesicherter Halbcentfehler bleibt nach Import und Reload original', async ({ page }, testInfo) => {

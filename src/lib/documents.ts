@@ -1,5 +1,5 @@
 import { invoiceTotalCents, itemTotalCents, legacyItemCents } from './money'
-import type { AppState, DocumentContent, DocumentVersion, Invoice, InvoiceDraft, InvoiceSnapshot } from '../types'
+import type { AppState, DocumentContent, DocumentVersion, Invoice, InvoiceDraft, InvoiceSnapshot, InvoicePayment } from '../types'
 import { canonical } from './envelope'
 import { copyItemsWithFreshIds, freshId } from './identities'
 import { billingPeriodFromItems, guardianName, uid } from './utils'
@@ -75,7 +75,7 @@ export function versionFor(state: AppState, invoice: Invoice): DocumentVersion |
   return state.documentVersions.find((version) => version.id === invoice.versionId)
 }
 
-/** One projection for view, print, reminders, EPC and CSV. Empty snapshot values are authoritative. */
+/** One projection for view, print and EPC. Empty snapshot values are authoritative. */
 export function selectInvoice(state: AppState, invoice: Invoice): Invoice {
   const version = versionFor(state, invoice)
   if (!version) return invoice
@@ -189,10 +189,6 @@ export function allocatePayment(state: AppState, paymentId: string, versionId: s
   return next
 }
 
-export function recordedPayments(state: AppState, year?: number) {
-  return state.payments.filter((payment) => year === undefined || state.documentVersions.find((version) => version.id === payment.sourceVersionId)?.content.year === year)
-}
-
 export function snapshotDifferences(before: unknown, after: unknown, path = ''): { path: string; before: string; after: string }[] {
   if (canonical(before) === canonical(after)) return []
   if (before && after && typeof before === 'object' && typeof after === 'object' && !Array.isArray(before) && !Array.isArray(after)) {
@@ -208,4 +204,10 @@ export function persistentInvoice(invoice: Invoice): Invoice {
   const result = { ...invoice }
   for (const [key, value] of Object.entries(result)) if (value === undefined) Reflect.deleteProperty(result, key)
   return result
+}
+
+export function unknownPaymentDayLabel(payment: InvoicePayment): string {
+  return payment.legacyPaymentDay
+    ? `Zahlungsdatum unbekannt (bisheriger unbestätigter Wert: ${payment.legacyPaymentDay})`
+    : 'Zahlungsdatum unbekannt'
 }

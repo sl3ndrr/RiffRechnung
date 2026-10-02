@@ -4,7 +4,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { InvoicePrint } from '../src/components/InvoicePrint'
 import { HistoricalSnapshotEvidence } from '../src/components/DocumentHistory'
-import { activeInvoices, allocatedCents, allocatePayment, archiveInvoice, createCorrectionDraft, openCents, reassignCorrectionStudent, resolveDocumentConflicts, selectInvoice, selectedInvoices, snapshotDifferences } from '../src/lib/documents'
+import { activeInvoices, allocatedCents, allocatePayment, archiveInvoice, createCorrectionDraft, openCents, reassignCorrectionStudent, resolveDocumentConflicts, selectInvoice, snapshotDifferences } from '../src/lib/documents'
 import { deleteGuardianState, deleteStudentState, recordActivity } from '../src/lib/commands'
 import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { inspectImport, parseBackup, serializeMigrationReport } from '../src/lib/importState'
@@ -13,7 +13,7 @@ import { requireSuccess } from '../src/lib/result'
 import { assertOriginalsPreserved } from '../src/lib/safety'
 import { StorageSession, STORAGE_KEY, loadState, serializeBackup } from '../src/lib/storage'
 import { validateBackupState } from '../src/lib/validation'
-import { buildEpcPayload, createReminder, guardianName, invoiceTotal, invoicesToCsv, nextInvoiceAllocation, outputItemTotal } from '../src/lib/utils'
+import { buildEpcPayload, guardianName, invoiceTotal, nextInvoiceAllocation, outputItemTotal } from '../src/lib/utils'
 import { documentAt as at, documentDraft, documentFamily, editable, legacyFixture } from './documentFixtures'
 import { memoryStorage, sharedLock } from './storageHarness'
 import type { AppState, Invoice } from '../src/types'
@@ -87,10 +87,6 @@ test('P04: Empfaenger A/B und leere historische Kontofelder sind für alle Ausga
   assert.ok(version.conflicts.some((conflict) => conflict.path === 'guardianIds'))
   const invoice = selectInvoice(state, state.invoices[0])
   assert.equal(guardianName(invoice, state.guardians), 'Empfaenger A')
-  const reminder = createReminder(invoice, state.guardians, state.students)
-  assert.deepEqual(reminder.recipients, ['a@example.org'])
-  assert.match(reminder.body, /Empfaenger A/)
-  assert.match(invoicesToCsv([invoice], state.guardians, state.students), /Empfaenger A/)
   const markup = printContent(state, state.invoices[0])
   assert.match(markup, /Empfaenger A/); assert.doesNotMatch(markup, /HEUTIGES KONTO|MARKDEF1100/)
   const epc = buildEpcPayload(invoice, state.settings, invoiceTotal(invoice)).split('\n')
@@ -102,7 +98,6 @@ test('P04: Empfaenger A/B und leere historische Kontofelder sind für alle Ausga
   state = await persistReload(state)
   const corrected = selectInvoice(state, state.invoices.at(-1)!)
   assert.equal(guardianName(corrected, state.guardians), 'Empfaenger B')
-  assert.deepEqual(createReminder(corrected, state.guardians, state.students).recipients, ['b@example.org'])
   assert.match(printContent(state, state.invoices.at(-1)!), /Empfaenger B/)
   assert.equal(canonical(state.documentVersions[0]), canonical(version))
 })
@@ -164,7 +159,6 @@ test('P04: mehr als 200 Aktivitäten, Archivierung und Export–Import erhalten 
   assert.equal(activeInvoices(state).length, 1, 'Archivieren storniert keine Forderung')
   assert.equal(openCents(state, original), 0)
   assert.ok(nextInvoiceAllocation(state, '2026-09-01', ['s-a']).sequence > state.invoices[1].sequence!)
-  assert.match(invoicesToCsv(selectedInvoices(state), state.guardians, state.students), /Ersetzt – keine zusätzliche Forderung/)
   const before = session.export()
   await assert.rejects(session.restore(serializeBackup(issued())), /Finalisierte|Belegversionen/)
   assert.equal(session.export(), before)

@@ -98,7 +98,7 @@ test('echter Browser: isolierte Demo mit realem OPFS-Handle und IndexedDB erhäl
     return files.sort()
   })
   const filesBefore = await readFiles()
-  await page.getByRole('button', { name: /Lieber erst mit Beispieldaten testen/ }).click()
+  await page.getByRole('button', { name: 'Mit Beispieldaten testen' }).click()
   await expect(page.getByRole('button', { name: 'Demo verlassen', exact: true })).toBeVisible()
   await settings(page)
   await page.getByLabel('Name / Geschäftsbezeichnung', { exact: true }).fill('Demo überschreibt nichts')

@@ -1,8 +1,6 @@
 import { addCalendarDays, localToday } from './calendar'
 import { decimalInputText, invoiceTotalCents, itemTotalCents, moneyErrors } from './money'
-import { buildMailto } from './mailbox'
 import { validId, validPrice, validQuantity } from './values'
-import { assertInvoiceEditable } from './safety'
 import { cleanIban, paymentDataErrors, paymentDataForInvoice } from './paymentData'
 import { invoiceSetupErrors } from './invoiceSetup'
 import { invoiceCompliance } from './invoiceCompliance'
@@ -244,11 +242,6 @@ export function studentName(invoice: Invoice, students: Student[]): string {
   return names.join(', ') || 'Ohne Lernende'
 }
 
-export function reopenInvoiceAsDraft(state: AppState, invoiceId: string): AppState {
-  assertInvoiceEditable(state.invoices.find((invoice) => invoice.id === invoiceId))
-  return state
-}
-
 export function sortPeople<T extends { name: string; createdAt: string }>(entries: T[], mode: PeopleSortMode): T[] {
   const direction = mode.endsWith('-desc') ? -1 : 1
   return [...entries].sort((a, b) => {
@@ -429,64 +422,6 @@ export function downloadText(filename: string, content: string, type = 'applicat
   // Some engines finish initiating the download after click() returns. Keep
   // both the attached anchor and its blob alive until they have consumed it.
   window.setTimeout(() => { link.remove(); URL.revokeObjectURL(url) }, 60_000)
-}
-
-export function csvCell(value: string | number): string {
-  const raw = String(value)
-  const safe = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw
-  const normalized = safe.replaceAll('"', '""')
-  return `"${normalized}"`
-}
-
-export function invoicesToCsv(invoices: Invoice[], guardians: Guardian[], students: Student[]): string {
-  const header = ['Rechnungsnummer', 'Datum', 'Zeitraum', 'Empfänger', 'Lernende', 'Status', 'Netto/Gesamt EUR', 'Bezahlt am', 'Belegversion', 'Ersetzt Version', 'Korrekturgrund', 'Forderungsbeleg', 'Archiviert']
-  const rows = invoices
-    .filter((invoice) => invoice.number)
-    .sort((a, b) => a.invoiceDate.localeCompare(b.invoiceDate))
-    .map((invoice) => [
-      invoice.number ?? '',
-      invoice.invoiceDate,
-      invoice.period,
-      guardianName(invoice, guardians, students),
-      studentName(invoice, students),
-      statusLabel[effectiveStatus(invoice)],
-      invoiceTotal(invoice).toFixed(2).replace('.', ','),
-      invoice.paidAt?.slice(0, 10) ?? '',
-      invoice.versionId ?? '',
-      invoice.correction?.replacesId ?? '',
-      invoice.correction?.reason ?? '',
-      invoice.claimState === 'replaced' ? 'Ersetzt – keine zusätzliche Forderung' : 'Aktuell',
-      invoice.archived ? 'Ja' : 'Nein',
-    ])
-  return `\uFEFF${[header, ...rows].map((row) => row.map(csvCell).join(';')).join('\r\n')}`
-}
-
-export function createReminder(invoice: Invoice, guardians: Guardian[], students: Student[]): { subject: string; body: string; recipients: string[] } {
-  const names = guardianName(invoice, guardians, students)
-  const child = studentName(invoice, students)
-  const numberText = invoice.number ?? 'Entwurf'
-  const snapshotEmails = invoice.snapshot ? snapshotRecipients(invoice.snapshot).map((recipient) => recipient.email).filter(Boolean) : []
-  const liveEmails = recipientRefs(invoice)
-    .map((ref) => liveRecipient(ref, guardians, students)?.email)
-    .filter((email): email is string => Boolean(email))
-  const recipients = invoice.snapshot ? snapshotEmails : liveEmails
-  const subject = `Zahlungserinnerung zur Rechnung ${numberText}`
-  const body = `Guten Tag ${names},\n\nbei der Durchsicht meiner Unterlagen ist mir aufgefallen, dass die Rechnung ${numberText} für den Gitarrenunterricht von ${child} über ${euro.format(invoiceTotal(invoice))} mit Fälligkeit zum ${formatDateLong(invoice.dueDate)} noch offen ist.\n\nFalls die Zahlung bereits veranlasst wurde, betrachten Sie diese Nachricht bitte als gegenstandslos. Andernfalls freue ich mich über eine zeitnahe Überweisung unter Angabe der Rechnungsnummer.\n\nVielen Dank und freundliche Grüße`
-  return { subject, body, recipients }
-}
-
-export function mailtoUrl(invoice: Invoice, guardians: Guardian[], students: Student[]): string {
-  const reminder = createReminder(invoice, guardians, students)
-  return buildMailto(reminder.recipients, reminder.subject, reminder.body)
-}
-
-export function monthKey(date: string): string {
-  return date.slice(0, 7)
-}
-
-export function monthLabel(key: string): string {
-  const [year, month] = key.split('-').map(Number)
-  return new Intl.DateTimeFormat('de-DE', { month: 'short' }).format(new Date(year, month - 1, 1)).replace('.', '')
 }
 
 export function groupItemsByStudent(items: InvoiceItem[], studentIds: string[]): Array<[string, InvoiceItem[]]> {

@@ -2,22 +2,18 @@ import { DuoWorkflow } from './views/DuoWorkflow'
 import { deleteGuardianState, deleteStudentState, deleteInvoiceDraftState, resetUnissuedState, recordActivity } from './lib/commands'
 import { allocatePayment, archiveInvoice, createCorrectionDraft, resolveDocumentConflicts, selectInvoice } from './lib/documents'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { BarChart3, BookUser, Download, FilePlus2, LayoutDashboard, Menu, MessageSquareText, Moon, Palette, ReceiptText, Search, Settings as SettingsIcon, Sun, Upload, UserRound, X } from 'lucide-react'
+import { BookUser, Download, FilePlus2, Menu, Moon, Palette, ReceiptText, Search, Settings as SettingsIcon, Sun, Upload, X } from 'lucide-react'
 import type { AppState, AuditEvent, Guardian, Invoice, InvoiceDraft, InvoiceStatus, PageKey, Settings as SettingsType, Student, ToastMessage } from './types'
-import { Dashboard } from './views/Dashboard'
 import { Invoices } from './views/Invoices'
 import { InvoiceEditor } from './views/InvoiceEditor'
 import { People } from './views/People'
-import { Reports } from './views/Reports'
 import { Settings } from './views/Settings'
-import { About } from './views/About'
 import { StorageRecovery } from './views/StorageRecovery'
 import { ImportReview, type ImportReviewData } from './views/ImportReview'
 import { inspectImportBytes, type ImportPreview } from './lib/importState'
 import { requireSuccess } from './lib/result'
 import { prepareInvoiceCopy, prepareNewInvoice, saveGuardianState, saveInvoiceState, saveSettingsState, saveStudentState, convertLegacyDraftState } from './lib/commands'
 import { ConfirmDialog } from './components/ConfirmDialog'
-import { ChangelogModal } from './components/ChangelogModal'
 import { ToastRegion } from './components/ToastRegion'
 import { InvoicePrint } from './components/InvoicePrint'
 import { createEmptyInvoiceDraft } from './lib/defaults'
@@ -30,15 +26,12 @@ import { assertOriginalsPreserved, assertReplacementAllowed, FINALIZED_INVOICE_B
 import { APP_VERSION } from './version'
 import { isCurrentPrintRequest, type PrintRequest } from './lib/printJob'
 
-const navItems: Array<{ key: PageKey; label: string; icon: typeof LayoutDashboard }> = [
-  { key: 'dashboard', label: 'Übersicht', icon: LayoutDashboard },
+const navItems: Array<{ key: PageKey; label: string; icon: typeof ReceiptText }> = [
   { key: 'invoices', label: 'Rechnungen', icon: ReceiptText },
   { key: 'people', label: 'Personen', icon: BookUser },
-  { key: 'reports', label: 'Auswertung', icon: BarChart3 },
   { key: 'settings', label: 'Einstellungen', icon: SettingsIcon },
 ]
 
-const FEEDBACK_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdTwAUVjtqiBcB572S5IR7OD71TFxW8CfuCS9V0j6Inpo9wgw/viewform?usp=header'
 const backupDateFormatter = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
 interface Confirmation {
@@ -75,7 +68,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const pendingWrites = useRef(0)
   const pendingBackups = useRef(0)
   const settingsFlush = useRef<(() => Promise<boolean>) | null>(null)
-  const [page, setPage] = useState<PageKey>('dashboard')
+  const [page, setPage] = useState<PageKey>('invoices')
   const [mobileNav, setMobileNav] = useState(false)
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 820px)').matches)
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
@@ -86,7 +79,6 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
   const [importReview, setImportReview] = useState<ImportReviewData | null>(null)
-  const [changelogOpen, setChangelogOpen] = useState(false)
   const [saveStateLabel, setSaveStateLabel] = useState<'saved' | 'saving' | 'error'>('saved')
   const [localSaveError, setLocalSaveError] = useState<string | null>(null)
   const [fileBackupStatus, setFileBackupStatus] = useState<'idle' | 'saving' | 'saved' | 'conflict' | 'error'>('idle')
@@ -473,7 +465,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       setSaveStateLabel('saved')
       setSavedAt(new Date())
       setSelectedInvoiceId(null)
-      setPage('dashboard')
+      setPage('invoices')
       toast(`Wiederherstellung lokal gespeichert, Revision ${session.revision?.revision ?? 'Demo'}. Der vorherige Stand und die Eingangsdaten bleiben gesichert.`, 'success')
       if (backup) void runBackup()
       return true
@@ -584,7 +576,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         setSettingsEpoch((value) => value + 1)
         stateRef.current = next
         setSelectedInvoiceId(null)
-        setPage('dashboard')
+        setPage('invoices')
         toast('Zurücksetzen lokal gespeichert.', 'success')
       } catch (error) { toast(error instanceof Error ? error.message : 'Zurücksetzen fehlgeschlagen.', 'error') }
     },
@@ -612,7 +604,6 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       action: closeEditor,
     })
   }
-  const openInvoice = (id: string) => { setSelectedInvoiceId(id); void setCurrentPage('invoices') }
   const setCurrentPage = async (next: PageKey) => {
     if (editor.open && editorDirty && next !== page) {
       setConfirmation({
@@ -685,10 +676,8 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         <div className="brand"><span className="brand__mark" aria-hidden="true">🧾</span><div><strong>RiffRechnung</strong><small>Rechnungen</small></div><button ref={mobileCloseButtonRef} className="icon-button mobile-only" onClick={closeMobileNav} aria-label="Navigation schließen"><X aria-hidden="true" /></button></div>
         <nav aria-label="Hauptnavigation">{navItems.map(({ key, label, icon: Icon }) => <button className={page === key ? 'is-active' : ''} aria-current={page === key ? 'page' : undefined} aria-label={label} key={key} onClick={() => setCurrentPage(key)}><Icon aria-hidden="true" /><span>{label}</span>{key === 'invoices' && state.invoices.filter((invoice) => invoice.status === 'draft').length > 0 && <b>{state.invoices.filter((invoice) => invoice.status === 'draft').length}</b>}</button>)}</nav>
         <div className="sidebar__privacy"><span><ShieldDot /></span><div><strong>Nur auf diesem Gerät</strong><small>Keine automatische Cloud-Übertragung</small></div></div>
-        <button className="sidebar__version" type="button" onClick={() => setChangelogOpen(true)} aria-label={`Versionshistorie öffnen, aktuelle Version ${APP_VERSION}`}>Version {APP_VERSION}</button>
+        <a className="sidebar__version" href="https://github.com/sl3ndrr/RiffRechnung/blob/main/docs/about.md" target="_blank" rel="noreferrer" aria-label={`Info öffnen (neuer Tab), aktuelle Version ${APP_VERSION}`}>Info · Version {APP_VERSION}</a>
         <div className="sidebar__secondary-actions">
-          <button type="button" className={page === 'about' ? 'is-active' : ''} aria-current={page === 'about' ? 'page' : undefined} aria-label="Über mich" title="Über mich" onClick={() => setCurrentPage('about')}><UserRound aria-hidden="true" /><span>Über mich</span></button>
-          <a href={FEEDBACK_URL} target="_blank" rel="noreferrer" aria-label="Feedbackformular öffnen (neuer Tab)" title="Feedback"><MessageSquareText aria-hidden="true" /><span>Feedback</span></a>
           <button type="button" aria-label="Backup exportieren" title="Backup exportieren" onClick={exportBackup}><Download aria-hidden="true" /><span>Backup exportieren</span></button>
           <button type="button" aria-label="Backup importieren" title="Backup importieren" onClick={() => backupImportInput.current?.click()}><Upload aria-hidden="true" /><span>Backup importieren</span></button>
           <input ref={backupImportInput} type="file" accept=".json,application/json" hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void importBackup(file) }} />
@@ -707,11 +696,8 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         {persistenceErrorText && <section className="persistence-error" role="alert"><div><strong>Speichern fehlgeschlagen</strong><p>{persistenceErrorText}</p></div><div className="button-row"><button className="button button--tonal" type="button" onClick={async () => { if (settingsFlush.current) await settingsFlush.current(); await backupNow() }}>Erneut versuchen</button><button className="button button--text" type="button" onClick={exportBackup}>JSON-Backup exportieren</button></div></section>}
 
         <main ref={mainContentRef} id="main-content" tabIndex={-1}>
-          {page === 'dashboard' && <Dashboard state={state} onNavigate={setCurrentPage} onNewInvoice={openNewInvoice} onLoadDemo={loadDemo} demoBlockedReason={mode === 'demo' ? 'Du bist bereits in der isolierten Demo.' : null} onOpenInvoice={openInvoice} />}
-          {page === 'invoices' && <Invoices state={state} selectedId={selectedInvoiceId} onSelect={setSelectedInvoiceId} onNew={openNewInvoice} onDuo={(id) => setDuoDialog(id ?? 'new')} onEdit={editInvoice} onDuplicate={duplicateInvoice} onDelete={requestDeleteInvoice} onSetStatus={setInvoiceStatus} onCorrection={startCorrection} onAllocatePayment={(paymentId, versionId, reason) => { void commit((current) => allocatePayment(current, paymentId, versionId, reason), 'Zahlung manuell zugeordnet', 'invoice') }} onResolveConflicts={(versionId, reason) => { void commit((current) => resolveDocumentConflicts(current, versionId, reason), 'Historische Abweichung geklärt', 'invoice') }} onPrint={print} onToast={toast} />}
+          {page === 'invoices' && <Invoices onNavigate={setCurrentPage} onLoadDemo={mode === 'real' ? loadDemo : undefined} state={state} selectedId={selectedInvoiceId} onSelect={setSelectedInvoiceId} onNew={openNewInvoice} onDuo={(id) => setDuoDialog(id ?? 'new')} onEdit={editInvoice} onDuplicate={duplicateInvoice} onDelete={requestDeleteInvoice} onSetStatus={setInvoiceStatus} onCorrection={startCorrection} onAllocatePayment={(paymentId, versionId, reason) => { void commit((current) => allocatePayment(current, paymentId, versionId, reason), 'Zahlung manuell zugeordnet', 'invoice') }} onResolveConflicts={(versionId, reason) => { void commit((current) => resolveDocumentConflicts(current, versionId, reason), 'Historische Abweichung geklärt', 'invoice') }} onPrint={print} />}
           {page === 'people' && <People state={state} onSaveGuardian={saveGuardian} onSaveStudent={saveStudent} onDeleteGuardian={deleteGuardian} onDeleteStudent={deleteStudent} />}
-          {page === 'reports' && <Reports state={state} />}
-          {page === 'about' && <About />}
           <div hidden={page !== 'settings'}><Settings key={settingsEpoch} state={state} onDirty={setSettingsDirty} folderSupported={mode === 'real' && Boolean(window.showDirectoryPicker)} folderConnected={folderConnected} folderName={folderName} onSave={saveSettings} onRegisterFlush={(flush) => { settingsFlush.current = flush }} onExport={exportBackup} onImport={importBackup} onConnectFolder={connectFolder} onDisconnectFolder={disconnectFolder} onBackupNow={backupNow} onReset={resetAll} onPrevious={reviewPrevious} onArchive={exportRecoveryArchive} /></div>
         </main>
       </div>
@@ -722,7 +708,6 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       <ImportReview review={importReview} onClose={() => setImportReview(null)} onApply={confirmImport} />
       {duoDialog && <DuoWorkflow key={duoDialog} state={state} groupId={duoDialog} onClose={() => setDuoDialog(null)} onGroup={setDuoDialog} onEdit={editInvoice} onCommit={(producer, label) => commit(producer, label, 'invoice')} />}
       <InvoiceEditor state={state} open={editor.open} draft={editor.draft} editing={editor.editing} finalized={editor.finalized} invoiceNumber={editor.invoiceNumber} guardians={state.guardians} students={state.students} settings={state.settings} onClose={requestCloseEditor} onDirtyChange={setEditorDirty} onSave={saveInvoice} onConvert={convertLegacyDraft} />
-      <ChangelogModal open={changelogOpen} onClose={() => setChangelogOpen(false)} />
       <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} cancelLabel={confirmation?.cancelLabel} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />
       <ToastRegion messages={toasts} onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))} />
       <div className="print-root"><InvoicePrint invoice={printRequest?.invoice ?? null} guardians={printRequest?.guardians ?? []} students={printRequest?.students ?? []} settings={printRequest?.settings ?? state.settings} requestId={printRequest?.id} includeGiroCode={printRequest?.includeGiroCode} giroCodeFallbackReason={printRequest?.giroCodeFallbackReason} onPrintReady={handlePrintReady} onPrintError={handlePrintError} /></div>

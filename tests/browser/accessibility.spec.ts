@@ -54,7 +54,7 @@ function contrast(foreground: string, background: string) {
 }
 
 for (const width of [390, 900, 1280]) {
-  test(`P10 Browser: Rechnungsdetails, Status, Erinnerung und Rückkehr funktionieren mit Tab, Enter und Escape bei ${width} Pixeln`, async ({ page }) => {
+  test(`P10 Browser: Rechnungsdetails, Status und Rückkehr funktionieren mit Tab, Enter und Escape bei ${width} Pixeln`, async ({ page }) => {
     const state = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
     await page.setViewportSize({ width, height: 900 })
     await seed(page, state)
@@ -67,48 +67,14 @@ for (const width of [390, 900, 1280]) {
     const overdue = page.getByRole('button', { name: 'Überfällig', exact: true })
     await tabTo(page, overdue)
     await page.keyboard.press('Enter')
-    await expect(page.locator('.reminder-panel')).toBeVisible()
-    const reminder = page.getByRole('link', { name: 'E-Mail öffnen', exact: true })
-    await tabTo(page, reminder, 30)
+    await expect(overdue).toHaveAttribute('aria-pressed', 'true')
     await page.keyboard.press('Escape')
     await expect(page.locator('.invoice-detail')).toHaveCount(0)
     await expect(opener).toBeFocused()
   })
 }
 
-test('P11 Browser: abgelehnte Zwischenablage bietet Erinnerungstext zum manuellen Kopieren', async ({ page }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: { writeText: () => Promise.reject(new DOMException('Nicht erlaubt', 'NotAllowedError')) },
-    })
-  })
-  const state = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
-  await seed(page, state)
-  await invoices(page)
-  await page.getByRole('button', { name: '2026-a-0001', exact: true }).click()
-  await page.getByRole('button', { name: 'Überfällig', exact: true }).click()
-  await page.getByRole('button', { name: 'Text kopieren', exact: true }).click()
-  const fallback = page.getByRole('textbox', { name: 'Zahlungserinnerung zum manuellen Kopieren' })
-  await expect(fallback).toBeVisible()
-  await expect(fallback).toHaveValue(/Zahlungserinnerung zur Rechnung 2026-a-0001/)
-  await expect(page.getByText('Erinnerungstext kopiert.', { exact: true })).toHaveCount(0)
-  await fallback.focus()
-  await expect(fallback).toBeFocused()
-  expect(await fallback.evaluate((element) => (element as HTMLTextAreaElement).selectionStart === 0 && (element as HTMLTextAreaElement).selectionEnd === (element as HTMLTextAreaElement).value.length)).toBe(true)
-})
 
-test('P10 Browser: Rechnungsnummer auf der Übersicht ist ein Tastaturauslöser', async ({ page }) => {
-  const state = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
-  await seed(page, state)
-  const dashboardOpener = page.locator('.recent-card').getByRole('button', { name: '2026-a-0001', exact: true })
-  await tabTo(page, dashboardOpener)
-  await page.keyboard.press('Enter')
-  await expect(page.locator('.invoice-detail')).toBeVisible()
-  const listOpener = page.locator('.invoice-list-table').getByRole('button', { name: '2026-a-0001', exact: true })
-  await page.keyboard.press('Escape')
-  await expect(listOpener).toBeFocused()
-})
 
 test('P10 Browser: verschachtelte Dialoge halten Fokus, Modalität und Scrollsperre', async ({ page }) => {
   const state = saveInvoiceDraft(documentFamily(), documentDraft(), false, documentAt)
@@ -173,7 +139,7 @@ test('P10 Browser: interne Navigation schützt alle Editorwerte und Verwerfen sp
   const editor = page.getByRole('dialog', { name: 'Entwurf bearbeiten' })
   await editor.getByLabel('Einleitung', { exact: true }).fill('Ungespeicherte Einleitung')
   await editor.getByLabel('Freitext / Hinweis', { exact: true }).fill('Ungespeicherter Freitext')
-  const overview = page.locator('.sidebar nav button').filter({ hasText: 'Übersicht' })
+  const overview = page.locator('.sidebar nav button').filter({ hasText: 'Personen' })
   await overview.evaluate((element) => (element as HTMLButtonElement).click())
   const confirmation = page.getByRole('alertdialog', { name: 'Ungespeicherte Rechnungsänderungen verwerfen?' })
   await confirmation.getByRole('button', { name: 'Weiter bearbeiten' }).click()
@@ -181,7 +147,7 @@ test('P10 Browser: interne Navigation schützt alle Editorwerte und Verwerfen sp
   await expect(editor.getByLabel('Freitext / Hinweis', { exact: true })).toHaveValue('Ungespeicherter Freitext')
   await overview.evaluate((element) => (element as HTMLButtonElement).click())
   await confirmation.getByRole('button', { name: 'Verwerfen' }).click()
-  await expect(page.getByRole('heading', { name: /Guten Tag/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Personen', exact: true })).toBeVisible()
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(storedBefore)
   await page.reload()
   await invoices(page)
@@ -191,30 +157,6 @@ test('P10 Browser: interne Navigation schützt alle Editorwerte und Verwerfen sp
   await expect(editor.getByLabel('Freitext / Hinweis', { exact: true })).not.toHaveValue('Ungespeicherter Freitext')
 })
 
-test('P10 Browser: Changelog bleibt bei Navigation modal und gibt den Fokus zurück', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 })
-  await page.goto('/')
-  const trigger = page.getByRole('button', { name: /Versionshistorie öffnen/ })
-  await trigger.focus()
-  await page.keyboard.press('Enter')
-  const changelog = page.getByRole('dialog', { name: 'Versionshistorie' })
-  await expect(changelog.getByRole('heading', { name: 'Versionshistorie' })).toBeFocused()
-  await expect(page.locator('#root')).toHaveAttribute('inert', '')
-  await expect(page.locator('body')).toHaveClass(/modal-open/)
-  await page.keyboard.press('Tab')
-  await expect(changelog.getByRole('button', { name: 'Dialog schließen' })).toBeFocused()
-  await page.keyboard.press('Tab')
-  await expect(changelog.getByRole('button', { name: 'Ältere Version anzeigen' })).toBeFocused()
-  await page.keyboard.press('Enter')
-  await expect(changelog).toContainText('2 von')
-  await expect(changelog).toBeVisible()
-  await expect(page.locator('body')).toHaveClass(/modal-open/)
-  await page.keyboard.press('Escape')
-  await expect(changelog).toHaveCount(0)
-  await expect(trigger).toBeFocused()
-  await expect(page.locator('#root')).not.toHaveAttribute('inert', '')
-  await expect(page.locator('body')).not.toHaveClass(/modal-open/)
-})
 
 test('P10 Browser: Importbestätigung bleibt als oberster Dialog erreichbar', async ({ page }) => {
   const state = saveInvoiceDraft(documentFamily(), documentDraft(), false, documentAt)
@@ -301,7 +243,7 @@ test('P10 Browser: relevante Textkontraste erreichen in beiden Themes AA', async
     await finishAnimations(page)
     await page.screenshot({ path: testInfo.outputPath(`kontrast-${theme}-fehlerdialog.png`), fullPage: false })
     await danger.click()
-    await page.getByRole('button', { name: 'Übersicht', exact: true }).first().click()
+    await page.getByRole('button', { name: 'Rechnungen', exact: true }).first().click()
   }
 })
 
@@ -331,4 +273,49 @@ test('P10 Browser: Datei-, Chip- und Theme-Eingaben markieren das sichtbare Bedi
   expect(await outline(chipInput.locator('xpath=..'))).toBe(true)
   await finishAnimations(page)
   await page.screenshot({ path: testInfo.outputPath('fokus-chip.png'), fullPage: false })
+})
+
+for (const width of [390, 1280]) {
+  test(`P02 Browser: Rechnungen starten direkt, Navigation, Suche und Statusfilter bleiben bei ${width} Pixeln`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await seed(page, saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt))
+    await expect(page.getByRole('heading', { name: 'Rechnungen', exact: true })).toBeVisible()
+    const navigation = page.locator(width === 390 ? '.mobile-bottom-nav' : '.sidebar nav')
+    await expect(navigation.getByRole('button')).toHaveCount(3)
+    await expect(navigation.getByRole('button', { name: 'Rechnungen', exact: true })).toHaveAttribute('aria-current', 'page')
+    await navigation.getByRole('button', { name: 'Personen', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Personen', exact: true })).toBeVisible()
+    await navigation.getByRole('button', { name: 'Einstellungen', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Einstellungen', exact: true })).toBeVisible()
+    await navigation.getByRole('button', { name: 'Rechnungen', exact: true }).click()
+    const search = page.getByRole('searchbox', { name: 'Rechnungen durchsuchen' })
+    const rows = page.locator('.invoice-list-table tbody tr')
+    await search.fill('fehlt-in-allen-rechnungen')
+    await expect(rows).toHaveCount(0)
+    await search.fill('2026-a-0001')
+    await expect(rows).toHaveCount(1)
+    await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('paid')
+    await expect(rows).toHaveCount(0)
+    await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('all')
+    await page.getByRole('button', { name: '2026-a-0001', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'PDF / Drucken', exact: true })).toBeVisible()
+    await expect(page.getByLabel('Tatsächlicher Zahlungstag', { exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: /CSV|Text kopieren|Übersicht|Auswertung|Über mich/ })).toHaveCount(0)
+    await expect(page.locator('a[href^="mailto:"]')).toHaveCount(0)
+  })
+}
+
+test('P02 Browser: kompakte Einrichtung, ein isolierter Demo-Einstieg und Info-Link', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Rechnungen', exact: true })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Einrichtung', exact: true })).toBeVisible()
+  const demo = page.getByRole('button', { name: 'Mit Beispieldaten testen', exact: true })
+  await expect(demo).toHaveCount(1)
+  await expect(page.getByRole('link', { name: /Info öffnen/ })).toHaveAttribute('href', 'https://github.com/sl3ndrr/RiffRechnung/blob/main/docs/about.md')
+  await demo.click()
+  await expect(page.getByRole('button', { name: 'Demo verlassen', exact: true })).toBeVisible()
+  await expect(demo).toHaveCount(0)
+  await page.getByRole('button', { name: 'Demo verlassen', exact: true }).click()
+  await expect(demo).toHaveCount(1)
+  await expect(page.getByRole('region', { name: 'Einrichtung', exact: true })).toBeVisible()
 })
