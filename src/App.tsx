@@ -190,8 +190,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         invoiceDate: invoice.invoiceDate,
         dueDate: invoice.dueDate,
         period: invoice.period,
-        guardianIds: invoice.guardianIds,
-        ...(invoice.recipients ? { recipients: structuredClone(invoice.recipients) } : {}),
+        recipients: structuredClone(invoice.recipients),
         studentIds: invoice.studentIds,
         recipientStrategy: invoice.recipientStrategy,
         items: structuredClone(invoice.items),
@@ -414,7 +413,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       setSavedAt(new Date())
       setSelectedInvoiceId(null)
       setPage('invoices')
-      toast(`Wiederherstellung lokal gespeichert, Revision ${session.revision?.revision ?? 'Demo'}. Der vorherige Stand und die Eingangsdaten bleiben gesichert.`, 'success')
+      toast(`Wiederherstellung lokal gespeichert, Revision ${session.revision?.revision ?? 'Demo'}. Der vorherige Stand und die Eingangsdaten bleiben bereinigt gesichert.`, 'success')
       return true
     } catch (error) {
       setSaveStateLabel('error')
@@ -427,7 +426,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const confirmImport = (preview: ImportPreview) => {
     setConfirmation({
       title: 'Backup als neuen Stand wiederherstellen?',
-      message: `${preview.state.students.length} Lernende, ${preview.state.invoices.length} Rechnungen. ${preview.envelope ? `Bestand ${preview.envelope.datasetId}, Revision ${preview.envelope.revision}.` : 'Ohne Bestands-ID: Mit der Bestätigung ordnest du dieses Altbackup ausdrücklich zu; eine gemeinsame Herkunft ist nicht nachgewiesen.'} Ungespeicherte Einstellungen werden bei erfolgreicher Wiederherstellung verworfen. Der aktuelle Stand und die unveränderten Eingangsdaten werden zuerst lokal aufbewahrt. Bekannte Originalbelege dürfen nicht verändert werden.`,
+      message: `${preview.state.students.length} Lernende, ${preview.state.invoices.length} Rechnungen. ${preview.envelope ? `Bestand ${preview.envelope.datasetId}, Revision ${preview.envelope.revision}.` : 'Ohne Bestands-ID: Mit der Bestätigung ordnest du dieses Altbackup ausdrücklich zu; eine gemeinsame Herkunft ist nicht nachgewiesen.'} Ungespeicherte Einstellungen werden bei erfolgreicher Wiederherstellung verworfen. Der aktuelle Stand und die Eingangsdaten werden bereinigt lokal aufbewahrt. Abgeschaffte Zahler-IBAN sowie interne Personen- und Zahlungsnotizen werden auch aus internen Kopien endgültig entfernt. Ausstellerkonto, Rechnungshinweis und bekannte Originalbelege bleiben erhalten.`,
       label: 'Wiederherstellung bestätigen', danger: true,
       action: async () => { if (await applyRestore(preview)) setImportReview(null) },
     })

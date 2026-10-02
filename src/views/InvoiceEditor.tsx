@@ -40,7 +40,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
     setNumberInputs({})
     setErrors([])
     setReviewed([])
-    setConversionRecipients(draft.guardianIds.length === 1 ? [...draft.guardianIds] : [])
+    setConversionRecipients(guardianIdsFor(draft.recipients).length === 1 ? [...guardianIdsFor(draft.recipients)] : [])
   }, [draft, open])
 
   const linkedGuardianIds = useMemo(() => new Set(form.studentIds.flatMap((id) => students.find((student) => student.id === id)?.guardianIds ?? [])), [form.studentIds, students])
@@ -63,11 +63,8 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
     setForm((current) => {
       const isSelected = current.studentIds.includes(student.id)
       const studentIds = isSelected ? current.studentIds.filter((id) => id !== student.id || Boolean(current.correction && current.items.some((item) => item.studentId === id))) : [...current.studentIds, student.id]
-      const guardianIds = isSelected
-        ? current.guardianIds.filter((id) => studentIds.some((studentId) => students.find((item) => item.id === studentId)?.guardianIds.includes(id)))
-        : [...new Set([...current.guardianIds, ...student.guardianIds])]
-      const recipients = current.recipients === undefined && !student.selfPayer ? undefined : (() => {
-        const selected = current.recipients ?? current.guardianIds.map((id) => ({ type: 'guardian' as const, id }))
+      const recipients = (() => {
+        const selected = current.recipients
         const next = isSelected ? selected.filter((ref) => studentIds.some((id) => {
           const learner = students.find((entry) => entry.id === id)
           return learner && recipientCanBillStudent(ref, learner)
@@ -77,14 +74,14 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
       const items = isSelected && !current.correction
         ? current.items.filter((item) => item.studentId !== student.id)
         : current.items.length ? current.items : [createLessonItem(student.id, current.invoiceDate, settings)]
-      return { ...current, studentIds, guardianIds: recipients ? guardianIdsFor(recipients) : guardianIds, ...(recipients ? { recipients } : {}), items, period: billingPeriodFromItems(items, current.invoiceDate) }
+      return { ...current, studentIds, recipients, items, period: billingPeriodFromItems(items, current.invoiceDate) }
     })
   }
 
   const toggleRecipient = (ref: RecipientRef) => setForm((current) => {
     const refs = recipientRefs(current)
     const next = refs.some((entry) => recipientKey(entry) === recipientKey(ref)) ? refs.filter((entry) => recipientKey(entry) !== recipientKey(ref)) : [...refs, ref]
-    return { ...current, recipients: next, guardianIds: guardianIdsFor(next) }
+    return { ...current, recipients: next }
   })
 
   const updateItem = (id: string, key: string, value: string | number) => {
@@ -192,8 +189,8 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
         {legacyDraft && <section className="form-section" aria-label="Historischen Entwurf prüfen">
           <h3>Historischer Aufteilungsentwurf</h3>
           <p>Dieser Entwurf bleibt bis zur bestätigten Umwandlung unverändert. Prüfe die unten sichtbaren Lernenden, Positionen, Einleitung und den Freitext. Teilbeträge und gemeinsame Texte können Angaben zu anderen Personen enthalten. Eine neue Rechnungsnummer entsteht erst bei einer späteren Finalisierung.</p>
-          <p>Ursprüngliche Empfänger: {draft.guardianIds.map((id) => guardians.find((guardian) => guardian.id === id)?.name ?? `Gelöschte Person (${id})`).join(', ')}</p>
-          {form.guardianIds.length > 1 && <fieldset className="chip-fieldset"><legend>Empfänger für den neuen gemeinsamen Entwurf ausdrücklich wählen</legend>{eligibleGuardians.map((guardian) => <label key={guardian.id} className="choice-chip"><input type="checkbox" checked={conversionRecipients.includes(guardian.id)} onChange={() => setConversionRecipients((current) => current.includes(guardian.id) ? current.filter((id) => id !== guardian.id) : [...current, guardian.id])} />{guardian.name}</label>)}</fieldset>}
+          <p>Ursprüngliche Empfänger: {guardianIdsFor(draft.recipients).map((id) => guardians.find((guardian) => guardian.id === id)?.name ?? `Gelöschte Person (${id})`).join(', ')}</p>
+          {guardianIdsFor(form.recipients).length > 1 && <fieldset className="chip-fieldset"><legend>Empfänger für den neuen gemeinsamen Entwurf ausdrücklich wählen</legend>{eligibleGuardians.map((guardian) => <label key={guardian.id} className="choice-chip"><input type="checkbox" checked={conversionRecipients.includes(guardian.id)} onChange={() => setConversionRecipients((current) => current.includes(guardian.id) ? current.filter((id) => id !== guardian.id) : [...current, guardian.id])} />{guardian.name}</label>)}</fieldset>}
           <fieldset><legend>Prüfung bestätigen</legend>{LEGACY_REVIEW_FIELDS.map((field) => <label key={field} className="field"><input type="checkbox" checked={reviewed.includes(field)} onChange={() => setReviewed((current) => current.includes(field) ? current.filter((entry) => entry !== field) : [...current, field])} />{field} geprüft</label>)}</fieldset>
         </section>}
 
@@ -201,14 +198,14 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
           <p>Originalbeleg und reservierte Nummer bleiben erhalten. Jede Position wird übernommen. Finalisierung erst nach gültiger Zuordnung.</p>
           <label className="field"><span>Korrekturgrund</span><textarea value={form.correction.reason} onChange={(event) => setForm({ ...form, correction: { ...form.correction!, reason: event.target.value } })} /></label>
           {form.studentIds.map((id) => <label className="field" key={id}><span>Lernende Person neu zuordnen: {students.find((student) => student.id === id)?.name ?? `Gelöschte Person (${id})`}</span><select value={id} onChange={(event) => setForm((current) => reassignCorrectionStudent(current, id, event.target.value))}>{!students.some((student) => student.id === id) && <option value={id}>Zuordnung erforderlich</option>}{students.map((student) => <option key={student.id} value={student.id}>{student.name}</option>)}</select></label>)}
-          {form.guardianIds.filter((id) => !guardians.some((guardian) => guardian.id === id)).map((id) => <label className="field" key={id}><span>Gelöschte empfangende Person ({id}) ersetzen</span><select value={id} onChange={(event) => setForm((current) => { const guardianIds = [...new Set(current.guardianIds.map((old) => old === id ? event.target.value : old))]; return { ...current, guardianIds, ...(current.recipients ? { recipients: current.recipients.map((ref) => ref.type === 'guardian' && ref.id === id ? { ...ref, id: event.target.value } : ref) } : {}) } })}><option value={id}>Zuordnung erforderlich</option>{guardians.map((guardian) => <option key={guardian.id} value={guardian.id}>{guardian.name}</option>)}</select></label>)}
+          {guardianIdsFor(form.recipients).filter((id) => !guardians.some((guardian) => guardian.id === id)).map((id) => <label className="field" key={id}><span>Gelöschte empfangende Person ({id}) ersetzen</span><select value={id} onChange={(event) => setForm((current) => { const recipients = current.recipients.map((ref) => ref.type === 'guardian' && ref.id === id ? { ...ref, id: event.target.value } : ref); return { ...current, recipients: [...new Map(recipients.map((ref) => [recipientKey(ref), ref])).values()] } })}><option value={id}>Zuordnung erforderlich</option>{guardians.map((guardian) => <option key={guardian.id} value={guardian.id}>{guardian.name}</option>)}</select></label>)}
         </section>}
         <section className="form-section">
           <div className="form-section__heading"><span>1</span><div><h3>Für wen?</h3><p>Lernende und Rechnungsempfänger auswählen.</p></div></div>
           <fieldset className="chip-fieldset" disabled={finalized}><legend>Lernende</legend><div className="choice-chips">{students.filter((student) => student.active || form.studentIds.includes(student.id)).map((student) => <label className={form.studentIds.includes(student.id) ? 'choice-chip is-selected' : 'choice-chip'} key={student.id}><input type="checkbox" checked={form.studentIds.includes(student.id)} onChange={() => selectStudent(student)} /><span className="avatar">{student.name.slice(0, 1)}</span>{student.name}</label>)}</div>{!students.length && <p className="field-hint field-hint--warning">Lege zuerst unter „Personen“ eine lernende Person an.</p>}{finalized && <p className="field-hint">Die Zuordnung bleibt gesperrt, weil sie Bestandteil des Rechnungsnummernkreises ist.</p>}</fieldset>
           <fieldset className="chip-fieldset"><legend>Rechnungsempfänger</legend><div className="choice-chips">{eligibleGuardians.map((guardian) => { const ref: RecipientRef = { type: 'guardian', id: guardian.id }; return <label className={selectedRecipients.some((entry) => recipientKey(entry) === recipientKey(ref)) ? 'choice-chip is-selected' : 'choice-chip'} key={recipientKey(ref)}><input type="checkbox" checked={selectedRecipients.some((entry) => recipientKey(entry) === recipientKey(ref))} onChange={() => toggleRecipient(ref)} /><span className="avatar avatar--warm">{guardian.name.slice(0, 1)}</span>{guardian.name}</label> })}{eligibleSelfPayers.map((student) => { const ref: RecipientRef = { type: 'student', id: student.id }; return <label className={selectedRecipients.some((entry) => recipientKey(entry) === recipientKey(ref)) ? 'choice-chip is-selected' : 'choice-chip'} key={recipientKey(ref)}><input type="checkbox" checked={selectedRecipients.some((entry) => recipientKey(entry) === recipientKey(ref))} onChange={() => toggleRecipient(ref)} /><span className="avatar">{student.name.slice(0, 1)}</span>{student.name} · {student.selfPayer ? 'zahlt selbst' : 'früher selbstzahlend'}</label> })}</div></fieldset>
           {form.studentIds.length > 1 && selectedRecipients.length > 1 && <p className="field-hint field-hint--warning">Gemeinsame Rechnung: Alle ausgewählten Rechnungsempfänger sehen die Namen und Positionen aller ausgewählten Lernenden. Bitte die Zusammenstellung und Freitexte prüfen.</p>}
-          {form.guardianIds.length > 1 && finalized && <p className="field-hint">Die vorhandene Rechnungsnummer bleibt eine gemeinsame Rechnung für die ausgewählten Empfänger:innen.</p>}
+          {guardianIdsFor(form.recipients).length > 1 && finalized && <p className="field-hint">Die vorhandene Rechnungsnummer bleibt eine gemeinsame Rechnung für die ausgewählten Empfänger:innen.</p>}
         </section>
 
 

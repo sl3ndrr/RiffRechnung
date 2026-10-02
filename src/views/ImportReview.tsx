@@ -30,7 +30,8 @@ export function ImportReviewContent({ review, onApply }: { review: ImportReviewD
         {preview && <>
           <p>Geprüft: {preview.state.students.length} Lernende und {preview.state.invoices.length} Rechnungen.</p>
           {preview.report && <>
-            <p>Altformat {preview.report.fromSchema} → Format {preview.report.toSchema}: {preview.report.idMappings.length} Positions-IDs werden ersetzt. Beträge, Belegnummern und Texte bleiben erhalten. Die abgeschafften strukturierten Steuerfelder werden auch aus historischen Snapshots und internen Kopien entfernt.</p>
+            <p>Altformat {preview.report.fromSchema} → Format {preview.report.toSchema}: {preview.report.idMappings.length} Positions-IDs werden ersetzt. Beträge, Belegnummern und Texte bleiben erhalten. Abgeschaffte strukturierte Steuerfelder sowie Zahler-IBAN und interne Personen-/Zahlungsnotizen werden auch aus internen Kopien entfernt. Ausstellerkonten und Rechnungshinweise bleiben erhalten.</p>
+            <p>Kontakte verwenden künftig ein Feld „Name“. Ein vorhandener Anzeigename bleibt erhalten. Entfernte Kontaktfelder werden nach erfolgreicher Übernahme nicht archiviert.</p>
             <table><thead><tr><th>Rechnung / Position</th><th>Alte ID</th><th>Neue ID</th></tr></thead><tbody>{preview.report.idMappings.map((mapping) => <tr key={`${mapping.invoiceId}-${mapping.itemIndex}`}><td>{mapping.invoiceId} / {mapping.itemIndex + 1}</td><td>{mapping.oldId}</td><td>{mapping.newId}</td></tr>)}</tbody></table>
             <details><summary>Alle {preview.report.changes.length} Formatänderungen</summary><ul>{preview.report.changes.map((change, index) => <li key={`${change.path}-${index}`}>{change.path}: {change.reason}</li>)}</ul></details>
             <p>Die Reparatur bestätigt keine korrekte Aufteilung der Leistungen. Prüfe die alten Empfängerrechnungen fachlich; dieses Paket ändert keine Forderung.</p>

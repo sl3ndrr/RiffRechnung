@@ -12,13 +12,9 @@ export interface Address {
 export interface Guardian {
   id: string
   name: string
-  firstName?: string
-  lastName?: string
   email: string
   phone: string
   address: Address
-  iban: string
-  paymentNote: string
   createdAt: string
   updatedAt: string
 }
@@ -32,7 +28,6 @@ export interface Student {
   selfPayer?: true
   /** Optional master data, including address parts. */
   contact?: { email: string; phone: string; address: Address }
-  note: string
   active: boolean
   createdAt: string
   updatedAt: string
@@ -71,9 +66,7 @@ export interface StudentSnapshot {
 
 export interface InvoiceSnapshot {
   issuer: IssuerSnapshot
-  guardians: GuardianSnapshot[]
-  /** Absent on historical output; never resolved from live master data. */
-  recipients?: RecipientSnapshot[]
+  recipients: RecipientSnapshot[]
   students: StudentSnapshot[]
   accountHolder: string
   iban: string
@@ -92,9 +85,7 @@ export interface Invoice {
   dueDate: string
   period: string
   status: InvoiceStatus
-  guardianIds: string[]
-  /** Authoritative when present; guardianIds remains the legacy projection. */
-  recipients?: RecipientRef[]
+  recipients: RecipientRef[]
   studentIds: string[]
   recipientStrategy: RecipientStrategy
   items: InvoiceItem[]
@@ -214,7 +205,7 @@ export interface VoidedInvoiceNumber {
 }
 
 export interface AppState {
-  schemaVersion: 10
+  schemaVersion: 11
   guardians: Guardian[]
   students: Student[]
   invoices: Invoice[]
@@ -242,8 +233,7 @@ export interface InvoiceDraft {
   invoiceDate: string
   dueDate: string
   period: string
-  guardianIds: string[]
-  recipients?: RecipientRef[]
+  recipients: RecipientRef[]
   studentIds: string[]
   recipientStrategy: RecipientStrategy
   items: InvoiceItem[]

@@ -6,7 +6,6 @@ import type { AppState } from '../types'
 import { validId, validPrice, validQuantity } from './values'
 import { mailboxError } from './mailbox'
 import { ValidationError } from './result'
-import { contactName, contactPartError } from './contactName'
 import { guardianIdsFor, recipientKey } from './recipients'
 import type { RecipientRef } from '../types'
 import { isRetiredTaxConflictPath } from './legacyTaxFields'
@@ -113,12 +112,13 @@ function validateIssuer(value: unknown, path: string, historical = false): void 
   backupString(issuer.phone, `${path}.phone`)
 }
 
-function validateInvoiceSnapshot(value: unknown, path: string, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 = 9): { guardianIds: Set<string>; studentIds: Set<string>; recipients?: RecipientRef[] } {
+function validateInvoiceSnapshot(value: unknown, path: string, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 = 9): { guardianIds: Set<string>; studentIds: Set<string>; recipients?: RecipientRef[] } {
   const snapshot = backupObject(value, path)
-  knownKeys(snapshot, path, 'issuer guardians students accountHolder iban bic bankName legalText' + (schema >= 8 ? ' recipients' : ''))
+  knownKeys(snapshot, path, 'issuer students accountHolder iban bic bankName legalText' + (schema < 11 ? ' guardians' : '') + (schema >= 8 ? ' recipients' : ''))
   validateIssuer(snapshot.issuer, `${path}.issuer`, true)
   const guardianIds = new Set<string>()
-  backupArray(snapshot.guardians, `${path}.guardians`).forEach((entry, index) => {
+  const legacyGuardians = schema < 11 ? backupArray(snapshot.guardians, `${path}.guardians`) : []
+  legacyGuardians.forEach((entry, index) => {
     const entryPath = `${path}.guardians[${index}]`
     const guardian = validateAddress(entry, entryPath)
     knownKeys(guardian, entryPath, 'id name email street postalCode city')
@@ -129,7 +129,9 @@ function validateInvoiceSnapshot(value: unknown, path: string, schema: 2 | 3 | 4
   const recipients = schema >= 8 && snapshot.recipients !== undefined
     ? validateRecipientSnapshots(snapshot.recipients, `${path}.recipients`)
     : undefined
-  if (recipients && canonical(guardianIdsFor(recipients)) !== canonical([...guardianIds])) invalidBackup(`${path}.recipients`, 'muss die historischen Erziehungsberechtigten-Empfänger konsistent abbilden')
+  if (schema < 11 && recipients && canonical(guardianIdsFor(recipients)) !== canonical([...guardianIds])) invalidBackup(`${path}.recipients`, 'muss die historischen Erziehungsberechtigten-Empfänger konsistent abbilden')
+  if (schema === 11 && !recipients) invalidBackup(`${path}.recipients`, 'muss die einzige Empfängerliste enthalten')
+  if (schema === 11) for (const id of guardianIdsFor(recipients!)) guardianIds.add(id)
   const studentIds = new Set<string>()
   backupArray(snapshot.students, `${path}.students`).forEach((entry, index) => {
     const entryPath = `${path}.students[${index}]`
@@ -193,7 +195,7 @@ function validateSettings(value: unknown): void {
   backupBoolean(settings.reducedMotion, 'settings.reducedMotion')
 }
 
-function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, localItemIds: boolean): void {
+function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11, localItemIds: boolean): void {
   const legacy = schema === 2
   const versioned = schema >= 4
   const data = backupObject(value, 'data')
@@ -204,21 +206,13 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 1
   backupArray(data.guardians, 'guardians').forEach((entry, index) => {
     const path = `guardians[${index}]`
     const guardian = backupObject(entry, path)
-    knownKeys(guardian, path, 'id name email phone address iban paymentNote createdAt updatedAt' + (schema >= 8 ? ' firstName lastName' : ''))
+    knownKeys(guardian, path, 'id name email phone address createdAt updatedAt' + (schema < 11 ? ' iban paymentNote' : '') + (schema >= 8 && schema < 11 ? ' firstName lastName' : ''))
     knownKeys(backupObject(guardian.address, `${path}.address`), `${path}.address`, 'street postalCode city')
     registerId(guardian.id, `${path}.id`, guardianIds)
     backupString(guardian.name, `${path}.name`, true)
-    if (schema >= 8 && (guardian.firstName !== undefined || guardian.lastName !== undefined)) {
-      if (typeof guardian.firstName !== 'string' || contactPartError(guardian.firstName, 'Vorname')) invalidBackup(`${path}.firstName`, contactPartError(guardian.firstName as string | undefined, 'Vorname') ?? 'muss eine Zeichenkette sein')
-      if (typeof guardian.lastName !== 'string' || contactPartError(guardian.lastName, 'Nachname')) invalidBackup(`${path}.lastName`, contactPartError(guardian.lastName as string | undefined, 'Nachname') ?? 'muss eine Zeichenkette sein')
-      if ((guardian.firstName as string).trim() !== guardian.firstName || (guardian.lastName as string).trim() !== guardian.lastName) invalidBackup(path, 'Vor- und Nachname müssen ohne Rand-Leerzeichen gespeichert sein')
-      if (guardian.name !== contactName(guardian.firstName as string, guardian.lastName as string)) invalidBackup(`${path}.name`, 'muss dem ausdrücklich gespeicherten Vor- und Nachnamen entsprechen')
-    }
     validateEmail(guardian.email, `${path}.email`)
     backupString(guardian.phone, `${path}.phone`)
     validateAddress(guardian.address, `${path}.address`)
-    backupString(guardian.iban, `${path}.iban`)
-    backupString(guardian.paymentNote, `${path}.paymentNote`)
     backupTimestamp(guardian.createdAt, `${path}.createdAt`)
     backupTimestamp(guardian.updatedAt, `${path}.updatedAt`)
   })
@@ -228,7 +222,7 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 1
   backupArray(data.students, 'students').forEach((entry, index) => {
     const path = `students[${index}]`
     const student = backupObject(entry, path)
-    knownKeys(student, path, 'id name billingCode guardianIds note active createdAt updatedAt' + (schema >= 8 ? ' selfPayer contact' : ''))
+    knownKeys(student, path, 'id name billingCode guardianIds active createdAt updatedAt' + (schema < 11 ? ' note' : '') + (schema >= 8 ? ' selfPayer contact' : ''))
     registerId(student.id, `${path}.id`, studentIds)
     backupString(student.name, `${path}.name`, true)
     if (!legacy || student.billingCode !== undefined) {
@@ -251,7 +245,6 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 1
       knownKeys(backupObject(contact.address, `${path}.contact.address`), `${path}.contact.address`, 'street postalCode city')
       validateAddress(contact.address, `${path}.contact.address`)
     }
-    backupString(student.note, `${path}.note`)
     backupBoolean(student.active, `${path}.active`)
     backupTimestamp(student.createdAt, `${path}.createdAt`)
     backupTimestamp(student.updatedAt, `${path}.updatedAt`)
@@ -263,7 +256,7 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 1
   backupArray(data.invoices, 'invoices').forEach((entry, index) => {
     const path = `invoices[${index}]`
     const invoice = backupObject(entry, path)
-    knownKeys(invoice, path, 'id number sequence year invoiceDate dueDate period status guardianIds studentIds recipientStrategy items introText freeText legalText snapshot paidAt sentAt createdAt updatedAt' + (versioned ? ' versionId correction' : '') + (schema >= 5 ? ' calculation' : '') + (schema >= 8 ? ' draftPrintSnapshot recipients' : ''))
+    knownKeys(invoice, path, 'id number sequence year invoiceDate dueDate period status studentIds recipientStrategy items introText freeText legalText snapshot paidAt sentAt createdAt updatedAt' + (schema < 11 ? ' guardianIds' : '') + (versioned ? ' versionId correction' : '') + (schema >= 5 ? ' calculation' : '') + (schema >= 8 ? ' draftPrintSnapshot recipients' : ''))
     registerId(invoice.id, `${path}.id`, invoiceIds)
     const number = invoice.number === null ? null : backupString(invoice.number, `${path}.number`, true)
     if (number !== null) {
@@ -281,9 +274,10 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 1
     const status = backupEnum(invoice.status, `${path}.status`, INVOICE_STATUSES)
     if (status === 'draft' && number !== null) invalidBackup(`${path}.number`, 'muss bei einem Entwurf leer sein')
     if (status !== 'draft' && number === null) invalidBackup(`${path}.number`, 'muss bei einer finalisierten Rechnung gesetzt sein')
-    const invoiceGuardianIds = backupIdArray(invoice.guardianIds, `${path}.guardianIds`)
+    const invoiceGuardianIds = schema < 11 ? backupIdArray(invoice.guardianIds, `${path}.guardianIds`) : []
     const invoiceRecipients = schema >= 8 && invoice.recipients !== undefined ? validateRecipientRefs(invoice.recipients, `${path}.recipients`) : undefined
-    if (invoiceRecipients && canonical(guardianIdsFor(invoiceRecipients)) !== canonical(invoiceGuardianIds)) invalidBackup(`${path}.guardianIds`, 'muss den typisierten Erziehungsberechtigten-Empfängern entsprechen')
+    if (schema < 11 && invoiceRecipients && canonical(guardianIdsFor(invoiceRecipients)) !== canonical(invoiceGuardianIds)) invalidBackup(`${path}.guardianIds`, 'muss den typisierten Erziehungsberechtigten-Empfängern entsprechen')
+    if (schema === 11 && !invoiceRecipients) invalidBackup(`${path}.recipients`, 'muss die einzige Empfängerliste enthalten')
     const invoiceStudentIds = backupIdArray(invoice.studentIds, `${path}.studentIds`)
     const invoiceStudentIdSet = new Set(invoiceStudentIds)
     backupEnum(invoice.recipientStrategy, `${path}.recipientStrategy`, RECIPIENT_STRATEGIES)
@@ -293,7 +287,7 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 1
       validateInvoiceSnapshot(invoice.draftPrintSnapshot, `${path}.draftPrintSnapshot`, schema)
     }
     const snapshotReferences = invoice.snapshot === undefined ? undefined : validateInvoiceSnapshot(invoice.snapshot, `${path}.snapshot`, schema)
-    if (invoiceRecipients && snapshotReferences && canonical(invoiceRecipients) !== canonical(snapshotReferences.recipients)) invalidBackup(`${path}.snapshot.recipients`, 'muss den typisierten Empfängerbezug des ausgestellten Belegs erhalten')
+    if (invoiceRecipients && snapshotReferences && schema < 11 && canonical(invoiceRecipients) !== canonical(snapshotReferences.recipients)) invalidBackup(`${path}.snapshot.recipients`, 'muss den typisierten Empfängerbezug des ausgestellten Belegs erhalten')
     const correction = invoice.correction === undefined ? undefined : backupObject(invoice.correction, `${path}.correction`)
     if (correction) {
       knownKeys(correction, `${path}.correction`, 'replacesId reason')
@@ -307,7 +301,7 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 1
     const parentContent = referenceVersion ? backupObject(referenceVersion.content, 'documentVersions.content') : undefined
     // Complete sealed documents own their references; live master data may be deleted.
     // Correction drafts may retain only references actually present in their parent.
-    const historicalGuardians = parentContent ? backupIdArray(parentContent.guardianIds, 'documentVersions.content.guardianIds') : []
+    const historicalGuardians = schema < 11 && parentContent ? backupIdArray(parentContent.guardianIds, 'documentVersions.content.guardianIds') : []
     const historicalRecipients = parentContent?.recipients && schema >= 8 ? validateRecipientRefs(parentContent.recipients, 'documentVersions.content.recipients') : []
     const historicalStudents = parentContent ? backupIdArray(parentContent.studentIds, 'documentVersions.content.studentIds') : []
     invoiceGuardianIds.forEach((id, referenceIndex) => {
@@ -409,7 +403,7 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 1
   if (versioned) validateDocuments(data as unknown as AppState, schema)
 }
 
-function validateActivity(entry: unknown, path: string, ids: Set<string>, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): void {
+function validateActivity(entry: unknown, path: string, ids: Set<string>, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11): void {
   const event = backupObject(entry, path)
   knownKeys(event, path, 'id at label entityType entityId snapshotCorrection')
   registerId(event.id, `${path}.id`, ids)
@@ -432,7 +426,7 @@ function validateEmail(value: unknown, path: string, historical = false): void {
 }
 
 export function validateBackupState(value: unknown): asserts value is AppState {
-  validateState(value, 10, false)
+  validateState(value, 11, false)
 }
 
 
@@ -446,7 +440,7 @@ export function knownKeys(value: Record<string, unknown>, path: string, keys: st
 
 
 
-function validateDocuments(state: AppState, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): void {
+function validateDocuments(state: AppState, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11): void {
   const ids = new Set<string>()
   const replaced = new Set<string>()
   backupArray(state.documentVersions, 'documentVersions').forEach((entry, index) => {
@@ -515,7 +509,7 @@ function validateDocuments(state: AppState, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 
       if (v.cancelsId !== null && total !== 0) invalidBackup(`${path}.amounts`, 'muss bei einer Stornierung null sein')
       if (!invoice.correction || invoice.correction.replacesId !== parentId || invoice.correction.reason !== v.reason) invalidBackup(path, 'widerspricht dem Korrekturverweis der Rechnung')
     } else if (v.originalId !== id || invoice.correction !== undefined) invalidBackup(`${path}.originalId`, 'muss den Originalbeleg bezeichnen')
-    if (v.provenance === 'issued' && (canonical(v.outputSnapshot) !== canonical(invoice.snapshot) || canonical([...refs.guardianIds]) !== canonical(invoice.guardianIds) || (invoice.recipients && canonical(refs.recipients) !== canonical(invoice.recipients)) || canonical([...refs.studentIds]) !== canonical(invoice.studentIds) || v.outputLegalText !== invoice.legalText)) invalidBackup(`${path}.outputSnapshot`, 'muss bei neu ausgestellten Belegen mit Inhalt und Zuordnung übereinstimmen')
+    if (v.provenance === 'issued' && (canonical(v.outputSnapshot) !== canonical(invoice.snapshot) || (schema < 11 && canonical([...refs.guardianIds]) !== canonical((invoice as unknown as { guardianIds: string[] }).guardianIds)) || (invoice.recipients && canonical(refs.recipients) !== canonical(invoice.recipients)) || canonical([...refs.studentIds]) !== canonical(invoice.studentIds) || v.outputLegalText !== invoice.legalText)) invalidBackup(`${path}.outputSnapshot`, 'muss bei neu ausgestellten Belegen mit Inhalt und Zuordnung übereinstimmen')
   })
   const draftParents = new Set<string>()
   for (const invoice of state.invoices) {
@@ -593,6 +587,6 @@ function validatePaymentDay(value: unknown, path: string, allowCalendar: boolean
 }
 
 /** Shared non-tax structural invariants for explicitly versioned import adapters. */
-export function validateLegacyStructure(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9): void {
+export function validateLegacyStructure(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): void {
   validateState(value, schema, schema === 2)
 }
