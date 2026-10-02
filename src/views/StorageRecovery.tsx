@@ -26,7 +26,7 @@ export function StorageRecovery({ recovery, onExport, onImport, onReview, onPrev
           <button className="button button--tonal" type="button" onClick={onExport} disabled={!recovery.rawData}><Download aria-hidden="true" />Beschädigte Rohdaten exportieren</button>
           <label className="button button--primary file-button"><Upload aria-hidden="true" />JSON-Backup wiederherstellen<input type="file" accept="application/json,.json" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) onImport(file) }} /></label>
         </div>
-        <p className="recovery-hint">Exportiere möglichst zuerst die beschädigten Rohdaten. Prüfe anschließend eine bekannte Sicherung oder die angebotene Reparatur. Eine bestätigte Übernahme bewahrt die Eingangsdaten und den Bericht vor dem lokalen Schreibabschluss auf. Neuere unbekannte Formate bleiben schreibgeschützt.</p>
+        <p className="recovery-hint">Exportiere möglichst zuerst die beschädigten Rohdaten. Prüfe anschließend eine bekannte Sicherung oder die angebotene Reparatur. Eine bestätigte Übernahme bewahrt die bereinigten Eingangsdaten und den Bericht auf; abgeschaffte strukturierte Steuerfelder werden auch aus internen Kopien entfernt. Neuere unbekannte Formate bleiben schreibgeschützt.</p>
       </section>
     </main>
   )

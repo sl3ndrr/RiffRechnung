@@ -699,10 +699,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .invoice-total-row { border-top: .7pt solid #333; background: rgb(220 230 245); font-weight: 750; }
 .invoice-total-row td { padding-block: 6pt; }
 .invoice-total-row td:first-child { text-align: right; }
+.invoice-private-row td { text-align: left !important; padding: 3pt 5pt; }
 .invoice-final-rows { break-inside: avoid; page-break-inside: avoid; }
-.invoice-tax-row td, .invoice-total-footer-row td { text-align: left !important; padding: 3pt 5pt; }
-.invoice-tax-row p, .invoice-total-footer-row p { margin: 2pt 0; }
-.invoice-total-footer { color: #555; font-size: 8pt; white-space: pre-wrap; overflow-wrap: anywhere; border-top: .5pt solid rgb(30 90 160); padding-top: 4pt; }
 .invoice-payment-block { break-inside: auto; page-break-inside: auto; }
 .invoice-payment-copy { margin-top: 7mm; break-inside: avoid; page-break-inside: avoid; }
 .invoice-payment-copy p { margin: 0; }

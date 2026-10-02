@@ -255,8 +255,6 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         ...(invoice.recipients ? { recipients: structuredClone(invoice.recipients) } : {}),
         studentIds: invoice.studentIds,
         recipientStrategy: invoice.recipientStrategy,
-        ...(invoice.invoiceKind ? { invoiceKind: invoice.invoiceKind } : {}),
-        ...(invoice.taxPresentation ? { taxPresentation: structuredClone(invoice.taxPresentation) } : {}),
         items: structuredClone(invoice.items),
         introText: invoice.introText,
         freeText: invoice.freeText,
@@ -687,7 +685,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         <div className="brand"><span className="brand__mark" aria-hidden="true">🧾</span><div><strong>RiffRechnung</strong><small>Rechnungen</small></div><button ref={mobileCloseButtonRef} className="icon-button mobile-only" onClick={closeMobileNav} aria-label="Navigation schließen"><X aria-hidden="true" /></button></div>
         <nav aria-label="Hauptnavigation">{navItems.map(({ key, label, icon: Icon }) => <button className={page === key ? 'is-active' : ''} aria-current={page === key ? 'page' : undefined} aria-label={label} key={key} onClick={() => setCurrentPage(key)}><Icon aria-hidden="true" /><span>{label}</span>{key === 'invoices' && state.invoices.filter((invoice) => invoice.status === 'draft').length > 0 && <b>{state.invoices.filter((invoice) => invoice.status === 'draft').length}</b>}</button>)}</nav>
         <div className="sidebar__privacy"><span><ShieldDot /></span><div><strong>Nur auf diesem Gerät</strong><small>Keine automatische Cloud-Übertragung</small></div></div>
-        <button className="sidebar__version" type="button" onClick={() => setChangelogOpen(true)} aria-label={`Versionshistorie öffnen, aktuelle Version ${APP_VERSION}`}>Version {APP_VERSION}</button>
+        <button className="sidebar__version" type="button" onClick={() => setChangelogOpen(true)} aria-label={`Versionshistorie öffnen, aktuelle Vrsion ${APP_VERSION}`}>Version {APP_VERSION}</button>
         <div className="sidebar__secondary-actions">
           <button type="button" className={page === 'about' ? 'is-active' : ''} aria-current={page === 'about' ? 'page' : undefined} aria-label="Über mich" title="Über mich" onClick={() => setCurrentPage('about')}><UserRound aria-hidden="true" /><span>Über mich</span></button>
           <a href={FEEDBACK_URL} target="_blank" rel="noreferrer" aria-label="Feedbackformular öffnen (neuer Tab)" title="Feedback"><MessageSquareText aria-hidden="true" /><span>Feedback</span></a>
@@ -720,7 +718,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
 
       <nav className="mobile-bottom-nav" aria-label="Mobile Hauptnavigation" inert={isMobile && mobileNav}>{navItems.slice(0, 4).map(({ key, label, icon: Icon }) => <button className={page === key ? 'is-active' : ''} aria-current={page === key ? 'page' : undefined} aria-label={label} key={key} onClick={() => setCurrentPage(key)}><Icon aria-hidden="true" /><span>{label}</span></button>)}</nav>
 
-      <FolderReview review={folderReview} current={session.revision} onClose={() => setFolderReview(null)} onChoose={connectFolder} onConnect={() => void acceptFolder()} onRestore={(preview) => setConfirmation({ title: 'Sicherung zuordnen und wiederherstellen?', message: 'Mit der Bestätigung wird die gewählte Sicherung als neuer lokaler Stand eingeführt. Altbackups ohne Bestands-ID werden ausdrücklich zugeordnet; eine gemeinsame Herkunft wird nicht behauptet. Vorhandene Originale und Rohdaten bleiben geschützt.', label: 'Zuordnung und Wiederherstellung bestätigen', action: async () => { await acceptFolder(preview) } })} />
+      <FolderReview review={folderReview} current={session.revision} onClose={() => setFolderReview(null)} onChoose={connectFolder} onConnect={() => void acceptFolder()} onRestore={(preview) => setConfirmation({ title: 'Sicherung zuordnen und wiederherstellen?', message: 'Mit der Bestätigung wird die gewählte Sicherung als neuer lokaler Stand eingeführt. Altbackups ohne Bestands-ID werden ausdrücklich zugeordnet; eine gemeinsame Herkunft wird nicht behauptet. Beleginformationen bleiben geschützt. Beim Formatumstieg werden ausschließlich die abgeschafften strukturierten Steuerfelder und zugehörige Metadaten bereinigt.', label: 'Zuordnung und Wiederherstellung bestätigen', action: async () => { await acceptFolder(preview) } })} />
       <ImportReview review={importReview} onClose={() => setImportReview(null)} onApply={confirmImport} />
       {duoDialog && <DuoWorkflow key={duoDialog} state={state} groupId={duoDialog} onClose={() => setDuoDialog(null)} onGroup={setDuoDialog} onEdit={editInvoice} onCommit={(producer, label) => commit(producer, label, 'invoice')} />}
       <InvoiceEditor state={state} open={editor.open} draft={editor.draft} editing={editor.editing} finalized={editor.finalized} invoiceNumber={editor.invoiceNumber} guardians={state.guardians} students={state.students} settings={state.settings} onClose={requestCloseEditor} onDirtyChange={setEditorDirty} onSave={saveInvoice} onConvert={convertLegacyDraft} />

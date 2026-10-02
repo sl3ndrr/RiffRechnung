@@ -10,7 +10,7 @@ import { applyStandardRateInput, parseStandardRate, settingsChangeErrors, STANDA
 import { isFinalizedInvoice } from '../lib/safety'
 
 import { SettingsBuffer } from '../lib/settingsBuffer'
-import { invoiceSetupErrors, TAX_IDENTIFIER_LABELS, taxIdentifierInputError } from '../lib/invoiceProfile'
+import { invoiceSetupErrors } from '../lib/invoiceSetup'
 import { bicError } from '../lib/paymentData'
 
 interface SettingsProps {
@@ -49,7 +49,6 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
   const paymentTermError = parsePaymentTermInput(paymentTermInput) === null
   const invalidRateInput = Object.values(rateInputs).some((raw) => parseStandardRate(raw) === null)
   const setupErrors = invoiceSetupErrors(form)
-  const taxIdentifierError = form.taxIdentifier.value ? taxIdentifierInputError(form.taxIdentifier) : null
 
   const setRate = (field: 'privateRate' | 'duoRate', raw: string) => {
     setRateInputs((current) => ({ ...current, [field]: raw }))
@@ -96,7 +95,7 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
         <div className="settings-content" >
           <section id="profile" className="surface settings-section">
             <div className="settings-section__heading"><span><ShieldCheck aria-hidden="true" /></span><div><h2>Rechnungssteller</h2><p>Diese Angaben erscheinen im Briefkopf und werden beim Finalisieren eingefroren.</p></div></div>
-            {setupErrors.length > 0 && <div className="form-errors" role="status"><strong>Für Standardrechnungen fehlen:</strong><ul>{setupErrors.map((error) => <li key={error.field}>{error.message}</li>)}</ul><p>Bei einer ausdrücklich gewählten Kleinbetragsrechnung kann nur die Steuerkennung entfallen; die übrigen Angaben bleiben erforderlich.</p></div>}
+            {setupErrors.length > 0 && <div className="form-errors" role="status"><strong>Für den Abschluss fehlen:</strong><ul>{setupErrors.map((error) => <li key={error.field}>{error.message}</li>)}</ul></div>}
             <div className="form-grid form-grid--2">
               <label className="field field--full"><span>Name / Geschäftsbezeichnung</span><input value={form.issuer.name} onChange={(event) => setForm({ ...form, issuer: { ...form.issuer, name: event.target.value } })} /></label>
               <label className="field field--full"><span>Straße & Hausnummer</span><input value={form.issuer.street} onChange={(event) => setForm({ ...form, issuer: { ...form.issuer, street: event.target.value } })} /></label>
@@ -104,9 +103,6 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
               <label className="field"><span>Ort</span><input value={form.issuer.city} onChange={(event) => setForm({ ...form, issuer: { ...form.issuer, city: event.target.value } })} /></label>
               <label className="field"><span>E-Mail</span><input type="text" inputMode="email" aria-invalid={Boolean(emailError)} value={form.issuer.email} onChange={(event) => setForm({ ...form, issuer: { ...form.issuer, email: event.target.value } })} />{emailError && <small role="alert">{emailError}</small>}</label>
               <label className="field"><span>Telefon</span><input type="tel" value={form.issuer.phone} onChange={(event) => setForm({ ...form, issuer: { ...form.issuer, phone: event.target.value } })} /></label>
-              <label className="field field--full"><span>Rechnungsprofil</span><select value={form.invoiceProfile} onChange={(event) => setForm({ ...form, invoiceProfile: event.target.value as SettingsType['invoiceProfile'] })}><option value="unconfigured">Bitte ausdrücklich auswählen</option><option value="small-business">Kleinunternehmer nach § 19 UStG</option></select><small>Dieses Paket unterstützt ausschließlich das ausdrücklich gewählte Kleinunternehmerprofil. Andere steuerliche Konstellationen werden nicht automatisch eingeordnet.</small></label>
-              <label className="field"><span>Art der steuerlichen Identifikationsangabe</span><select value={form.taxIdentifier.kind} onChange={(event) => setForm({ ...form, taxIdentifier: { ...form.taxIdentifier, kind: event.target.value as SettingsType['taxIdentifier']['kind'] } })}>{Object.entries(TAX_IDENTIFIER_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-              <label className="field"><span>{TAX_IDENTIFIER_LABELS[form.taxIdentifier.kind]}</span><input value={form.taxIdentifier.value} aria-invalid={Boolean(taxIdentifierError)} onChange={(event) => setForm({ ...form, taxIdentifier: { ...form.taxIdentifier, value: event.target.value } })} />{taxIdentifierError && <small className="field-error" role="alert">{taxIdentifierError}</small>}</label>
             </div>
           </section>
 
