@@ -1,3 +1,5 @@
+import { cleanLegacyContacts, normalizeLegacyRecipients } from '../../src/lib/legacyContactsRecipients'
+import { stripLegacyTaxFields } from '../../src/lib/legacyTaxFields'
 import { test, expect, type Page } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
 import { readFile, writeFile } from 'node:fs/promises'
@@ -50,7 +52,7 @@ test('AP6 Browser/PDF: eingefrorene Schema-7-Belege bewahren Nichtsteuerdaten na
     }, JSON.stringify(original))
     await page.reload()
     const after = await stateOf(page)
-    expect({ ...after, schemaVersion: 7 }).toEqual(JSON.parse(JSON.stringify(original, (key, value) => ['invoiceProfile', 'taxIdentifier', 'invoiceKind', 'taxPresentation', 'taxOutput'].includes(key) ? undefined : value)))
+    expect({ ...after, schemaVersion: 7 }).toEqual(normalizeLegacyRecipients(cleanLegacyContacts(stripLegacyTaxFields(original).value)))
     const separate = after.invoices.find((entry) => entry.recipientStrategy === 'separate')!
     const printed = await pdfText(page, after, separate.id)
     expect(printed.text).toContain(separate.number!)
@@ -76,8 +78,6 @@ test('AP3 Browser/PDF: Adressloser Entwurf und 250-Euro-Beleg bleiben nach Stamm
   const issued = saveInvoiceDraft(saved, { ...draft, id: saved.invoices[0].id }, true, documentAt)
   const first = await pdfText(page, issued, issued.invoices[0].id)
   const after = structuredClone(issued)
-  after.guardians[0].firstName = 'Anderer'
-  after.guardians[0].lastName = 'Name'
   after.guardians[0].name = 'Anderer Name'
   after.guardians[0].address = { street: 'Neuer Weg 9', postalCode: '99999', city: 'Anderswo' }
   const second = await pdfText(page, after, after.invoices[0].id)
@@ -200,7 +200,7 @@ test('P04 Browser: Zahlungen manuell zuordnen, archivieren und vollständiges Ba
 
 test('AP1 Browser/PDF: gemeinsame Rechnung ohne Aufteilung, Export und Import', async ({ page }, testInfo) => {
   const state = documentFamily()
-  state.invoices = [{ ...saveInvoiceDraft(state, { ...documentDraft(), guardianIds: ['g-a', 'g-b'] }, false, documentAt).invoices[0] }]
+  state.invoices = [{ ...saveInvoiceDraft(state, { ...documentDraft(), recipients: (['g-a', 'g-b']).map((id) => ({ type: 'guardian' as const, id })) }, false, documentAt).invoices[0] }]
   await seed(page, state)
   await invoices(page)
   await page.getByRole('button', { name: 'Entwurf', exact: true }).click()
@@ -214,7 +214,7 @@ test('AP1 Browser/PDF: gemeinsame Rechnung ohne Aufteilung, Export und Import', 
   const finalized = await stateOf(page)
   expect(finalized.invoices).toHaveLength(1)
   expect(finalized.documentVersions).toHaveLength(1)
-  expect(finalized.invoices[0].snapshot!.guardians.map((person) => person.id)).toEqual(['g-a', 'g-b'])
+  expect(finalized.invoices[0].snapshot!.recipients.map((person) => person.id)).toEqual(['g-a', 'g-b'])
   expect(finalized.invoices[0].number).not.toBeNull()
   const pdf = await pdfText(page, finalized, finalized.invoices[0].id)
   expect(pdf.text).toContain('Empfaenger A')
@@ -270,7 +270,7 @@ test('AP1 Browser: ein offener Altentwurf verlangt sichtbare Prüfung und ausdr�
 test('AP1 Browser: importierter Altentwurf mit mehreren Empfängern braucht neue Wahl', async ({ page }) => {
   const state = documentFamily()
   const source = saveInvoiceDraft(state, documentDraft(), false, documentAt).invoices[0]
-  state.invoices = [{ ...source, guardianIds: ['g-a', 'g-b'], recipientStrategy: 'separate' }]
+  state.invoices = [{ ...source, recipients: (['g-a', 'g-b']).map((id) => ({ type: 'guardian' as const, id })), recipientStrategy: 'separate' }]
   await seed(page, state)
   await invoices(page)
   await page.getByRole('button', { name: 'Entwurf', exact: true }).click()
@@ -288,7 +288,7 @@ test('AP1 Browser: importierter Altentwurf mit mehreren Empfängern braucht neue
   const converted = await stateOf(page)
   expect(converted.invoices).toHaveLength(1)
   expect(converted.invoices[0].id).not.toBe(source.id)
-  expect(converted.invoices[0].guardianIds).toEqual(['g-a', 'g-b'])
+  expect(converted.invoices[0].recipients.map((ref) => ref.id)).toEqual(['g-a', 'g-b'])
   expect(converted.invoices[0].recipientStrategy).toBe('joint')
   expect(converted.invoices[0].number).toBeNull()
 })
@@ -311,7 +311,7 @@ test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unverändert
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
   await page.reload()
   const state = await stateOf(page)
-  expect(state.schemaVersion).toBe(10)
+  expect(state.schemaVersion).toBe(11)
   expect(state.documentVersions[0].provenance).toBe('oldest-available')
   await invoices(page)
   await page.getByRole('button', { name: '2026-a-0001', exact: true }).click()
@@ -386,9 +386,10 @@ test('AP5 Browser/PDF: Selbstzahlerin und Minderjähriger mit zwei Empfängern v
   for (const name of ['Alex Beispiel', 'Robin Beispiel']) {
     await page.getByRole('button', { name: 'Erziehungsberechtigte Person', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: 'Erziehungsberechtigte Person anlegen' })
-    const [firstName, lastName] = name.split(' ')
-    await dialog.getByLabel('Vorname *').fill(firstName)
-    await dialog.getByLabel('Nachname *').fill(lastName)
+    await dialog.getByLabel('Name *').fill(name)
+    await expect(dialog.getByLabel('Vorname *')).toHaveCount(0)
+    await expect(dialog.getByText('IBAN / Zahlungsinfo (optional)')).toHaveCount(0)
+    await expect(dialog.getByText('Interne Notiz')).toHaveCount(0)
     await dialog.getByLabel('E-Mail').fill(name.startsWith('Alex') ? 'alex@example.org' : 'robin@example.org')
     await dialog.getByLabel('Straße & Hausnummer').fill('Beispielweg 3')
     await dialog.getByLabel('PLZ').fill('12345')

@@ -26,7 +26,7 @@ async function openDraft(page: Page, name: string) {
 
 test('P03 Browser: beide Erziehungsberechtigte ausdrücklich auf einer gemeinsamen Duo-Rechnung wählen', async ({ page }) => {
   const state = documentFamily()
-  await seed(page, saveInvoiceDraft(state, { ...documentDraft(), guardianIds: [] }, false, documentAt))
+  await seed(page, saveInvoiceDraft(state, { ...documentDraft(), recipients: ([]).map((id) => ({ type: 'guardian' as const, id })) }, false, documentAt))
   const editor = await openDraft(page, 'Testkind A')
   const audience = editor.getByRole('group', { name: 'Rechnungsempfänger' })
   await audience.locator('label.choice-chip').filter({ hasText: 'Empfaenger A' }).click()
@@ -41,7 +41,7 @@ test('P03 Browser: beide Erziehungsberechtigte ausdrücklich auf einer gemeinsam
   const saved = await stateOf(page)
   expect(saved.invoices).toHaveLength(1)
   expect(saved.documentVersions).toHaveLength(1)
-  expect(saved.invoices[0].snapshot?.guardians.map((person) => person.id)).toEqual(['g-a', 'g-b'])
+  expect(saved.invoices[0].snapshot?.recipients.map((person) => person.id)).toEqual(['g-a', 'g-b'])
   expect(saved.invoices[0].number).toBe('2026-a-0001')
   expect('duoGroups' in saved).toBe(false)
   await expect(page.getByRole('button', { name: 'Duo · zwei Haushalte', exact: true })).toHaveCount(0)
