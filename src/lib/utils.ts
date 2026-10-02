@@ -409,19 +409,28 @@ export function buildEpcPayload(invoice: Invoice, settings: Settings, amount: nu
   return payload
 }
 
-export function downloadText(filename: string, content: string, type = 'application/json'): void {
-  const blob = new Blob([content], { type })
+export function downloadBlob(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
   link.download = filename
   link.tabIndex = -1
   link.setAttribute('aria-hidden', 'true')
-  document.body.append(link)
-  link.click()
+  try {
+    document.body.append(link)
+    link.click()
+  } catch (error) {
+    link.remove()
+    URL.revokeObjectURL(url)
+    throw error
+  }
   // Some engines finish initiating the download after click() returns. Keep
   // both the attached anchor and its blob alive until they have consumed it.
   window.setTimeout(() => { link.remove(); URL.revokeObjectURL(url) }, 60_000)
+}
+
+export function downloadText(filename: string, content: string, type = 'application/json'): void {
+  downloadBlob(filename, new Blob([content], { type }))
 }
 
 export function groupItemsByStudent(items: InvoiceItem[], studentIds: string[]): Array<[string, InvoiceItem[]]> {
@@ -435,12 +444,7 @@ export function groupItemsByStudent(items: InvoiceItem[], studentIds: string[]):
 }
 
 export function downloadBytes(fileName: string, bytes: Uint8Array): void {
-  const url = URL.createObjectURL(new Blob([bytes.slice().buffer], { type: 'application/octet-stream' }))
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = fileName
-  anchor.click()
-  URL.revokeObjectURL(url)
+  downloadBlob(fileName, new Blob([bytes.slice().buffer], { type: 'application/octet-stream' }))
 }
 
 export function outputItemTotal(invoice: Invoice, item: InvoiceItem): number {

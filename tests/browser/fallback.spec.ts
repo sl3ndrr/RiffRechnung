@@ -6,6 +6,18 @@ import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
 import { invoiceTotalCents } from '../../src/lib/money'
 import { duoIssued } from '../duoFixtures'
 
+// Real downloads start after the initiating click returns. This exposes early
+// Blob revocation for both text exports and byte-preserving rescue downloads.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    const click = HTMLAnchorElement.prototype.click
+    HTMLAnchorElement.prototype.click = function () {
+      if (this.download) window.setTimeout(() => click.call(this), 50)
+      else click.call(this)
+    }
+  })
+})
+
 async function settings(page: Page) { await page.getByRole('button', { name: 'Einstellungen', exact: true }).click() }
 async function restore(page: Page, buffer: Buffer) {
   await settings(page)
@@ -15,7 +27,7 @@ async function restore(page: Page, buffer: Buffer) {
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
 }
 
-test('P03 Fallback: zwei unabhängige Duo-Rechnungen als JSON exportieren, importieren und reload', async ({ page, browser, browserName }) => {
+test('P03 Fallback: zwei unabhängige Duo-Rechnungen als JSON exportieren, importieren und reload', async ({ page, browser }) => {
   const state = duoIssued()
   await page.goto('/')
   await restore(page, Buffer.from(serializeBackup(state)))
@@ -35,6 +47,23 @@ test('P03 Fallback: zwei unabhängige Duo-Rechnungen als JSON exportieren, impor
     expect(parseBackup(raw!)).toEqual(state)
     expect('duoGroups' in parseBackup(raw!)).toBe(false)
   } finally { await destination.close() }
+})
+
+test('P04: asynchrone Rohdatenrettung erhält lokalen Text und unveränderte Importbytes', async ({ page }) => {
+  await page.goto('/')
+  const corrupt = '{synthetische Rohdaten\r\nübrig'
+  await page.evaluate(({ key, corrupt }) => localStorage.setItem(key, corrupt), { key: STORAGE_KEY, corrupt })
+  await page.reload()
+  const textDownload = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Beschädigte Rohdaten exportieren', exact: true }).click()
+  expect(await readFile((await (await textDownload).path())!, 'utf8')).toBe(corrupt)
+  const bytes = Buffer.from([0xff, 0xfe, 0, 13, 10, 123, 255])
+  await page.locator('input[type=file]').setInputFiles({ name: 'unbekannt.json', mimeType: 'application/json', buffer: bytes })
+  await expect(page.getByRole('alert').filter({ hasText: 'Keine Übernahme möglich' })).toBeVisible()
+  const byteDownload = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Unveränderte Originaldatei exportieren', exact: true }).click()
+  expect(await readFile((await (await byteDownload).path())!)).toEqual(bytes)
+  expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(corrupt)
 })
 
 test('AP1 Fallback: gemeinsame Rechnung an zwei Personen als JSON exportieren, importieren und reload', async ({ page, browser, browserName }, testInfo) => {
