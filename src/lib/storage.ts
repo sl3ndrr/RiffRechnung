@@ -25,7 +25,7 @@ export type WriteLock = <T>(action: () => Promise<T>) => Promise<T>
 export function newerFormat(raw: string): boolean {
   try {
     const root = JSON.parse(raw)
-    return root.storageVersion > 4 || root.schemaVersion > 12 || root.data?.schemaVersion > 12
+    return root.storageVersion > 4 || root.schemaVersion > 13 || root.data?.schemaVersion > 13
   } catch { return false }
 }
 
@@ -124,7 +124,7 @@ export class StorageSession {
     const maxRevision = Math.max(previous?.revision ?? 0, source?.revision ?? 0)
     if (!Number.isSafeInteger(maxRevision + 1)) throw new Error('Revisionszähler ausgeschöpft. Der Bestand bleibt unverändert.')
     const envelope: StorageEnvelope = {
-      app: 'riffrechnung', storageVersion: 4, schemaVersion: 12,
+      app: 'riffrechnung', storageVersion: 4, schemaVersion: 13,
       datasetId: base?.datasetId ?? crypto.randomUUID(), commitId: crypto.randomUUID(), revision: maxRevision + 1,
       savedAt: new Date().toISOString(), operation,
       ancestors: base ? [...base.ancestors, await reference(base)] : [],

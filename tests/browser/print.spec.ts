@@ -203,7 +203,6 @@ test('P09 Browser: abgelehnte QR-Erzeugung und ein verspäteter früherer Auftra
 test('P09 Browser: ungültige historische BIC bietet den bewussten Druck ohne GiroCode', async ({ page }) => {
   const state = printableState(2)
   state.invoices[0].snapshot!.bic = 'UNGÜLTIG!'
-  state.documentVersions[0].content.snapshot!.bic = 'UNGÜLTIG!'
   state.documentVersions[0].outputSnapshot.bic = 'UNGÜLTIG!'
   await seed(page, state)
   await page.evaluate(() => { window.print = () => undefined })

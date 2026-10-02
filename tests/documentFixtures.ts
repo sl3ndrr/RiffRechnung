@@ -1,3 +1,4 @@
+import { documentContent } from '../src/lib/documentProjection'
 import type { AppState, Invoice, InvoiceDraft, InvoiceSnapshot, AuditEvent } from '../src/types'
 import { emptyState } from '../src/lib/defaults'
 import { saveGuardianState, saveStudentState } from '../src/lib/commands'
@@ -35,6 +36,10 @@ export function legacyFixture(state: AppState): LegacyState {
 export function legacyVersionedFixture(state: AppState, schemaVersion: number) {
   const copy = JSON.parse(JSON.stringify(state))
   copy.schemaVersion = schemaVersion
+  if (schemaVersion < 13) for (const version of copy.documentVersions) {
+    const raw = copy.invoices.find((entry: Invoice) => entry.id === version.invoiceId)
+    for (const field of ['snapshot', 'draftPrintSnapshot', 'period', 'legalText']) if (Object.hasOwn(raw, field)) version.content[field] = structuredClone(raw[field])
+  }
   if (schemaVersion < 12) Object.assign(copy.settings, { numberPattern: '{YYYY}-{K}-{NNNN}', resetNumberAnnually: true })
   const snapshot = (value: InvoiceSnapshot | undefined | null) => {
     if (!value || schemaVersion >= 11) return
@@ -58,5 +63,42 @@ export function legacyVersionedFixture(state: AppState, schemaVersion: number) {
 
 export function editable(invoice: Invoice): InvoiceDraft {
   return { id: invoice.id, correction: invoice.correction, invoiceDate: invoice.invoiceDate, dueDate: invoice.dueDate, period: invoice.period, recipients: structuredClone(invoice.recipients), studentIds: [...invoice.studentIds], recipientStrategy: invoice.recipientStrategy, items: structuredClone(invoice.items), introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText }
+}
+
+
+/** Expected schema-13 representation only: no repair, migration, or value normalization. */
+export function expectedConsolidatedVersions(versions: AppState['documentVersions']): AppState['documentVersions'] {
+  return versions.map((version) => {
+    const content = { ...version.content }
+    for (const key of ['snapshot', 'draftPrintSnapshot', 'period', 'legalText']) Reflect.deleteProperty(content, key)
+    return { ...version, content }
+  })
+}
+
+export function historicalOutputFixture(state: AppState) {
+  const old = legacyVersionedFixture(state, 12)
+  const invoice = old.invoices[0], version = old.documentVersions[0]
+  version.provenance = 'oldest-available'
+  invoice.period = 'Abweichender gespeicherter Zeitraum'
+  invoice.snapshot.recipients[0].name = 'Abweichender Roh-Empfänger'
+  invoice.snapshot.iban = 'DE89370400440532013000'
+  invoice.snapshot.students[0].name = 'Abweichender Roh-Leistungsname'
+  invoice.legalText = 'P09: vorhandener Rohtext'
+  delete invoice.calculation
+  version.content = documentContent(invoice, true)
+  version.conflicts = [
+    { path: 'period', message: 'Historischer Zeitraumkonflikt', values: [JSON.stringify(invoice.period), JSON.stringify(version.outputPeriod)] },
+    { path: 'snapshot', message: 'Historische Empfänger-, Konto- und Leistungsdaten', values: [JSON.stringify(invoice.snapshot), JSON.stringify(version.outputSnapshot)] },
+    { path: 'amounts', message: 'Register und Ausgabe weichen ab', values: ['900', '757'] },
+  ]
+  const register = { number: invoice.number, sequence: invoice.sequence, year: invoice.year, invoiceDate: invoice.invoiceDate, deletedAt: documentAt, amount: 9, recipient: 'Abweichender Registerempfänger', reason: 'reopened' }
+  old.voidedInvoiceNumbers = [register]
+  version.registerEntries = [structuredClone(register)]
+  version.amounts = { itemCents: [757], legacyCalculatedTotalCents: 757, totalCents: 900, source: 'number-register', calculation: 'legacy-v1' }
+  const event = { id: 'p07-historical-snapshot', at: documentAt, label: 'Vorhandener historischer Nachweis', entityType: 'invoice', entityId: invoice.id,
+    snapshotCorrection: { oldValue: structuredClone(invoice.snapshot), newValue: structuredClone(version.outputSnapshot) } }
+  old.historicalSnapshotCorrections = [event]
+  version.snapshotHistory = [structuredClone(event)]
+  return old
 }
 

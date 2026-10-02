@@ -2,14 +2,14 @@ import { canonical } from './canonical'
 export { canonical } from './canonical'
 import type { AppState } from '../types'
 import { validateBackupState } from './validation'
-import { validateLegacyV3Structure, validateLegacyV4Structure, validateLegacyV5Structure, validateLegacyV6Structure, validateLegacyV7Structure, validateLegacyV8Structure, validateLegacyV9Structure, validateLegacyV10Structure, validateLegacyV11Structure } from './legacyValidation'
+import { validateLegacyV3Structure, validateLegacyV4Structure, validateLegacyV5Structure, validateLegacyV6Structure, validateLegacyV7Structure, validateLegacyV8Structure, validateLegacyV9Structure, validateLegacyV10Structure, validateLegacyV11Structure, validateLegacyV12Structure } from './legacyValidation'
 
 export const STORAGE_VERSION = 4
 export interface RevisionRef { commitId: string; revision: number; fingerprint: string }
 export interface StorageEnvelope {
   app: 'riffrechnung'
   storageVersion: 4
-  schemaVersion: 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12
+  schemaVersion: 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13
   datasetId: string
   commitId: string
   revision: number
@@ -35,7 +35,7 @@ export function validateEnvelope(value: unknown, allowLegacy = false): asserts v
   const e = value as StorageEnvelope
   if (e.storageVersion !== STORAGE_VERSION) throw new Error('Unbekannte Speicherversion: ausschließlich lesender Zugriff.')
   if (!keys(e, 'app storageVersion schemaVersion datasetId commitId revision savedAt operation ancestors source data')
-    || e.app !== 'riffrechnung' || (e.schemaVersion !== 12 && !(allowLegacy && (e.schemaVersion === 3 || e.schemaVersion === 4 || e.schemaVersion === 5 || e.schemaVersion === 6 || e.schemaVersion === 7 || e.schemaVersion === 8 || e.schemaVersion === 9 || e.schemaVersion === 10 || e.schemaVersion === 11))) || !id(e.datasetId) || !id(e.commitId) || !revision(e.revision)
+    || e.app !== 'riffrechnung' || (e.schemaVersion !== 13 && !(allowLegacy && (e.schemaVersion === 3 || e.schemaVersion === 4 || e.schemaVersion === 5 || e.schemaVersion === 6 || e.schemaVersion === 7 || e.schemaVersion === 8 || e.schemaVersion === 9 || e.schemaVersion === 10 || e.schemaVersion === 11 || e.schemaVersion === 12))) || !id(e.datasetId) || !id(e.commitId) || !revision(e.revision)
     || typeof e.savedAt !== 'string' || Number.isNaN(Date.parse(e.savedAt))
     || !['edit', 'restore', 'adopt', 'reset'].includes(e.operation) || !Array.isArray(e.ancestors)) throw new Error('Ungültiger Speicherumschlag oder Revisionszähler.')
   let last = 0
@@ -58,6 +58,7 @@ export function validateEnvelope(value: unknown, allowLegacy = false): asserts v
   else if (e.schemaVersion === 9) validateLegacyV9Structure(e.data)
   else if (e.schemaVersion === 10) validateLegacyV10Structure(e.data)
   else if (e.schemaVersion === 11) validateLegacyV11Structure(e.data)
+  else if (e.schemaVersion === 12) validateLegacyV12Structure(e.data)
   else validateBackupState(e.data)
 }
 

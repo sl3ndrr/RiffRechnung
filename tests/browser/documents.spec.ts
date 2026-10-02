@@ -1,3 +1,4 @@
+import { expectedConsolidatedVersions, historicalOutputFixture } from '../documentFixtures'
 import { cleanLegacyContacts, normalizeLegacyRecipients } from '../../src/lib/legacyContactsRecipients'
 import { stripLegacyTaxFields } from '../../src/lib/legacyTaxFields'
 import { test, expect, type Page } from '@playwright/test'
@@ -22,7 +23,7 @@ async function seed(page: Page, state: AppState) {
   await page.reload()
 }
 async function invoices(page: Page) { await page.getByRole('button', { name: /^Rechnungen(?:\s*\d+)?$/ }).first().click() }
-async function pdfText(page: Page, state: AppState, invoiceId: string): Promise<{ text: string; pdf: Buffer }> {
+async function pdfText(page: Page, state: AppState, invoiceId: string): Promise<{ text: string; pdf: Buffer; payload: string }> {
   const rendering = await page.context().newPage()
   try {
     await rendering.goto('/')
@@ -36,7 +37,8 @@ async function pdfText(page: Page, state: AppState, invoiceId: string): Promise<
     const pdf = await rendering.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true })
     const text = execFileSync('pdftotext', ['-layout', '-', '-'], { input: pdf, encoding: 'utf8' })
     expect(pdf.subarray(0, 4).toString()).toBe('%PDF')
-    return { text, pdf }
+    const payload = await rendering.evaluate(() => document.documentElement.dataset.giroPayload ?? '')
+    return { text, pdf, payload }
   } finally { await rendering.close() }
 }
 
@@ -53,6 +55,7 @@ test('AP6 Browser/PDF: eingefrorene Schema-7-Belege bewahren Nichtsteuerdaten na
     await page.reload()
     const after = await stateOf(page)
     const expected = normalizeLegacyRecipients(cleanLegacyContacts(stripLegacyTaxFields(original).value))
+    expected.documentVersions = expectedConsolidatedVersions(expected.documentVersions)
     const retainedSettings = { ...expected.settings }; Reflect.deleteProperty(retainedSettings, 'numberPattern'); Reflect.deleteProperty(retainedSettings, 'resetNumberAnnually')
     expect({ ...after, schemaVersion: 7, counters: expected.counters, settings: retainedSettings }).toEqual({ ...expected, settings: retainedSettings })
     for (const [key, count] of Object.entries(expected.counters)) expect(after.counters[key]).toBeGreaterThanOrEqual(count)
@@ -314,7 +317,7 @@ test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unverändert
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
   await page.reload()
   const state = await stateOf(page)
-  expect(state.schemaVersion).toBe(12)
+  expect(state.schemaVersion).toBe(13)
   expect(state.documentVersions[0].provenance).toBe('oldest-available')
   await invoices(page)
   await page.getByRole('button', { name: '2026-0001-a', exact: true }).click()
@@ -473,3 +476,50 @@ test('AP5 Browser/PDF: Selbstzahlerin und Minderjähriger mit zwei Empfängern v
   } finally { await destination.close() }
 })
 
+
+
+test('P07 Browser/PDF: Schema-12-Konflikte behalten dieselbe Ansicht, Druckausgabe und GiroCode nach Migration und Stammdatenänderung', async ({ page }, testInfo) => {
+  const issued = saveInvoiceDraft(documentFamily(), { ...documentDraft(), recipients: [{ type: 'guardian', id: 'g-a' }, { type: 'guardian', id: 'g-b' }] }, true, documentAt)
+  const old = historicalOutputFixture(issued), raw = JSON.stringify(old), invoiceId = old.invoices[0].id
+  const before = await pdfText(page, old, invoiceId)
+  await page.goto('/')
+  await page.evaluate(({ raw, key }) => { localStorage.clear(); localStorage.setItem(key, raw) }, { raw, key: STORAGE_KEY })
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Lokale Daten benötigen Wiederherstellung' })).toBeVisible()
+  await page.getByRole('button', { name: 'Altformat und Reparatur prüfen' }).click()
+  expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(raw)
+  await page.getByRole('button', { name: 'Wiederherstellung vorbereiten' }).click()
+  await page.getByRole('button', { name: 'Wiederherstellung bestätigen' }).click()
+  await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
+  await page.reload()
+  const migrated = await stateOf(page)
+  expect(migrated.schemaVersion).toBe(13)
+  expect(migrated.invoices).toEqual(old.invoices)
+  expect(migrated.documentVersions).toEqual(expectedConsolidatedVersions(old.documentVersions))
+  await invoices(page)
+  await page.getByRole('button', { name: migrated.invoices[0].number!, exact: true }).click()
+  await expect(page.locator('.invoice-detail__amount')).toContainText('9,00')
+  await expect(page.locator('.invoice-detail')).toContainText('Empfaenger A')
+  await expect(page.locator('.invoice-detail')).toContainText('Empfaenger B')
+  await page.evaluate(async () => {
+    const path = '/src/lib/storage.ts'
+    const { StorageSession } = await import(path)
+    await new StorageSession().change((state) => ({ ...state,
+      guardians: state.guardians.map((person) => ({ ...person, name: 'HEUTIGER EMPFÄNGER', address: { street: 'HEUTIGE ANSCHRIFT', postalCode: '', city: '' } })),
+      students: state.students.map((person) => ({ ...person, name: 'HEUTIGER LEISTUNGSNAME' })),
+      settings: { ...state.settings, accountHolder: 'HEUTIGES KONTO', bic: 'MARKDEF1100', bankName: 'HEUTIGE BANK' },
+    }))
+  })
+  await page.reload()
+  const changed = await stateOf(page), after = await pdfText(page, changed, invoiceId)
+  expect(changed.documentVersions).toEqual(migrated.documentVersions)
+  expect(changed.invoices).toEqual(migrated.invoices)
+  expect(after.text).toBe(before.text)
+  expect(after.payload).toBe(before.payload)
+  expect(after.payload.split('\n')[4]).toBe('')
+  expect(after.payload.split('\n')[7]).toBe('EUR9.00')
+  expect(after.text).toContain('Testweg 2'); expect(after.text).toContain('Testweg 3')
+  expect(after.text).toContain('9,00')
+  expect(after.text).not.toMatch(/HEUTIG|Abweichender Roh/)
+  await testInfo.attach('p07-migrierter-beleg.pdf', { body: after.pdf, contentType: 'application/pdf' })
+})

@@ -1,3 +1,4 @@
+import { expectedConsolidatedVersions } from './documentFixtures'
 import { cleanLegacyContacts, normalizeLegacyRecipients } from '../src/lib/legacyContactsRecipients'
 import { cleanRecoveryFields } from '../src/lib/recoveryContactCleanup'
 import test from 'node:test'
@@ -24,9 +25,9 @@ test('P03: Schema 8/9 löst nur Gruppenmetadaten; Preise, Empfänger und alle En
     const raw = '\uFEFF' + JSON.stringify(legacy, null, 2) + '\r\n'
     const preview = migrated(raw)
     assert.deepEqual(legacy, before)
-    assert.equal(preview.state.schemaVersion, 12)
+    assert.equal(preview.state.schemaVersion, 13)
     assert.equal('duoGroups' in preview.state, false)
-    assert.equal(preview.report?.migration, 'riffrechnung-to-v12')
+    assert.equal(preview.report?.migration, 'riffrechnung-to-v13')
     assert.equal(preview.report?.fromSchema, schema)
     assert.deepEqual(preview.report?.changes.find((change) => change.path === 'duoGroups')?.before, legacy.duoGroups)
     assert.deepEqual(preview.state.invoices, normalizeLegacyRecipients(before).invoices)
@@ -62,12 +63,12 @@ test('P03: lokaler Schema-9-Stand wartet ohne Schreibverlust auf kontrollierte �
 test('P03: historische finale Duo-Belege, Nummern, Originalversionen und Verwaltungsdaten bleiben gleich', async () => {
   for (const schema of [8, 9] as const) {
     const old = legacyDuoState(schema, true), preview = migrated(JSON.stringify(old))
-    for (const key of ['invoices', 'documentVersions', 'invoiceAdministration', 'payments', 'counters', 'voidedInvoiceNumbers'] as const) assert.deepEqual(preview.state[key], normalizeLegacyRecipients(cleanLegacyContacts(old))[key])
+    for (const key of ['invoices', 'documentVersions', 'invoiceAdministration', 'payments', 'counters', 'voidedInvoiceNumbers'] as const) assert.deepEqual(preview.state[key], key === 'documentVersions' ? expectedConsolidatedVersions(normalizeLegacyRecipients(cleanLegacyContacts(old)).documentVersions) : normalizeLegacyRecipients(cleanLegacyContacts(old))[key])
     assert.deepEqual(preview.state.invoices.map((invoice) => invoice.number), ['2026-aur-0001', '2026-bas-0001'])
     assert.deepEqual(parseBackup(serializeBackup(preview.state)), preview.state)
     const storage = memoryStorage(), session = new StorageSession({ storage, lock: sharedLock() })
     await session.restore(JSON.stringify(old))
-    assert.deepEqual(new StorageSession({ storage, lock: sharedLock() }).state.documentVersions, normalizeLegacyRecipients(old).documentVersions)
+    assert.deepEqual(new StorageSession({ storage, lock: sharedLock() }).state.documentVersions, expectedConsolidatedVersions(normalizeLegacyRecipients(old).documentVersions))
   }
 })
 

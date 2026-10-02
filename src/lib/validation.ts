@@ -112,7 +112,7 @@ function validateIssuer(value: unknown, path: string, historical = false): void 
   backupString(issuer.phone, `${path}.phone`)
 }
 
-function validateInvoiceSnapshot(value: unknown, path: string, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 = 9): { guardianIds: Set<string>; studentIds: Set<string>; recipients?: RecipientRef[] } {
+function validateInvoiceSnapshot(value: unknown, path: string, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 = 9): { guardianIds: Set<string>; studentIds: Set<string>; recipients?: RecipientRef[] } {
   const snapshot = backupObject(value, path)
   knownKeys(snapshot, path, 'issuer students accountHolder iban bic bankName legalText' + (schema < 11 ? ' guardians' : '') + (schema >= 8 ? ' recipients' : ''))
   validateIssuer(snapshot.issuer, `${path}.issuer`, true)
@@ -197,7 +197,7 @@ function validateSettings(value: unknown, schema: number): void {
   backupBoolean(settings.reducedMotion, 'settings.reducedMotion')
 }
 
-function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12, localItemIds: boolean): void {
+function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13, localItemIds: boolean): void {
   const legacy = schema === 2
   const versioned = schema >= 4
   const data = backupObject(value, 'data')
@@ -405,7 +405,7 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 1
   if (versioned) validateDocuments(data as unknown as AppState, schema)
 }
 
-function validateActivity(entry: unknown, path: string, ids: Set<string>, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12): void {
+function validateActivity(entry: unknown, path: string, ids: Set<string>, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13): void {
   const event = backupObject(entry, path)
   knownKeys(event, path, 'id at label entityType entityId snapshotCorrection')
   registerId(event.id, `${path}.id`, ids)
@@ -428,7 +428,7 @@ function validateEmail(value: unknown, path: string, historical = false): void {
 }
 
 export function validateBackupState(value: unknown): asserts value is AppState {
-  validateState(value, 12, false)
+  validateState(value, 13, false)
 }
 
 
@@ -442,7 +442,7 @@ export function knownKeys(value: Record<string, unknown>, path: string, keys: st
 
 
 
-function validateDocuments(state: AppState, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12): void {
+function validateDocuments(state: AppState, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13): void {
   const ids = new Set<string>()
   const replaced = new Set<string>()
   backupArray(state.documentVersions, 'documentVersions').forEach((entry, index) => {
@@ -456,7 +456,7 @@ function validateDocuments(state: AppState, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 
     backupTimestamp(v.sourceUpdatedAt, `${path}.sourceUpdatedAt`)
     backupString(v.reason, `${path}.reason`, v.replacesId !== null || v.cancelsId !== null)
     const invoice = state.invoices.find((candidate) => candidate.id === v.invoiceId)
-    if (!invoice || invoice.status === 'draft' || invoice.versionId !== id || canonical(documentContent(invoice)) !== canonical(v.content)) invalidBackup(`${path}.content`, 'muss dem unveränderten vollständigen Beleginhalt entsprechen')
+    if (!invoice || invoice.status === 'draft' || invoice.versionId !== id || canonical(documentContent(invoice, schema < 13)) !== canonical(v.content)) invalidBackup(`${path}.content`, 'muss dem unveränderten vollständigen Beleginhalt entsprechen')
     const refs = validateInvoiceSnapshot(v.outputSnapshot, `${path}.outputSnapshot`, schema)
     backupString(v.outputPeriod, `${path}.outputPeriod`)
     backupString(v.outputLegalText, `${path}.outputLegalText`)
@@ -589,7 +589,7 @@ function validatePaymentDay(value: unknown, path: string, allowCalendar: boolean
 }
 
 /** Shared non-tax structural invariants for explicitly versioned import adapters. */
-export function validateLegacyStructure(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11): void {
+export function validateLegacyStructure(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12): void {
   validateState(value, schema, schema === 2)
 }
 
