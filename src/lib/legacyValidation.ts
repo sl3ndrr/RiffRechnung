@@ -1,3 +1,4 @@
+import { detachLegacyDuoGroups } from './legacyDuoV8V9'
 import { validateLegacyStructure } from './validation'
 import { stripLegacyTaxFields } from './legacyTaxFields'
 
@@ -27,5 +28,9 @@ export function validateLegacyV7Structure(value: unknown): void {
 }
 
 export function validateLegacyV8Structure(value: unknown): void {
-  validateLegacyStructure(stripLegacyTaxFields(value).value, 8)
+  validateLegacyStructure(detachLegacyDuoGroups(stripLegacyTaxFields(value).value), 8)
+}
+
+export function validateLegacyV9Structure(value: unknown): void {
+  validateLegacyStructure(detachLegacyDuoGroups(value), 9)
 }
