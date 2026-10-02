@@ -33,7 +33,7 @@ test('P03 Browser: beide Erziehungsberechtigte ausdrücklich auf einer gemeinsam
   await audience.locator('label.choice-chip').filter({ hasText: 'Empfaenger B' }).click()
   await expect(audience.getByRole('checkbox', { name: /Empfaenger A/ })).toBeChecked()
   await expect(audience.getByRole('checkbox', { name: /Empfaenger B/ })).toBeChecked()
-  await editor.getByLabel('Art', { exact: true }).selectOption('duo')
+  await editor.getByRole('combobox', { name: 'Art', exact: true }).selectOption('duo')
   await expect(editor.getByRole('textbox', { name: 'Einzelpreis €', exact: true })).toHaveValue('20')
   await editor.getByRole('button', { name: 'Finalisieren', exact: true }).click()
   await expect(editor).not.toBeVisible()
