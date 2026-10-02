@@ -54,7 +54,7 @@ function contrast(foreground: string, background: string) {
 }
 
 for (const width of [390, 900, 1280]) {
-  test(`P10 Browser: Rechnungsdetails, Status, Erinnerung und Rückkehr funktionieren mit Tab, Enter und Escape bei ${width} Pixeln`, async ({ page }) => {
+  test(`P10 Browser: Rechnungsdetails, Status und Rückkehr funktionieren mit Tab, Enter und Escape bei ${width} Pixeln`, async ({ page }) => {
     const state = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
     await page.setViewportSize({ width, height: 900 })
     await seed(page, state)
@@ -67,36 +67,13 @@ for (const width of [390, 900, 1280]) {
     const overdue = page.getByRole('button', { name: 'Überfällig', exact: true })
     await tabTo(page, overdue)
     await page.keyboard.press('Enter')
-    await expect(page.locator('.reminder-panel')).toBeVisible()
-    const reminder = page.getByRole('link', { name: 'E-Mail öffnen', exact: true })
-    await tabTo(page, reminder, 30)
+    await expect(overdue).toHaveAttribute('aria-pressed', 'true')
     await page.keyboard.press('Escape')
     await expect(page.locator('.invoice-detail')).toHaveCount(0)
     await expect(opener).toBeFocused()
   })
 }
 
-test('P11 Browser: abgelehnte Zwischenablage bietet Erinnerungstext zum manuellen Kopieren', async ({ page }) => {
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: { writeText: () => Promise.reject(new DOMException('Nicht erlaubt', 'NotAllowedError')) },
-    })
-  })
-  const state = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
-  await seed(page, state)
-  await invoices(page)
-  await page.getByRole('button', { name: '2026-a-0001', exact: true }).click()
-  await page.getByRole('button', { name: 'Überfällig', exact: true }).click()
-  await page.getByRole('button', { name: 'Text kopieren', exact: true }).click()
-  const fallback = page.getByRole('textbox', { name: 'Zahlungserinnerung zum manuellen Kopieren' })
-  await expect(fallback).toBeVisible()
-  await expect(fallback).toHaveValue(/Zahlungserinnerung zur Rechnung 2026-a-0001/)
-  await expect(page.getByText('Erinnerungstext kopiert.', { exact: true })).toHaveCount(0)
-  await fallback.focus()
-  await expect(fallback).toBeFocused()
-  expect(await fallback.evaluate((element) => (element as HTMLTextAreaElement).selectionStart === 0 && (element as HTMLTextAreaElement).selectionEnd === (element as HTMLTextAreaElement).value.length)).toBe(true)
-})
 
 
 test('P10 Browser: verschachtelte Dialoge halten Fokus, Modalität und Scrollsperre', async ({ page }) => {

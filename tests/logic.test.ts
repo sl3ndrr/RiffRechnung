@@ -14,7 +14,7 @@ import { captureLegacyDocuments } from '../src/lib/importState'
 import { seedState, sharedLock, fakeDirectory } from './storageHarness'
 import { prepareNewInvoice, saveInvoiceState } from '../src/lib/commands'
 import { requireSuccess, ValidationError } from '../src/lib/result'
-import { adjustQuantity, parseQuantityInput } from '../src/lib/values'
+import { adjustQuantity } from '../src/lib/values'
 import './safety.test'
 import './commands.test'
 import './storage.test'
@@ -31,7 +31,7 @@ import { InvoicePrint } from '../src/components/InvoicePrint'
 import { createDemoState, defaultSettings, emptyState } from '../src/lib/defaults'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, runInvoiceMenuAction } from '../src/lib/invoiceMenu'
 import { loadLastBackupAt, StorageSession, loadState, parseBackup, recordBackupExport, serializeBackup } from '../src/lib/storage'
-import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoiceFinalizationErrors, invoicePdfTitle, invoiceTotal, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, reopenInvoiceAsDraft, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
+import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoiceFinalizationErrors, invoicePdfTitle, invoiceTotal, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
 import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { assertOriginalsPreserved } from '../src/lib/safety'
 import { applyStandardRateInput, updateSettings } from '../src/lib/settings'
@@ -168,7 +168,7 @@ test('gelöschte finalisierte Rechnungsnummern bleiben reserviert', () => {
   assert.equal(nextInvoiceAllocation(state, '2026-08-21', ['student-a']).number, '2026-a-0002')
 })
 
-test('historisches Zurücksetzen ist gesperrt und verbrauchte Nummern bleiben reserviert', () => {
+test('historisch verbrauchte Nummern bleiben reserviert', () => {
   const state = emptyState()
   state.students = [student('student-a', 'Anna', 'a')]
   state.counters = { '2026:a': 2 }
@@ -187,12 +187,7 @@ test('historisches Zurücksetzen ist gesperrt und verbrauchte Nummern bleiben re
       legalText: defaultSettings.defaultLegalText,
     },
   })]
-  const original = structuredClone(state)
-  assert.throws(() => reopenInvoiceAsDraft(state, 'invoice-test'), /Finalisierte Belege/)
-  assert.deepEqual(state, original)
   assert.equal(nextInvoiceAllocation(state, '2026-08-21', ['student-a']).number, '2026-a-0002')
-  const draftState = { ...state, invoices: [invoice({ status: 'draft', number: null, sequence: null })] }
-  assert.equal(reopenInvoiceAsDraft(draftState, 'invoice-test'), draftState)
 
 })
 
@@ -776,10 +771,7 @@ test('Modal-Formulare verknüpfen ihre Footer-Buttons mit dem nativen Submit', (
   assert.match(editorSource, /<textarea/)
 })
 
-test('Mengenfeld akzeptiert Hundertstelwerte und bietet Viertelschritt-Steuerung', () => {
-  assert.equal(parseQuantityInput('0,01'), 0.01)
-  assert.equal(parseQuantityInput('99.99'), 99.99)
-  for (const raw of ['', '0', '-1', '100', '1.001', 'NaN', 'Infinity']) assert.equal(parseQuantityInput(raw), null)
+test('Mengenfeld bietet begrenzte Viertelschritt-Steuerung', () => {
   assert.equal(adjustQuantity(.75, 1), 1)
   assert.equal(adjustQuantity(.75, -1), .5)
   assert.equal(adjustQuantity(.01, -1), .01)

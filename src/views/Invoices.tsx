@@ -2,17 +2,16 @@ import { duoForInvoice } from '../lib/duoModel'
 import { invoiceTotalCents, sumCents } from '../lib/money'
 import { outputItemTotal } from '../lib/utils'
 import { DocumentHistory, HistoricalSnapshotEvidence, type DocumentHistoryActions } from '../components/DocumentHistory'
-import { activeInvoices, isActiveClaim, openCents, selectedInvoices } from '../lib/documents'
-import { commandResult } from '../lib/result'
+import { activeInvoices, isActiveClaim, selectedInvoices } from '../lib/documents'
 import { needsHistoricalSplitReview } from '../lib/historicalSplit'
 import { FINALIZED_INVOICE_BLOCKED, isFinalizedInvoice } from '../lib/safety'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, ArrowUp, ArrowUpDown, CalendarDays, ChevronDown, Copy, Edit3, FilePlus2, Mail, MoreVertical, Printer, Search, Send, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, CalendarDays, ChevronDown, Copy, Edit3, FilePlus2, MoreVertical, Printer, Search, Send, Trash2 } from 'lucide-react'
 import type { AppState, Invoice, InvoiceStatus, PageKey } from '../types'
 import { EmptyState } from '../components/EmptyState'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, type InvoiceMenuPosition, runInvoiceMenuAction } from '../lib/invoiceMenu'
-import { billingPeriodFromItems, isInvoiceSetupComplete, createReminder, effectiveStatus, euro, formatDate, formatDateLong, guardianName, invoiceTotal, mailtoUrl, sortInvoices, statusLabel, studentName, type InvoiceSortKey, type SortDirection } from '../lib/utils'
+import { billingPeriodFromItems, isInvoiceSetupComplete, effectiveStatus, euro, formatDate, formatDateLong, guardianName, invoiceTotal, sortInvoices, statusLabel, studentName, type InvoiceSortKey, type SortDirection } from '../lib/utils'
 
 interface InvoicesProps extends DocumentHistoryActions {
   state: AppState
@@ -27,10 +26,9 @@ interface InvoicesProps extends DocumentHistoryActions {
   onDelete: (invoice: Invoice) => void
   onSetStatus: (invoice: Invoice, status: InvoiceStatus, paymentDay?: string) => void
   onPrint: (invoice: Invoice) => void
-  onToast: (message: string, tone?: 'success' | 'error' | 'info') => void
 }
 
-export function Invoices({ state, onNavigate, onLoadDemo, selectedId, onSelect, onNew, onDuo, onEdit, onDuplicate, onDelete, onSetStatus, onPrint, onToast, onCorrection, onAllocatePayment, onResolveConflicts }: InvoicesProps) {
+export function Invoices({ state, onNavigate, onLoadDemo, selectedId, onSelect, onNew, onDuo, onEdit, onDuplicate, onDelete, onSetStatus, onPrint, onCorrection, onAllocatePayment, onResolveConflicts }: InvoicesProps) {
   const [search, setSearch] = useState('')
   const [showArchived, setShowArchived] = useState(false)
   const invoices = useMemo(() => selectedInvoices(state), [state])
@@ -214,7 +212,6 @@ export function Invoices({ state, onNavigate, onLoadDemo, selectedId, onSelect, 
               onDelete={() => onDelete(selected)}
               onSetStatus={(next, paymentDay) => onSetStatus(selected, next, paymentDay)}
               onPrint={() => onPrint(selected)}
-              onToast={onToast}
               onSelect={onSelect} onCorrection={onCorrection} onAllocatePayment={onAllocatePayment} onResolveConflicts={onResolveConflicts}
             />
           )}
@@ -261,7 +258,7 @@ function SortableHeader({ label, sortKey, sort, onSort, alignRight = false }: {
   )
 }
 
-function InvoiceDetail({ invoice, state, onClose, onEdit, onDuo, onDuplicate, onDelete, onSetStatus, onPrint, onToast, onSelect, onCorrection, onAllocatePayment, onResolveConflicts }: DocumentHistoryActions & {
+function InvoiceDetail({ invoice, state, onClose, onEdit, onDuo, onDuplicate, onDelete, onSetStatus, onPrint, onSelect, onCorrection, onAllocatePayment, onResolveConflicts }: DocumentHistoryActions & {
   invoice: Invoice
   state: AppState
   onSelect: (id: string) => void
@@ -272,17 +269,12 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuo, onDuplicate, on
   onDelete: () => void
   onSetStatus: (status: InvoiceStatus, paymentDay?: string) => void
   onPrint: () => void
-  onToast: (message: string, tone?: 'success' | 'error' | 'info') => void
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const status = effectiveStatus(invoice)
   const period = invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate)
-  const reminder = createReminder(invoice, state.guardians, state.students)
-  const mailto = commandResult(() => mailtoUrl(invoice, state.guardians, state.students))
-  const canRemind = (status === 'sent' || status === 'overdue') && isActiveClaim(state, invoice) && openCents(state, invoice) === invoiceTotalCents(invoice) && !state.payments.some((payment) => state.documentVersions.find((version) => version.id === payment.sourceVersionId)?.originalId === state.documentVersions.find((version) => version.id === invoice.versionId)?.originalId && payment.allocations.at(-1)?.versionId !== invoice.versionId)
   const payment = state.payments.find((entry) => entry.allocations.at(-1)?.versionId === invoice.versionId && entry.amountCents === invoiceTotalCents(invoice))
   const [paymentDay, setPaymentDay] = useState('')
-  const [manualReminderCopy, setManualReminderCopy] = useState(false)
 
   useEffect(() => {
     setPaymentDay(payment?.paymentDayStatus === 'confirmed' ? payment.paidAt ?? '' : '')
@@ -291,17 +283,6 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuo, onDuplicate, on
   useEffect(() => {
     closeButtonRef.current?.focus()
   }, [invoice.id])
-
-  const copyReminder = async () => {
-    try {
-      await navigator.clipboard.writeText(`${reminder.subject}\n\n${reminder.body}`)
-      setManualReminderCopy(false)
-      onToast('Erinnerungstext kopiert.', 'success')
-    } catch {
-      setManualReminderCopy(true)
-      onToast('Kopieren wurde vom Browser abgelehnt. Der Erinnerungstext steht zum manuellen Kopieren bereit.', 'error')
-    }
-  }
 
   return (
     <aside className="surface invoice-detail" aria-label={`Details zu ${invoice.number ?? 'Entwurf'}`}>
@@ -345,14 +326,6 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuo, onDuplicate, on
       <DocumentHistory key={invoice.id} state={state} invoice={invoice} onSelect={onSelect} onCorrection={onCorrection} onAllocatePayment={onAllocatePayment} onResolveConflicts={onResolveConflicts} />
       {needsHistoricalSplitReview(state, invoice) && <p className="notice" role="status">Historische Aufteilung ungeklärt: Dieser übernommene Beleg wird nicht automatisch zusammengelegt oder umgeschrieben. Prüfe Empfänger, Lernende, Positionen und Betrag; notwendige Änderungen erfolgen über den Korrekturweg.</p>}
       {isFinalizedInvoice(invoice) && <p className="field-hint" role="status">{FINALIZED_INVOICE_BLOCKED}</p>}
-
-      {canRemind && (
-        <section className="reminder-panel">
-          <div><Mail aria-hidden="true" /><div><strong>Zahlungserinnerung</strong><p>Fertig formuliert, ohne automatischen Versand.</p></div></div>
-          <div className="button-row">{mailto.ok ? <a className="button button--text" href={mailto.value}><Mail aria-hidden="true" /> E-Mail öffnen</a> : <p role="alert">{mailto.errors.map((error) => error.message).join(' ')}</p>}<button className="button button--text" onClick={copyReminder}><Copy aria-hidden="true" /> Text kopieren</button></div>
-          {manualReminderCopy && <div className="reminder-copy-fallback" role="status"><p>Der Browser hat den Zugriff auf die Zwischenablage nicht erlaubt. Text markieren und selbst kopieren:</p><textarea aria-label="Zahlungserinnerung zum manuellen Kopieren" readOnly rows={9} value={`${reminder.subject}\n\n${reminder.body}`} onFocus={(event) => event.currentTarget.select()} /></div>}
-        </section>
-      )}
 
       {invoice.status === 'draft' && <section className="position-summary">
         <h3>Positionen</h3>

@@ -11,7 +11,7 @@ import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions
 import { assertOriginalsPreserved, assertReplacementAllowed } from '../src/lib/safety'
 import { applyStandardRateInput, parseStandardRate, updateSettings } from '../src/lib/settings'
 import { inspectBackupDirectory, StorageSession, loadState, parseBackup, serializeBackup, STORAGE_KEY, validateBackupState } from '../src/lib/storage'
-import { createLessonItem, germanIbanError, invoiceTotal, nextInvoiceAllocation, reopenInvoiceAsDraft } from '../src/lib/utils'
+import { createLessonItem, germanIbanError, invoiceTotal, nextInvoiceAllocation } from '../src/lib/utils'
 
 const at = '2026-08-20T12:00:00.000Z'
 function families(count = 2): AppState {
@@ -144,7 +144,6 @@ test('P01: historische Belege ohne Stammdaten bleiben samt Betrag, Snapshot und 
   state = roundTrip(state)
   const original = structuredClone(state)
   const invoice = state.invoices[0]
-  assert.throws(() => reopenInvoiceAsDraft(state, invoice.id), /Finalisierte Belege/)
   assert.throws(() => changeInvoiceStatus(state, invoice.id, 'draft'), /Korrekturentwurf/)
   for (const patch of [{ guardianIds: [] }, { items: [] }, { freeText: 'Geändert' }, { invoiceDate: '2026-09-01' }]) {
     assert.throws(() => saveInvoiceDraft(state, { ...invoice, ...patch }, false), /Finalisierte Belege/)

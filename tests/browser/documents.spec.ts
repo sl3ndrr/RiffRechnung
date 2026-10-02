@@ -319,10 +319,6 @@ test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unverändert
   await page.getByText('Gesicherte Ausgabeangaben', { exact: true }).click()
   await expect(page.locator('.document-history dd').filter({ hasText: /^Leer$/ })).toHaveCount(4)
   await expect(page.locator('.invoice-detail__header')).toContainText('Empfaenger A')
-  const reminder = decodeURIComponent((await page.getByRole('link', { name: 'E-Mail öffnen', exact: true }).getAttribute('href'))!)
-  expect(reminder).toContain('mailto:a@example.org')
-  expect(reminder).toContain('Empfaenger A')
-  expect(reminder).not.toContain('Empfaenger B')
   const printed = await pdfText(page, state, state.invoices[0].id)
   expect(printed.text).toContain('Empfaenger A')
   expect(printed.text).not.toMatch(/Empfaenger B|HEUTIGES KONTO|HEUTIGE BANK|MARKDEF1100|DE02/)
@@ -334,7 +330,7 @@ test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unverändert
 })
 
 
-test('P05 Browser: Altentwurf prüfen; Editor, Liste, Erinnerung, EPC und PDF auf Cent', async ({ page }, testInfo) => {
+test('P05 Browser: Altentwurf prüfen; Editor, Liste, EPC und PDF auf Cent', async ({ page }, testInfo) => {
   const state = saveInvoiceDraft(documentFamily(), documentDraft(), false, documentAt)
   delete state.invoices[0].calculation // synthetic pre-P05 draft after migration
   await seed(page, state)
@@ -353,8 +349,6 @@ test('P05 Browser: Altentwurf prüfen; Editor, Liste, Erinnerung, EPC und PDF au
   await invoices(page)
   await page.getByRole('button', { name: '2026-a-0001', exact: true }).click()
   await expect(page.locator('.invoice-detail__amount')).toContainText('7,58')
-  const mailto = await page.getByRole('link', { name: 'E-Mail öffnen', exact: true }).getAttribute('href')
-  expect(decodeURIComponent(mailto!)).toContain('7,58')
   const saved = await stateOf(page)
   const epc = await page.evaluate(async (state) => {
     const utilsPath = '/src/lib/utils.ts', docsPath = '/src/lib/documents.ts'

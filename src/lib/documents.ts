@@ -75,7 +75,7 @@ export function versionFor(state: AppState, invoice: Invoice): DocumentVersion |
   return state.documentVersions.find((version) => version.id === invoice.versionId)
 }
 
-/** One projection for view, print, reminders, EPC and CSV. Empty snapshot values are authoritative. */
+/** One projection for view, print and EPC. Empty snapshot values are authoritative. */
 export function selectInvoice(state: AppState, invoice: Invoice): Invoice {
   const version = versionFor(state, invoice)
   if (!version) return invoice
@@ -187,10 +187,6 @@ export function allocatePayment(state: AppState, paymentId: string, versionId: s
   for (const id of new Set([previousId, versionId])) if (id) next = syncPaymentStatus(next, id, at, reason)
   validateBackupState(next)
   return next
-}
-
-export function recordedPayments(state: AppState, year?: number) {
-  return state.payments.filter((payment) => year === undefined || state.documentVersions.find((version) => version.id === payment.sourceVersionId)?.content.year === year)
 }
 
 export function snapshotDifferences(before: unknown, after: unknown, path = ''): { path: string; before: string; after: string }[] {

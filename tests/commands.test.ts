@@ -10,12 +10,12 @@ import { prepareInvoiceCopy, prepareNewInvoice, saveGuardianState, saveInvoiceSt
 import { changeInvoiceStatus, invoiceDraftErrors, saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { copyItemsWithFreshIds } from '../src/lib/identities'
 import { inspectImport, inspectImportBytes, serializeMigrationReport } from '../src/lib/importState'
-import { buildMailto, mailboxError } from '../src/lib/mailbox'
+import { mailboxError } from '../src/lib/mailbox'
 import { requireSuccess } from '../src/lib/result'
 import { applyStandardRateInput, parseStandardRate } from '../src/lib/settings'
 import { applyItemNumberInput, adjustQuantity, itemNumberInput, MAX_PRICE, parsePaymentTermInput, validId } from '../src/lib/values'
 import { StorageSession, loadState, parseBackup, serializeBackup, STORAGE_KEY, validateBackupState } from '../src/lib/storage'
-import { createLessonItem, invoiceTotal, mailtoUrl, nextInvoiceAllocation } from '../src/lib/utils'
+import { createLessonItem, invoiceTotal, nextInvoiceAllocation } from '../src/lib/utils'
 import { ImportReviewContent } from '../src/views/ImportReview'
 
 const at = '2026-09-06T12:00:00.000Z'
@@ -319,16 +319,10 @@ test('P02: Preis-, Mengen-, Datums- und Referenzfehler werden in Befehlen und Im
   ]) { const value = draft(state); mutate(value); assert.equal(saveInvoiceState(state, value, false, at).ok, false) }
 })
 
-test('P02: Mailbox-Regel und mailto-Kodierung erhalten Sonderzeichen ohne zusätzliche Parameter', () => {
+test('P02: Mailbox-Regel erhält gültige Sonderzeichen und weist ungültige Adressen zurück', () => {
   const valid = ["o'hara+unterricht@example.org", 'a?b&c#d@example.org', "a!$%*+-/=?^_`{|}~@sub.example.org", 'first.last@example.org']
   for (const recipient of valid) {
     assert.equal(mailboxError(recipient), null)
-    const url = new URL(buildMailto([recipient, 'second@example.org'], 'Betreff ? & #', 'Hallo\r\nText ? & #'))
-    assert.deepEqual([...url.searchParams.keys()], ['subject', 'body'])
-    assert.equal(decodeURIComponent(url.pathname), `${recipient},second@example.org`)
-    assert.equal(url.hash, '')
-    assert.equal(url.searchParams.get('subject'), 'Betreff ? & #')
-    assert.equal(url.searchParams.get('body'), 'Hallo\r\nText ? & #')
     const state = family()
     assert.equal(saveGuardianState(state, { ...state.guardians[0], email: recipient }).ok, true)
     const imported = { ...state, guardians: [{ ...state.guardians[0], email: recipient }] }
@@ -336,12 +330,10 @@ test('P02: Mailbox-Regel und mailto-Kodierung erhalten Sonderzeichen ohne zusät
   }
   for (const recipient of ['a@example.org?bcc=b@example.org', 'a@example.org&cc=b@example.org', 'a@example.org#x', 'a@example.org\r\nbcc:b@example.org', 'a\n@example.org', 'a@example.org,b@example.org', 'a@example.org;b@example.org', 'Name <a@example.org>', 'a..b@example.org', '.a@example.org', ' a@example.org', 'a@-example.org', 'a@localhost', 'ä@example.org']) {
     assert.ok(mailboxError(recipient), recipient)
-    assert.throws(() => buildMailto([recipient], 'Betreff', 'Text'))
     const state = family()
     assert.equal(saveGuardianState(state, { ...state.guardians[0], email: recipient }).ok, false)
     assert.equal(inspectImport(JSON.stringify({ ...state, guardians: [{ ...state.guardians[0], email: recipient }] })).ok, false)
   }
-  assert.throws(() => buildMailto(['ok@example.org'], 'Hallo\r\nBcc: b@example.org', ''), /Steuerzeichen/)
 })
 
 test('P02: fehlerhafte importierte Mailboxen sind sichtbar, historische Werte bleiben originalgetreu', () => {
@@ -359,10 +351,6 @@ test('P02: fehlerhafte importierte Mailboxen sind sichtbar, historische Werte bl
   const preview = requireSuccess(inspectImport(JSON.stringify(legacyHistorical)))
   assert.equal(preview.warnings.length, 1)
   assert.deepEqual(preview.state.invoices[0].snapshot, legacyHistorical.invoices[0].snapshot)
-  assert.throws(() => mailtoUrl(preview.state.invoices[0], state.guardians, state.students), /ungültige Empfängeradresse/)
-  const emptySnapshot = structuredClone(historical.invoices[0])
-  emptySnapshot.snapshot!.guardians[0].email = ''
-  assert.equal(new URL(mailtoUrl(emptySnapshot, state.guardians, state.students)).pathname, '', 'kein stiller Wechsel auf eine heutige Adresse')
 })
 
 test('P03: Import prüft den aktuellen Zielzustand erneut und erhält Nummernreservierungen', async () => withStorage(async () => {

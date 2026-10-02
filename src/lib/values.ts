@@ -27,11 +27,6 @@ export function parseDecimalInput(raw: string): number | null {
   try { return sameDecimal(text.replace(',', '.'), value) ? value : null } catch { return null }
 }
 
-export function parseQuantityInput(raw: string): number | null {
-  const value = parseDecimalInput(raw)
-  return validQuantity(value) ? value : null
-}
-
 export function adjustQuantity(quantity: number, direction: 1 | -1): number {
   return Math.min(MAX_QUANTITY, Math.max(MIN_QUANTITY, Math.round((quantity + direction * QUANTITY_INCREMENT) * 100) / 100))
 }
