@@ -10,10 +10,14 @@ E27, E36 und E37 mit den ausdrücklich genannten Konkretisierungen.
 
 Der aktive Ordnerworkflow ist entfernt. Einstellungen speichern ausschließlich
 auf ausdrücklichen Klick. Verbleibende Downloads teilen eine Blob-Implementierung.
-Kein Merge, kein Deployment. **Die Fertig-Kriterien sind noch nicht vollständig
-abgenommen:** npm-Gates und echte Browserprüfungen konnten in dieser Umgebung
-nicht ausgeführt werden. 47 ergänzende Tests bestehen; sie ersetzen diese Gates
-nicht. Ein Entwurfs-PR wurde von der automatischen Genehmigungsprüfung abgelehnt.
+Die vollständige Node-22-Abnahme des Produktstands ist bestanden: **161/161
+Logiktests, 60/60 Browser-/PDF-Fälle, Lint, Typprüfung, Build und Audit ohne Funde**.
+Nachweis: [Quality-Lauf 37017294224](https://github.com/sl3ndrr/RiffRechnung/actions/runs/37017294224)
+auf `5451f3ae31b6e0c7925f539fe6ae564bd75ef23b`, Node `22.23.3`, npm `10.9.9`.
+Die nachfolgende Änderung ergänzt ausschließlich diesen Bericht. Die abschließende
+CI und Merge-Zuordnung stehen in [PR 46](https://github.com/sl3ndrr/RiffRechnung/pull/46).
+Der Folgeauftrag erlaubt den Merge nach grüner Abnahme. Der vorhandene Pages-Workflow
+startet bei Integration automatisch; kein zusätzlicher Deployment-Lauf wird ausgelöst.
 
 ## Änderungen
 
@@ -72,7 +76,7 @@ Sidebar-Import-Ref. `settingsDirty`, lokale Fehler und Schreibstatus bleiben.
 - Daten-/Speicherformat bleiben Schema 10, Speicherprotokoll 4, Archivformat 1.
   Kein Backend, neuer Backupdienst oder neues Speichersystem.
 
-## Ausgangs- und Abschlussprüfungen
+## Lokale Ausgangs- und Abschlussprüfungen
 
 Lokale Umgebung: Node `24.19.0`, npm `11.9.0`; erforderlich ist Node 22.
 Der Arbeitsbereich enthielt anfangs keinen Checkout. Direktes Git-Clone erhielt
@@ -96,7 +100,7 @@ Die ergänzende Ausführung verwendet Nodes experimentelle TypeScript-Transforma
 und einen temporären Extension-Resolver außerhalb des Repositorys. Ausgeführt:
 `storage.test.ts`, `safety.test.ts`, `stabilization.test.ts`, `duo.test.ts`,
 `ap6-integration.test.ts` und `downloads.test.ts`. Der vollständige Logiklauf benötigt
-unter anderem React und esbuild und ist **nicht** als bestanden gewertet.
+unter anderem React und esbuild und wurde **lokal nicht** als bestanden gewertet. Die vollständige CI-Abnahme steht oben.
 
 Ein erster ergänzender Versuch ohne TypeScript-Transformation konnte
 Parameterproperties nicht laden. Der breitere Versuch traf auf fehlendes React
@@ -106,16 +110,25 @@ Flush-Effects im Einstellungsformular; er ist entfernt, die erneute Syntaxprüfu
 bestanden. Entfernte Ordnertexte/-selektoren wurden in den Browserfällen angepasst.
 Diese Zwischenbefunde und Korrekturen ersetzen keine vollständige CI-Abnahme.
 
-## Offene Punkte
+## Vollständige CI-Abnahme und verbleibende Grenzen
 
-Der bestehende Quality-Workflow läuft bei Pull Requests unter Node 22 und umfasst
-Installation, Lint, vollständige Logiktests, Typprüfung, Build, alle Browser-/PDF-Fälle
-und Audit. Die automatische Genehmigungsprüfung hat das Erstellen eines Entwurfs-PRs
-als Veröffentlichung im Konflikt mit „nicht automatisch … veröffentlichen“ abgelehnt.
-Es wurde kein PR geöffnet und kein Ersatzweg zum Auslösen dieses Vorgangs verwendet.
+Der Quality-Lauf auf dem oben genannten Produktcommit bestätigt `npm ci`,
+`npm run lint`, `npm test` (161/161), `npm run typecheck`, `npm run build`,
+`npm run test:browser` (60/60) und `npm audit --json` (0 gemeldete Schwachstellen).
+Keine übersprungenen Fach-/Browserfälle, keine Retries. Synthetische Browser-/PDF-
+Nachweise stehen im [CI-Artefakt](https://github.com/sl3ndrr/RiffRechnung/actions/runs/37017294224/artifacts/11232170430).
 
-Für die vollständige Abnahme fehlt deshalb eine ausdrückliche Erlaubnis, den
-vorbereiteten Entwurfs-PR zu öffnen und dessen Quality-CI abzuwarten, oder eine
-ausführbare lokale Node-22-Umgebung mit den Lockfile-Abhängigkeiten, Browsern und
-dem historischen Git-Commit. Build, vollständige Tests, Lint und echte Browserfälle
-bleiben bis dahin offen. Kein automatischer Merge und keine Website-Veröffentlichung.
+Geprüft sind echte Chromium-Abläufe einschließlich Web Locks, Quota-Wiederholung,
+konkurrierender Tabs, echter historischer Altversion, ungenutzter alter OPFS-/
+IndexedDB-Handles sowie ausdrücklich gespeicherter Einstellungen. JSON-Export/
+Import/Reload und asynchron initiierte Rohtext-/Rohbyte-Downloads sind in Chromium
+153.0.8010.12, Firefox 155.0 und Playwright-WebKit 26.6 unter Linux bestanden.
+Native Druckdialoge, Safari/macOS, Banking-App-Scan und manuelle Screenreader-
+Abnahme bleiben die bestehenden separaten Freigabegrenzen; P04 ändert das PDF nicht.
+
+Der erste Versuch, einen Entwurfs-PR zu öffnen, war im ursprünglichen Auftrag
+wegen dessen Veröffentlichungsverbot automatisch abgelehnt worden. Der ausdrückliche
+Folgeauftrag zum Merge hat die notwendige PR-Erstellung und Prüfung autorisiert.
+PR 46 ist geöffnet und die vollständige Quality-CI erfolgreich ausgeführt.
+Die lokalen Registry-/Git-403 bleiben als Ausgangsgrenzen dokumentiert; sie sind
+kein offenes Hindernis für die durch vollständige CI belegte P04-Abnahme.
