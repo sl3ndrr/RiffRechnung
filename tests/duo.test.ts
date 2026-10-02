@@ -1,3 +1,5 @@
+import { cleanLegacyContacts, normalizeLegacyRecipients } from '../src/lib/legacyContactsRecipients'
+import { cleanRecoveryFields } from '../src/lib/recoveryContactCleanup'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
@@ -22,18 +24,18 @@ test('P03: Schema 8/9 löst nur Gruppenmetadaten; Preise, Empfänger und alle En
     const raw = '\uFEFF' + JSON.stringify(legacy, null, 2) + '\r\n'
     const preview = migrated(raw)
     assert.deepEqual(legacy, before)
-    assert.equal(preview.state.schemaVersion, 10)
+    assert.equal(preview.state.schemaVersion, 11)
     assert.equal('duoGroups' in preview.state, false)
-    assert.equal(preview.report?.migration, 'riffrechnung-to-v10')
+    assert.equal(preview.report?.migration, 'riffrechnung-to-v11')
     assert.equal(preview.report?.fromSchema, schema)
     assert.deepEqual(preview.report?.changes.find((change) => change.path === 'duoGroups')?.before, legacy.duoGroups)
-    assert.deepEqual(preview.state.invoices, before.invoices)
+    assert.deepEqual(preview.state.invoices, normalizeLegacyRecipients(before).invoices)
     assert.deepEqual(preview.state.invoices.map(invoiceTotalCents), [758, 1502])
     assert.equal(preview.rawData, raw)
     const storage = memoryStorage(), session = new StorageSession({ storage, lock: sharedLock() })
     await session.restore(raw)
     const archive = JSON.parse(session.exportRecoveryArchive()) as { recoveries: { raw: string }[] }
-    assert.equal(JSON.parse(archive.recoveries[0].raw).sourceRaw, raw)
+    assert.equal(JSON.parse(archive.recoveries[0].raw).sourceRaw, cleanRecoveryFields(raw))
     assert.deepEqual(parseBackup(session.export()), preview.state)
     assert.equal(migrated(session.export()).report, null)
     const loaded = loadState(storage)
@@ -53,19 +55,19 @@ test('P03: lokaler Schema-9-Stand wartet ohne Schreibverlust auf kontrollierte �
   assert.equal(storage.getItem(STORAGE_KEY), raw)
   const session = new StorageSession({ storage, lock: sharedLock() })
   await session.restore(raw)
-  assert.deepEqual(session.state.invoices, old.invoices)
+  assert.deepEqual(session.state.invoices, normalizeLegacyRecipients(old).invoices)
   assert.equal(loadState(storage).status, 'ready')
 })
 
 test('P03: historische finale Duo-Belege, Nummern, Originalversionen und Verwaltungsdaten bleiben gleich', async () => {
   for (const schema of [8, 9] as const) {
     const old = legacyDuoState(schema, true), preview = migrated(JSON.stringify(old))
-    for (const key of ['invoices', 'documentVersions', 'invoiceAdministration', 'payments', 'counters', 'voidedInvoiceNumbers'] as const) assert.deepEqual(preview.state[key], old[key])
+    for (const key of ['invoices', 'documentVersions', 'invoiceAdministration', 'payments', 'counters', 'voidedInvoiceNumbers'] as const) assert.deepEqual(preview.state[key], normalizeLegacyRecipients(cleanLegacyContacts(old))[key])
     assert.deepEqual(preview.state.invoices.map((invoice) => invoice.number), ['2026-aur-0001', '2026-bas-0001'])
     assert.deepEqual(parseBackup(serializeBackup(preview.state)), preview.state)
     const storage = memoryStorage(), session = new StorageSession({ storage, lock: sharedLock() })
     await session.restore(JSON.stringify(old))
-    assert.deepEqual(new StorageSession({ storage, lock: sharedLock() }).state.documentVersions, old.documentVersions)
+    assert.deepEqual(new StorageSession({ storage, lock: sharedLock() }).state.documentVersions, normalizeLegacyRecipients(old).documentVersions)
   }
 })
 
@@ -75,11 +77,11 @@ test('P03: fehlende Partner oder Positionen erzeugen keine Ersatzdaten; übrige 
     if (missing === 'invoice') old.invoices.pop()
     else old.invoices[1].items = []
     const preview = migrated(JSON.stringify(old))
-    assert.deepEqual(preview.state.invoices, old.invoices)
+    assert.deepEqual(preview.state.invoices, normalizeLegacyRecipients(old).invoices)
     assert.deepEqual(preview.report?.changes.find((change) => change.path === 'duoGroups')?.before, old.duoGroups)
     const next = changeInvoiceStatus(preview.state, old.invoices[0].id, 'sent', documentAt)
     assert.equal(next.documentVersions.length, 1)
-    assert.deepEqual(next.invoices.slice(1), old.invoices.slice(1))
+    assert.deepEqual(next.invoices.slice(1), normalizeLegacyRecipients(old).invoices.slice(1))
   }
 })
 
@@ -115,21 +117,21 @@ test('P03: aktuelles Schema akzeptiert keine neuen Gruppen; Altadapter ist auf 8
 
 test('P03: gemeinsame Empfänger sind ein Beleg; Duo-Preis bleibt ohne Gruppenverwaltung', () => {
   const state = documentFamily(), draft = documentDraft()
-  draft.guardianIds = ['g-a', 'g-b']
+  draft.recipients = (['g-a', 'g-b']).map((id) => ({ type: 'guardian' as const, id }))
   draft.items = [applyLessonType(draft.items[0], 'duo', state.settings)]
   const next = saveInvoiceDraft(state, draft, true, documentAt)
   assert.equal(next.invoices.length, 1)
   assert.equal(next.documentVersions.length, 1)
   assert.equal(activeInvoices(next).length, 1)
   assert.equal(next.invoices[0].items[0].unitPrice, state.settings.duoRate)
-  assert.deepEqual(next.invoices[0].snapshot?.guardians.map((guardian) => guardian.id), ['g-a', 'g-b'])
+  assert.deepEqual(next.invoices[0].snapshot?.recipients.map((guardian) => guardian.id), ['g-a', 'g-b'])
   assert.equal(next.invoices[0].number, '2026-a-0001')
   assert.equal('duoGroups' in next, false)
 })
 
 test('P03: Einzelabschluss und Bearbeitung benötigen keinen gültigen Partner oder Gruppenbetrag', () => {
   let state = migrated(JSON.stringify(legacyDuoState())).state
-  state.invoices[1].guardianIds = []
+  state.invoices[1].recipients = ([]).map((id) => ({ type: 'guardian' as const, id }))
   const partner = structuredClone(state.invoices[1])
   state = saveInvoiceDraft(state, { ...editable(state.invoices[0]), freeText: 'Unabhängig bearbeitet' }, true, documentAt)
   assert.equal(state.documentVersions.length, 1)
@@ -173,7 +175,6 @@ test('P03: Selbstzahler nutzt Duo-Preis, GiroCode und denselben Personenbuchstab
   student.selfPayer = true
   student.guardianIds = []
   const draft = documentDraft()
-  draft.guardianIds = []
   draft.recipients = [{ type: 'student', id: student.id }]
   draft.items = [applyLessonType(draft.items[0], 'duo', state.settings)]
   const next = saveInvoiceDraft(state, draft, true, documentAt)

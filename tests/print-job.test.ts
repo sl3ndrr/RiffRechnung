@@ -21,7 +21,7 @@ function invoice(overrides: Partial<Invoice> = {}): Invoice {
     dueDate: '2026-09-15',
     period: 'September 2026',
     status: 'sent',
-    guardianIds: [],
+    recipients: ([]).map((id) => ({ type: 'guardian' as const, id })),
     studentIds: [],
     recipientStrategy: 'joint',
     items: [{ id: 'item-a', studentId: '', serviceDate: '2026-09-01', lessonType: 'solo', description: 'Synthetischer Unterricht', quantity: 1, unit: 'Std.', unitPrice: 42 }],

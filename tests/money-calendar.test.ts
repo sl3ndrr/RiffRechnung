@@ -1,3 +1,4 @@
+import { normalizeLegacyRecipients } from '../src/lib/legacyContactsRecipients'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { execFileSync } from 'node:child_process'
@@ -13,7 +14,7 @@ import { buildEpcPayload, invoiceTotal, nextInvoiceAllocation, outputItemTotal, 
 import { validateBackupState } from '../src/lib/validation'
 import { requireSuccess } from '../src/lib/result'
 import { serializeBackup, StorageSession, STORAGE_KEY } from '../src/lib/storage'
-import { documentAt, documentDraft, documentFamily, legacyFixture } from './documentFixtures'
+import { documentAt, documentDraft, documentFamily, legacyFixture, legacyVersionedFixture } from './documentFixtures'
 import { memoryStorage, sharedLock } from './storageHarness'
 
 const line = (quantity: number, unitPrice: number) => ({ ...documentDraft().items[0], quantity, unitPrice })
@@ -82,7 +83,7 @@ function v4Fixture() {
     Reflect.deleteProperty(legacy, 'legacyPaymentDay')
     return legacy
   })
-  return { ...captured, payments: legacyPayments, schemaVersion: 4 as const }
+  return { ...legacyVersionedFixture(captured, 4), payments: legacyPayments }
 }
 
 test('P05/P08: Schema 4 → 7 bewahrt Originale; Entwürfe zeigen Änderungen, Import/Reload sind idempotent', async () => {
@@ -95,14 +96,14 @@ test('P05/P08: Schema 4 → 7 bewahrt Originale; Entwürfe zeigen Änderungen, I
   const preview = requireSuccess(inspectImport(raw))
   assert.equal(preview.rawData, raw)
   assert.equal(preview.report?.fromSchema, 4)
-  assert.equal(preview.report?.toSchema, 10)
+  assert.equal(preview.report?.toSchema, 11)
   assert.ok(preview.report?.changes.some((change) => change.path.endsWith('amountReview') && change.before === 757 && change.after === 758))
-  assert.deepEqual(preview.state.documentVersions, old.documentVersions)
+  assert.deepEqual(preview.state.documentVersions, normalizeLegacyRecipients(old).documentVersions)
   assert.equal(invoiceTotal(selectInvoice(preview.state, preview.state.invoices[0])), 7.57)
   assert.equal(invoiceTotal(preview.state.invoices[1]), 7.58)
   assert.throws(() => changeInvoiceStatus(preview.state, draft.id, 'sent', documentAt), /Editor/)
   // Actual review text/amounts are asserted in the P05 Chromium test (Modal uses a portal).
-  const accepted = saveInvoiceDraft(preview.state, { ...draft }, true, documentAt)
+  const accepted = saveInvoiceDraft(preview.state, { ...preview.state.invoices[1] }, true, documentAt)
   assert.equal(accepted.documentVersions[1].amounts.totalCents, 758)
   assert.equal(accepted.documentVersions[1].amounts.calculation, 'decimal-v1')
   assert.equal(accepted.documentVersions[0].amounts.totalCents, 757)
@@ -112,11 +113,11 @@ test('P05/P08: Schema 4 → 7 bewahrt Originale; Entwürfe zeigen Änderungen, I
   const archive = [...storage.entries.entries()].find(([key]) => key.includes('-recovery-'))!
   assert.equal(JSON.parse(archive[1]).sourceRaw, raw)
   const reloaded = new StorageSession({ storage, lock })
-  assert.deepEqual(reloaded.state.documentVersions, old.documentVersions)
+  assert.deepEqual(reloaded.state.documentVersions, normalizeLegacyRecipients(old).documentVersions)
   assert.equal(requireSuccess(inspectImport(storage.getItem(STORAGE_KEY)!)).report, null)
   assert.equal(requireSuccess(inspectImport(serializeBackup(accepted))).report, null)
   validateBackupState(JSON.parse(JSON.stringify(accepted)))
-  const future = JSON.stringify({ ...old, schemaVersion: 11 })
+  const future = JSON.stringify({ ...old, schemaVersion: 12 })
   assert.equal(inspectImport(future).ok, false)
   storage.setItem(STORAGE_KEY, future)
   await assert.rejects(() => new StorageSession({ storage, lock }).restore(serializeBackup(accepted)), /neuere|schreibgeschützt/)

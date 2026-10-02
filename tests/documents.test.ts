@@ -49,7 +49,7 @@ test('P04: finalisieren, Stammdaten löschen, Original ausgeben, Korrektur speic
   assert.equal(state.invoices.at(-1)!.items.length, original.items.length)
   assert.throws(() => changeInvoiceStatus(state, correctionId, 'sent', at), /Stammdaten|zugeordnet/)
   let draft = reassignCorrectionStudent(editable(state.invoices.at(-1)!), 's-a', 's-b')
-  draft = { ...draft, guardianIds: ['g-b'], freeText: 'Korrigierter Hinweis', invoiceDate: '2026-09-02', items: draft.items.map((item) => ({ ...item, serviceDate: '2026-09-01', unitPrice: 20 })) }
+  draft = { ...draft, recipients: (['g-b']).map((id) => ({ type: 'guardian' as const, id })), freeText: 'Korrigierter Hinweis', invoiceDate: '2026-09-02', items: draft.items.map((item) => ({ ...item, serviceDate: '2026-09-01', unitPrice: 20 })) }
   state = saveInvoiceDraft(state, draft, true, at)
   state = await persistReload(state)
   assert.equal(canonical(state.documentVersions[0]), bytes)
@@ -57,7 +57,7 @@ test('P04: finalisieren, Stammdaten löschen, Original ausgeben, Korrektur speic
   assert.equal(state.documentVersions.length, 2)
   assert.equal(state.documentVersions[1].replacesId, state.documentVersions[0].id)
   assert.notEqual(state.invoices[1].number, original.number)
-  assert.equal(state.invoices[1].snapshot!.guardians[0].id, 'g-b')
+  assert.equal(state.invoices[1].snapshot!.recipients[0].id, 'g-b')
   assert.equal(activeInvoices(state).length, 1)
   assertOriginalsPreserved(issuedFromOriginal(state), state)
 })
@@ -67,7 +67,7 @@ function issuedFromOriginal(state: AppState): AppState {
 
 test('P04: Betrag, Datum, Texte und Empfaenger dürfen keine ausgestellte Version überschreiben', () => {
   const state = issued(); const original = state.invoices[0]
-  for (const field of [{ freeText: 'geändert' }, { introText: '' }, { invoiceDate: '2026-10-01' }, { guardianIds: ['g-b'] }, { items: [{ ...original.items[0], unitPrice: 99 }] }]) {
+  for (const field of [{ freeText: 'geändert' }, { introText: '' }, { invoiceDate: '2026-10-01' }, { recipients: (['g-b']).map((id) => ({ type: 'guardian' as const, id })) }, { items: [{ ...original.items[0], unitPrice: 99 }] }]) {
     assert.throws(() => saveInvoiceDraft(state, { ...editable(original), ...field }, false, at), /Finalisierte/)
     assert.throws(() => assertOriginalsPreserved(state, { ...state, invoices: [{ ...original, ...field }] }), /Finalisierte/)
   }
@@ -84,7 +84,7 @@ test('P04: Empfaenger A/B und leere historische Kontofelder sind für alle Ausga
   raw.settings.bic = 'MARKDEF1100'; raw.settings.accountHolder = 'HEUTIGES KONTO'; raw.settings.defaultLegalText = 'HEUTIGER RECHTSTEXT'
   let state = requireSuccess(inspectImport(JSON.stringify(raw))).state
   const version = state.documentVersions[0]
-  assert.ok(version.conflicts.some((conflict) => conflict.path === 'guardianIds'))
+  assert.ok(version.conflicts.some((conflict) => conflict.path === 'recipients'))
   const invoice = selectInvoice(state, state.invoices[0])
   assert.equal(guardianName(invoice, state.guardians), 'Empfaenger A')
   const markup = printContent(state, state.invoices[0])
@@ -133,9 +133,9 @@ test('P04: kontrollierte Migration eines Protokoll-4/Schema-3-Bestands bewahrt R
   assert.equal(session.revision!.datasetId, old.datasetId)
   const archive = JSON.parse(JSON.parse(session.exportRecoveryArchive()).recoveries[0].raw)
   assert.equal(archive.previousRaw, raw); assert.equal(archive.sourceRaw, raw)
-  assert.equal(archive.report.toSchema, 10)
+  assert.equal(archive.report.toSchema, 11)
   assert.equal(new StorageSession({ storage, lock: sharedLock() }).initial.status, 'ready')
-  const future = JSON.stringify({ ...old, schemaVersion: 11, data: { ...old.data, schemaVersion: 11 } })
+  const future = JSON.stringify({ ...old, schemaVersion: 12, data: { ...old.data, schemaVersion: 12 } })
   storage.setItem(STORAGE_KEY, future)
   await assert.rejects(new StorageSession({ storage, lock: sharedLock() }).restore(session.export()), /neuere Formate/)
   assert.equal(storage.getItem(STORAGE_KEY), future)
@@ -229,7 +229,7 @@ test('P04: Validatoren schützen Graph, Identitäten, Verwaltungsreferenzen und 
     (s: AppState) => { s.documentVersions[0].replacesId = s.documentVersions[0].id },
     (s: AppState) => { s.invoiceAdministration[0].versionId = 'missing' },
     (s: AppState) => { s.documentVersions = [] },
-    (s: AppState) => { s.invoices[0].snapshot!.guardians[0].id = 'g-b' },
+    (s: AppState) => { s.invoices[0].snapshot!.recipients[0].id = 'g-b' },
   ]) { const altered = structuredClone(state); mutate(altered); assert.equal(inspectImport(JSON.stringify(altered)).ok, false) }
   const corrected = createCorrectionDraft(state, state.invoices[0].id, 'Referenzprüfung', at)
   corrected.invoices.at(-1)!.items[0].studentId = 'invented-student'
@@ -260,7 +260,7 @@ test('P04: nach Migration ohne früheren Snapshot dürfen Stammdaten gelöscht w
   assert.equal(printContent(state, original), output)
   assert.equal(state.documentVersions[0].content.snapshot, undefined, 'fehlender damaliger Snapshot wird nicht erfunden')
   assert.ok(state.documentVersions[0].conflicts.some((conflict) => conflict.path === 'snapshot'))
-  assert.equal(state.documentVersions[0].outputSnapshot.guardians[0].name, 'Empfaenger A')
+  assert.equal(state.documentVersions[0].outputSnapshot.recipients[0].name, 'Empfaenger A')
 })
 
 test('P04: Vollzahlung, Zuordnung und Nummernregister werden bei Import gemeinsam geprüft', () => {
@@ -280,12 +280,12 @@ test('P04: Korrekturentwurf mit nur gelöschter empfangender Person bleibt speic
   const draft = editable(state.invoices.at(-1)!)
   state = saveInvoiceDraft(state, draft, false, at)
   state = await persistReload(state)
-  assert.deepEqual(state.invoices.at(-1)!.guardianIds, ['g-a'])
+  assert.deepEqual(state.invoices.at(-1)!.recipients.map((ref) => ref.id), ['g-a'])
   assert.deepEqual(state.invoices.at(-1)!.items, draft.items)
   assert.throws(() => saveInvoiceDraft(state, draft, true, at), /Stammdaten|zugeordnet/)
-  state = saveInvoiceDraft(state, { ...draft, guardianIds: ['g-b'] }, true, at)
+  state = saveInvoiceDraft(state, { ...draft, recipients: (['g-b']).map((id) => ({ type: 'guardian' as const, id })) }, true, at)
   await persistReload(state)
-  assert.equal(state.documentVersions[1].outputSnapshot.guardians[0].id, 'g-b')
+  assert.equal(state.documentVersions[1].outputSnapshot.recipients[0].id, 'g-b')
 })
 
 test('P04: Snapshot-Differenzen gelöschter Altrechnungen bleiben sichtbar, ohne Belege zu erfinden', async () => {

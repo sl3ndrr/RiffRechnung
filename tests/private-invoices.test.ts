@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { InvoicePrint } from '../src/components/InvoicePrint'
-import { documentAt, documentDraft, documentFamily, editable } from './documentFixtures'
+import { documentAt, documentDraft, documentFamily, editable, legacyVersionedFixture } from './documentFixtures'
 import { saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { prepareInvoiceCopy } from '../src/lib/commands'
 import { createCorrectionDraft, selectInvoice } from '../src/lib/documents'
@@ -24,7 +24,7 @@ function print(state: AppState): string {
 
 /** Independent comparison of all protected values, including nested JSON evidence. */
 function assertProtectedValues(before: unknown, after: unknown, path = ''): void {
-  if (path === 'schemaVersion') { assert.equal(after, 10); return }
+  if (path === 'schemaVersion') { assert.equal(after, 11); return }
   if (Array.isArray(before)) {
     assert.ok(Array.isArray(after), path)
     const entries = path.endsWith('.conflicts') ? before.filter((entry) => entry.path !== 'snapshot.taxIdentifier') : before
@@ -34,8 +34,10 @@ function assertProtectedValues(before: unknown, after: unknown, path = ''): void
   }
   if (before !== null && typeof before === 'object') {
     assert.ok(after !== null && typeof after === 'object', path)
-    const old = before as Record<string, unknown>, next = after as Record<string, unknown>
-    const retired = ['invoiceProfile', 'taxIdentifier', 'invoiceKind', 'taxPresentation', 'taxOutput']
+    const old = { ...before } as Record<string, unknown>, next = after as Record<string, unknown>
+    if (Array.isArray(old.guardianIds) && !path.startsWith('students[')) { next.recipients && assert.deepEqual(next.recipients, old.guardianIds.map((id) => ({ type: 'guardian', id })), path); old.recipients = old.guardianIds.map((id) => ({ type: 'guardian', id })); delete old.guardianIds }
+    if (Array.isArray(old.guardians) && !('schemaVersion' in old)) { old.recipients = old.guardians.map((person) => ({ ...(person as Record<string, unknown>), type: 'guardian' })); delete old.guardians }
+    const retired = ['invoiceProfile', 'taxIdentifier', 'invoiceKind', 'taxPresentation', 'taxOutput', ...(path.startsWith('guardians[') ? ['iban', 'paymentNote', 'firstName', 'lastName'] : []), ...(path.startsWith('students[') ? ['note'] : [])]
     assert.deepEqual(Object.keys(next).sort(), Object.keys(old).filter((key) => !retired.includes(key)).sort(), path)
     for (const key of Object.keys(next)) assertProtectedValues(old[key], next[key], path ? `${path}.${key}` : key)
     return
@@ -50,7 +52,7 @@ function assertProtectedValues(before: unknown, after: unknown, path = ''): void
 function oldTaxStock() {
   const issued = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
   const stock = saveInvoiceDraft(issued, { ...documentDraft(), items: documentDraft().items.map((item) => ({ ...item, id: 'historical-draft-item' })) }, false, documentAt)
-  const old = JSON.parse(JSON.stringify(stock))
+  const old = legacyVersionedFixture(stock, 8)
   old.schemaVersion = 8
   old.settings.invoiceProfile = 'small-business'
   old.settings.taxIdentifier = { kind: 'tax-number', value: 'SYNTHETIC-TAX-SECRET' }
@@ -102,7 +104,7 @@ test('P01: unter, bei und über 250 Euro ohne Anschriften derselbe Abschluss; ge
 })
 
 test('P01: beide gemeinsamen Empfängeranschriften, GiroCode-Daten und Namen bleiben erhalten', () => {
-  const issued = saveInvoiceDraft(documentFamily(), { ...documentDraft(), guardianIds: ['g-a', 'g-b'] }, true, documentAt)
+  const issued = saveInvoiceDraft(documentFamily(), { ...documentDraft(), recipients: (['g-a', 'g-b']).map((id) => ({ type: 'guardian' as const, id })) }, true, documentAt)
   const output = print(issued)
   for (const text of ['Empfaenger A', 'Empfaenger B', 'Testweg 2', 'Testweg 3', 'DE02 1203 0000 0000 2020 51']) assert.ok(output.includes(text), text)
   const incomplete = structuredClone(issued.settings)
@@ -114,7 +116,7 @@ test('P01: beide gemeinsamen Empfängeranschriften, GiroCode-Daten und Namen ble
 test('P01: 8→9 entfernt nur benannte Steuerfelder und Steuer-Konfliktbelege; Quelle und Freitexte bleiben gleich', () => {
   const old = oldTaxStock(), raw = JSON.stringify(old)
   const preview = requireSuccess(inspectImport(raw))
-  assert.equal(preview.report?.fromSchema, 8); assert.equal(preview.report?.toSchema, 10)
+  assert.equal(preview.report?.fromSchema, 8); assert.equal(preview.report?.toSchema, 11)
   assertProtectedValues(old, preview.state)
   assert.equal(JSON.stringify(old), raw)
   assert.equal(preview.rawData, raw)
@@ -176,7 +178,7 @@ test('P01: erfolgreiche Übernahme bereinigt Hauptbestand, Vorgänger, Legacy-Sc
   await session.restore(raw)
   for (const [key, value] of storage.entries) assert.doesNotMatch(value, /SYNTHETIC-TAX-SECRET|SYNTHETIC-TAX-NOTICE/, key)
   assert.doesNotMatch(session.exportRecoveryArchive(), /SYNTHETIC-TAX-SECRET|SYNTHETIC-TAX-NOTICE/)
-  assert.equal(new StorageSession({ storage, lock: sharedLock() }).state.schemaVersion, 10)
+  assert.equal(new StorageSession({ storage, lock: sharedLock() }).state.schemaVersion, 11)
 })
 
 test('P01: fehlgeschlagene Speicherung und unlesbare Nebenstruktur lassen alle Ausgangsschlüssel unverändert', async () => {

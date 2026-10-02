@@ -1,3 +1,4 @@
+import { normalizeLegacyRecipients } from '../src/lib/legacyContactsRecipients'
 import { legacyFixture } from './documentFixtures'
 import { seedState, sharedLock } from './storageHarness'
 import test from 'node:test'
@@ -25,13 +26,13 @@ function family(count = 1): AppState {
   state.updatedAt = at
   state = requireSuccess(saveSettingsState(state, { ...state.settings, issuer: { ...state.settings.issuer, name: 'Synthetisches Teststudio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', email: 'studio+test@example.org' }, accountHolder: 'Teststudio', iban: 'DE02120300000000202051' }))
   for (let index = 0; index < count; index++) state = requireSuccess(saveGuardianState(state, {
-    id: `g${index}`, firstName: 'Testperson', lastName: String(index), name: `Testperson ${index}`, email: `test${index}@example.org`, phone: '', address: { street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }, iban: '', paymentNote: '', createdAt: at, updatedAt: at,
+    id: `g${index}`,   name: `Testperson ${index}`, email: `test${index}@example.org`, phone: '', address: { street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' },   createdAt: at, updatedAt: at,
   }))
-  return requireSuccess(saveStudentState(state, { id: 's0', name: 'Testkind', billingCode: '', guardianIds: state.guardians.map((guardian) => guardian.id), note: '', active: true, createdAt: at, updatedAt: at }))
+  return requireSuccess(saveStudentState(state, { id: 's0', name: 'Testkind', billingCode: '', guardianIds: state.guardians.map((guardian) => guardian.id),  active: true, createdAt: at, updatedAt: at }))
 }
 
 function draft(state: AppState): InvoiceDraft {
-  return { invoiceDate: '2026-08-15', dueDate: '2026-08-29', period: 'August 2026', guardianIds: ['g0'], studentIds: ['s0'], recipientStrategy: 'joint', items: [createLessonItem('s0', '2026-08-05', state.settings, 'original-item')], introText: 'Einleitung', freeText: 'Hinweis\nZweite Zeile', legalText: 'Historischer Text' }
+  return { invoiceDate: '2026-08-15', dueDate: '2026-08-29', period: 'August 2026', recipients: (['g0']).map((id) => ({ type: 'guardian' as const, id })), studentIds: ['s0'], recipientStrategy: 'joint', items: [createLessonItem('s0', '2026-08-05', state.settings, 'original-item')], introText: 'Einleitung', freeText: 'Hinweis\nZweite Zeile', legalText: 'Historischer Text' }
 }
 
 async function withStorage(run: (entries: Map<string, string>) => void | Promise<void>): Promise<void> {
@@ -67,9 +68,9 @@ function legacyCopies(count: number, finalized: boolean) {
   candidate.items[0].quantity = 1.5
   const saved = saveInvoiceDraft(state, candidate, finalized, at).invoices[0]
   state.invoices = state.guardians.map((guardian, index): Invoice => ({
-    ...structuredClone(saved), id: `old-copy-${index}`, guardianIds: [guardian.id], recipientStrategy: 'separate',
+    ...structuredClone(saved), id: `old-copy-${index}`, recipients: ([guardian.id]).map((id) => ({ type: 'guardian' as const, id })), recipientStrategy: 'separate',
     number: finalized ? `2026-a-${String(index + 1).padStart(4, '0')}` : null, sequence: finalized ? index + 1 : null,
-    ...(saved.snapshot ? { snapshot: { ...structuredClone(saved.snapshot), guardians: [{ id: guardian.id, name: guardian.name, email: guardian.email, ...guardian.address }] } } : {}),
+    ...(saved.snapshot ? { snapshot: { ...structuredClone(saved.snapshot), recipients: ([{ id: guardian.id, name: guardian.name, email: guardian.email, ...guardian.address }]).map((person) => ({ ...person, type: 'guardian' as const })) } } : {}),
   }))
   state.counters = { '2026:a': count + 1 }
   state.voidedInvoiceNumbers = [{ number: '2026-a-0099', sequence: 99, year: 2026, invoiceDate: '2026-08-15', deletedAt: at, reason: 'deleted', amount: 30, recipient: 'Testperson' }]
@@ -88,7 +89,7 @@ test('P02: unvollständiger Entwurf bleibt nach Erzeugen, Export–Import und Re
   assert.equal(saved.invoices.length, 1)
   assert.equal(saved.invoices[0].number, null)
   assert.deepEqual(saved.invoices[0].items, [])
-  assert.deepEqual(saved.invoices[0].guardianIds, [])
+  assert.deepEqual(saved.invoices[0].recipients.map((ref) => ref.id), [])
   assert.deepEqual(saved.counters, {})
   roundTrip(saved)
   assert.throws(() => changeInvoiceStatus(saved, saved.invoices[0].id, 'sent', at), /Finalisieren nicht möglich/)
@@ -171,10 +172,10 @@ for (const count of [2, 3]) for (const finalized of [false, true]) test(`P02: ${
   assert.equal(preview.report?.idMappings.length, count - 1)
   assert.deepEqual(preview.state.invoices.map(invoiceTotal), before.invoices.map(invoiceTotal))
   assert.deepEqual(preview.state.invoices.map((invoice) => invoice.number), before.invoices.map((invoice) => invoice.number))
-  assert.deepEqual(preview.state.invoices.map((invoice) => invoice.snapshot), before.invoices.map((invoice) => invoice.snapshot))
+  assert.deepEqual(preview.state.invoices.map((invoice) => invoice.snapshot), normalizeLegacyRecipients(before).invoices.map((invoice) => invoice.snapshot))
   assert.deepEqual(preview.state.counters, before.counters)
   assert.deepEqual(preview.state.voidedInvoiceNumbers, before.voidedInvoiceNumbers)
-  preview.state.invoices.forEach((invoice, index) => assert.deepEqual({ ...invoice, versionId: undefined, items: invoice.items.map((item, itemIndex) => ({ ...item, id: before.invoices[index].items[itemIndex].id })) }, { ...before.invoices[index], versionId: undefined }))
+  preview.state.invoices.forEach((invoice, index) => assert.deepEqual({ ...invoice, versionId: undefined, items: invoice.items.map((item, itemIndex) => ({ ...item, id: before.invoices[index].items[itemIndex].id })) }, { ...normalizeLegacyRecipients(before).invoices[index], versionId: undefined }))
   assert.deepEqual(legacy, before)
   const report = JSON.parse(serializeMigrationReport(preview))
   assert.deepEqual(report.data, preview.state)
@@ -239,7 +240,7 @@ test('P02: Reparatur wählt kollisionsfreie IDs und berührt Snapshot-Referenzbe
   const preview = requireSuccess(inspectImport(legacyRaw(data)))
   assert.equal(preview.state.invoices[1].items[0].id, 'item-v3-1-0-1')
   assert.equal(preview.state.invoices[3].items[0].id, 'item-v3-1-0')
-  assert.deepEqual(preview.state.invoices.map((invoice) => invoice.snapshot), data.invoices.map((invoice) => invoice.snapshot))
+  assert.deepEqual(preview.state.invoices.map((invoice) => invoice.snapshot), normalizeLegacyRecipients(data).invoices.map((invoice) => invoice.snapshot))
   const currentCollision = { ...data, schemaVersion: 3 }
   assert.equal(inspectImport(JSON.stringify(currentCollision)).ok, false, 'strenger aktueller Import bleibt strikt')
 })
@@ -312,7 +313,7 @@ test('P02: Preis-, Mengen-, Datums- und Referenzfehler werden in Befehlen und Im
   assert.equal(saveInvoiceState(state, candidate, false, at).ok, false, 'Gesamtbetrag darf nicht überlaufen')
   for (const mutate of [
     (value: InvoiceDraft) => { value.items[0].studentId = 'missing' },
-    (value: InvoiceDraft) => { value.guardianIds = ['missing'] },
+    (value: InvoiceDraft) => { value.recipients = (['missing']).map((id) => ({ type: 'guardian' as const, id })) },
     (value: InvoiceDraft) => { value.studentIds = [] },
     (value: InvoiceDraft) => { value.items[0].id = 'bad id' },
     (value: InvoiceDraft) => { value.items.push(structuredClone(value.items[0])) },
@@ -345,7 +346,7 @@ test('P02: fehlerhafte importierte Mailboxen sind sichtbar, historische Werte bl
   assert.match(markup, /guardians\[0\]\.email/)
   assert.match(markup, /Originaldatei exportieren/)
   const historical = saveInvoiceDraft(state, draft(state), true, at)
-  historical.invoices[0].snapshot!.guardians[0].email = 'bad@example.org?bcc=x@example.org'
+  historical.invoices[0].snapshot!.recipients[0].email = 'bad@example.org?bcc=x@example.org'
   historical.invoices[0].snapshot!.iban = 'FR1420041010050500013M02606'
   const legacyHistorical = legacyFixture(historical)
   const preview = requireSuccess(inspectImport(JSON.stringify(legacyHistorical)))

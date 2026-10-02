@@ -12,9 +12,8 @@ export const households = [
 export function duoFamily(): AppState {
   const state = documentFamily()
   households.forEach((household, index) => {
-    Object.assign(state.students[index], { name: household.student, billingCode: household.code, note: household.note, guardianIds: [state.guardians[index].id] })
-    const [firstName, lastName] = household.guardian.split(' ')
-    Object.assign(state.guardians[index], { firstName, lastName, name: household.guardian, email: `${household.code}@example.org`, paymentNote: household.note })
+    Object.assign(state.students[index], { name: household.student, billingCode: household.code,  guardianIds: [state.guardians[index].id] })
+    Object.assign(state.guardians[index], { name: household.guardian, email: `${household.code}@example.org` })
     state.guardians[index].address.street = `${household.code.toUpperCase()}-Weg ${index + 1}`
   })
   state.nextStudentCodeIndex = Math.max(...households.map((household) => studentCodeIndex(household.code))) + 1
@@ -26,7 +25,7 @@ export function duoDrafts(): AppState {
   let state = duoFamily()
   households.forEach((household, index) => {
     const studentId = index === 0 ? 's-a' : 's-b'
-    state = saveInvoiceDraft(state, { ...documentDraft(), guardianIds: [index === 0 ? 'g-a' : 'g-b'], studentIds: [studentId],
+    state = saveInvoiceDraft(state, { ...documentDraft(), recipients: ([index === 0 ? 'g-a' : 'g-b']).map((id) => ({ type: 'guardian' as const, id })), studentIds: [studentId],
       introText: household.intro, freeText: household.free, legalText: household.legal,
       items: [{ ...duoLesson, id: `duo-item-${index}`, studentId, lessonType: 'duo', unitPrice: index === 0 ? 10.10 : 20.02 }],
     }, false, documentAt, () => `duo-invoice-${index}`)
