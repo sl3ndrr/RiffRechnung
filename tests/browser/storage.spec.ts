@@ -123,6 +123,22 @@ test('echter Browser: isolierte Demo mit realem OPFS-Handle und IndexedDB erhäl
     return files.sort()
   })
   const filesBefore = await readFiles()
+  const readOldBinding = () => page.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open('riffrechnung-handles-v4', 1)
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => {
+      const db = request.result
+      const tx = db.transaction('handles', 'readonly')
+      const entry = tx.objectStore('handles').get('backup-directory')
+      entry.onsuccess = () => {
+        const binding = entry.result
+        resolve({ datasetId: binding.datasetId, name: binding.handle.name, legacyFiles: binding.legacyFiles })
+      }
+      tx.oncomplete = () => db.close()
+      tx.onerror = () => { db.close(); reject(tx.error) }
+    }
+  }))
+  const oldBinding = await readOldBinding()
   await page.getByRole('button', { name: 'Mit Beispieldaten testen' }).click()
   await expect(page.getByRole('button', { name: 'Demo verlassen', exact: true })).toBeVisible()
   await settings(page)
@@ -131,6 +147,7 @@ test('echter Browser: isolierte Demo mit realem OPFS-Handle und IndexedDB erhäl
   await page.getByRole('button', { name: 'Demo verlassen', exact: true }).click()
   expect(await stored(page)).toBe(before)
   expect(await readFiles()).toEqual(filesBefore)
+  expect(await readOldBinding()).toEqual(oldBinding)
   await context.close()
   context = await playwright.chromium.launchPersistentContext(profile, { channel: 'chromium', headless: true, baseURL: 'http://127.0.0.1:4173' })
   page = await context.newPage()

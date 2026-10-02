@@ -19,14 +19,14 @@ Eine vollständig clientseitige Web-App für Rechnungen rund um Gitarrenunterric
 - clientseitig erzeugter EPC-GiroCode (EPC069-12 / Version 002) für SEPA-Überweisungen
 - Dashboard, Volltextsuche, Filter, sortierbare Rechnungslisten, Zahlungserinnerung per `mailto:`, Duplizieren wiederkehrender Rechnungen und CSV-Jahresübersicht
 - System-/Light-/Dark-Mode, responsive Desktop-/Tablet-/Smartphone-Oberfläche und reduzierte Bewegung
-- bestätigtes lokales Speichern gültiger Einstellungen, auch beim sofortigen Ansichtswechsel
-- JSON-Export/-Import sowie optionales automatisches Backup in einen lokalen Ordner
+- ausdrückliches lokales Speichern gültiger Einstellungen; Warnung vor Verwerfen offener Eingaben
+- manueller JSON-Export/-Import und lokale Wiederherstellung im Backup-Bereich der Einstellungen
 
 ## Tech-Stack
 
 **Vite + React + TypeScript** ist hier bewusst schlanker als ein Full-Stack-Framework: GitHub Pages liefert ausschließlich statische Dateien aus, React eignet sich gut für den zustandsreichen Rechnungseditor, und TypeScript schützt das Daten- und Backup-Format. Die Inter-Schrift (`@fontsource-variable/inter`), Lucide-Symbole und die QR-Bibliothek werden beim Build lokal gebündelt. Zur Laufzeit werden keine CDN-Ressourcen geladen.
 
-Die Daten liegen im `localStorage` des verwendeten Browserprofils; nur die optionale Referenz auf einen freigegebenen Backup-Ordner wird über IndexedDB gespeichert. Die App selbst sendet keine personenbezogenen Daten an einen Dienst. Das ist keine Verschlüsselung: Wer Zugriff auf das Gerät oder Browserprofil hat, kann auch auf diese Daten zugreifen.
+Die Daten liegen im `localStorage` des verwendeten Browserprofils. Frühere gespeicherte Ordner-Handles bleiben ungenutzt; die App liest oder bereinigt sie nicht. Die App selbst sendet keine personenbezogenen Daten an einen Dienst. Das ist keine Verschlüsselung: Wer Zugriff auf das Gerät oder Browserprofil hat, kann auch auf diese Daten zugreifen.
 
 ## Lokal starten
 
@@ -139,37 +139,31 @@ enthält den zuletzt bestätigten Stand. Eine Wiederherstellung wird nach Vorsch
 bestätigt, bewahrt Originaldaten/Berichte und wird als neue Revision gespeichert.
 Bekannte ausgestellte Belege und reservierte Nummern bleiben geschützt.
 
-**Ordner wählen** liest zuerst vorhandene Sicherungen und zeigt Bestand und
-Konflikte. Ein leerer Browser ersetzt keine bestehende Sicherung. Altbackups ohne
-Bestands-ID brauchen eine ausdrückliche Zuordnung durch Wiederherstellung.
-**Jetzt sichern** und automatische Sicherung verwenden denselben Schreibdienst.
-Jeder neue Stand erhält eine neue Datei `riffrechnung-v4-<Revision>-<ID>.json`;
-die bisherigen gültigen Dateien bleiben erhalten. Keine automatische Bereinigung.
+Einstellungen werden ausschließlich mit **Jetzt speichern** gespeichert. Validierungs-
+oder Speicherfehler erhalten die Eingaben; eine Wiederholung erfolgt mit demselben
+Knopf. Während eines laufenden Versuchs ergänzte Eingaben bleiben ungespeichert.
+Ansichts- und Demo-Wechsel warnen vor offenen Änderungen und bieten Weiterbearbeiten
+oder ausdrückliches Verwerfen. Darstellung und reduzierte Bewegung gehören ebenfalls
+zu diesem Speichermodell; das Farbschema-Symbol öffnet die Darstellungseinstellungen.
+Der JSON-Export enthält immer den zuletzt bestätigten Stand, keine offenen Eingaben.
 
-Die Anzeige unterscheidet ungespeicherte Änderungen, lokalen Schreibabschluss,
-ausstehendes Datei-Backup, Konflikt und Fehler – auch mobil. Gültige Einstellungen
-werden beim Ansichtswechsel übernommen. Asynchrones Datei-Backup benötigt den
-offenen Tab; sein Abschluss wird nicht beim Schließen versprochen. Bei entzogenem
-Zugriff **Jetzt sichern** zur erneuten Freigabe verwenden oder JSON exportieren.
+Es gibt keine Ordnerauswahl, Berechtigungsabfrage oder automatische Dateisicherung.
+Vorhandene externe Backups und alte lokal gespeicherte Handles bleiben unberührt.
+Die Anzeige unterscheidet offene Änderungen, lokalen Schreibabschluss, Tabkonflikte,
+Speicherfehler und den letzten manuell gestarteten JSON-Export – auch mobil.
+Ohne Web Locks bleibt lokales Schreiben gesperrt. Locks koordinieren Tabs im selben
+Browserprofil; mehrere Geräte oder Profile teilen keinen Schreibdienst.
 
-Ordnerzugriff benötigt File System Access samt vollständiger Ordner- und
-Berechtigungsprüfung. Fehlt eine benötigte Dateifunktion, bleibt der JSON-Export.
-Ohne Web Locks ist auch lokales Schreiben gesperrt. Locks koordinieren Tabs im
-selben Browserprofil, keine weiteren Geräte oder Synchronisationsprogramme.
-Widersprüchliche Dateien bleiben erhalten und sperren den Ordner; dann Sicherungen
-prüfen und einen anderen Zielort wählen. Eine Cloud-Anbindung enthält die App nicht.
+Die **Demo** läuft ausschließlich im Arbeitsspeicher einer eigenen Sitzung und
+benutzt weder realen Speicher noch Datei-/Handle-APIs. Ungespeicherte Einstellungen
+sind auch beim Verlassen geschützt; Demo-Änderungen gehen danach verloren.
 
-Die **Demo** läuft ausschließlich im Arbeitsspeicher einer eigenen Sitzung.
-Einstieg/Ausstieg erhalten den realen Bestand, seine Ordnerverbindung und Dateien.
-Demo-Änderungen gehen beim Verlassen verloren.
-
-JSON-Export, Import in ein leeres Profil und Reload ohne Ordner-API werden in
+JSON-Export, Import in ein leeres Profil und Reload werden in
 Chromium 153.0.8010.12, Firefox 155.0 und Playwright-WebKit 26.6 unter Linux
 geprüft. WebKit/Linux ist kein Nachweis für Safari auf macOS/iOS. Der dort
 vorgesehene JSON-Fallback bleibt eine offene native Abnahme.
 
-Vor einem Formatumstieg eine unabhängige Originaldatei außerhalb des automatischen
-Backup-Ordners sichern. Rückkehr zu früherem Code nur mit dieser passenden alten
+Vor einem Formatumstieg eine unabhängige Originaldatei geschützt sichern. Rückkehr zu früherem Code nur mit dieser passenden alten
 Datei in einem getrennten Profil; neue Formate werden nicht zurückkonvertiert.
 Die geprüfte [Umstiegs- und Rückkehranleitung](docs/release-readiness.md#umstieg-und-rückkehr)
 beschreibt Migration, Wiederholung nach Fehlern und Kontrolle nach Reload.
@@ -178,8 +172,8 @@ beschreibt Migration, Wiederholung nach Fehlern und Kontrolle nach Reload.
 
 - Rechnungen, Einstellungen und Historie liegen im verwendeten Browserprofil. Ein Geräteschutz, ein gesperrtes Benutzerkonto und ein geschütztes Browserprofil sind deshalb Teil des Schutzmodells. Inkognito-Modus, das Löschen von Website-Daten oder ein Geräteverlust können lokale Daten entfernen.
 - Browser-Speicher ist an den **Origin** (Schema, Host und Port), nicht an den Repository-Unterpfad gebunden. Die konfigurierte GitHub-Pages-Auslieferung hat ohne `CNAME` den Origin `https://sl3ndrr.github.io`; RiffRechnung liegt darunter unter `/RiffRechnung/`. Andere dort ausgelieferte Projekte teilen den Origin und sind kein getrenntes Speicher-Sicherheitsgebiet. Die im Eigentümerkonto vorhandenen weiteren Repositories belegen nicht, dass sie auch dort ausgeliefert werden; das konnte aus der Repository-Konfiguration nicht abschließend festgestellt werden. Wenn nicht vertrauenswürdige Anwendungen unter diesem Origin betrieben werden sollen, ist ein separater Origin eine Betriebsoption.
-- JSON-Exports und Ordner-Backups sind normale Klartextdateien. Sie enthalten Personen-/Kontaktangaben, Rechnungen, Einstellungen, Freitexte und Notizen, vollständige Belegversionen sowie Änderungs- und Zahlungszuordnungshistorie. Sicherungen nur geschützt ablegen und vor dem Weitergeben prüfen.
-- Die App nutzt keine Cloud-API. Wird ein lokal synchronisierter Ordner gewählt, kann dessen installierte Desktop-Synchronisation die Klartextdateien an den jeweiligen Dienst übertragen; dessen Datenschutz- und Freigaberegeln gelten zusätzlich.
+- JSON-Exports sind normale Klartextdateien. Sie enthalten Personen-/Kontaktangaben, Rechnungen, Einstellungen, Freitexte und Notizen, vollständige Belegversionen sowie Änderungs- und Zahlungszuordnungshistorie. Sicherungen nur geschützt ablegen und vor dem Weitergeben prüfen.
+- Die App nutzt keine Cloud-API. Wird eine exportierte Datei in einem synchronisierten Ordner abgelegt, kann dessen installierte Desktop-Synchronisation die Klartextdatei an den jeweiligen Dienst übertragen; dessen Datenschutz- und Freigaberegeln gelten zusätzlich.
 - Rechnungsnummern sind innerhalb jedes Lernendenkennzeichens monoton und eindeutig. Die erste angelegte lernende Person erhält `a`, die zweite `b`; eine gemeinsame Rechnung für beide verwendet `a+b`. `ab` kann dagegen das Kennzeichen einer einzelnen später angelegten Person sein. Parallel genutzte Browserprofile/Geräte teilen keinen Nummernkreis; für einen lückenlosen gemeinsamen Nummernkreis darf nur ein führender Datenbestand verwendet werden.
 - Finalisierte Rechnungen bleiben erhalten; inhaltliche Änderungen erzeugen Korrekturen. Archivierung und Zahlungs-/Versandverwaltung ändern den gesicherten Inhalt nicht. Originalnummern und frühere Registereinträge bleiben dauerhaft reserviert.
 - Ein migrierter Beleg ist nur der älteste verfügbare Stand. Fehlende frühere Versionen werden nicht rekonstruiert. Lokale Versionierung garantiert weder Manipulationssicherheit noch automatische GoBD-Konformität.
@@ -208,8 +202,8 @@ Abweichungen und übernommenen Verwaltungs-/Zahlungsangaben. Vorhandene Register
 haben Vorrang; die abweichende bisherige Rechnungssumme bleibt ebenfalls erhalten.
 
 Beim Umstieg **alle alten Tabs schließen**, Original exportieren und die Vorschau
-bestätigen. Paket 07 verwendet die Speicher-Schlüssel und Handle-Datenbank aus
-Paket 03 weiter. Alte Rohtexte bleiben im Wiederherstellungsarchiv erhalten. Ändert ein alter
+bestätigen. Die Speicher-Schlüssel bleiben erhalten; die frühere Handle-Datenbank
+wird seit P04 nicht mehr verwendet. Alte Rohtexte bleiben im Wiederherstellungsarchiv erhalten. Ändert ein alter
 Tab ihn später, erscheint ein Konflikt; beide Stände separat exportieren und in
 einem getrennten aktuellen Profil prüfen. Unbekannte neuere Formate bleiben
 schreibgeschützt. Für alten Anwendungscode nur die Originaldatei in einem eigenen
@@ -224,8 +218,9 @@ den historischen Commit `ba7857fd9180fa392c42a0235643e478e5077ee5` als temporär
 Testseite unter derselben Origin, um einen wirklich geöffneten alten Tab zu prüfen.
 `npm run test:browser` benötigt dafür Git, tar und bei fehlendem Commit lesenden
 GitHub-Zugriff. Die Testseite wird anschließend entfernt und nicht ausgeliefert.
-Dateihandles werden in einem isolierten dauerhaften Chromium-Profil mit echtem
-OPFS/IndexedDB geprüft; native Ordnerdialoge und OS-Rechte bleiben separate Abnahmen.
+Ein isoliertes dauerhaftes Chromium-Profil enthält synthetische alte OPFS-Dateien
+und IndexedDB-Handles. Die Browserprüfung kontrolliert, dass die App sie ungenutzt
+und unverändert lässt; aktive Ordnerdialoge und Dateischreibrechte entfallen.
 Paket 04 prüft zusätzlich echte Chromium-PDFs anhand ihres Textinhalts. Synthetische
 PDFs und Browsernachweise stehen sieben Tage als CI-Artefakt `browser-evidence`
 bereit. Native Druckdialoge, Drucklayout-Matrix und Banking-App-Scans sind separate
