@@ -26,7 +26,6 @@ import { readFileSync } from 'node:fs'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { Guardian, Invoice, InvoiceDraft, Student } from '../src/types'
-import changelog from '../src/content/changelog.json'
 import { InvoicePrint } from '../src/components/InvoicePrint'
 import { createDemoState, defaultSettings, emptyState } from '../src/lib/defaults'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, runInvoiceMenuAction } from '../src/lib/invoiceMenu'
@@ -35,7 +34,6 @@ import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoiceP
 import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { assertOriginalsPreserved } from '../src/lib/safety'
 import { applyStandardRateInput, updateSettings } from '../src/lib/settings'
-import { APP_VERSION } from '../src/version'
 
 const student = (id: string, name: string, billingCode: string): Student => ({
   id,
@@ -803,12 +801,6 @@ test('Zeitpunkt des letzten Backup-Exports wird persistiert', () => {
   })
 })
 
-test('sichtbare App-Version entspricht dem neuesten Changelog-Eintrag', () => {
-  assert.ok(Array.isArray(changelog))
-  assert.equal(changelog[0]?.version, APP_VERSION)
-  assert.ok((changelog[0]?.changes.length ?? 0) >= 1)
-  assert.ok(changelog.length >= 2)
-})
 
 test('nicht unterstütztes Backup wird abgelehnt', () => {
   assert.throws(() => parseBackup('{"schemaVersion":99}'), /unterstütztes Backup-Format/)
