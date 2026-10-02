@@ -38,7 +38,7 @@ async function pdfText(page: Page, state: AppState, invoiceId: string): Promise<
   } finally { await rendering.close() }
 }
 
-test('AP6 Browser/PDF: eingefrorene Schema-7-Belege bleiben nach Migration, Druck und Reload erhalten', async ({ page }, testInfo) => {
+test('AP6 Browser/PDF: eingefrorene Schema-7-Belege bewahren Nichtsteuerdaten nach Migration, Druck und Reload', async ({ page }, testInfo) => {
   const gold = JSON.parse(readFileSync('tests/fixtures/schema7-audit.json', 'utf8')) as { issuedCorrected: AppState; oldestSeparate: AppState }
   for (const original of [gold.issuedCorrected, gold.oldestSeparate]) {
     await page.goto('/')
@@ -50,7 +50,7 @@ test('AP6 Browser/PDF: eingefrorene Schema-7-Belege bleiben nach Migration, Druc
     }, JSON.stringify(original))
     await page.reload()
     const after = await stateOf(page)
-    expect({ ...after, schemaVersion: 7 }).toEqual(original)
+    expect({ ...after, schemaVersion: 7 }).toEqual(JSON.parse(JSON.stringify(original, (key, value) => ['invoiceProfile', 'taxIdentifier', 'invoiceKind', 'taxPresentation', 'taxOutput'].includes(key) ? undefined : value)))
     const separate = after.invoices.find((entry) => entry.recipientStrategy === 'separate')!
     const printed = await pdfText(page, after, separate.id)
     expect(printed.text).toContain(separate.number!)

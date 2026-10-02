@@ -123,7 +123,6 @@ function validImportState() {
     issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', email: 'studio@example.de', phone: '' },
     accountHolder: 'Synthetisches Studio',
     iban: 'DE02120300000000202051',
-
   }
   return current
 }
@@ -690,7 +689,7 @@ test('beschädigte lokale Daten bleiben für die Wiederherstellung unangetastet'
 
 test('Entwürfe lassen sich aus der Detailansicht nur mit vollständigen aktuellen Daten finalisieren', () => {
   const state = validImportState()
-  state.settings = { ...state.settings, issuer: { ...state.settings.issuer, name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }, accountHolder: 'Synthetisches Studio', iban: 'DE02120300000000202051',  }
+  state.settings = { ...state.settings, issuer: { ...state.settings.issuer, name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }, accountHolder: 'Synthetisches Studio', iban: 'DE02120300000000202051' }
   const draft = invoice({
     number: null,
     sequence: null,

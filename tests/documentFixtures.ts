@@ -8,7 +8,7 @@ export const documentAt = '2026-09-07T12:00:00.000Z'
 export function documentFamily(): AppState {
   let state = emptyState()
   state.updatedAt = documentAt
-  state.settings = { ...state.settings, issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', phone: '', email: 'studio@example.org' }, accountHolder: 'Studio', iban: 'DE02120300000000202051',  }
+  state.settings = { ...state.settings, issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', phone: '', email: 'studio@example.org' }, accountHolder: 'Studio', iban: 'DE02120300000000202051' }
   for (const id of ['a', 'b']) state = requireSuccess(saveGuardianState(state, { id: `g-${id}`, firstName: 'Empfaenger', lastName: id.toUpperCase(), name: `Empfaenger ${id.toUpperCase()}`, email: `${id}@example.org`, phone: '', address: { street: `Testweg ${id === 'a' ? 2 : 3}`, postalCode: '12345', city: 'Teststadt' }, iban: '', paymentNote: '', createdAt: documentAt, updatedAt: documentAt }))
   for (const id of ['a', 'b']) state = requireSuccess(saveStudentState(state, { id: `s-${id}`, name: `Testkind ${id.toUpperCase()}`, billingCode: '', guardianIds: ['g-a', 'g-b'], note: '', active: true, createdAt: documentAt, updatedAt: documentAt }))
   return state

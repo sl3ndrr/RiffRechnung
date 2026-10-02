@@ -9,6 +9,7 @@ import { ValidationError } from './result'
 import { contactName, contactPartError } from './contactName'
 import { guardianIdsFor, recipientKey } from './recipients'
 import type { RecipientRef } from '../types'
+import { isRetiredTaxConflictPath } from './legacyTaxFields'
 
 type BackupObject = Record<string, unknown>
 
@@ -509,7 +510,16 @@ function validateDocuments(state: AppState, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 
       const p = `${path}.conflicts[${i}]`; const conflict = backupObject(value, p)
       knownKeys(conflict, p, 'path message values')
       backupString(conflict.path, `${p}.path`, true); backupString(conflict.message, `${p}.message`, true)
-      backupArray(conflict.values, `${p}.values`).forEach((value) => backupString(value, `${p}.values`))
+      if (schema >= 9 && isRetiredTaxConflictPath(conflict.path as string)) invalidBackup(`${p}.path`, 'enthält abgeschaffte Feldmetadaten')
+      backupArray(conflict.values, `${p}.values`).forEach((value, i) => {
+        const field = `${p}.values[${i}]`
+        const text = backupString(value, field)
+        if (schema >= 9 && ['snapshot', 'outputSnapshot', 'draftPrintSnapshot'].includes(conflict.path as string)) {
+          let evidence: unknown
+          try { evidence = JSON.parse(text) } catch { invalidBackup(field, 'benötigt lesbare Snapshot-Daten') }
+          if (evidence !== null) validateInvoiceSnapshot(evidence, field, schema)
+        }
+      })
     })
     // Snapshot-only evidence is never represented as a recovered complete invoice.
     const historyIds = new Set<string>()

@@ -18,7 +18,6 @@ function readyState(invoiceDate = '2025-12-20'): AppState {
     issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', email: 'studio@example.de', phone: '' },
     accountHolder: 'Synthetisches Studio',
     iban: 'DE02120300000000202051',
-
   }
   state.guardians = [{ id: 'guardian-a', name: 'Familie Beispiel', email: 'familie@example.de', phone: '', address: { street: 'Testweg 2', postalCode: '12345', city: 'Teststadt' }, iban: '', paymentNote: '', createdAt: issuedAt, updatedAt: issuedAt }]
   state.students = [{ id: 'student-a', name: 'Anna Beispiel', billingCode: 'a', guardianIds: ['guardian-a'], note: '', active: true, createdAt: issuedAt, updatedAt: issuedAt }]

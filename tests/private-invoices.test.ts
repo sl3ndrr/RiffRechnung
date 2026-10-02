@@ -12,7 +12,6 @@ import { inspectImport, serializeMigrationReport } from '../src/lib/importState'
 import { requireSuccess } from '../src/lib/result'
 import { assertOriginalsPreserved } from '../src/lib/safety'
 import { canonical } from '../src/lib/envelope'
-import { stripLegacyTaxFields } from '../src/lib/legacyTaxFields'
 import { StorageSession, STORAGE_KEY, PREVIOUS_STORAGE_KEY, LEGACY_STORAGE_KEY, LEGACY_GUARD_KEY, serializeBackup } from '../src/lib/storage'
 import { memoryStorage, sharedLock } from './storageHarness'
 import { validateBackupState } from '../src/lib/validation'
@@ -21,6 +20,31 @@ import type { AppState } from '../src/types'
 
 function print(state: AppState): string {
   return renderToStaticMarkup(createElement(InvoicePrint, { invoice: selectInvoice(state, state.invoices[0]), guardians: state.guardians, students: state.students, settings: state.settings }))
+}
+
+/** Independent comparison of all protected values, including nested JSON evidence. */
+function assertProtectedValues(before: unknown, after: unknown, path = ''): void {
+  if (path === 'schemaVersion') { assert.equal(after, 9); return }
+  if (Array.isArray(before)) {
+    assert.ok(Array.isArray(after), path)
+    const entries = path.endsWith('.conflicts') ? before.filter((entry) => entry.path !== 'snapshot.taxIdentifier') : before
+    assert.equal(after.length, entries.length, path)
+    entries.forEach((entry, i) => assertProtectedValues(entry, after[i], `${path}[${i}]`))
+    return
+  }
+  if (before !== null && typeof before === 'object') {
+    assert.ok(after !== null && typeof after === 'object', path)
+    const old = before as Record<string, unknown>, next = after as Record<string, unknown>
+    const retired = ['invoiceProfile', 'taxIdentifier', 'invoiceKind', 'taxPresentation', 'taxOutput']
+    assert.deepEqual(Object.keys(next).sort(), Object.keys(old).filter((key) => !retired.includes(key)).sort(), path)
+    for (const key of Object.keys(next)) assertProtectedValues(old[key], next[key], path ? `${path}.${key}` : key)
+    return
+  }
+  if (before !== after && typeof before === 'string' && typeof after === 'string' && /\.conflicts\[\d+\]\.values\[\d+\]$/.test(path)) {
+    assertProtectedValues(JSON.parse(before), JSON.parse(after), `${path}.snapshot`)
+    return
+  }
+  assert.deepEqual(after, before, path)
 }
 
 function oldTaxStock() {
@@ -91,7 +115,7 @@ test('P01: 8→9 entfernt nur benannte Steuerfelder und Steuer-Konfliktbelege; Q
   const old = oldTaxStock(), raw = JSON.stringify(old)
   const preview = requireSuccess(inspectImport(raw))
   assert.equal(preview.report?.fromSchema, 8); assert.equal(preview.report?.toSchema, 9)
-  assert.deepEqual(preview.state, { ...stripLegacyTaxFields(old).value, schemaVersion: 9 })
+  assertProtectedValues(old, preview.state)
   assert.equal(JSON.stringify(old), raw)
   assert.equal(preview.rawData, raw)
   assert.doesNotMatch(serializeBackup(preview.state), /SYNTHETIC-TAX-SECRET|SYNTHETIC-TAX-NOTICE/)
@@ -105,6 +129,15 @@ test('P01: 8→9 entfernt nur benannte Steuerfelder und Steuer-Konfliktbelege; Q
   const illegal = structuredClone(preview.state)
   Object.assign(illegal.settings, { taxIdentifier: old.settings.taxIdentifier })
   assert.throws(() => validateBackupState(illegal), /taxIdentifier/)
+  for (const conflict of [
+    { path: 'snapshot.taxIdentifier', message: 'Veraltete Metadaten', values: ['SYNTHETIC-TAX-SECRET'] },
+    { path: 'snapshot', message: 'Versteckte Snapshot-Kopie', values: [JSON.stringify(old.invoices[0].snapshot)] },
+  ]) {
+    const hidden = structuredClone(preview.state)
+    hidden.documentVersions[0].conflicts.push(conflict)
+    assert.throws(() => validateBackupState(hidden))
+    assert.equal(inspectImport(JSON.stringify(hidden)).ok, false)
+  }
 })
 
 test('P01: unveränderte historische Gold-Quelle wird bereinigt; Nichtsteuerdaten bleiben gleich', () => {
@@ -112,7 +145,7 @@ test('P01: unveränderte historische Gold-Quelle wird bereinigt; Nichtsteuerdate
   const root = JSON.parse(raw)
   for (const source of [root.issuedCorrected, root.oldestSeparate]) {
     const preview = requireSuccess(inspectImport(JSON.stringify(source)))
-    assert.deepEqual(preview.state, { ...stripLegacyTaxFields(source).value, schemaVersion: 9 })
+    assertProtectedValues(source, preview.state)
     assert.doesNotMatch(serializeBackup(preview.state), /"(?:invoiceProfile|taxIdentifier|invoiceKind|taxPresentation|taxOutput)"\s*:/)
   }
 })

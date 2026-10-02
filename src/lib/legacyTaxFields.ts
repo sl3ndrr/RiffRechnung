@@ -5,6 +5,13 @@ export const RETIRED_SETTINGS_FIELDS = ['invoiceProfile', 'taxIdentifier'] as co
 export const RETIRED_INVOICE_FIELDS = ['invoiceKind', 'taxPresentation'] as const
 export const RETIRED_SNAPSHOT_FIELDS = ['invoiceProfile', 'taxIdentifier', 'invoiceKind', 'taxOutput'] as const
 
+/** A field path, not a user-authored text classification. */
+export function isRetiredTaxConflictPath(path: string): boolean {
+  const parts = path.split('.')
+  return parts.length === 1 && [...RETIRED_INVOICE_FIELDS, ...RETIRED_SNAPSHOT_FIELDS].some((field) => parts[0] === field)
+    || ['snapshot', 'outputSnapshot', 'draftPrintSnapshot'].includes(parts[0]) && RETIRED_SNAPSHOT_FIELDS.some((field) => parts[1] === field)
+}
+
 /** Only explicitly named fields and their conflict evidence may be removed. */
 export function stripLegacyTaxFields<T>(input: T): { value: T; removedPaths: string[] } {
   const value = structuredClone(input), removedPaths: string[] = []
@@ -47,9 +54,7 @@ export function stripLegacyTaxFields<T>(input: T): { value: T; removedPaths: str
     version.conflicts = version.conflicts.filter((raw, index) => {
       const conflict = object(raw)
       if (!conflict || typeof conflict.path !== 'string') return true
-      const parts = conflict.path.split('.')
-      const retired = parts.length === 1 && [...RETIRED_INVOICE_FIELDS, ...RETIRED_SNAPSHOT_FIELDS].some((field) => parts[0] === field)
-        || ['snapshot', 'outputSnapshot', 'draftPrintSnapshot'].includes(parts[0]) && RETIRED_SNAPSHOT_FIELDS.some((field) => parts[1] === field)
+      const retired = isRetiredTaxConflictPath(conflict.path)
       if (retired) { removedPaths.push(`${path}.conflicts[${index}]`); return false }
       if (['snapshot', 'outputSnapshot', 'draftPrintSnapshot'].includes(conflict.path) && Array.isArray(conflict.values)) {
         conflict.values = conflict.values.map((text, j) => {
