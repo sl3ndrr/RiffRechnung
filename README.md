@@ -6,7 +6,7 @@ Eine vollständig clientseitige Web-App für Rechnungen rund um Gitarrenunterric
 
 - Lernende mit optionalen Erziehungsberechtigten verwalten; Erwachsene können mit einem Datensatz selbst Rechnungsempfänger sein
 - gemeinsame Rechnungen an eine oder mehrere berechtigte Personen erstellen; historische getrennte Belege und Korrekturen weiterhin lesen
-- Duo-Unterricht für zwei Haushalte einmal erfassen, zwei gespeicherte Rechnungsentwürfe mit eigenen Empfängern, Preisen und Texten bearbeiten und nach vollständiger Vorschau atomar abschließen
+- Duo-Unterricht und Duo-Preis in gewöhnlichen Rechnungen wählen; bei Bedarf jede Rechnung unabhängig erstellen und abschließen
 - mehrere Lernende und automatisch berechnete Zwischensummen auf einer gemeinsamen Rechnung
 - frei definierbare Positionen, Zahlungsziel und Textbausteine
 - Kleinunternehmerprofil mit vollständiger Ausstelleranschrift; typisierte Steuerkennung bei Standardrechnungen verpflichtend, bei ausdrücklich gewählten Kleinbetragsrechnungen bis 250,00 € ausblendbar; Empfängeranschrift nur bei Standardrechnungen
@@ -76,18 +76,18 @@ Automatisch geprüft ist **Chromium 153.0.8010.12 unter Ubuntu 24.04** in CI, ei
 
 ## Originale, Korrekturen und Zahlungen
 
-Unter **Rechnungen → Duo · zwei Haushalte** zwei verschiedene Lernende und die
-gemeinsame Leistung wählen. Beide Entwürfe werden gespeichert und über
-**Duo-Verknüpfung öffnen** wiedergefunden. Jede Rechnung getrennt bearbeiten:
-Empfänger ausdrücklich wählen, eigenen Einzelpreis und individuelle Texte prüfen.
-Ein optionaler Gruppenbetrag muss exakt der Summe beider Zielbeträge entsprechen.
-Die beiden vollständigen Ausgaben und Preise vor dem gemeinsamen Abschluss einzeln
-bestätigen; erst dann entstehen zwei Nummern und zwei eigenständige Forderungen.
-Gemeinsame Leistungsänderungen erfordern einen bestätigten Vorher-/Nachhervergleich.
-Ein gemeinsamer Haushalt verwendet weiterhin eine einzige gemeinsame Rechnung.
-Wird ein Gruppenentwurf gelöscht oder fehlt er nach Import, bleibt der andere
-eigenständig. Zahlung, Korrektur und Archivierung betreffen stets nur die gewählte
-Rechnung. Die Gruppenkennung und Partnernotizen erscheinen in keinem Einzelbeleg.
+Duo-Unterricht nutzt den normalen Rechnungseditor und den hinterlegten Duo-Preis.
+Zwei berechtigte Erziehungsberechtigte können gemeinsam eine Rechnung empfangen;
+dabei entstehen ein Beleg, eine Nummer und eine Forderung. Weitere Rechnungen
+werden unabhängig erstellt, bearbeitet und abgeschlossen.
+
+Schema 10 entfernt die Duo-Gruppenverwaltung. Bestehende Schema-8/9-Entwürfe
+werden nach Prüfung im vorhandenen Wiederherstellungsmodus mit unveränderten
+Positionen, Einzelpreisen und Empfängern übernommen. Historische finale Belege
+bleiben gleich. Alte Gruppenmetadaten bleiben ausschließlich im Migrationsbericht
+und Wiederherstellungsarchiv. Fehlende Partner werden nicht rekonstruiert;
+unklare Bestände bleiben mit Originaldaten zur Klärung erhalten.
+Die Prüfgrenzen stehen im [P03-Abschlussbericht](docs/p03-remove-duo-workflow.md).
 
 Unter **Personen** kann eine erwachsene lernende Person **Zahlt selbst** wählen und
 optionale E-Mail- und Anschriftdaten hinterlegen. Name und Kontaktdaten werden

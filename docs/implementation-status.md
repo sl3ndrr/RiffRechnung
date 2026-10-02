@@ -1,3 +1,16 @@
+# P03 – Duo-Gruppenworkflow entfernt, 02.10.2026
+
+Basis: integriertes P01/P02 auf `main@83c7474`. Branch
+`simplify/p03-remove-duo-workflow` entfernt Gruppenstart, Bearbeitung,
+Partnersperren und atomaren Zweierabschluss. Schema 10 löst Schema-8/9-Gruppen
+unter Erhaltung aller vorhandenen Rechnungen; Metadaten bleiben im Bericht und
+Roharchiv. Gemeinsame Empfänger, Selbstzahler und Duo-Preis bleiben.
+71 ergänzende Fachtests unter Node 24 bestanden. Vollständige Node-22-Prüfung
+mit Build, Lint, Typecheck, React-/Browser-/PDF-Tests noch offen: lokale
+Registry-/Git-Fetch-Sperre; Draft-PR durch automatische Freigabeprüfung abgelehnt.
+Details und geänderte Dateien: [P03-Bericht](p03-remove-duo-workflow.md).
+Kein PR, Merge oder Deployment. Die folgenden Abschnitte sind historische Stände.
+
 # AP6 – integrierter Arbeitsstand, 27.09.2026
 
 Ausgang `main` `47f491eecbebb788bf6f63aea2b1342bc3dfbd85`: AP1 integriert,
