@@ -1,12 +1,12 @@
 import type { AppState, Settings } from '../types'
 import { localToday } from './calendar'
-import { invoiceStudentCode, studentCodeIndex } from './utils'
+import { compareStudentCodes, invoiceStudentCode } from './utils'
 
 /** Input-only configuration; schema 12 never persists or executes a pattern. */
 export type LegacyNumberSettings = Settings & { numberPattern: string; resetNumberAnnually: boolean }
 interface Change { path: string; before: unknown; after: unknown; reason: string }
 
-const canonicalCode = (code: string) => [...new Set(code.split('+'))].sort((a, b) => studentCodeIndex(a) - studentCodeIndex(b)).join('+')
+const canonicalCode = (code: string) => [...new Set(code.split('+'))].sort(compareStudentCodes).join('+')
 
 /** Only evidence parsing, never formatting or allocation using old templates. */
 function numberEvidence(number: string, pattern: string): { code?: string; sequence?: number } {
@@ -52,7 +52,7 @@ export function migrateInvoiceNumbering(value: AppState, changes: Change[] = [],
   const reservations = [...state.voidedInvoiceNumbers, ...state.documentVersions.flatMap((version) => version.registerEntries)]
   const years = [...new Set([migrationYear, ...documents.map((entry) => entry.year), ...reservations.map((entry) => entry.year),
     ...Object.keys(state.counters).flatMap((key) => { const match = /^(\d{4})(?:[:-]|$)/.exec(key); return match ? [Number(match[1])] : [] })])]
-  const codes = state.students.map((student) => student.billingCode).sort((a, b) => studentCodeIndex(a) - studentCodeIndex(b))
+  const codes = state.students.map((student) => student.billingCode).sort(compareStudentCodes)
   const reserve = (year: number, code: string, next: number, reason: string) => {
     if (!Number.isSafeInteger(next) || next < 1) throw new Error('Alte Rechnungsfolge kann nicht sicher übernommen werden. Originaldaten bleiben geschützt.')
     const key = `${year}:${code}`

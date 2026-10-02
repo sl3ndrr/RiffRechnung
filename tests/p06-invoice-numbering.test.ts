@@ -44,6 +44,12 @@ test('P06: mehrstellige Kennungen behalten Vergabereihenfolge unabhängig von Na
   assert.equal(renamed.students[0].billingCode, 'z')
   state = { ...renamed, students: sortPeople(renamed.students, 'name-desc') }
   assert.equal(invoiceStudentCode(state, ['s-b', 's-a']), 'z+aa')
+  const long = structuredClone(state)
+  const firstCode = 'a'.repeat(20) + 'b', secondCode = 'a'.repeat(20) + 'c'
+  long.students.find((person) => person.id === 's-a')!.billingCode = firstCode
+  long.students.find((person) => person.id === 's-b')!.billingCode = secondCode
+  assert.equal(invoiceStudentCode(long, ['s-b', 's-a']), `${firstCode}+${secondCode}`)
+  assert.deepEqual(allocation(long, ['s-b', 's-a']), allocation(long, ['s-a', 's-b']))
   const session = new StorageSession({ storage: memoryStorage(), lock: sharedLock() })
   await session.restore(serializeBackup(state))
   assert.equal(invoiceStudentCode(parseBackup(session.export()), ['s-a', 's-b']), 'z+aa')

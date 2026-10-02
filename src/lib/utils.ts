@@ -309,11 +309,16 @@ export function studentCodeIndex(code: string): number {
   return value - 1
 }
 
+/** Exact alphabetic allocation order, including codes beyond safe numeric indexes. */
+export function compareStudentCodes(a: string, b: string): number {
+  return a.length - b.length || (a < b ? -1 : a > b ? 1 : 0)
+}
+
 export function invoiceStudentCode(state: Pick<AppState, 'students'>, studentIds: string[]): string {
   const codes = [...new Set(studentIds
     .map((id) => state.students.find((student) => student.id === id)?.billingCode?.toLowerCase())
     .filter((code): code is string => Boolean(code)))]
-    .sort((a, b) => studentCodeIndex(a) - studentCodeIndex(b))
+    .sort(compareStudentCodes)
   return codes.join('+') || 'x'
 }
 
@@ -338,7 +343,7 @@ export function nextInvoiceAllocation(state: AppState, invoiceDate: string, stud
     const match = /^(\d{4})-(\d+)-([a-z]+(?:\+[a-z]+)*)$/.exec(reservation.number)
     const old = /^(\d{4})-([a-z]+(?:\+[a-z]+)*)-(\d+)$/.exec(reservation.number)
     const reservedCode = match?.[3] ?? old?.[2]
-    if (reservedCode && Number(match?.[1] ?? old?.[1]) === year && reservedCode.split('+').sort((a, b) => studentCodeIndex(a) - studentCodeIndex(b)).join('+') === studentCode) {
+    if (reservedCode && Number(match?.[1] ?? old?.[1]) === year && reservedCode.split('+').sort(compareStudentCodes).join('+') === studentCode) {
       sequence = Math.max(sequence, Number(match?.[2] ?? old?.[3]) + 1, (reservation.sequence ?? 0) + 1)
     }
   }
