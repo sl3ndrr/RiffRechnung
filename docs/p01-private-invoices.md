@@ -13,7 +13,7 @@ Keine Repository-Anweisungen in einer `AGENTS.md` vorhanden. Der anfängliche Ar
 - GiroCode, Lernendennummerierung einschließlich a+b, Centberechnung, Unterrichtspreise, Kalender, Kontrollzeichenprüfung, Zahlungsnachweise und Korrekturbeziehungen bleiben erhalten.
 - Freitexte werden nicht nach Steuerbegriffen verändert. `introText` und `legalText` bleiben bis P09, `freeText` bleibt Rechnungshinweis. Der leere Standard-Rechtstext führt keine Steuerbehauptung ein.
 
-Entfernt wurden sieben Steuer-Typdefinitionen, fünf unterschiedliche strukturierte Hauptfeldnamen mit ihren Unterfeldern, zwei Steuerkonstanten und etwa ein Dutzend Steuer-/Adresspflicht-/Validierungsfunktionen. Vor der zusätzlichen Abschlussabsicherung umfasste der Diff ungefähr 740 entfernte und 550 hinzugefügte Zeilen; etwa 350 entfernte Zeilen betrafen Produktcode. Neue Zeilen dienen vor allem der Bestandsbereinigung und ihren Nachweisen.
+Entfernt wurden sieben Steuer-Typdefinitionen, fünf unterschiedliche strukturierte Hauptfeldnamen mit ihren Unterfeldern, zwei Steuerkonstanten und etwa ein Dutzend Steuer-/Adresspflicht-/Validierungsfunktionen. Der geprüfte P01-Stand umfasste 41 Dateien mit 746 entfernten und 686 hinzugefügten Zeilen; etwa 350 entfernte Zeilen betrafen Produktcode. Neue Zeilen dienen vor allem der Bestandsbereinigung und ihren Nachweisen.
 
 ## Schema und kontrollierter Umstieg
 
@@ -62,7 +62,7 @@ Vor Änderungen versucht:
 
 Nach Änderungen wurden Build, Tests, Lint sowie Druck-, Speicher- und Dokument-Browsertests erneut lokal aufgerufen. Logiktests bestanden. Build und Lint blieben durch die unvollständige, abweichende Toolchain eingeschränkt; Browserprüfungen zusätzlich durch fehlendes Chromium und den gesperrten historischen Git-Abruf.
 
-Die verbindliche Abschlussprüfung läuft über den bereits vorhandenen Workflow **Quality (Node 22)** des Draft-PRs: `npm ci`, `npm run lint`, `npm test`, `npm run typecheck`, `npm run build`, anschließend `npm run test:browser` mit Chromium, Firefox und WebKit einschließlich echter PDF-/Seitenumbruchprüfung. Der erste Lauf bestätigte alle Nichtbrowser-Prüfungen und 53/55 Browserfälle; alle neuen P01-Druckfälle bestanden. Zwei alte Erwartungen (unbereinigter Steuerbestand und Schema 9 als Zukunftsformat) wurden angepasst. Den endgültigen Workflow-Status zeigt der PR; der Abschlussbericht in der Unterhaltung nennt das bestätigte Endergebnis.
+Die verbindliche Abschlussprüfung läuft über den bereits vorhandenen Workflow **Quality (Node 22)** des Draft-PRs: `npm ci`, `npm run lint`, `npm test`, `npm run typecheck`, `npm run build`, anschließend `npm run test:browser` mit Chromium, Firefox und WebKit einschließlich echter PDF-/Seitenumbruchprüfung. Der erste Lauf bestätigte alle Nichtbrowser-Prüfungen und 53/55 Browserfälle; alle neuen P01-Druckfälle bestanden. Zwei alte Erwartungen (unbereinigter Steuerbestand und Schema 9 als Zukunftsformat) wurden angepasst. Der abschließende Lauf [36971695047](https://github.com/sl3ndrr/RiffRechnung/actions/runs/36971695047) unter Node 22.23.3 bestätigte Build, Lint, Typprüfung, 177/177 Logiktests und 55/55 Browser-/PDF-Tests. Der zusätzliche Audit-Schritt meldete einen high-Fund in der unveränderten transitiven Abhängigkeit `brace-expansion`. Auf ausdrücklichen Folgeauftrag werden ausschließlich die beiden Lockfile-Einträge von 1.1.18 auf 1.1.21 und von 5.0.9 auf 5.0.12 aktualisiert, innerhalb der bestehenden Abhängigkeitsbereiche `^1.1.7` und `^5.0.8`. Die Integritätswerte werden durch `npm ci` in der Node-22-CI geprüft; der vollständige Workflow einschließlich `npm audit` wird erneut ausgeführt. Den aktuellen Abschlussstatus dokumentiert PR #43.
 
 ## Annahmen und offene Punkte
 
@@ -70,7 +70,7 @@ Die verbindliche Abschlussprüfung läuft über den bereits vorhandenen Workflow
 - Beide Seiten einer historischen Snapshot-Korrektur behalten ihre Nichtsteuerinformationen und Metadaten, auch wenn sie nach Entfernen der Steuerfelder identisch werden.
 - Historische frei verfasste Steuertexte bleiben erhalten. Ihre feldbezogene Entfernung gehört zu P09; die automatisch erzeugte Privatzeile hängt nicht von ihnen ab.
 - Nicht lesbare Kopien werden nicht heuristisch umgeschrieben. Wenn sie mögliche abgeschaffte Feldnamen enthalten, bleibt der Umstieg gesperrt.
-- Kein Merge und keine Veröffentlichung. Keine offenen funktionalen Erweiterungen in P01; die lokale Umgebungsbeschränkung ist durch die Node-22-CI getrennt nachvollziehbar.
+- Der ursprüngliche P01-Auftrag endete ohne Merge. Der ausdrückliche Folgeauftrag erlaubt den Merge nach Behebung des Audit-Fundes und erfolgreicher CI. Der vorhandene Pages-Workflow startet bei einem Push nach `main` automatisch; kein zusätzlicher Deployment-Lauf wird manuell ausgelöst. Die lokale Umgebungsbeschränkung bleibt durch die Node-22-CI getrennt nachvollziehbar.
 
 ## Geänderte Dateien
 
