@@ -103,6 +103,7 @@ export function normalizeLegacyRecipients<T>(value: T): T {
 
 export function migrateContactsRecipients(value: unknown): AppState {
   const state = normalizeLegacyRecipients(cleanLegacyContacts(value)) as AppState
-  state.schemaVersion = 11
+  state.schemaVersion = 11 as never
   return state
 }
+

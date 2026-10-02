@@ -25,7 +25,7 @@ export type WriteLock = <T>(action: () => Promise<T>) => Promise<T>
 export function newerFormat(raw: string): boolean {
   try {
     const root = JSON.parse(raw)
-    return root.storageVersion > 4 || root.schemaVersion > 11 || root.data?.schemaVersion > 11
+    return root.storageVersion > 4 || root.schemaVersion > 12 || root.data?.schemaVersion > 12
   } catch { return false }
 }
 
@@ -124,7 +124,7 @@ export class StorageSession {
     const maxRevision = Math.max(previous?.revision ?? 0, source?.revision ?? 0)
     if (!Number.isSafeInteger(maxRevision + 1)) throw new Error('Revisionszähler ausgeschöpft. Der Bestand bleibt unverändert.')
     const envelope: StorageEnvelope = {
-      app: 'riffrechnung', storageVersion: 4, schemaVersion: 11,
+      app: 'riffrechnung', storageVersion: 4, schemaVersion: 12,
       datasetId: base?.datasetId ?? crypto.randomUUID(), commitId: crypto.randomUUID(), revision: maxRevision + 1,
       savedAt: new Date().toISOString(), operation,
       ancestors: base ? [...base.ancestors, await reference(base)] : [],
@@ -201,6 +201,10 @@ export class StorageSession {
         }
       }
       const current = localRecovery?.state ?? this.current
+      for (const student of current.students) {
+        const incoming = preview.state.students.find((entry) => entry.id === student.id)
+        if (incoming && incoming.billingCode !== student.billingCode) throw new Error('Wiederherstellung würde eine bestehende Personenkennung ändern. Beide Stände separat prüfen; Kennungen bleiben geschützt.')
+      }
       assertOriginalsPreserved(current, preview.state)
       const next = structuredClone(preview.state)
       // Reserve known counters/numbers even when an older backup is restored.
@@ -246,3 +250,4 @@ export function recordBackupExport(at = new Date()): string {
   localStorage.setItem(LAST_BACKUP_AT_KEY, value)
   return value
 }
+

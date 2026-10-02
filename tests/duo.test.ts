@@ -24,9 +24,9 @@ test('P03: Schema 8/9 löst nur Gruppenmetadaten; Preise, Empfänger und alle En
     const raw = '\uFEFF' + JSON.stringify(legacy, null, 2) + '\r\n'
     const preview = migrated(raw)
     assert.deepEqual(legacy, before)
-    assert.equal(preview.state.schemaVersion, 11)
+    assert.equal(preview.state.schemaVersion, 12)
     assert.equal('duoGroups' in preview.state, false)
-    assert.equal(preview.report?.migration, 'riffrechnung-to-v11')
+    assert.equal(preview.report?.migration, 'riffrechnung-to-v12')
     assert.equal(preview.report?.fromSchema, schema)
     assert.deepEqual(preview.report?.changes.find((change) => change.path === 'duoGroups')?.before, legacy.duoGroups)
     assert.deepEqual(preview.state.invoices, normalizeLegacyRecipients(before).invoices)
@@ -125,7 +125,7 @@ test('P03: gemeinsame Empfänger sind ein Beleg; Duo-Preis bleibt ohne Gruppenve
   assert.equal(activeInvoices(next).length, 1)
   assert.equal(next.invoices[0].items[0].unitPrice, state.settings.duoRate)
   assert.deepEqual(next.invoices[0].snapshot?.recipients.map((guardian) => guardian.id), ['g-a', 'g-b'])
-  assert.equal(next.invoices[0].number, '2026-a-0001')
+  assert.equal(next.invoices[0].number, '2026-0001-a')
   assert.equal('duoGroups' in next, false)
 })
 
@@ -178,9 +178,10 @@ test('P03: Selbstzahler nutzt Duo-Preis, GiroCode und denselben Personenbuchstab
   draft.recipients = [{ type: 'student', id: student.id }]
   draft.items = [applyLessonType(draft.items[0], 'duo', state.settings)]
   const next = saveInvoiceDraft(state, draft, true, documentAt)
-  assert.equal(next.invoices[0].number, '2026-a-0001')
+  assert.equal(next.invoices[0].number, '2026-0001-a')
   assert.deepEqual(next.invoices[0].snapshot?.recipients?.map((recipient) => recipient.id), [student.id])
   assert.equal(next.invoices[0].items[0].unitPrice, state.settings.duoRate)
-  assert.match(buildEpcPayload(next.invoices[0], state.settings, invoiceTotalCents(next.invoices[0]) / 100), /2026-a-0001/)
+  assert.match(buildEpcPayload(next.invoices[0], state.settings, invoiceTotalCents(next.invoices[0]) / 100), /2026-0001-a/)
   assert.equal('duoGroups' in next, false)
 })
+

@@ -112,7 +112,7 @@ function validateIssuer(value: unknown, path: string, historical = false): void 
   backupString(issuer.phone, `${path}.phone`)
 }
 
-function validateInvoiceSnapshot(value: unknown, path: string, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 = 9): { guardianIds: Set<string>; studentIds: Set<string>; recipients?: RecipientRef[] } {
+function validateInvoiceSnapshot(value: unknown, path: string, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 = 9): { guardianIds: Set<string>; studentIds: Set<string>; recipients?: RecipientRef[] } {
   const snapshot = backupObject(value, path)
   knownKeys(snapshot, path, 'issuer students accountHolder iban bic bankName legalText' + (schema < 11 ? ' guardians' : '') + (schema >= 8 ? ' recipients' : ''))
   validateIssuer(snapshot.issuer, `${path}.issuer`, true)
@@ -177,9 +177,9 @@ function validateRecipientSnapshots(value: unknown, path: string): RecipientRef[
   return refs
 }
 
-function validateSettings(value: unknown): void {
+function validateSettings(value: unknown, schema: number): void {
   const settings = backupObject(value, 'settings')
-  knownKeys(settings, 'settings', 'issuer accountHolder iban bic bankName privateRate duoRate numberPattern resetNumberAnnually paymentTermDays defaultLegalText theme reducedMotion')
+  knownKeys(settings, 'settings', 'issuer accountHolder iban bic bankName privateRate duoRate paymentTermDays defaultLegalText theme reducedMotion' + (schema < 12 ? ' numberPattern resetNumberAnnually' : ''))
   validateIssuer(settings.issuer, 'settings.issuer')
   backupString(settings.accountHolder, 'settings.accountHolder')
   backupString(settings.iban, 'settings.iban')
@@ -187,15 +187,17 @@ function validateSettings(value: unknown): void {
   backupString(settings.bankName, 'settings.bankName')
   if (!validPrice(backupNumber(settings.privateRate, 'settings.privateRate'))) invalidBackup('settings.privateRate', 'muss ein Preis ab 0 im sicheren Zahlenbereich sein')
   if (!validPrice(backupNumber(settings.duoRate, 'settings.duoRate'))) invalidBackup('settings.duoRate', 'muss ein Preis ab 0 im sicheren Zahlenbereich sein')
-  backupString(settings.numberPattern, 'settings.numberPattern', true)
-  backupBoolean(settings.resetNumberAnnually, 'settings.resetNumberAnnually')
+  if (schema < 12) {
+    backupString(settings.numberPattern, 'settings.numberPattern', true)
+    backupBoolean(settings.resetNumberAnnually, 'settings.resetNumberAnnually')
+  }
   backupInteger(settings.paymentTermDays, 'settings.paymentTermDays', 0)
   backupString(settings.defaultLegalText, 'settings.defaultLegalText')
   backupEnum(settings.theme, 'settings.theme', THEME_MODES)
   backupBoolean(settings.reducedMotion, 'settings.reducedMotion')
 }
 
-function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11, localItemIds: boolean): void {
+function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12, localItemIds: boolean): void {
   const legacy = schema === 2
   const versioned = schema >= 4
   const data = backupObject(value, 'data')
@@ -385,7 +387,7 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 1
     })
   }
 
-  validateSettings(data.settings)
+  validateSettings(data.settings, schema)
   const counters = backupObject(data.counters, 'counters')
   Object.entries(counters).forEach(([key, counter]) => backupInteger(counter, `counters.${key}`, 1))
   if (!legacy || data.nextStudentCodeIndex !== undefined) backupInteger(data.nextStudentCodeIndex, 'nextStudentCodeIndex', 0)
@@ -403,7 +405,7 @@ function validateState(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 1
   if (versioned) validateDocuments(data as unknown as AppState, schema)
 }
 
-function validateActivity(entry: unknown, path: string, ids: Set<string>, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11): void {
+function validateActivity(entry: unknown, path: string, ids: Set<string>, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12): void {
   const event = backupObject(entry, path)
   knownKeys(event, path, 'id at label entityType entityId snapshotCorrection')
   registerId(event.id, `${path}.id`, ids)
@@ -426,7 +428,7 @@ function validateEmail(value: unknown, path: string, historical = false): void {
 }
 
 export function validateBackupState(value: unknown): asserts value is AppState {
-  validateState(value, 11, false)
+  validateState(value, 12, false)
 }
 
 
@@ -440,7 +442,7 @@ export function knownKeys(value: Record<string, unknown>, path: string, keys: st
 
 
 
-function validateDocuments(state: AppState, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11): void {
+function validateDocuments(state: AppState, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12): void {
   const ids = new Set<string>()
   const replaced = new Set<string>()
   backupArray(state.documentVersions, 'documentVersions').forEach((entry, index) => {
@@ -587,6 +589,7 @@ function validatePaymentDay(value: unknown, path: string, allowCalendar: boolean
 }
 
 /** Shared non-tax structural invariants for explicitly versioned import adapters. */
-export function validateLegacyStructure(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10): void {
+export function validateLegacyStructure(value: unknown, schema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11): void {
   validateState(value, schema, schema === 2)
 }
+

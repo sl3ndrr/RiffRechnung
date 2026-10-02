@@ -139,7 +139,7 @@ test('P12 Browser: unterbrochene Migration erhält Rohdaten und lässt sich nach
 })
 
 test('P12 Browser: unbekanntes neueres Format bleibt auch bei Wiederherstellungsversuch bytegleich', async ({ page }) => {
-  const future = JSON.stringify({ schemaVersion: 12, data: 'Synthetisches unbekanntes Format' })
+  const future = JSON.stringify({ schemaVersion: 13, data: 'Synthetisches unbekanntes Format' })
   await page.goto('/')
   await page.evaluate(({ key, future }) => localStorage.setItem(key, future), { key: STORAGE_KEY, future })
   await page.reload()
@@ -191,7 +191,7 @@ test('P12 Browser: unabhängige Originaldatei kehrt mit echtem alten Code in get
     expect(await raw(rollback)).toBeNull()
     expect(await raw(page)).toBe(migrated)
     await rollback.getByRole('button', { name: /^Rechnungen(?:\s*\d+)?$/ }).first().click()
-    await expect(rollback.locator('.invoice-list-table')).toContainText('2026-a-0001')
+    await expect(rollback.locator('.invoice-list-table')).toContainText(originalData.invoices[0].number!)
   } finally { await isolated.close() }
 })
 
@@ -234,3 +234,4 @@ test('P12 Browser: lokale Mitternacht in Berlin erzeugt den richtigen Rechnungst
     await expect(page.getByRole('dialog').getByLabel('Rechnungsdatum', { exact: true })).toHaveValue('2026-09-01')
   } finally { await context.close() }
 })
+

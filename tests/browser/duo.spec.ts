@@ -43,7 +43,7 @@ test('P03 Browser: beide Erziehungsberechtigte ausdrücklich auf einer gemeinsam
   expect(saved.invoices).toHaveLength(1)
   expect(saved.documentVersions).toHaveLength(1)
   expect(saved.invoices[0].snapshot?.recipients.map((person) => person.id)).toEqual(['g-a', 'g-b'])
-  expect(saved.invoices[0].number).toBe('2026-a-0001')
+  expect(saved.invoices[0].number).toBe('2026-0001-a')
   expect('duoGroups' in saved).toBe(false)
   await expect(page.getByRole('button', { name: 'Duo · zwei Haushalte', exact: true })).toHaveCount(0)
 })
@@ -56,7 +56,7 @@ test('P03 Browser: alte Gruppenentwürfe im lokalen Klärungspfad übernehmen un
   await expect(page.getByRole('heading', { name: 'Lokale Daten benötigen Wiederherstellung' })).toBeVisible()
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(raw)
   await page.getByRole('button', { name: 'Altformat und Reparatur prüfen' }).click()
-  await expect(page.getByText('Altformat 9 → Format 11:', { exact: false })).toBeVisible()
+  await expect(page.getByText('Altformat 9 → Format 12:', { exact: false })).toBeVisible()
   await page.getByRole('button', { name: 'Wiederherstellung vorbereiten' }).click()
   await page.getByRole('button', { name: 'Wiederherstellung bestätigen' }).click()
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
@@ -77,7 +77,7 @@ test('P03 Browser: alte Gruppenentwürfe im lokalen Klärungspfad übernehmen un
   }
   const issued = await stateOf(page)
   expect(issued.documentVersions.map((version) => version.amounts.totalCents)).toEqual([758, 1502])
-  expect(issued.invoices.map((invoice) => invoice.number)).toEqual(['2026-aur-0001', '2026-bas-0001'])
+  expect(issued.invoices.map((invoice) => invoice.number)).toEqual(['2026-0001-aur', '2026-0001-bas'])
   for (let i = 0; i < 2; i++) {
     const rendering = await page.context().newPage()
     try {
@@ -139,3 +139,4 @@ test('P03 Browser: unabhängige Entwürfe überstehen Speicherkonflikt und Quota
   expect(saved.invoices.find((invoice) => invoice.id === 'duo-invoice-1')?.status).toBe('draft')
   await second.close()
 })
+

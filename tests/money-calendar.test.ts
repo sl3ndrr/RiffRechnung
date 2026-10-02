@@ -96,7 +96,7 @@ test('P05/P08: Schema 4 → 7 bewahrt Originale; Entwürfe zeigen Änderungen, I
   const preview = requireSuccess(inspectImport(raw))
   assert.equal(preview.rawData, raw)
   assert.equal(preview.report?.fromSchema, 4)
-  assert.equal(preview.report?.toSchema, 11)
+  assert.equal(preview.report?.toSchema, 12)
   assert.ok(preview.report?.changes.some((change) => change.path.endsWith('amountReview') && change.before === 757 && change.after === 758))
   assert.deepEqual(preview.state.documentVersions, normalizeLegacyRecipients(old).documentVersions)
   assert.equal(invoiceTotal(selectInvoice(preview.state, preview.state.invoices[0])), 7.57)
@@ -117,7 +117,7 @@ test('P05/P08: Schema 4 → 7 bewahrt Originale; Entwürfe zeigen Änderungen, I
   assert.equal(requireSuccess(inspectImport(storage.getItem(STORAGE_KEY)!)).report, null)
   assert.equal(requireSuccess(inspectImport(serializeBackup(accepted))).report, null)
   validateBackupState(JSON.parse(JSON.stringify(accepted)))
-  const future = JSON.stringify({ ...old, schemaVersion: 12 })
+  const future = JSON.stringify({ ...old, schemaVersion: 13 })
   assert.equal(inspectImport(future).ok, false)
   storage.setItem(STORAGE_KEY, future)
   await assert.rejects(() => new StorageSession({ storage, lock }).restore(serializeBackup(accepted)), /neuere|schreibgeschützt/)
@@ -188,3 +188,4 @@ test('P05: Europe/Berlin und UTC – Mitternacht, Sommerzeit, Zahlungstag, Kopie
     }
   } finally { if (previous === undefined) delete process.env.TZ; else process.env.TZ = previous }
 })
+

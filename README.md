@@ -13,7 +13,7 @@ Eine vollständig clientseitige Web-App für Rechnungen rund um Gitarrenunterric
 - Befreiungshinweis je Rechnung im Steuerblock oder in einer Fußzeile an der Endsumme; finale Belege sichern Kennungsentscheidung, Hinweistext und Position
 - Empfängerkontakte mit einem Feld „Name“; Kontaktangaben und Anschriften optional, bisherige Anzeigenamen bleiben erhalten
 - Entwurf, versendet, bezahlt und automatisch erkanntes „überfällig“; verknüpfte Korrekturentwürfe erhalten den vollständigen Originalbeleg
-- konfigurierbarer Nummernkreis mit dauerhaftem Kennzeichen je lernender Person (`a`, `b`, `c` …); Kombinationen zählen getrennt und Nummern werden erst bei Finalisierung vergeben
+- feste jährliche Rechnungsnummer `YYYY-NNNN-Kennung` mit dauerhaftem Kennzeichen je lernender Person (`a`, `b`, `c` …); Kombinationen zählen getrennt und Nummern werden erst bei Finalisierung vergeben
 - unveränderliche vollständige Belegversionen mit damaligen Positionen, Beträgen, Personen, Konto und Texten; einsehbare Korrekturgründe und Snapshot-Differenzen
 - A4-Druckansicht mit Entwurfswasserzeichen, gemeinsamer Rechtstext-/Seitenzahl-Fußzeile und Rechnungsnummer auf Folgeseiten
 - clientseitig erzeugter EPC-GiroCode (EPC069-12 / Version 002) für SEPA-Überweisungen
@@ -75,6 +75,14 @@ Der GiroCode füllt Empfänger, deutsche IBAN, optional eingegebene BIC, Betrag 
 Automatisch geprüft ist **Chromium 153.0.8010.12 unter Ubuntu 24.04** in CI, einschließlich echter PDF-Erzeugung und Textprüfung. Native Druckdialoge und die visuelle Druckabnahme bleiben offen. Der normale Dokumentfluss ist der vorgesehene Druckfallback für Firefox/Safari; deren PDF-Ausgabe und dynamische `@page`-Seitenzahlen wurden nicht abgenommen. Chrome und Edge werden nicht als eigene Versionen freigegeben. Banking-App-Scans bleiben manuell: eine synthetische finale PDF öffnen bzw. den QR-Code scannen und Empfänger, DE-IBAN, optionale BIC, Betrag sowie Rechnungsnummer gegen den Bankblock prüfen, ohne eine Überweisung auszulösen. Die [Freigabematrix](docs/release-readiness.md) hält Versionen und offene Prüfungen fest.
 
 ## Originale, Korrekturen und Zahlungen
+
+Neue Rechnungen verwenden beispielsweise `2026-0007-a` oder `2026-0003-a+b`.
+Die Folge hat mindestens vier Stellen und zählt jährlich je Person bzw. Kombination.
+`a+b` und `b+a` nutzen denselben Kreis; gemeinsame Erziehungsberechtigte ändern
+die Personenkennung nicht. Schema 12 entfernt Mustereditor und Reset-Konfiguration.
+Alte Nummern und Reservierungen bleiben unverändert; alte globale oder mehrdeutige
+Zähler werden beim kontrollierten Umstieg konservativ übernommen. Einzelheiten
+stehen im [P06-Abschlussbericht](docs/p06-invoice-numbering.md).
 
 Duo-Unterricht nutzt den normalen Rechnungseditor und den hinterlegten Duo-Preis.
 Zwei berechtigte Erziehungsberechtigte können gemeinsam eine Rechnung empfangen;
@@ -266,3 +274,4 @@ neuen Snapshots. Bei der Migration aus Format 2–5 bleibt die Steuerkennung lee
 und sperrt neue Finalisierungen bis zur bewussten Eingabe. Historische Snapshots
 werden nicht ergänzt; auch eine dort leere BIC bleibt leer. Grundlagen und
 Produktannahmen stehen in [Produktentscheidungen](docs/product-decisions.md).
+

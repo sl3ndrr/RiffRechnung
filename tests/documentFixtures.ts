@@ -35,12 +35,14 @@ export function legacyFixture(state: AppState): LegacyState {
 export function legacyVersionedFixture(state: AppState, schemaVersion: number) {
   const copy = JSON.parse(JSON.stringify(state))
   copy.schemaVersion = schemaVersion
+  if (schemaVersion < 12) Object.assign(copy.settings, { numberPattern: '{YYYY}-{K}-{NNNN}', resetNumberAnnually: true })
   const snapshot = (value: InvoiceSnapshot | undefined | null) => {
-    if (!value) return
+    if (!value || schemaVersion >= 11) return
     Reflect.set(value, 'guardians', value.recipients.filter((entry) => entry.type === 'guardian').map((entry) => { const person = { ...entry }; Reflect.deleteProperty(person, 'type'); return person }))
     if (schemaVersion < 8) Reflect.deleteProperty(value, 'recipients')
   }
   const invoice = (value: Pick<Invoice, 'recipients' | 'snapshot' | 'draftPrintSnapshot'>) => {
+    if (schemaVersion >= 11) return
     Reflect.set(value, 'guardianIds', value.recipients.filter((entry) => entry.type === 'guardian').map((entry) => entry.id))
     if (schemaVersion < 8) Reflect.deleteProperty(value, 'recipients')
     snapshot(value.snapshot); snapshot(value.draftPrintSnapshot)
@@ -57,3 +59,4 @@ export function legacyVersionedFixture(state: AppState, schemaVersion: number) {
 export function editable(invoice: Invoice): InvoiceDraft {
   return { id: invoice.id, correction: invoice.correction, invoiceDate: invoice.invoiceDate, dueDate: invoice.dueDate, period: invoice.period, recipients: structuredClone(invoice.recipients), studentIds: [...invoice.studentIds], recipientStrategy: invoice.recipientStrategy, items: structuredClone(invoice.items), introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText }
 }
+

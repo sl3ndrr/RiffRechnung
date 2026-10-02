@@ -133,9 +133,9 @@ test('P04: kontrollierte Migration eines Protokoll-4/Schema-3-Bestands bewahrt R
   assert.equal(session.revision!.datasetId, old.datasetId)
   const archive = JSON.parse(JSON.parse(session.exportRecoveryArchive()).recoveries[0].raw)
   assert.equal(archive.previousRaw, raw); assert.equal(archive.sourceRaw, raw)
-  assert.equal(archive.report.toSchema, 11)
+  assert.equal(archive.report.toSchema, 12)
   assert.equal(new StorageSession({ storage, lock: sharedLock() }).initial.status, 'ready')
-  const future = JSON.stringify({ ...old, schemaVersion: 12, data: { ...old.data, schemaVersion: 12 } })
+  const future = JSON.stringify({ ...old, schemaVersion: 13, data: { ...old.data, schemaVersion: 13 } })
   storage.setItem(STORAGE_KEY, future)
   await assert.rejects(new StorageSession({ storage, lock: sharedLock() }).restore(session.export()), /neuere Formate/)
   assert.equal(storage.getItem(STORAGE_KEY), future)
@@ -308,3 +308,4 @@ test('P04: Snapshot-Differenzen gelöschter Altrechnungen bleiben sichtbar, ohne
   assert.match(markup, /nicht rekonstruiert/)
   assert.throws(() => assertOriginalsPreserved(state, { ...state, historicalSnapshotCorrections: [] }), /Snapshot-Differenzen/)
 })
+

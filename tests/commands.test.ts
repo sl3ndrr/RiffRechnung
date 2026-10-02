@@ -173,7 +173,8 @@ for (const count of [2, 3]) for (const finalized of [false, true]) test(`P02: ${
   assert.deepEqual(preview.state.invoices.map(invoiceTotal), before.invoices.map(invoiceTotal))
   assert.deepEqual(preview.state.invoices.map((invoice) => invoice.number), before.invoices.map((invoice) => invoice.number))
   assert.deepEqual(preview.state.invoices.map((invoice) => invoice.snapshot), normalizeLegacyRecipients(before).invoices.map((invoice) => invoice.snapshot))
-  assert.deepEqual(preview.state.counters, before.counters)
+  for (const [key, count] of Object.entries(before.counters)) assert.ok(preview.state.counters[key] >= count)
+  assert.equal(preview.state.counters['2026:a'], 100, 'Reservierte Folge 99 setzt auch einen zu niedrigen Altzähler sicher fort')
   assert.deepEqual(preview.state.voidedInvoiceNumbers, before.voidedInvoiceNumbers)
   preview.state.invoices.forEach((invoice, index) => assert.deepEqual({ ...invoice, versionId: undefined, items: invoice.items.map((item, itemIndex) => ({ ...item, id: before.invoices[index].items[itemIndex].id })) }, { ...normalizeLegacyRecipients(before).invoices[index], versionId: undefined }))
   assert.deepEqual(legacy, before)
@@ -361,7 +362,7 @@ test('P03: Import prüft den aktuellen Zielzustand erneut und erhält Nummernres
   const preview = requireSuccess(inspectImport(serializeBackup(saved)))
   const session = new StorageSession({ lock: sharedLock() })
   const imported = await session.restore(preview.rawData)
-  assert.equal(nextInvoiceAllocation(imported, '2026-08-15', ['s0']).number, '2026-a-0003')
+  assert.equal(nextInvoiceAllocation(imported, '2026-08-15', ['s0']).number, '2026-0003-a')
   await assert.rejects(session.restore(serializeBackup(emptyState())), /Finalisierte/)
   preview.state = emptyState()
   assert.deepEqual(await session.restore(preview.rawData), saved, 'Vorschau ersetzt nicht die erneut geprüften Eingangsbytes')
@@ -377,3 +378,4 @@ test('P02: ältere, beschädigte und unbekannte neuere lokale Daten können auch
     assert.equal(entries.get(STORAGE_KEY), raw)
   }
 }))
+
