@@ -2,7 +2,7 @@ import { decimalInputText } from '../lib/money'
 import { mailboxError } from '../lib/mailbox'
 import { parsePaymentTermInput } from '../lib/values'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { ArchiveRestore, CheckCircle2, CloudOff, Download, FileJson, FolderSync, HardDrive, History, Moon, Palette, Save, ShieldCheck, Sun, Upload } from 'lucide-react'
+import { ArchiveRestore, CheckCircle2, Download, FileJson, HardDrive, History, Moon, Palette, Save, ShieldCheck, Sun, Upload } from 'lucide-react'
 import type { AppState, Settings as SettingsType, ThemeMode } from '../types'
 import { formatInvoiceNumber, formatIban, isFooterTextWithinLimit, germanIbanError, MAX_FOOTER_TEXT_LENGTH } from '../lib/utils'
 
@@ -15,23 +15,17 @@ import { bicError } from '../lib/paymentData'
 
 interface SettingsProps {
   state: AppState
-  folderSupported: boolean
-  folderConnected: boolean
-  folderName: string
   onSave: (settings: SettingsType) => Promise<boolean>
   onDirty: (dirty: boolean) => void
   onRegisterFlush: (flush: (() => Promise<boolean>) | null) => void
   onExport: () => void
   onImport: (file: File) => void
-  onConnectFolder: () => void
-  onDisconnectFolder: () => void
-  onBackupNow: () => void
   onReset: () => void
   onPrevious: () => void
   onArchive: () => void
 }
 
-export function Settings({ state, folderSupported, folderConnected, folderName, onSave, onDirty, onRegisterFlush, onExport, onImport, onConnectFolder, onDisconnectFolder, onBackupNow, onReset, onPrevious, onArchive }: SettingsProps) {
+export function Settings({ state, onSave, onDirty, onRegisterFlush, onExport, onImport, onReset, onPrevious, onArchive }: SettingsProps) {
   const [form, setForm] = useState<SettingsType>(state.settings)
   const [rateInputs, setRateInputs] = useState({ privateRate: decimalInputText(state.settings.privateRate), duoRate: decimalInputText(state.settings.duoRate) })
   const [paymentTermInput, setPaymentTermInput] = useState(String(state.settings.paymentTermDays))
@@ -138,15 +132,12 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
           </section>
 
           <section id="backup" className="surface settings-section settings-section--backup">
-            <div className="settings-section__heading"><span><FolderSync aria-hidden="true" /></span><div><h2>Backup & Import</h2><p>JSON-Export bleibt verfügbar. Eine Wiederherstellung erhält bekannte Originalbelege und Nummernreservierungen.</p></div></div>
+            <div className="settings-section__heading"><span><Download aria-hidden="true" /></span><div><h2>Backup & Import</h2><p>JSON-Export bleibt verfügbar. Eine Wiederherstellung erhält bekannte Originalbelege und Nummernreservierungen.</p></div></div>
             <div className="button-row"><button className="button button--tonal" onClick={onPrevious}>Vorherigen lokalen Stand prüfen</button><button className="button button--tonal" onClick={onArchive}>Wiederherstellungsarchiv exportieren</button></div>
             <div className="backup-grid">
               <article><span className="backup-icon"><Download aria-hidden="true" /></span><h3>Manuelles Backup</h3><p>Eine Klartext-JSON-Datei mit Personen, Rechnungen, Einstellungen, Notizen, Belegversionen und Änderungsverlauf.</p><button className="button button--tonal" onClick={onExport}><Download aria-hidden="true" /> JSON exportieren</button></article>
               <article><span className="backup-icon"><Upload aria-hidden="true" /></span><h3>Backup wiederherstellen</h3><p>Führt eine geprüfte Sicherung nach Bestätigung als neuen Stand ein. Bekannte Originale bleiben geschützt.</p><label className="button button--tonal file-button"><Upload aria-hidden="true" /> JSON importieren<input type="file" accept="application/json,.json" onChange={(event) => { const file = event.target.files?.[0]; if (file) onImport(file); event.target.value = '' }} /></label></article>
-              <article className={folderConnected ? 'is-connected' : ''}><span className="backup-icon">{folderConnected ? <FolderSync aria-hidden="true" /> : <CloudOff aria-hidden="true" />}</span><h3>Backup-Ordner</h3><p>{!folderSupported ? 'Dieser Browser unterstützt die Ordnerauswahl nicht.' : folderConnected ? `Verbunden: ${folderName}.` : 'Vor dem Verbinden werden vorhandene Sicherungen gelesen. Schreiben erhält frühere Versionen.'}</p>{folderSupported && (folderConnected ? <div className="button-row"><button className="button button--tonal" onClick={onBackupNow}>Jetzt sichern</button><button className="button button--tonal" onClick={onConnectFolder}>Ordner prüfen / Ziel wechseln</button><button className="button button--text" onClick={onDisconnectFolder}>Trennen</button></div> : <button className="button button--tonal" onClick={onConnectFolder}><FolderSync aria-hidden="true" /> Ordner wählen</button>)}</article>
             </div>
-            <p className="field-hint" role="status">Neue versionierte Sicherungen erhalten bisherige Dateien. Bei Konflikten, fehlenden Berechtigungen oder fehlenden Browserfunktionen bleibt das Datei-Backup ausstehend; JSON-Export ist weiterhin möglich.</p>
-            <div className="info-banner"><HardDrive aria-hidden="true" /><p>Die App spricht keine Cloud-API an. Wählst du einen lokal synchronisierten Drive-Ordner, übernimmt ausschließlich die installierte Desktop-Synchronisation das spätere Hochladen. Die Ordnerfunktion ist derzeit vor allem in Chromium-Browsern verfügbar.</p></div>
           </section>
 
           <section id="history" className="surface settings-section">

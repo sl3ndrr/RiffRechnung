@@ -79,22 +79,35 @@ test('echter Browser: isolierte Demo mit realem OPFS-Handle und IndexedDB erhäl
   // Synthetic OPFS fixture: real file/IndexedDB APIs, no native picker or OS permission UI proof.
   await page.evaluate(async () => {
     const modulePath = '/src/lib/storage.ts'
-    const { StorageSession, storeDirectoryHandle } = await import(modulePath)
+    const { StorageSession } = await import(modulePath)
     const session = new StorageSession()
     await session.change((state: ReturnType<typeof emptyState>) => ({ ...state, settings: { ...state.settings, issuer: { ...state.settings.issuer, name: 'Echter synthetischer Bestand' } } }))
     const root = await navigator.storage.getDirectory()
     const handle = await root.getDirectoryHandle('paket-03-synthetisch', { create: true })
     const binding = { handle, datasetId: session.revision.datasetId, legacyFiles: [] }
-    await session.connect(binding)
-    await storeDirectoryHandle(binding)
-    await Promise.all([session.backup(), session.backup()])
+    const file = await handle.getFileHandle('bestehend.json', { create: true })
+    const stream = await file.createWritable()
+    await stream.write(session.export())
+    await stream.close()
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open('riffrechnung-handles-v4', 1)
+      request.onupgradeneeded = () => request.result.createObjectStore('handles')
+      request.onerror = () => reject(request.error)
+      request.onsuccess = () => {
+        const db = request.result
+        const tx = db.transaction('handles', 'readwrite')
+        tx.objectStore('handles').put(binding, 'backup-directory')
+        tx.oncomplete = () => { db.close(); resolve() }
+        tx.onerror = () => { db.close(); reject(tx.error) }
+      }
+    })
   })
   await page.reload()
   const before = await stored(page)
   const readFiles = () => page.evaluate(async () => {
     const handle = await (await navigator.storage.getDirectory()).getDirectoryHandle('paket-03-synthetisch')
     const files: Array<[string, string]> = []
-    for await (const entry of handle.values()) if (entry.kind === 'file') files.push([entry.name, await (await (entry as FileSystemFileHandle).getFile()).text()])
+    for await (const entry of (handle as FileSystemDirectoryHandle & { values(): AsyncIterableIterator<FileSystemHandle> }).values()) if (entry.kind === 'file') files.push([entry.name, await (await (entry as FileSystemFileHandle).getFile()).text()])
     return files.sort()
   })
   const filesBefore = await readFiles()
@@ -109,22 +122,12 @@ test('echter Browser: isolierte Demo mit realem OPFS-Handle und IndexedDB erhäl
   context = await playwright.chromium.launchPersistentContext(profile, { channel: 'chromium', headless: true, baseURL: 'http://127.0.0.1:4173' })
   page = await context.newPage()
   await page.goto('/')
-  await expect(page.locator('.backup-indicator')).toContainText('paket-03-synthetisch')
+  await expect(page.getByRole('button', { name: 'Ordner wählen', exact: true })).toHaveCount(0)
   expect(await stored(page)).toBe(before)
   expect(await readFiles()).toEqual(filesBefore)
   await settings(page)
   await expect(page.getByLabel('Name / Geschäftsbezeichnung', { exact: true })).toHaveValue('Echter synthetischer Bestand')
   } finally { await context.close() }
-})
-
-test('Fehler-Injektion im echten Browser: Picker-Abbruch verändert keine Daten', async ({ page }) => {
-  await page.addInitScript(() => { window.showDirectoryPicker = async () => { throw new DOMException('Abgebrochen', 'AbortError') } })
-  await page.goto('/')
-  await settings(page)
-  const before = await stored(page)
-  await page.getByRole('button', { name: 'Ordner wählen', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Backup-Ordner prüfen' })).toHaveCount(0)
-  expect(await stored(page)).toBe(before)
 })
 
 test('mobil: wesentlicher Speicherstatus bleibt bei 390 Pixeln sichtbar', async ({ page }) => {
