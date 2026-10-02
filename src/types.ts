@@ -115,7 +115,7 @@ export interface DocumentAmounts {
   calculation: 'legacy-v1' | 'decimal-v1'
 }
 
-export type DocumentContent = Omit<Invoice, 'status' | 'paidAt' | 'sentAt' | 'updatedAt' | 'versionId' | 'correction' | 'issuedAmounts' | 'claimState' | 'archived'>
+export type DocumentContent = Omit<Invoice, 'status' | 'paidAt' | 'sentAt' | 'updatedAt' | 'versionId' | 'correction' | 'issuedAmounts' | 'claimState' | 'archived' | 'snapshot' | 'draftPrintSnapshot' | 'period' | 'legalText'>
 
 export interface DocumentConflict {
   path: string
@@ -133,6 +133,7 @@ export interface DocumentVersion {
   reason: string
   provenance: 'issued' | 'oldest-available'
   sourceUpdatedAt: string
+  /** Service/number/text inputs; frozen output fields exist only below. */
   content: DocumentContent
   outputSnapshot: InvoiceSnapshot
   outputPeriod: string
@@ -203,7 +204,7 @@ export interface VoidedInvoiceNumber {
 }
 
 export interface AppState {
-  schemaVersion: 12
+  schemaVersion: 13
   guardians: Guardian[]
   students: Student[]
   invoices: Invoice[]

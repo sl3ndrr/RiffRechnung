@@ -1,5 +1,5 @@
 import type { AppState, DocumentConflict } from '../types'
-import { canonical } from './envelope'
+import { canonical } from './canonical'
 
 type RecordValue = Record<string, unknown>
 const object = (value: unknown): RecordValue | null => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as RecordValue : null

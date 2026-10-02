@@ -1,3 +1,4 @@
+import { expectedConsolidatedVersions } from './documentFixtures'
 import { createDemoState } from '../src/lib/defaults'
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -64,9 +65,9 @@ test('P06: Schema 11 migriert geschützt, behält Originale und Reservierungen e
   old.voidedInvoiceNumbers.push({ number: '2026-a-0011', sequence: 11, year: 2026, invoiceDate: '2026-09-01', deletedAt: documentAt, amount: 30, recipient: 'Synthetisch' })
   const raw = JSON.stringify(old), before = structuredClone(old)
   const preview = requireSuccess(inspectImport(raw))
-  assert.equal(preview.report?.fromSchema, 11); assert.equal(preview.report?.toSchema, 12)
-  assert.equal(preview.state.schemaVersion, 12)
-  assert.deepEqual(preview.state.documentVersions, before.documentVersions)
+  assert.equal(preview.report?.fromSchema, 11); assert.equal(preview.report?.toSchema, 13)
+  assert.equal(preview.state.schemaVersion, 13)
+  assert.deepEqual(preview.state.documentVersions, expectedConsolidatedVersions(before.documentVersions))
   assert.deepEqual(preview.state.invoices, before.invoices)
   assert.deepEqual(preview.state.voidedInvoiceNumbers, before.voidedInvoiceNumbers)
   assert.deepEqual(preview.state.students, before.students)
@@ -175,5 +176,5 @@ test('P06: gesicherte Originale ohne heutige Stammdaten schützen erkennbare ode
   for (const invoice of [old.invoices[0], old.documentVersions[0].content]) invoice.number = 'UNBEKANNT-17'
   const unclear = parseBackup(JSON.stringify(old))
   assert.equal(unclear.counters['2026:*'], 18)
-  assert.deepEqual(unclear.documentVersions, old.documentVersions)
+  assert.deepEqual(unclear.documentVersions, expectedConsolidatedVersions(old.documentVersions))
 })

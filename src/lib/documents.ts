@@ -1,18 +1,12 @@
+import { documentContent } from './documentProjection'
+export { documentContent } from './documentProjection'
 import { invoiceTotalCents, itemTotalCents, legacyItemCents } from './money'
-import type { AppState, DocumentContent, DocumentVersion, Invoice, InvoiceDraft, InvoiceSnapshot, InvoicePayment } from '../types'
-import { canonical } from './envelope'
+import type { AppState, DocumentVersion, Invoice, InvoiceDraft, InvoiceSnapshot, InvoicePayment } from '../types'
+import { canonical } from './canonical'
 import { copyItemsWithFreshIds, freshId } from './identities'
 import { billingPeriodFromItems, guardianName, uid } from './utils'
 import { validateBackupState } from './validation'
 import { liveRecipient } from './recipients'
-
-export function documentContent(invoice: Invoice): DocumentContent {
-  const content = structuredClone(invoice)
-  const administrationKeys = ['status', 'paidAt', 'sentAt', 'updatedAt', 'versionId', 'correction', 'issuedAmounts', 'claimState', 'archived']
-  for (const key of administrationKeys) Reflect.deleteProperty(content, key)
-  return content
-
-}
 
 export function snapshotFor(state: Pick<AppState, 'guardians' | 'students' | 'settings'>, invoice: Invoice): InvoiceSnapshot {
   const recipients = invoice.recipients.flatMap((ref) => {
@@ -125,7 +119,7 @@ export function createCorrectionDraft(state: AppState, invoiceId: string, reason
   if (state.invoices.some((entry) => entry.status === 'draft' && entry.correction?.replacesId === parent.id)) throw new Error('Für diesen Beleg gibt es bereits einen Korrekturentwurf.')
   const draft: Invoice = {
     ...structuredClone(parent.content), id: freshId('invoice', new Set(state.invoices.map((entry) => entry.id)), uid),
-    number: null, sequence: null, status: 'draft', snapshot: undefined, draftPrintSnapshot: structuredClone(parent.outputSnapshot),
+    number: null, sequence: null, status: 'draft', period: parent.outputPeriod, legalText: parent.outputLegalText, draftPrintSnapshot: structuredClone(parent.outputSnapshot),
     items: copyItemsWithFreshIds(parent.content.items, new Set(state.invoices.flatMap((entry) => entry.items.map((item) => item.id))), uid),
     correction: { replacesId: parent.id, reason: reason.trim() }, createdAt: at, updatedAt: at,
   }

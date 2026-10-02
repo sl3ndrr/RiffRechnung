@@ -44,3 +44,7 @@ export function validateLegacyV10Structure(value: unknown): void {
 export function validateLegacyV11Structure(value: unknown): void {
   validateLegacyStructure(value, 11)
 }
+
+export function validateLegacyV12Structure(value: unknown): void {
+  validateLegacyStructure(value, 12)
+}
