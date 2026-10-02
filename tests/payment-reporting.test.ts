@@ -82,7 +82,7 @@ test('P08: Schema 6 übernimmt Vollzahlungen mit unbekanntem Zahlungstag einmali
     Reflect.deleteProperty(guardian, 'firstName')
     Reflect.deleteProperty(guardian, 'lastName')
   }
-  legacy.payments.forEach((payment) => {
+  legacy.payments.forEach((payment: Record<string, unknown>) => {
     Reflect.deleteProperty(payment, 'paymentDayStatus')
     Reflect.deleteProperty(payment, 'legacyPaymentDay')
   })

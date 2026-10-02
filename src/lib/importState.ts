@@ -3,7 +3,7 @@ import { detachLegacyDuoGroups } from './legacyDuoV8V9'
 import { draftAmountChange, legacyItemCents, itemTotalCents } from './money'
 import { captureDocument } from './documents'
 import { validateEnvelope, type StorageEnvelope } from './envelope'
-import type { AppState, Invoice, InvoiceItem, Student } from '../types'
+import type { AppState, AuditEvent, Invoice, InvoiceItem, Student } from '../types'
 import { commandResult, requireSuccess, type CommandResult } from './result'
 import { backupArray, backupEnum, backupObject, backupTimestamp, knownKeys, validateBackupState } from './validation'
 import { validateLegacyV2Structure, validateLegacyV3Structure, validateLegacyV4Structure, validateLegacyV5Structure, validateLegacyV6Structure, validateLegacyV7Structure, validateLegacyV8Structure, validateLegacyV9Structure, validateLegacyV10Structure } from './legacyValidation'
@@ -323,18 +323,21 @@ export function serializeMigrationReport(preview: ImportPreview): string {
   return JSON.stringify({ app: 'riffrechnung-recovery', version: 1, data: preview.state, report: preview.report, warnings: preview.warnings }, null, 2)
 }
 
+type LegacySnapshot = Omit<NonNullable<Invoice['snapshot']>, 'recipients'> & { guardians: import('../types').GuardianSnapshot[]; recipients?: NonNullable<Invoice['snapshot']>['recipients'] }
+type LegacyAuditEvent = Omit<AuditEvent, 'snapshotCorrection'> & { snapshotCorrection?: { oldValue: LegacySnapshot | null; newValue: LegacySnapshot } }
 interface LegacyInvoice extends Omit<Invoice, 'recipients' | 'snapshot'> {
   guardianIds: string[]
   recipients?: Invoice['recipients']
-  snapshot?: Omit<NonNullable<Invoice['snapshot']>, 'recipients'> & { guardians: import('../types').GuardianSnapshot[]; recipients?: NonNullable<Invoice['snapshot']>['recipients'] }
+  snapshot?: LegacySnapshot
 }
-export type LegacyState = Omit<AppState, 'schemaVersion' | 'invoices' | 'documentVersions' | 'invoiceAdministration' | 'payments' | 'historicalSnapshotCorrections'> & { schemaVersion: 3; invoices: LegacyInvoice[] }
+export type LegacyState = Omit<AppState, 'schemaVersion' | 'invoices' | 'audit' | 'documentVersions' | 'invoiceAdministration' | 'payments' | 'historicalSnapshotCorrections'> & { schemaVersion: 3; invoices: LegacyInvoice[]; audit: LegacyAuditEvent[] }
 
 type UnversionedState = Omit<AppState, 'schemaVersion' | 'documentVersions' | 'invoiceAdministration' | 'payments' | 'historicalSnapshotCorrections'> & { schemaVersion: 3 }
 
 /** Deterministic capture: sourceUpdatedAt is a source timestamp, not a guessed issuance date. */
 function captureLegacyDocumentsV7(legacy: LegacyState | UnversionedState): AppState {
-  const state: AppState = { ...normalizeLegacyRecipients(upgradeToV6(legacy)), documentVersions: [], invoiceAdministration: [], payments: [], historicalSnapshotCorrections: structuredClone(legacy.audit.filter((event) => event.snapshotCorrection)) }
+  const normalized = normalizeLegacyRecipients(upgradeToV6(legacy))
+  const state: AppState = { ...normalized, documentVersions: [], invoiceAdministration: [], payments: [], historicalSnapshotCorrections: structuredClone(normalized.audit.filter((event) => event.snapshotCorrection)) }
   state.invoices.forEach((invoice, index) => {
     if (invoice.status === 'draft') return
     const version = captureDocument(state, invoice, `version-v4-${index}`, true)

@@ -169,7 +169,7 @@ test('P01: verdeckte Empfängerabweichungen und Verlust ungesicherter historisch
   const changed = structuredClone(finalized)
   changed.invoices[0].recipients = (['g1']).map((id) => ({ type: 'guardian' as const, id }))
   assert.throws(() => assertOriginalsPreserved(finalized, changed), /Finalisierte Belege/)
-  changed.invoices[0].snapshot!.recipients = [{ ...changed.guardians[1].address, id: 'g1', name: 'Andere Familie', email: '' }]
+  changed.invoices[0].snapshot!.recipients = [{ ...changed.guardians[1].address, type: 'guardian', id: 'g1', name: 'Andere Familie', email: '' }]
   assert.throws(() => assertOriginalsPreserved(finalized, changed), /Finalisierte Belege/)
   const historicalSource = legacyFixture(finalized)
   delete historicalSource.invoices[0].snapshot

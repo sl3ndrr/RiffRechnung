@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import type { AppState } from '../src/types'
+import type { LegacyState } from '../src/lib/importState'
 import { documentAt, documentDraft, documentFamily } from './documentFixtures'
 import { saveInvoiceDraft, changeInvoiceStatus } from '../src/lib/invoiceActions'
 import { studentCodeIndex } from '../src/lib/utils'
@@ -39,7 +40,7 @@ export function duoIssued(): AppState {
 }
 /** Frozen output of the unchanged P02 group commands, never rebuilt by new code. */
 const legacy = JSON.parse(readFileSync('tests/fixtures/duo-schema9.json', 'utf8')) as {
-  sourceCommit: string; drafts: AppState; issued: AppState
+  sourceCommit: string; drafts: Omit<AppState, 'invoices'> & { invoices: LegacyState['invoices'] }; issued: Omit<AppState, 'invoices'> & { invoices: LegacyState['invoices'] }
 }
 export const legacyDuoSource = legacy.sourceCommit
 export function legacyDuoState(schemaVersion: 8 | 9 = 9, issued = false) {

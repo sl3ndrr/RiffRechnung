@@ -179,7 +179,7 @@ test('historisch verbrauchte Nummern bleiben reserviert', () => {
     sentAt: '2026-08-01T10:00:00.000Z',
     snapshot: {
       issuer: structuredClone(defaultSettings.issuer),
-      recipients: ([]).map((person) => ({ ...person, type: 'guardian' as const })),
+      recipients: [],
       students: [{ id: 'student-a', name: 'Anna' }],
       accountHolder: '',
       iban: '',
@@ -465,7 +465,7 @@ test('vollständiges Backup lässt sich wiederherstellen', () => {
   state.voidedInvoiceNumbers.push({ number: '2026-a-0004', sequence: 4, year: 2026, invoiceDate: '2026-08-01', deletedAt: '2026-08-20T12:00:00.000Z', amount: 90, recipient: 'Testfamilie' })
   const correctedSnapshot = {
     issuer: structuredClone(state.settings.issuer),
-    recipients: ([]).map((person) => ({ ...person, type: 'guardian' as const })),
+    recipients: [],
     students: [{ id: 'student-a', name: 'Anna' }],
     accountHolder: 'Neuer Kontoinhaber',
     iban: '',
