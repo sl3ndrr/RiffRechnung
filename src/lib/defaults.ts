@@ -1,5 +1,5 @@
 import { localToday, paymentDay } from './calendar'
-import { calculateDueDate } from './utils'
+import { calculateDueDate, formatInvoiceNumber } from './utils'
 import { captureLegacyDocuments } from './importState'
 import type { AppState, Guardian, Invoice, InvoiceDraft, InvoiceItem, LessonType, Settings, Student } from '../types'
 
@@ -194,7 +194,7 @@ export function createDemoState(referenceDate = new Date()): AppState {
     const counterKey = `${year}:${studentCode}`
     const sequence = finalized ? (sequenceByScope.get(counterKey) ?? 0) + 1 : null
     if (sequence) sequenceByScope.set(counterKey, sequence)
-    const number = sequence ? `${year}-${studentCode}-${String(sequence).padStart(4, '0')}` : null
+    const number = sequence ? formatInvoiceNumber(sequence, year, studentCode) : null
     const createdAt = new Date(Date.UTC(year, month, invoiceDay, 8)).toISOString()
     const sentAt = new Date(Date.UTC(year, month, invoiceDay, 10)).toISOString()
     const paidAt = paidAtValue.toISOString()

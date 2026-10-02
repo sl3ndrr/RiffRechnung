@@ -1,3 +1,4 @@
+import { createDemoState } from '../src/lib/defaults'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { documentAt, documentDraft, documentFamily, editable, legacyVersionedFixture } from './documentFixtures'
@@ -18,6 +19,9 @@ const oldV11 = (state = documentFamily()) => legacyVersionedFixture(state, 11)
 
 test('P06: festes Format, getrennte Jahreskreise und zwei Erziehungsberechtigte', () => {
   assert.equal(formatInvoiceNumber(10000, 2026, 'aa+b'), '2026-10000-aa+b')
+  for (const invoice of createDemoState(new Date('2026-09-01T12:00:00Z')).invoices) {
+    if (invoice.number) assert.match(invoice.number, /^\d{4}-\d{4,}-[a-z]+(?:\+[a-z]+)*$/)
+  }
   const state = documentFamily()
   state.counters = { '2026:a': 7, '2026:b': 4, '2026:a+b': 3, '2026:ab': 100 }
   assert.deepEqual(allocation(state, ['s-b', 's-a']), allocation(state, ['s-a', 's-b']))
