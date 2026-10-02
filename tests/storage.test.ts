@@ -5,7 +5,6 @@ import { canonical, descendsFrom, validateEnvelope } from '../src/lib/envelope'
 import { StorageConflict } from '../src/lib/storageConflict'
 import { StorageSession, LEGACY_GUARD_KEY, LEGACY_STORAGE_KEY, PREVIOUS_STORAGE_KEY, STORAGE_KEY, loadState, serializeBackup } from '../src/lib/storage'
 import { inspectImport } from '../src/lib/importState'
-import { SettingsBuffer } from '../src/lib/settingsBuffer'
 import { memoryStorage, seedState, sharedLock } from './storageHarness'
 
 const context = () => {
@@ -150,25 +149,6 @@ test('P03: unbekannte neuere lokale/Dateiformate werden niemals überschrieben',
     await assert.rejects(session.restore(serializeBackup(emptyState())), /schreibgeschützt/)
     assert.equal(storage.getItem(STORAGE_KEY), raw)
   }
-})
-
-test('P03: Einstellung und sofortiger Ansichtswechsel warten auf bestätigtes Speichern', async () => {
-  const { session, storage } = context()
-  const buffer = new SettingsBuffer(session.state.settings)
-  buffer.update({ ...session.state.settings, privateRate: 37.5 })
-  let release!: () => void
-  const wait = new Promise<void>((resolve) => { release = resolve })
-  const first = buffer.flush(async (settings) => { await wait; await session.change((state) => ({ ...state, settings })); return true })
-  assert.equal(storage.getItem(STORAGE_KEY), null)
-  buffer.update({ ...session.state.settings, privateRate: 42 })
-  const navigation = buffer.flush(async () => { throw new Error('Ein zweiter Schreiber darf nicht starten') })
-  assert.equal(first, navigation)
-  release()
-  assert.equal(await navigation, true)
-  assert.equal(buffer.dirty, false)
-  assert.equal(new StorageSession({ storage, lock: sharedLock() }).state.settings.privateRate, 42)
-  buffer.update({ ...session.state.settings, privateRate: 42 }, false)
-  assert.equal(await buffer.flush(async () => true), false)
 })
 
 test('P03: fehlerhafte Revisionsfolgen werden bereits beim Import abgewiesen', () => {

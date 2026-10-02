@@ -63,7 +63,6 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const [settingsEpoch, setSettingsEpoch] = useState(0)
   const [settingsDirty, setSettingsDirty] = useState(false)
   const pendingWrites = useRef(0)
-  const settingsFlush = useRef<(() => Promise<boolean>) | null>(null)
   const [page, setPage] = useState<PageKey>('invoices')
   const [mobileNav, setMobileNav] = useState(false)
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 820px)').matches)
@@ -409,6 +408,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       setState(restored)
       setRecovery(null)
       setSettingsEpoch((value) => value + 1)
+      setSettingsDirty(false)
       setLocalSaveError(null)
       setSaveStateLabel('saved')
       setSavedAt(new Date())
@@ -427,14 +427,14 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const confirmImport = (preview: ImportPreview) => {
     setConfirmation({
       title: 'Backup als neuen Stand wiederherstellen?',
-      message: `${preview.state.students.length} Lernende, ${preview.state.invoices.length} Rechnungen. ${preview.envelope ? `Bestand ${preview.envelope.datasetId}, Revision ${preview.envelope.revision}.` : 'Ohne Bestands-ID: Mit der Bestätigung ordnest du dieses Altbackup ausdrücklich zu; eine gemeinsame Herkunft ist nicht nachgewiesen.'} Der aktuelle Stand und die unveränderten Eingangsdaten werden zuerst lokal aufbewahrt. Bekannte Originalbelege dürfen nicht verändert werden.`,
+      message: `${preview.state.students.length} Lernende, ${preview.state.invoices.length} Rechnungen. ${preview.envelope ? `Bestand ${preview.envelope.datasetId}, Revision ${preview.envelope.revision}.` : 'Ohne Bestands-ID: Mit der Bestätigung ordnest du dieses Altbackup ausdrücklich zu; eine gemeinsame Herkunft ist nicht nachgewiesen.'} Ungespeicherte Einstellungen werden bei erfolgreicher Wiederherstellung verworfen. Der aktuelle Stand und die unveränderten Eingangsdaten werden zuerst lokal aufbewahrt. Bekannte Originalbelege dürfen nicht verändert werden.`,
       label: 'Wiederherstellung bestätigen', danger: true,
       action: async () => { if (await applyRestore(preview)) setImportReview(null) },
     })
   }
 
   const resetAll = () => setConfirmation({
-    title: 'Lokalen Bestand zurücksetzen?', message: 'Der bisherige Stand bleibt als vorherige lokale Version erhalten.', label: 'Zurücksetzen', danger: true,
+    title: 'Lokalen Bestand zurücksetzen?', message: 'Der bisherige Stand bleibt als vorherige lokale Version erhalten. Ungespeicherte Einstellungen werden bei erfolgreichem Zurücksetzen verworfen.', label: 'Zurücksetzen', danger: true,
     action: async () => {
       try {
         assertReplacementAllowed(session.state)
@@ -450,11 +450,24 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   })
 
   const saveSettings = useCallback((settings: SettingsType) => commit((current) => requireSuccess(saveSettingsState(current, settings)), 'Einstellungen aktualisiert', 'settings'), [commit])
-  const switchMode = async () => {
-    if (settingsFlush.current && !await settingsFlush.current()) return
+  const guardSettings = (action: () => void | Promise<void>): void => {
+    if (pendingWrites.current) { toast('Bitte den laufenden Speichervorgang abwarten.', 'info'); return }
+    if (!settingsDirty) { void action(); return }
+    setConfirmation({
+      title: 'Ungespeicherte Einstellungen verwerfen?',
+      message: 'Die Eingaben wurden noch nicht gespeichert. „Weiter bearbeiten“ erhält alle Formularwerte. Speichere sie mit „Jetzt speichern“, bevor du die Einstellungen verlässt.',
+      label: 'Verwerfen', cancelLabel: 'Weiter bearbeiten', danger: true,
+      action: () => {
+        setSettingsEpoch((value) => value + 1)
+        setSettingsDirty(false)
+        return action()
+      },
+    })
+  }
+  const switchMode = () => guardSettings(async () => {
     await session.idle()
     onModeChange(mode === 'real' ? 'demo' : 'real')
-  }
+  })
   const loadDemo = () => { void switchMode() }
   const closeEditor = () => {
     setEditor((current) => ({ ...current, open: false }))
@@ -488,10 +501,13 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       })
       return
     }
-    if (page === 'settings' && settingsFlush.current && !await settingsFlush.current()) return
-    setPage(next)
-    setMobileNav(false)
-    if (isMobile && mobileNav) requestAnimationFrame(() => mainContentRef.current?.focus())
+    const navigate = () => {
+      setPage(next)
+      setMobileNav(false)
+      if (isMobile && mobileNav) requestAnimationFrame(() => mainContentRef.current?.focus())
+    }
+    if (next !== page) guardSettings(navigate)
+    else navigate()
   }
   const openMobileNav = useCallback(() => {
     setMobileNav(true)
@@ -511,13 +527,8 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     document.addEventListener('keydown', closeOnEscape)
     return () => document.removeEventListener('keydown', closeOnEscape)
   }, [closeMobileNav, mobileNav])
-  const nextTheme = state.settings.theme === 'system' ? 'light' : state.settings.theme === 'light' ? 'dark' : 'system'
-  const toggleTheme = async () => {
-    if (settingsFlush.current && !await settingsFlush.current()) return
-    if (await saveSettings({ ...stateRef.current.settings, theme: nextTheme })) setSettingsEpoch((value) => value + 1)
-  }
   const themeNames = { system: 'System', light: 'Hell', dark: 'Dunkel' } as const
-  const themeToggleLabel = `Aktuelles Farbschema: ${themeNames[state.settings.theme]}. Als Nächstes ${themeNames[nextTheme]} aktivieren.`
+  const themeToggleLabel = `Farbschema in Einstellungen bearbeiten. Aktuell: ${themeNames[state.settings.theme]}.`
   const ThemeToggleIcon = state.settings.theme === 'system' ? Palette : state.settings.theme === 'light' ? Sun : Moon
   const backupStatusLabel = lastBackupAt ? `Letzter JSON-Export: ${backupDateFormatter.format(new Date(lastBackupAt))}` : 'Noch kein Backup'
   if (recovery) return (
@@ -548,16 +559,16 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         <header className="topbar">
           <button ref={mobileMenuButtonRef} className="icon-button mobile-only" onClick={openMobileNav} aria-label="Navigation öffnen" aria-controls="mobile-sidebar" aria-expanded={mobileNav}><Menu aria-hidden="true" /></button>
           <button className="topbar-search" onClick={async () => { await setCurrentPage('invoices'); requestAnimationFrame(() => document.querySelector<HTMLInputElement>('#invoice-search')?.focus()) }}><Search aria-hidden="true" /><span>Rechnungen durchsuchen</span></button>
-          <div className="topbar__end"><div className="topbar__storage-status" role="status" aria-live="polite"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : saveStateLabel === 'error' ? 'is-error' : ''}`}><i />{mode === 'demo' ? 'Demo – nur in dieser Sitzung' : externalChangeDetected ? 'Speicherkonflikt' : settingsDirty || saveStateLabel === 'saving' ? 'Ungespeicherte Änderungen …' : saveStateLabel === 'error' ? 'Lokal nicht gespeichert' : !session.revision ? 'Noch nichts lokal gespeichert' : `Lokal gespeichert ${savedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`}</span><span className="backup-indicator">{backupStatusLabel}</span></div><button className="icon-button" onClick={toggleTheme} aria-label={themeToggleLabel} title={themeToggleLabel}><ThemeToggleIcon aria-hidden="true" /></button><button className="button button--primary topbar-new" onClick={openNewInvoice} aria-label="Neue Rechnung erstellen"><FilePlus2 aria-hidden="true" /><span>Neue Rechnung</span></button></div>
+          <div className="topbar__end"><div className="topbar__storage-status" role="status" aria-live="polite"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : saveStateLabel === 'error' ? 'is-error' : ''}`}><i />{mode === 'demo' ? 'Demo – nur in dieser Sitzung' : externalChangeDetected ? 'Speicherkonflikt' : settingsDirty || saveStateLabel === 'saving' ? 'Ungespeicherte Änderungen …' : saveStateLabel === 'error' ? 'Lokal nicht gespeichert' : !session.revision ? 'Noch nichts lokal gespeichert' : `Lokal gespeichert ${savedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`}</span><span className="backup-indicator">{backupStatusLabel}</span></div><button className="icon-button" onClick={() => { void setCurrentPage('settings'); requestAnimationFrame(() => document.getElementById('appearance')?.scrollIntoView()) }} aria-label={themeToggleLabel} title={themeToggleLabel}><ThemeToggleIcon aria-hidden="true" /></button><button className="button button--primary topbar-new" onClick={openNewInvoice} aria-label="Neue Rechnung erstellen"><FilePlus2 aria-hidden="true" /><span>Neue Rechnung</span></button></div>
         </header>
 
         {externalChangeDetected && <section className="external-update" role="alert"><div><strong>Änderungen in einem anderen Tab erkannt</strong><p>Dieser Tab zeigt nicht mehr den aktuellen Datenstand. Lade neu, bevor du weiterarbeitest.</p></div><button className="button button--tonal" type="button" onClick={() => window.location.reload()}>Aktuellen Stand neu laden</button></section>}
-        {localSaveError && <section className="persistence-error" role="alert"><div><strong>Speichern fehlgeschlagen</strong><p>{localSaveError}</p></div><div className="button-row"><button className="button button--tonal" type="button" onClick={async () => { if (settingsFlush.current) await settingsFlush.current();  }}>Erneut versuchen</button><button className="button button--text" type="button" onClick={exportBackup}>JSON-Backup exportieren</button></div></section>}
+        {localSaveError && <section className="persistence-error" role="alert"><div><strong>Speichern fehlgeschlagen</strong><p>{localSaveError}</p></div><div className="button-row"><button className="button button--tonal" type="button" onClick={() => { void setCurrentPage('settings') }}>Einstellungen prüfen</button><button className="button button--text" type="button" onClick={exportBackup}>JSON-Backup exportieren</button></div></section>}
 
         <main ref={mainContentRef} id="main-content" tabIndex={-1}>
           {page === 'invoices' && <Invoices onNavigate={setCurrentPage} onLoadDemo={mode === 'real' ? loadDemo : undefined} state={state} selectedId={selectedInvoiceId} onSelect={setSelectedInvoiceId} onNew={openNewInvoice} onEdit={editInvoice} onDuplicate={duplicateInvoice} onDelete={requestDeleteInvoice} onSetStatus={setInvoiceStatus} onCorrection={startCorrection} onAllocatePayment={(paymentId, versionId, reason) => { void commit((current) => allocatePayment(current, paymentId, versionId, reason), 'Zahlung manuell zugeordnet', 'invoice') }} onResolveConflicts={(versionId, reason) => { void commit((current) => resolveDocumentConflicts(current, versionId, reason), 'Historische Abweichung geklärt', 'invoice') }} onPrint={print} />}
           {page === 'people' && <People state={state} onSaveGuardian={saveGuardian} onSaveStudent={saveStudent} onDeleteGuardian={deleteGuardian} onDeleteStudent={deleteStudent} />}
-          <div hidden={page !== 'settings'}><Settings key={settingsEpoch} state={state} onDirty={setSettingsDirty} onSave={saveSettings} onRegisterFlush={(flush) => { settingsFlush.current = flush }} onExport={exportBackup} onImport={importBackup} onReset={resetAll} onPrevious={reviewPrevious} onArchive={exportRecoveryArchive} /></div>
+          <div hidden={page !== 'settings'}><Settings key={settingsEpoch} state={state} onDirty={setSettingsDirty} onSave={saveSettings} onExport={exportBackup} onImport={importBackup} onReset={resetAll} onPrevious={reviewPrevious} onArchive={exportRecoveryArchive} /></div>
         </main>
       </div>
 
