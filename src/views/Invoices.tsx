@@ -9,13 +9,15 @@ import { FINALIZED_INVOICE_BLOCKED, isFinalizedInvoice } from '../lib/safety'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowDown, ArrowUp, ArrowUpDown, CalendarDays, ChevronDown, Copy, Edit3, FilePlus2, Mail, MoreVertical, Printer, Search, Send, Trash2 } from 'lucide-react'
-import type { AppState, Invoice, InvoiceStatus } from '../types'
+import type { AppState, Invoice, InvoiceStatus, PageKey } from '../types'
 import { EmptyState } from '../components/EmptyState'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, type InvoiceMenuPosition, runInvoiceMenuAction } from '../lib/invoiceMenu'
-import { billingPeriodFromItems, createReminder, effectiveStatus, euro, formatDate, formatDateLong, guardianName, invoiceTotal, mailtoUrl, sortInvoices, statusLabel, studentName, type InvoiceSortKey, type SortDirection } from '../lib/utils'
+import { billingPeriodFromItems, isInvoiceSetupComplete, createReminder, effectiveStatus, euro, formatDate, formatDateLong, guardianName, invoiceTotal, mailtoUrl, sortInvoices, statusLabel, studentName, type InvoiceSortKey, type SortDirection } from '../lib/utils'
 
 interface InvoicesProps extends DocumentHistoryActions {
   state: AppState
+  onNavigate: (page: PageKey) => void
+  onLoadDemo?: () => void
   selectedId: string | null
   onSelect: (id: string | null) => void
   onNew: () => void
@@ -28,7 +30,7 @@ interface InvoicesProps extends DocumentHistoryActions {
   onToast: (message: string, tone?: 'success' | 'error' | 'info') => void
 }
 
-export function Invoices({ state, selectedId, onSelect, onNew, onDuo, onEdit, onDuplicate, onDelete, onSetStatus, onPrint, onToast, onCorrection, onAllocatePayment, onResolveConflicts }: InvoicesProps) {
+export function Invoices({ state, onNavigate, onLoadDemo, selectedId, onSelect, onNew, onDuo, onEdit, onDuplicate, onDelete, onSetStatus, onPrint, onToast, onCorrection, onAllocatePayment, onResolveConflicts }: InvoicesProps) {
   const [search, setSearch] = useState('')
   const [showArchived, setShowArchived] = useState(false)
   const invoices = useMemo(() => selectedInvoices(state), [state])
@@ -150,6 +152,12 @@ export function Invoices({ state, selectedId, onSelect, onNew, onDuo, onEdit, on
         <button className="button button--tonal" onClick={() => onDuo()}>Duo · zwei Haushalte</button>
         <button className="button button--primary button--large" onClick={onNew}><FilePlus2 aria-hidden="true" /> Neue Rechnung</button>
       </header>
+
+      {!state.invoices.length && (!isInvoiceSetupComplete(state.settings) || !state.students.length) && <section className="notice" aria-label="Einrichtung">
+        <p>Für die erste Rechnung Absender und Konto hinterlegen und eine lernende Person anlegen.</p>
+        <div className="button-row"><button className="button button--text" onClick={() => onNavigate('settings')}>Absender &amp; Konto</button><button className="button button--text" onClick={() => onNavigate('people')}>Personen anlegen</button></div>
+      </section>}
+      {onLoadDemo && <button className="button button--text" onClick={onLoadDemo}>Mit Beispieldaten testen</button>}
 
       <section className="filter-bar" aria-label="Rechnungen filtern"><label><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} /> Archivierte anzeigen</label>
         <label className="search-field">

@@ -28,11 +28,10 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import type { Guardian, Invoice, InvoiceDraft, Student } from '../src/types'
 import changelog from '../src/content/changelog.json'
 import { InvoicePrint } from '../src/components/InvoicePrint'
-import { Dashboard } from '../src/views/Dashboard'
 import { createDemoState, defaultSettings, emptyState } from '../src/lib/defaults'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, runInvoiceMenuAction } from '../src/lib/invoiceMenu'
 import { loadLastBackupAt, StorageSession, loadState, parseBackup, recordBackupExport, serializeBackup } from '../src/lib/storage'
-import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoiceFinalizationErrors, invoicePdfTitle, invoiceTotal, invoicesToCsv, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, reopenInvoiceAsDraft, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
+import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoiceFinalizationErrors, invoicePdfTitle, invoiceTotal, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, reopenInvoiceAsDraft, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
 import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { assertOriginalsPreserved } from '../src/lib/safety'
 import { applyStandardRateInput, updateSettings } from '../src/lib/settings'
@@ -216,38 +215,6 @@ test('Entwürfe dürfen vor der Einrichtung starten; vollständige Einrichtung v
 
 })
 
-test('Onboarding priorisiert die Einrichtung und hält den Demo-Zugang sichtbar', () => {
-  const renderDashboard = (state = emptyState()) => renderToStaticMarkup(createElement(Dashboard, {
-    state,
-    onNavigate: () => undefined,
-    onNewInvoice: () => undefined,
-    onLoadDemo: () => undefined,
-    demoBlockedReason: null,
-    onOpenInvoice: () => undefined,
-  }))
-
-  const emptyMarkup = renderDashboard()
-  assert.match(emptyMarkup, /0 von 2 Schritten abgeschlossen/)
-  assert.ok(emptyMarkup.indexOf('Absender &amp; Konto') < emptyMarkup.indexOf('Personen anlegen'))
-  assert.match(emptyMarkup, /Lieber erst mit Beispieldaten testen\?/)
-  assert.match(emptyMarkup, /Mit Beispieldaten starten/)
-
-  const issuerReady = emptyState()
-  issuerReady.settings.issuer = { ...issuerReady.settings.issuer, name: 'Gitarrenstudio Beispiel', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }
-  issuerReady.settings.accountHolder = 'Gitarrenstudio Beispiel'
-  issuerReady.settings.iban = 'DE02 1203 0000 0000 2020 51'
-  assert.match(renderDashboard(issuerReady), /1 von 2 Schritten abgeschlossen/)
-
-  const familyReady = emptyState()
-  familyReady.students = [student('student-a', 'Anna', 'a')]
-  assert.match(renderDashboard(familyReady), /1 von 2 Schritten abgeschlossen/)
-
-  issuerReady.students = [student('student-a', 'Anna', 'a')]
-  assert.doesNotMatch(renderDashboard(issuerReady), /von 2 Schritten abgeschlossen/)
-
-  const source = readFileSync(new URL('../src/views/Dashboard.tsx', import.meta.url), 'utf8')
-  assert.equal(source.match(/onClick=\{onLoadDemo\}/g)?.length, 2)
-})
 
 test('EPC-Payload enthält Version, Betrag und Rechnungsnummer', () => {
   const settings = { ...defaultSettings, accountHolder: 'Mara Beispiel', iban: 'DE02120300000000202051', bic: 'BYLADEM1001' }
@@ -353,14 +320,6 @@ test('Familien- und Rechnungslisten werden stabil nach der gewählten Spalte sor
   assert.deepEqual(ids('amount'), ['invoice-second', 'invoice-first'])
 })
 
-test('CSV-Export neutralisiert gefährliche Formelpräfixe', () => {
-  for (const prefix of ['=', '+', '-', '@', '\t', '\r']) {
-    const dangerousValue = `${prefix}FORMEL`
-    const csv = invoicesToCsv([invoice({ number: dangerousValue })], [], [])
-    assert.ok(csv.includes(`"'${dangerousValue}"`), JSON.stringify(prefix))
-  }
-  assert.ok(invoicesToCsv([invoice()], [], []).includes('"2026-a-0001"'))
-})
 
 test('Rechnungsdokument druckt automatisch berechneten Zeitraum und Fälligkeit', () => {
   const item = createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-print')

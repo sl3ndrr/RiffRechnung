@@ -1,5 +1,5 @@
 import { invoiceTotalCents, itemTotalCents, legacyItemCents } from './money'
-import type { AppState, DocumentContent, DocumentVersion, Invoice, InvoiceDraft, InvoiceSnapshot } from '../types'
+import type { AppState, DocumentContent, DocumentVersion, Invoice, InvoiceDraft, InvoiceSnapshot, InvoicePayment } from '../types'
 import { canonical } from './envelope'
 import { copyItemsWithFreshIds, freshId } from './identities'
 import { billingPeriodFromItems, guardianName, uid } from './utils'
@@ -208,4 +208,10 @@ export function persistentInvoice(invoice: Invoice): Invoice {
   const result = { ...invoice }
   for (const [key, value] of Object.entries(result)) if (value === undefined) Reflect.deleteProperty(result, key)
   return result
+}
+
+export function unknownPaymentDayLabel(payment: InvoicePayment): string {
+  return payment.legacyPaymentDay
+    ? `Zahlungsdatum unbekannt (bisheriger unbestätigter Wert: ${payment.legacyPaymentDay})`
+    : 'Zahlungsdatum unbekannt'
 }

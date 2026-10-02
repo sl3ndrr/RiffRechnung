@@ -13,7 +13,7 @@ import { requireSuccess } from '../src/lib/result'
 import { assertOriginalsPreserved } from '../src/lib/safety'
 import { StorageSession, STORAGE_KEY, loadState, serializeBackup } from '../src/lib/storage'
 import { validateBackupState } from '../src/lib/validation'
-import { buildEpcPayload, createReminder, guardianName, invoiceTotal, invoicesToCsv, nextInvoiceAllocation, outputItemTotal } from '../src/lib/utils'
+import { buildEpcPayload, createReminder, guardianName, invoiceTotal, nextInvoiceAllocation, outputItemTotal } from '../src/lib/utils'
 import { documentAt as at, documentDraft, documentFamily, editable, legacyFixture } from './documentFixtures'
 import { memoryStorage, sharedLock } from './storageHarness'
 import type { AppState, Invoice } from '../src/types'
@@ -90,7 +90,6 @@ test('P04: Empfaenger A/B und leere historische Kontofelder sind für alle Ausga
   const reminder = createReminder(invoice, state.guardians, state.students)
   assert.deepEqual(reminder.recipients, ['a@example.org'])
   assert.match(reminder.body, /Empfaenger A/)
-  assert.match(invoicesToCsv([invoice], state.guardians, state.students), /Empfaenger A/)
   const markup = printContent(state, state.invoices[0])
   assert.match(markup, /Empfaenger A/); assert.doesNotMatch(markup, /HEUTIGES KONTO|MARKDEF1100/)
   const epc = buildEpcPayload(invoice, state.settings, invoiceTotal(invoice)).split('\n')
@@ -164,7 +163,6 @@ test('P04: mehr als 200 Aktivitäten, Archivierung und Export–Import erhalten 
   assert.equal(activeInvoices(state).length, 1, 'Archivieren storniert keine Forderung')
   assert.equal(openCents(state, original), 0)
   assert.ok(nextInvoiceAllocation(state, '2026-09-01', ['s-a']).sequence > state.invoices[1].sequence!)
-  assert.match(invoicesToCsv(selectedInvoices(state), state.guardians, state.students), /Ersetzt – keine zusätzliche Forderung/)
   const before = session.export()
   await assert.rejects(session.restore(serializeBackup(issued())), /Finalisierte|Belegversionen/)
   assert.equal(session.export(), before)

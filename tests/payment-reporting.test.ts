@@ -5,7 +5,7 @@ import { emptyState } from '../src/lib/defaults'
 import { createLessonItem } from '../src/lib/utils'
 import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { createCorrectionDraft } from '../src/lib/documents'
-import { financialReport, financialReportToCsv } from '../src/lib/reporting'
+import { activeInvoices, openCents } from '../src/lib/documents'
 import { inspectImport } from '../src/lib/importState'
 import { parseBackup, serializeBackup } from '../src/lib/storage'
 
@@ -37,24 +37,17 @@ function readyState(invoiceDate = '2025-12-20'): AppState {
   return saveInvoiceDraft(state, draft, true, issuedAt)
 }
 
-test('P08: Rechnungsvolumen und Zahlungseingang werden über den Jahreswechsel getrennt ausgewertet', () => {
+test('P08: tatsächlicher Zahlungstag bleibt über den Jahreswechsel getrennt vom Belegdatum', () => {
   let state = readyState()
   const invoice = state.invoices[0]
   state = changeInvoiceStatus(state, invoice.id, 'paid', '2026-01-04T08:15:00.000Z', '2026-01-03')
 
-  const billed2025 = financialReport(state, 2025)
-  const paid2026 = financialReport(state, 2026)
-  assert.equal(billed2025.invoiceVolumeCents, 3000)
-  assert.equal(billed2025.paymentIncomeCents, 0)
-  assert.equal(paid2026.invoiceVolumeCents, 0)
-  assert.equal(paid2026.paymentIncomeCents, 3000)
-  assert.equal(paid2026.months[0].paymentIncomeCents, 3000)
+  assert.equal(state.invoices[0].invoiceDate, '2025-12-20')
+  assert.equal(state.payments[0].amountCents, 3000)
   assert.equal(state.payments[0].paidAt, '2026-01-03')
   assert.equal(state.payments[0].recordedAt, '2026-01-04T08:15:00.000Z')
   assert.equal(state.payments[0].paymentDayStatus, 'confirmed')
 
-  const csv = financialReportToCsv(state, 2026)
-  assert.match(csv, /"Zahlungseingang";"2025-a-0001";"2025-12-20";"2026-01-03";"Bestätigt"/)
 })
 
 test('P08: Nachpflege, Datumskorrektur und Statusrücknahme behalten den Geldfluss ohne Doppelzählung', () => {
@@ -63,21 +56,20 @@ test('P08: Nachpflege, Datumskorrektur und Statusrücknahme behalten den Geldflu
   assert.throws(() => changeInvoiceStatus(state, invoice.id, 'paid', '2026-01-04T08:15:00.000Z'), /tatsächlichen Zahlungstag/)
   state = changeInvoiceStatus(state, invoice.id, 'paid', '2026-01-04T08:15:00.000Z', '2026-01-03')
   state = changeInvoiceStatus(state, invoice.id, 'paid', '2026-02-03T08:15:00.000Z', '2026-02-02')
-  assert.equal(financialReport(state, 2026).months[0].paymentIncomeCents, 0)
-  assert.equal(financialReport(state, 2026).months[1].paymentIncomeCents, 3000)
+  assert.equal(state.payments[0].paidAt, '2026-02-02')
 
   state = changeInvoiceStatus(state, invoice.id, 'sent', '2026-02-04T08:15:00.000Z')
   assert.equal(state.invoices[0].status, 'sent')
-  assert.equal(financialReport(state, 2026).paymentIncomeCents, 3000)
-  assert.equal(financialReport(state, 2026).openClaimsCents, 3000)
+  assert.equal(state.payments[0].amountCents, 3000)
+  assert.equal(openCents(state, state.invoices[0]), 3000)
   assert.equal(state.payments.length, 1)
   assert.equal(state.payments[0].allocations.at(-1)?.versionId, null)
 
   state = changeInvoiceStatus(state, invoice.id, 'paid', '2026-02-05T08:15:00.000Z', '2026-02-02')
   assert.equal(state.invoices[0].status, 'paid')
   assert.equal(state.payments.length, 1)
-  assert.equal(financialReport(state, 2026).paymentIncomeCents, 3000)
-  assert.equal(financialReport(state, 2026).openClaimsCents, 0)
+  assert.equal(state.payments[0].amountCents, 3000)
+  assert.equal(openCents(state, state.invoices[0]), 0)
 })
 
 test('P08: Schema 6 übernimmt Vollzahlungen mit unbekanntem Zahlungstag einmalig und verlustfrei', () => {
@@ -101,8 +93,7 @@ test('P08: Schema 6 übernimmt Vollzahlungen mit unbekanntem Zahlungstag einmali
   assert.equal(preview.value.state.payments[0].paidAt, null)
   assert.equal(preview.value.state.payments[0].paymentDayStatus, 'unknown')
   assert.equal(preview.value.state.payments[0].legacyPaymentDay, '2026-01-03')
-  assert.equal(financialReport(preview.value.state, 2026).paymentIncomeCents, 0)
-  assert.equal(financialReport(preview.value.state, 2026).unknownDatePayments[0].amountCents, 3000)
+  assert.equal(preview.value.state.payments[0].amountCents, 3000)
 
   const reloaded = parseBackup(serializeBackup(preview.value.state))
   assert.equal(reloaded.schemaVersion, 9)
@@ -112,19 +103,16 @@ test('P08: Schema 6 übernimmt Vollzahlungen mit unbekanntem Zahlungstag einmali
   assert.equal(reloaded.payments[0].legacyPaymentDay, '2026-01-03')
 })
 
-test('P08: korrigierte Belege ersetzen Rechnungsvolumen ohne Zahlungseingänge zu verdoppeln; CSV bleibt formelsicher', () => {
+test('P08: korrigierte Belege ersetzen die Forderung ohne Zahlungsnachweise zu verdoppeln', () => {
   let state = readyState()
   const original = state.invoices[0]
   state = changeInvoiceStatus(state, original.id, 'paid', '2026-01-04T08:15:00.000Z', '2026-01-03')
   state = createCorrectionDraft(state, original.id, 'Textkorrektur', '2026-02-01T09:00:00.000Z')
   const correction = state.invoices.at(-1)!
   state = saveInvoiceDraft(state, { ...correction, freeText: 'Berichtigter Text' }, true, '2026-02-01T09:00:00.000Z')
-  assert.equal(financialReport(state, 2025).invoiceVolumeCents, 3000)
-  assert.equal(financialReport(state, 2025).invoices.length, 1)
-  assert.equal(financialReport(state, 2026).paymentIncomeCents, 3000)
+  assert.equal(activeInvoices(state).length, 1)
+  assert.equal(activeInvoices(state)[0].id, state.invoices.at(-1)!.id)
+  assert.equal(state.payments[0].amountCents, 3000)
   assert.equal(state.payments.length, 1)
 
-  state.documentVersions[0].outputSnapshot.guardians[0].name = '=FORMEL'
-  const csv = financialReportToCsv(state, 2026)
-  assert.ok(csv.includes('"\'=FORMEL"'))
 })

@@ -9,7 +9,7 @@ import { prepareInvoiceCopy, saveInvoiceState } from '../src/lib/commands'
 import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { captureLegacyDocuments, inspectImport } from '../src/lib/importState'
 import { selectInvoice, selectedInvoices } from '../src/lib/documents'
-import { buildEpcPayload, createReminder, invoiceTotal, invoicesToCsv, nextInvoiceAllocation, outputItemTotal, outputUnitPrice } from '../src/lib/utils'
+import { buildEpcPayload, createReminder, invoiceTotal, nextInvoiceAllocation, outputItemTotal, outputUnitPrice } from '../src/lib/utils'
 import { validateBackupState } from '../src/lib/validation'
 import { requireSuccess } from '../src/lib/result'
 import { serializeBackup, StorageSession, STORAGE_KEY } from '../src/lib/storage'
@@ -123,7 +123,7 @@ test('P05/P08: Schema 4 → 7 bewahrt Originale; Entwürfe zeigen Änderungen, I
   assert.equal(storage.getItem(STORAGE_KEY), future)
 })
 
-test('P05: neue Versionen, EPC, Erinnerung, CSV, Register und Ausgabe stimmen nach Reload überein', () => {
+test('P05: neue Versionen, EPC, Erinnerung, Register und Ausgabe stimmen nach Reload überein', () => {
   let state = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
   state = requireSuccess(inspectImport(serializeBackup(state))).state
   const invoice = selectInvoice(state, state.invoices[0])
@@ -132,7 +132,6 @@ test('P05: neue Versionen, EPC, Erinnerung, CSV, Register und Ausgabe stimmen na
   assert.equal(state.documentVersions[0].amounts.totalCents, 758)
   assert.match(buildEpcPayload(invoice, state.settings, invoiceTotal(invoice)), /EUR7\.58/)
   assert.match(createReminder(invoice, state.guardians, state.students).body, /7,58/)
-  assert.match(invoicesToCsv(selectedInvoices(state), state.guardians, state.students), /"7,58"/)
   assert.equal(nextInvoiceAllocation(state, invoice.invoiceDate, invoice.studentIds).sequence, 2)
   const corrupt = structuredClone(state)
   corrupt.documentVersions[0].amounts.itemCents[0] = 757

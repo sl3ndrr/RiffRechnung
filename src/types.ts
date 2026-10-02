@@ -1,5 +1,5 @@
 export type ThemeMode = 'system' | 'light' | 'dark'
-export type PageKey = 'dashboard' | 'invoices' | 'people' | 'reports' | 'about' | 'settings'
+export type PageKey = 'invoices' | 'people' | 'about' | 'settings'
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue'
 export type RecipientStrategy = 'joint' | 'separate'
 export type LessonType = 'solo' | 'duo'

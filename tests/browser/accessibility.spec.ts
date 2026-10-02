@@ -98,17 +98,6 @@ test('P11 Browser: abgelehnte Zwischenablage bietet Erinnerungstext zum manuelle
   expect(await fallback.evaluate((element) => (element as HTMLTextAreaElement).selectionStart === 0 && (element as HTMLTextAreaElement).selectionEnd === (element as HTMLTextAreaElement).value.length)).toBe(true)
 })
 
-test('P10 Browser: Rechnungsnummer auf der Übersicht ist ein Tastaturauslöser', async ({ page }) => {
-  const state = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
-  await seed(page, state)
-  const dashboardOpener = page.locator('.recent-card').getByRole('button', { name: '2026-a-0001', exact: true })
-  await tabTo(page, dashboardOpener)
-  await page.keyboard.press('Enter')
-  await expect(page.locator('.invoice-detail')).toBeVisible()
-  const listOpener = page.locator('.invoice-list-table').getByRole('button', { name: '2026-a-0001', exact: true })
-  await page.keyboard.press('Escape')
-  await expect(listOpener).toBeFocused()
-})
 
 test('P10 Browser: verschachtelte Dialoge halten Fokus, Modalität und Scrollsperre', async ({ page }) => {
   const state = saveInvoiceDraft(documentFamily(), documentDraft(), false, documentAt)
@@ -173,7 +162,7 @@ test('P10 Browser: interne Navigation schützt alle Editorwerte und Verwerfen sp
   const editor = page.getByRole('dialog', { name: 'Entwurf bearbeiten' })
   await editor.getByLabel('Einleitung', { exact: true }).fill('Ungespeicherte Einleitung')
   await editor.getByLabel('Freitext / Hinweis', { exact: true }).fill('Ungespeicherter Freitext')
-  const overview = page.locator('.sidebar nav button').filter({ hasText: 'Übersicht' })
+  const overview = page.locator('.sidebar nav button').filter({ hasText: 'Personen' })
   await overview.evaluate((element) => (element as HTMLButtonElement).click())
   const confirmation = page.getByRole('alertdialog', { name: 'Ungespeicherte Rechnungsänderungen verwerfen?' })
   await confirmation.getByRole('button', { name: 'Weiter bearbeiten' }).click()
@@ -181,7 +170,7 @@ test('P10 Browser: interne Navigation schützt alle Editorwerte und Verwerfen sp
   await expect(editor.getByLabel('Freitext / Hinweis', { exact: true })).toHaveValue('Ungespeicherter Freitext')
   await overview.evaluate((element) => (element as HTMLButtonElement).click())
   await confirmation.getByRole('button', { name: 'Verwerfen' }).click()
-  await expect(page.getByRole('heading', { name: /Guten Tag/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Personen', exact: true })).toBeVisible()
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(storedBefore)
   await page.reload()
   await invoices(page)
@@ -301,7 +290,7 @@ test('P10 Browser: relevante Textkontraste erreichen in beiden Themes AA', async
     await finishAnimations(page)
     await page.screenshot({ path: testInfo.outputPath(`kontrast-${theme}-fehlerdialog.png`), fullPage: false })
     await danger.click()
-    await page.getByRole('button', { name: 'Übersicht', exact: true }).first().click()
+    await page.getByRole('button', { name: 'Rechnungen', exact: true }).first().click()
   }
 })
 

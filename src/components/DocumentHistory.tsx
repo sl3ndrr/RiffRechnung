@@ -2,8 +2,8 @@ import { useState } from 'react'
 import type { AppState, Invoice } from '../types'
 import { allocatedCents, isActiveClaim, versionFor } from '../lib/documents'
 import { snapshotDifferences } from '../lib/documents'
-import { unknownPaymentDayLabel } from '../lib/reporting'
-import { downloadText, euro, invoicesToCsv } from '../lib/utils'
+import { unknownPaymentDayLabel } from '../lib/documents'
+import { euro } from '../lib/utils'
 
 
 export interface DocumentHistoryActions {
@@ -34,7 +34,6 @@ export function DocumentHistory({ state, invoice, onSelect, onCorrection, onAllo
       <p>Einleitung: {invoice.introText}</p><p>Hinweis: {invoice.freeText}</p><p>Rechtstext: {invoice.legalText || 'Leer'}</p>
       <p>Betragsquelle: {version.amounts.source === 'number-register' ? 'Historisches Nummernregister' : 'Gesicherte bisherige Rechnungsausgabe'}.</p>
     </details>
-    <button className="button button--text" onClick={() => downloadText(`beleg-${version.id}.csv`, invoicesToCsv([invoice], state.guardians, state.students), 'text/csv;charset=utf-8')}>Ausgewählte Version als CSV</button>
     {version.conflicts.length > 0 && <section className="form-errors" aria-label="Historische Abweichungen">
       <h4>Historische Abweichungen</h4>
       {version.conflicts.map((conflict, index) => <details key={index}><summary>{conflict.message}</summary><p>{conflict.path}</p>{conflict.values.map((value, i) => <pre key={i}>{value}</pre>)}</details>)}

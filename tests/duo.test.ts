@@ -11,7 +11,7 @@ import { deleteInvoiceDraftState, prepareInvoiceCopy } from '../src/lib/commands
 import { requireSuccess } from '../src/lib/result'
 import { inspectImport } from '../src/lib/importState'
 import { invoiceTotalCents } from '../src/lib/money'
-import { invoicePdfTitle, invoicesToCsv, buildEpcPayload, mailtoUrl } from '../src/lib/utils'
+import { invoicePdfTitle, buildEpcPayload, mailtoUrl } from '../src/lib/utils'
 import { validateBackupState } from '../src/lib/validation'
 import { serializeBackup, parseBackup, StorageSession, STORAGE_KEY, PREVIOUS_STORAGE_KEY, loadState } from '../src/lib/storage'
 import { InvoicePrint } from '../src/components/InvoicePrint'
@@ -159,17 +159,10 @@ test('AP2 Leak: jede Ausgabe enthält nur den eigenen Haushalt, keine Notizen od
     const invoice = selectInvoice(state, raw), own = households[i], foreign = households[1 - i]
     const print = renderToStaticMarkup(createElement(InvoicePrint, { invoice, guardians: state.guardians, students: state.students, settings: state.settings, includeGiroCode: false }))
     const history = renderToStaticMarkup(createElement(DocumentHistory, { state, invoice, onSelect: () => {}, onCorrection: () => {}, onAllocatePayment: () => {}, onResolveConflicts: () => {} }))
-    const outputs = [print, history, invoicePdfTitle(invoice, state.students), buildEpcPayload(invoice, state.settings, invoiceTotalCents(invoice) / 100), JSON.stringify(raw.snapshot), JSON.stringify(state.documentVersions[i]), decodeURIComponent(mailtoUrl(invoice, state.guardians, state.students)), invoicesToCsv([invoice], state.guardians, state.students), invoice.introText, invoice.freeText, invoice.legalText, ...invoice.items.map((item) => item.description)]
+    const outputs = [print, history, invoicePdfTitle(invoice, state.students), buildEpcPayload(invoice, state.settings, invoiceTotalCents(invoice) / 100), JSON.stringify(raw.snapshot), JSON.stringify(state.documentVersions[i]), decodeURIComponent(mailtoUrl(invoice, state.guardians, state.students))([invoice], state.guardians, state.students), invoice.introText, invoice.freeText, invoice.legalText, ...invoice.items.map((item) => item.description)]
     assert.ok(print.includes(own.student) && print.includes(own.guardian))
     for (const output of outputs) {
       for (const marker of [foreign.student, foreign.guardian, `-${foreign.code}-`, `${foreign.code.toUpperCase()}-Weg`, `${foreign.code}@example.org`, foreign.intro, foreign.free, foreign.legal, foreign.note, own.note, 'GEHEIM_', group.id]) assert.ok(!output.includes(marker), `Leak ${marker}: ${output}`)
-    }
-    const csv = invoicesToCsv([invoice], state.guardians, state.students).split('\r\n')
-    const headers = csv[0].split(';'), row = csv[1].split(';')
-    for (const [column, expected] of [['Empfänger', own.guardian], ['Lernende', own.student], ['Korrekturgrund', '']]) {
-      const index = headers.findIndex((cell) => cell.includes(column))
-      assert.ok(index >= 0)
-      assert.equal(row[index], `"${expected}"`)
     }
   })
   assert.ok(serializeBackup(state).includes(households[0].note))
@@ -197,9 +190,6 @@ test('AP2: Zahlung nur auf A, Korrektur und Archivierung nur auf B; Kopien und K
   assert.equal(state.invoiceAdministration.find((admin) => admin.versionId === a.versionId)!.archived, false)
   const copy = requireSuccess(prepareInvoiceCopy(state, a.id))
   assert.equal('duoGroupId' in copy, false)
-  const csv = invoicesToCsv([selectInvoice(state, state.invoices.at(-1)!)], state.guardians, state.students)
-  assert.match(csv, /Nur Bastian/)
-  assert.ok(!csv.includes(households[0].student))
   roundtrip(state)
 })
 
@@ -226,7 +216,7 @@ test('AP2 Leak: vorhandene Demo-Duos Jonas/Elif und Sophie/Noah übernehmen kein
       assert.deepEqual(invoice.snapshot!.guardians.map((guardian) => guardian.id), students[i].guardianIds)
       const version = state.documentVersions.find((entry) => entry.id === invoice.versionId)!
       const html = renderToStaticMarkup(createElement(InvoicePrint, { invoice, guardians: state.guardians, students: state.students, settings: state.settings, includeGiroCode: false }))
-      for (const output of [html, JSON.stringify(version), invoicePdfTitle(invoice, state.students), decodeURIComponent(mailtoUrl(invoice, state.guardians, state.students)), invoicesToCsv([invoice], state.guardians, state.students)]) {
+      for (const output of [html, JSON.stringify(version), invoicePdfTitle(invoice, state.students), decodeURIComponent(mailtoUrl(invoice, state.guardians, state.students))([invoice], state.guardians, state.students)]) {
         assert.ok(!output.includes(names[1 - i]))
         assert.ok(!output.includes(students[i].note))
         assert.ok(!output.includes(group.id))

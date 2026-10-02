@@ -2,13 +2,11 @@ import { DuoWorkflow } from './views/DuoWorkflow'
 import { deleteGuardianState, deleteStudentState, deleteInvoiceDraftState, resetUnissuedState, recordActivity } from './lib/commands'
 import { allocatePayment, archiveInvoice, createCorrectionDraft, resolveDocumentConflicts, selectInvoice } from './lib/documents'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { BarChart3, BookUser, Download, FilePlus2, LayoutDashboard, Menu, MessageSquareText, Moon, Palette, ReceiptText, Search, Settings as SettingsIcon, Sun, Upload, UserRound, X } from 'lucide-react'
+import { BookUser, Download, FilePlus2, Menu, MessageSquareText, Moon, Palette, ReceiptText, Search, Settings as SettingsIcon, Sun, Upload, UserRound, X } from 'lucide-react'
 import type { AppState, AuditEvent, Guardian, Invoice, InvoiceDraft, InvoiceStatus, PageKey, Settings as SettingsType, Student, ToastMessage } from './types'
-import { Dashboard } from './views/Dashboard'
 import { Invoices } from './views/Invoices'
 import { InvoiceEditor } from './views/InvoiceEditor'
 import { People } from './views/People'
-import { Reports } from './views/Reports'
 import { Settings } from './views/Settings'
 import { About } from './views/About'
 import { StorageRecovery } from './views/StorageRecovery'
@@ -30,11 +28,9 @@ import { assertOriginalsPreserved, assertReplacementAllowed, FINALIZED_INVOICE_B
 import { APP_VERSION } from './version'
 import { isCurrentPrintRequest, type PrintRequest } from './lib/printJob'
 
-const navItems: Array<{ key: PageKey; label: string; icon: typeof LayoutDashboard }> = [
-  { key: 'dashboard', label: 'Übersicht', icon: LayoutDashboard },
+const navItems: Array<{ key: PageKey; label: string; icon: typeof ReceiptText }> = [
   { key: 'invoices', label: 'Rechnungen', icon: ReceiptText },
   { key: 'people', label: 'Personen', icon: BookUser },
-  { key: 'reports', label: 'Auswertung', icon: BarChart3 },
   { key: 'settings', label: 'Einstellungen', icon: SettingsIcon },
 ]
 
@@ -75,7 +71,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const pendingWrites = useRef(0)
   const pendingBackups = useRef(0)
   const settingsFlush = useRef<(() => Promise<boolean>) | null>(null)
-  const [page, setPage] = useState<PageKey>('dashboard')
+  const [page, setPage] = useState<PageKey>('invoices')
   const [mobileNav, setMobileNav] = useState(false)
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 820px)').matches)
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
@@ -473,7 +469,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       setSaveStateLabel('saved')
       setSavedAt(new Date())
       setSelectedInvoiceId(null)
-      setPage('dashboard')
+      setPage('invoices')
       toast(`Wiederherstellung lokal gespeichert, Revision ${session.revision?.revision ?? 'Demo'}. Der vorherige Stand und die Eingangsdaten bleiben gesichert.`, 'success')
       if (backup) void runBackup()
       return true
@@ -584,7 +580,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         setSettingsEpoch((value) => value + 1)
         stateRef.current = next
         setSelectedInvoiceId(null)
-        setPage('dashboard')
+        setPage('invoices')
         toast('Zurücksetzen lokal gespeichert.', 'success')
       } catch (error) { toast(error instanceof Error ? error.message : 'Zurücksetzen fehlgeschlagen.', 'error') }
     },
@@ -612,7 +608,6 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       action: closeEditor,
     })
   }
-  const openInvoice = (id: string) => { setSelectedInvoiceId(id); void setCurrentPage('invoices') }
   const setCurrentPage = async (next: PageKey) => {
     if (editor.open && editorDirty && next !== page) {
       setConfirmation({
@@ -707,10 +702,8 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         {persistenceErrorText && <section className="persistence-error" role="alert"><div><strong>Speichern fehlgeschlagen</strong><p>{persistenceErrorText}</p></div><div className="button-row"><button className="button button--tonal" type="button" onClick={async () => { if (settingsFlush.current) await settingsFlush.current(); await backupNow() }}>Erneut versuchen</button><button className="button button--text" type="button" onClick={exportBackup}>JSON-Backup exportieren</button></div></section>}
 
         <main ref={mainContentRef} id="main-content" tabIndex={-1}>
-          {page === 'dashboard' && <Dashboard state={state} onNavigate={setCurrentPage} onNewInvoice={openNewInvoice} onLoadDemo={loadDemo} demoBlockedReason={mode === 'demo' ? 'Du bist bereits in der isolierten Demo.' : null} onOpenInvoice={openInvoice} />}
-          {page === 'invoices' && <Invoices state={state} selectedId={selectedInvoiceId} onSelect={setSelectedInvoiceId} onNew={openNewInvoice} onDuo={(id) => setDuoDialog(id ?? 'new')} onEdit={editInvoice} onDuplicate={duplicateInvoice} onDelete={requestDeleteInvoice} onSetStatus={setInvoiceStatus} onCorrection={startCorrection} onAllocatePayment={(paymentId, versionId, reason) => { void commit((current) => allocatePayment(current, paymentId, versionId, reason), 'Zahlung manuell zugeordnet', 'invoice') }} onResolveConflicts={(versionId, reason) => { void commit((current) => resolveDocumentConflicts(current, versionId, reason), 'Historische Abweichung geklärt', 'invoice') }} onPrint={print} onToast={toast} />}
+          {page === 'invoices' && <Invoices onNavigate={setCurrentPage} onLoadDemo={mode === 'real' ? loadDemo : undefined} state={state} selectedId={selectedInvoiceId} onSelect={setSelectedInvoiceId} onNew={openNewInvoice} onDuo={(id) => setDuoDialog(id ?? 'new')} onEdit={editInvoice} onDuplicate={duplicateInvoice} onDelete={requestDeleteInvoice} onSetStatus={setInvoiceStatus} onCorrection={startCorrection} onAllocatePayment={(paymentId, versionId, reason) => { void commit((current) => allocatePayment(current, paymentId, versionId, reason), 'Zahlung manuell zugeordnet', 'invoice') }} onResolveConflicts={(versionId, reason) => { void commit((current) => resolveDocumentConflicts(current, versionId, reason), 'Historische Abweichung geklärt', 'invoice') }} onPrint={print} onToast={toast} />}
           {page === 'people' && <People state={state} onSaveGuardian={saveGuardian} onSaveStudent={saveStudent} onDeleteGuardian={deleteGuardian} onDeleteStudent={deleteStudent} />}
-          {page === 'reports' && <Reports state={state} />}
           {page === 'about' && <About />}
           <div hidden={page !== 'settings'}><Settings key={settingsEpoch} state={state} onDirty={setSettingsDirty} folderSupported={mode === 'real' && Boolean(window.showDirectoryPicker)} folderConnected={folderConnected} folderName={folderName} onSave={saveSettings} onRegisterFlush={(flush) => { settingsFlush.current = flush }} onExport={exportBackup} onImport={importBackup} onConnectFolder={connectFolder} onDisconnectFolder={disconnectFolder} onBackupNow={backupNow} onReset={resetAll} onPrevious={reviewPrevious} onArchive={exportRecoveryArchive} /></div>
         </main>
