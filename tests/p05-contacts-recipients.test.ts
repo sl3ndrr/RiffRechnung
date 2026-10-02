@@ -129,7 +129,8 @@ for (const failure of ['main', 'previous', 'archive', 'unreadable', 'invalid'] a
 })
 
 test('P05: beide Anschriften frieren ein, optionale Anschriften und Selbstzahler funktionieren; finale Originale bleiben geschützt', () => {
-  let state = issued(), original = structuredClone(state)
+  let state = issued()
+  const original = structuredClone(state)
   assert.deepEqual(state.invoices[0].snapshot!.recipients.map((entry) => entry.street), ['Testweg 2', 'Testweg 3'])
   state = requireSuccess(saveGuardianState(state, { ...state.guardians[0], name: 'Später geändert', address: { street: '', postalCode: '', city: '' } }))
   assert.deepEqual(state.documentVersions, original.documentVersions)

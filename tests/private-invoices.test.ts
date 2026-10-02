@@ -35,7 +35,7 @@ function assertProtectedValues(before: unknown, after: unknown, path = ''): void
   if (before !== null && typeof before === 'object') {
     assert.ok(after !== null && typeof after === 'object', path)
     const old = { ...before } as Record<string, unknown>, next = after as Record<string, unknown>
-    if (Array.isArray(old.guardianIds) && !path.startsWith('students[')) { next.recipients && assert.deepEqual(next.recipients, old.guardianIds.map((id) => ({ type: 'guardian', id })), path); old.recipients = old.guardianIds.map((id) => ({ type: 'guardian', id })); delete old.guardianIds }
+    if (Array.isArray(old.guardianIds) && !path.startsWith('students[')) { assert.deepEqual(next.recipients, old.guardianIds.map((id) => ({ type: 'guardian', id })), path); old.recipients = old.guardianIds.map((id) => ({ type: 'guardian', id })); delete old.guardianIds }
     if (Array.isArray(old.guardians) && !('schemaVersion' in old)) { old.recipients = old.guardians.map((person) => ({ ...(person as Record<string, unknown>), type: 'guardian' })); delete old.guardians }
     const retired = ['invoiceProfile', 'taxIdentifier', 'invoiceKind', 'taxPresentation', 'taxOutput', ...(path.startsWith('guardians[') ? ['iban', 'paymentNote', 'firstName', 'lastName'] : []), ...(path.startsWith('students[') ? ['note'] : [])]
     assert.deepEqual(Object.keys(next).sort(), Object.keys(old).filter((key) => !retired.includes(key)).sort(), path)
