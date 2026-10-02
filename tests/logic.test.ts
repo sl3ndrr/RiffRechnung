@@ -666,7 +666,7 @@ test('Entwürfe lassen sich aus der Detailansicht nur mit vollständigen aktuell
   const original = structuredClone(state)
   assert.throws(() => changeInvoiceStatus({ ...state, guardians: [] }, draft.id, 'sent'), (error: unknown) => error instanceof ValidationError && error.path === 'students[0].guardianIds[0]')
   assert.deepEqual(state, original)
-  assert.equal(changeInvoiceStatus(state, draft.id, 'sent').invoices[0].number, '2026-0001-a')
+  assert.equal(changeInvoiceStatus(state, draft.id, 'sent').invoices[0].number, '2026-0002-a', 'Die beim Import gesicherte Folge wird durch einen Formatwechsel nicht freigegeben')
 
 })
 

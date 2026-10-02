@@ -1,3 +1,4 @@
+import { legacyVersionedFixture } from './documentFixtures'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createElement } from 'react'
@@ -39,7 +40,7 @@ test('AP3: fünf mehrteilige Altnamen bleiben nach 7→9, Export und Import unve
   const state = emptyState()
   const names = ['Anna Maria von Weber', 'Familie Müller', 'Müller-Lüdenscheidt, Anna', 'Dr. Ali Yılmaz', 'Madonna']
   state.guardians = names.map((name, i): Guardian => ({ id: `legacy-${i}`, name, email: '', phone: '', address: { street: '', postalCode: '', city: '' },   createdAt: at, updatedAt: at }))
-  const legacy = { ...state, schemaVersion: 7 }
+  const legacy = legacyVersionedFixture(state, 7)
   const before = JSON.stringify(legacy)
   const preview = requireSuccess(inspectImport(before))
   assert.equal(preview.report?.fromSchema, 7)
