@@ -152,3 +152,18 @@ test('P06: nichtjährliche Konfiguration schützt bekannte Folgen auch ohne glob
   assert.equal(state.invoices[0].number, '2025-a-0017')
   assert.deepEqual(state.voidedInvoiceNumbers, old.voidedInvoiceNumbers)
 })
+
+
+test('P06: gesicherte Originale ohne heutige Stammdaten schützen erkennbare oder unklare Folgen', () => {
+  const issued = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
+  const old = oldV11(issued)
+  old.students = []; old.counters = {}
+  for (const invoice of [old.invoices[0], old.documentVersions[0].content]) { invoice.number = '2026-a-0017'; invoice.sequence = 17 }
+  const state = parseBackup(JSON.stringify(old))
+  assert.equal(state.counters['2026:a'], 18)
+  assert.equal(state.invoices[0].number, '2026-a-0017')
+  for (const invoice of [old.invoices[0], old.documentVersions[0].content]) invoice.number = 'UNBEKANNT-17'
+  const unclear = parseBackup(JSON.stringify(old))
+  assert.equal(unclear.counters['2026:*'], 18)
+  assert.deepEqual(unclear.documentVersions, old.documentVersions)
+})

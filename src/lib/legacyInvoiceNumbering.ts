@@ -72,8 +72,11 @@ export function migrateInvoiceNumbering(value: AppState, changes: Change[] = [],
   }
   for (const document of documents) {
     if (!document.number) continue
-    const sequence = Math.max(document.sequence ?? 0, numberEvidence(document.number, pattern).sequence ?? 0)
-    if (sequence) for (const year of nonAnnual ? years : [document.year]) reserve(year, invoiceStudentCode(state, document.studentIds), sequence + 1,
+    const evidence = numberEvidence(document.number, pattern)
+    const sequence = Math.max(document.sequence ?? 0, evidence.sequence ?? 0)
+    const liveCodesComplete = document.studentIds.length > 0 && document.studentIds.every((id) => state.students.some((student) => student.id === id))
+    const circles = liveCodesComplete ? [invoiceStudentCode(state, document.studentIds)] : evidence.code ? legacyCircles(evidence.code, codes) : ['*']
+    if (sequence) for (const year of nonAnnual ? years : [document.year]) for (const code of circles) reserve(year, code, sequence + 1,
       nonAnnual ? 'Nichtjährliche bekannte Belegfolge auch ohne globalen Altzähler im Umstiegsjahr und bekannten Jahren fortsetzen.' : 'Vergebene Belegfolge unverändert schützen, auch bei niedrigerem gespeichertem Zähler.')
   }
   for (const entry of reservations) {
