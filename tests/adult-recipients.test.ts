@@ -14,7 +14,8 @@ import { inspectImport, parseBackup, serializeMigrationReport } from '../src/lib
 import { InvoicePrint } from '../src/components/InvoicePrint'
 import { StorageSession, serializeBackup, loadState } from '../src/lib/storage'
 import { memoryStorage, sharedLock } from './storageHarness'
-import { validateBackupState, validateLegacyV7Structure } from '../src/lib/validation'
+import { validateBackupState } from '../src/lib/validation'
+import { validateLegacyV7Structure } from '../src/lib/legacyValidation'
 
 const contact = { email: 'eva@example.org', phone: '', address: { street: 'Testallee 8', postalCode: '12345', city: 'Teststadt' } }
 function adultState(): AppState {
@@ -151,19 +152,19 @@ test('AP5: Schema 7→8 ist additiv, idempotent, berichtet und archiviert Rohdat
   const raw = JSON.stringify(old)
   const preview = requireSuccess(inspectImport(raw))
   assert.equal(preview.report?.fromSchema, 7)
-  assert.equal(preview.report?.toSchema, 8)
+  assert.equal(preview.report?.toSchema, 9)
   assert.deepEqual(preview.state.documentVersions, state.documentVersions)
   assert.deepEqual(preview.state.invoices[0].snapshot, state.invoices[0].snapshot)
   assert.equal(preview.state.invoices[0].recipients, undefined)
-  assert.match(serializeMigrationReport(preview), /riffrechnung-to-v8/)
+  assert.match(serializeMigrationReport(preview), /riffrechnung-to-v9/)
   const repeat = requireSuccess(inspectImport(serializeBackup(preview.state)))
   assert.equal(repeat.report, null)
   const storage = memoryStorage()
   const session = new StorageSession({ storage, lock: sharedLock() })
   await session.restore(raw)
-  assert.match(session.exportRecoveryArchive(), /riffrechnung-to-v8/)
+  assert.match(session.exportRecoveryArchive(), /riffrechnung-to-v9/)
   assert.match(session.exportRecoveryArchive(), /schemaVersion/)
   assert.equal(loadState(storage).status, 'ready')
   assert.equal(inspectImport(JSON.stringify({ ...old, recipients: [] })).ok, false)
-  assert.equal(inspectImport(JSON.stringify({ ...old, schemaVersion: 9 })).ok, false)
+  assert.equal(inspectImport(JSON.stringify({ ...old, schemaVersion: 10 })).ok, false)
 })

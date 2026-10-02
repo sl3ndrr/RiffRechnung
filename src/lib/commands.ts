@@ -4,7 +4,6 @@ import type { AppState, Guardian, InvoiceDraft, Settings, Student } from '../typ
 import { createEmptyInvoiceDraft, emptyState } from './defaults'
 import { assertInvoiceEditable, assertReplacementAllowed } from './safety'
 import { saveInvoiceDraft } from './invoiceActions'
-import { newTaxPresentation } from './invoiceProfile'
 import { copyItemsWithFreshIds } from './identities'
 import { commandResult, type CommandResult } from './result'
 import { validateBackupState } from './validation'
@@ -86,7 +85,7 @@ export function prepareInvoiceCopy(state: AppState, invoiceId: string, targetDat
       invoiceDate, dueDate: calculateDueDate(invoiceDate, state.settings.paymentTermDays),
       period: billingPeriodFromItems(items, invoiceDate), guardianIds: [...invoice.guardianIds], studentIds: [...invoice.studentIds],
       recipients: structuredClone(recipientRefs(invoice)),
-      recipientStrategy: invoice.recipientStrategy, invoiceKind: 'standard', taxPresentation: newTaxPresentation(), items, introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText,
+      recipientStrategy: invoice.recipientStrategy, items, introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText,
     }
     // Verify the actual prospective persistent result without mutating state.
     saveInvoiceDraft(state, draft, false, targetDate.toISOString())

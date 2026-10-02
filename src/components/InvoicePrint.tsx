@@ -4,7 +4,6 @@ import QRCode from 'qrcode'
 import type { Guardian, Invoice, Settings, Student } from '../types'
 import { billingPeriodFromItems, buildInvoicePrintPageStyle, euro, footerTextForPrint, formatDateLong, formatIban, groupItemsByStudent, invoiceTotal, outputItemTotal, outputItemCents, outputUnitPrice, number, parseDate } from '../lib/utils'
 import { paymentDataForInvoice } from '../lib/paymentData'
-import { SMALL_BUSINESS_TAX_NOTICE, TAX_IDENTIFIER_LABELS, taxDataForInvoice } from '../lib/invoiceProfile'
 import { generateGiroCode, resolveGiroCode, type GiroCodeEncoder } from '../lib/printJob'
 import { liveRecipient, recipientKey, recipientRefs, snapshotRecipients } from '../lib/recipients'
 
@@ -56,11 +55,6 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
   const pageStyle = invoice ? buildInvoicePrintPageStyle(footerText, invoice.number) : ''
   const issuer = source?.issuer ?? (legacyDraftWithoutPrintData ? { name: '', street: '', postalCode: '', city: '', email: '', phone: '' } : settings.issuer)
   const account = printInvoice && !legacyDraftWithoutPrintData ? paymentDataForInvoice(printInvoice, settings) : { accountHolder: '', iban: '', bic: '', bankName: '' }
-  const taxData = printInvoice && !legacyDraftWithoutPrintData ? taxDataForInvoice(printInvoice, settings) : { invoiceProfile: null, taxIdentifier: null }
-  const taxOutput = source?.taxOutput
-  const printedIdentifier = taxOutput ? taxOutput.identifier : taxData.invoiceProfile === 'small-business' ? taxData.taxIdentifier : null
-  const printedNotice = taxOutput ? taxOutput.noticeText : taxData.invoiceProfile === 'small-business' && taxData.taxIdentifier?.value ? SMALL_BUSINESS_TAX_NOTICE : null
-  const noticeInFooter = taxOutput?.noticePosition === 'footer'
   const recipientList = useMemo(() => {
     if (!invoice) return []
     if (source) return snapshotRecipients(source)
@@ -180,7 +174,6 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
           </section>
           <section className="invoice-meta">
             <h1>RECHNUNG</h1>
-            {(source?.invoiceKind ?? invoice.invoiceKind) === 'small-amount' && <p>Kleinbetragsrechnung nach § 33 UStDV</p>}
             <div className="invoice-meta__rule" />
             <dl>
               <dt>Nr.:</dt><dd><strong>{invoice.number ?? pendingNumberLabel ?? 'ENTWURF'}</strong></dd>
@@ -210,22 +203,12 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
             {groups.map((group) => (
               <PrintGroup invoice={invoice} key={group.key} label={group.label} items={group.items} showSubtotal={groups.length > 1} />
             ))}
-            {!taxOutput && totalRow}
           </tbody>
-          {taxOutput && <tbody className="invoice-final-rows">
+          <tbody className="invoice-final-rows">
             {totalRow}
-            {(printedIdentifier?.value || printedNotice && !noticeInFooter) && <tr className="invoice-tax-row"><td colSpan={5}><section className="invoice-tax-data" aria-label="Steuerliche Angaben">
-              {printedIdentifier?.value && <p><strong>{TAX_IDENTIFIER_LABELS[printedIdentifier.kind]}:</strong> {printedIdentifier.value}</p>}
-              {printedNotice && !noticeInFooter && <p>{printedNotice}</p>}
-            </section></td></tr>}
-            {noticeInFooter && <tr className="invoice-total-footer-row"><td colSpan={5}><footer className="invoice-total-footer" aria-label="Fußzeile zur Endsumme">
-              {footerText && <p>{footerText}</p>}
-              {printedNotice && <p>{printedNotice}</p>}
-            </footer></td></tr>}
-          </tbody>}
+            <tr className="invoice-private-row"><td colSpan={5}>Privatrechnung</td></tr>
+          </tbody>
         </table>
-
-        {!taxOutput && taxData.invoiceProfile === 'small-business' && taxData.taxIdentifier?.value && <section className="invoice-tax-data" aria-label="Steuerliche Angaben"><p><strong>{TAX_IDENTIFIER_LABELS[taxData.taxIdentifier.kind]}:</strong> {taxData.taxIdentifier.value}</p><p>{SMALL_BUSINESS_TAX_NOTICE}</p></section>}
 
         <section className="invoice-payment-block">
           <section className="invoice-payment-copy">
@@ -252,7 +235,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
             <div className="invoice-thanks"><p>Vielen Dank</p><strong>{issuer.name}</strong></div>
             <footer className="invoice-footer">
               <div className="invoice-footer__rule" />
-              <div className="invoice-footer__content">{!noticeInFooter && <p>{footerText}</p>}<span className="invoice-footer__reference">Rechnung {invoice.number ?? 'Entwurf'} · Seitenzahl im Seitenrand</span></div>
+              <div className="invoice-footer__content"><p>{footerText}</p><span className="invoice-footer__reference">Rechnung {invoice.number ?? 'Entwurf'} · Seitenzahl im Seitenrand</span></div>
             </footer>
           </section>
         </section>

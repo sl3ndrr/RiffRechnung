@@ -3,31 +3,6 @@ export type PageKey = 'dashboard' | 'invoices' | 'people' | 'reports' | 'about' 
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue'
 export type RecipientStrategy = 'joint' | 'separate'
 export type LessonType = 'solo' | 'duo'
-export type InvoiceProfile = 'unconfigured' | 'small-business'
-export type InvoiceKind = 'standard' | 'small-amount'
-export type TaxIdentifierKind = 'tax-number' | 'vat-id' | 'small-business-id'
-export type TaxNoticePosition = 'tax-block' | 'footer'
-
-export interface TaxPresentation {
-  showIdentifier: boolean
-  showIdentifierInDraft: boolean
-  showNoticeInDraft: boolean
-  noticePosition: TaxNoticePosition
-}
-
-export interface TaxOutput {
-  /** null is an explicit decision not to print an identifier. */
-  identifier: TaxIdentifier | null
-  /** null is permitted only in draft print data. Issued versions always carry text. */
-  noticeText: string | null
-  noticePosition: TaxNoticePosition
-}
-
-export interface TaxIdentifier {
-  kind: TaxIdentifierKind
-  value: string
-}
-
 export interface Address {
   street: string
   postalCode: string
@@ -55,7 +30,7 @@ export interface Student {
   guardianIds: string[]
   /** Absent means the historical billing mode through guardians. */
   selfPayer?: true
-  /** Optional master data; required address parts are checked only at finalization. */
+  /** Optional master data, including address parts. */
   contact?: { email: string; phone: string; address: Address }
   note: string
   active: boolean
@@ -105,19 +80,9 @@ export interface InvoiceSnapshot {
   bic: string
   bankName: string
   legalText: string
-  /** Absent on historical snapshots; never filled from current settings. */
-  invoiceProfile?: InvoiceProfile
-  /** Absent on historical snapshots; never filled from current settings. */
-  taxIdentifier?: TaxIdentifier
-  /** Absent on historical documents: standard invoice under its original rules. */
-  invoiceKind?: InvoiceKind
-  /** Absent on historical documents; the old renderer must keep its original output. */
-  taxOutput?: TaxOutput
 }
 
 export interface Invoice {
-  invoiceKind?: InvoiceKind
-  taxPresentation?: TaxPresentation
   calculation?: 'decimal-v1'
   id: string
   number: string | null
@@ -215,8 +180,6 @@ export interface Settings {
   iban: string
   bic: string
   bankName: string
-  invoiceProfile: InvoiceProfile
-  taxIdentifier: TaxIdentifier
   privateRate: number
   duoRate: number
   numberPattern: string
@@ -260,7 +223,7 @@ export interface DuoGroup {
 }
 
 export interface AppState {
-  schemaVersion: 8
+  schemaVersion: 9
   /** Absence means no Duo workflow; migration never infers groups. */
   duoGroups?: DuoGroup[]
   guardians: Guardian[]
@@ -285,8 +248,6 @@ export interface ToastMessage {
 }
 
 export interface InvoiceDraft {
-  invoiceKind?: InvoiceKind
-  taxPresentation?: TaxPresentation
   id?: string
   correction?: { replacesId: string; reason: string }
   invoiceDate: string

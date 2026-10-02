@@ -110,7 +110,6 @@ test('AP2: zwei Lernende, ausdrückliche Empfänger, vollständige Ziele und gem
     (next: AppState) => { next.invoices[1].guardianIds = [] },
     (next: AppState) => { next.invoices[1].studentIds = ['s-a']; next.invoices[1].items[0].studentId = 's-a' },
     (next: AppState) => { next.invoices[1].items[0].description = '' },
-    (next: AppState) => { next.guardians[1].address.street = '' },
     (next: AppState) => { next.settings.iban = '' },
   ]) {
     const next = structuredClone(state)
@@ -259,11 +258,11 @@ test('AP2 Schema 7→8: keine rückwirkenden Gruppen oder Änderungen an histori
   const raw = '\uFEFF' + JSON.stringify(legacy, null, 2) + '\r\n'
   const preview = requireSuccess(inspectImport(raw))
   assert.equal(preview.report?.fromSchema, 7)
-  assert.equal(preview.report?.toSchema, 8)
+  assert.equal(preview.report?.toSchema, 9)
   assert.equal('duoGroups' in preview.state, false)
   assert.deepEqual(preview.state.documentVersions, issued.documentVersions)
   assert.deepEqual(preview.state.invoices, issued.invoices)
-  assert.deepEqual(preview.report?.changes, [{ path: 'schemaVersion', before: 7, after: 8, reason: 'Optionale Kontaktnamen, typisierte Empfänger, Rechnungsart, Steueranzeige und Duo-Verwaltung; keine historischen Angaben aus aktuellen Daten abgeleitet.' }])
+  assert.deepEqual(preview.report?.changes, [{ path: 'schemaVersion', before: 7, after: 9, reason: 'Privatrechnungen: strukturierte Steuerfelder gezielt entfernen; geschützte Beleginformationen und Freitexte bleiben erhalten.' }])
   assert.equal(requireSuccess(inspectImport(serializeBackup(preview.state))).report, null)
   const storage = memoryStorage(), session = new StorageSession({ storage, lock: sharedLock() })
   await session.restore(raw)
@@ -271,7 +270,7 @@ test('AP2 Schema 7→8: keine rückwirkenden Gruppen oder Änderungen an histori
   assert.equal(JSON.parse(archive[1]).sourceRaw, raw)
   assert.deepEqual(roundtrip(session.state), preview.state)
   assert.equal(inspectImport(JSON.stringify({ ...legacy, duoGroups: [] })).ok, false)
-  assert.equal(inspectImport(JSON.stringify({ ...issued, schemaVersion: 9 })).ok, false)
+  assert.equal(inspectImport(JSON.stringify({ ...issued, schemaVersion: 10 })).ok, false)
   for (const mutate of [
     (next: AppState) => { next.duoGroups![0].targets[1].invoiceId = next.duoGroups![0].targets[0].invoiceId },
     (next: AppState) => { next.duoGroups![0].totalCents = .1 },

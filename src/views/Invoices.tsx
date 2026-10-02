@@ -5,7 +5,6 @@ import { DocumentHistory, HistoricalSnapshotEvidence, type DocumentHistoryAction
 import { activeInvoices, isActiveClaim, openCents, selectedInvoices } from '../lib/documents'
 import { commandResult } from '../lib/result'
 import { needsHistoricalSplitReview } from '../lib/historicalSplit'
-import { hasPossibleTaxNotice } from '../lib/invoiceProfile'
 import { FINALIZED_INVOICE_BLOCKED, isFinalizedInvoice } from '../lib/safety'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -312,7 +311,6 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuo, onDuplicate, on
         <div><dt>Positionen</dt><dd>{invoice.items.length}</dd></div>
       </dl>
 
-      {invoice.taxPresentation && hasPossibleTaxNotice(invoice.legalText) && <p className="notice" role="status">Vorschauhinweis: Der freie Fußzeilentext enthält möglicherweise bereits „§ 19“ oder „Kleinunternehmer“. Bitte eine mögliche Doppelung mit dem automatisch ausgegebenen Befreiungshinweis prüfen.</p>}
       <div className="detail-actions">
         {invoice.status === 'draft' ? (
           <>{invoice.recipientStrategy === 'separate' && !invoice.correction ? <p className="notice" role="status">Historischer Aufteilungsentwurf: Bitte öffnen, alle Angaben prüfen und ausdrücklich als gemeinsamen Entwurf übernehmen. Eine direkte Finalisierung ist gesperrt.</p> : <button className="button button--primary" type="button" onClick={() => onSetStatus('sent')}><Send aria-hidden="true" /> Finalisieren</button>}<button className="button button--tonal" type="button" onClick={onPrint}><Printer aria-hidden="true" /> Vorschau</button><button className="button button--text" type="button" onClick={onEdit}><Edit3 aria-hidden="true" /> Bearbeiten</button></>

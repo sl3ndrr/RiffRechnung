@@ -95,12 +95,11 @@ test('P05/P08: Schema 4 → 7 bewahrt Originale; Entwürfe zeigen Änderungen, I
   const preview = requireSuccess(inspectImport(raw))
   assert.equal(preview.rawData, raw)
   assert.equal(preview.report?.fromSchema, 4)
-  assert.equal(preview.report?.toSchema, 8)
+  assert.equal(preview.report?.toSchema, 9)
   assert.ok(preview.report?.changes.some((change) => change.path.endsWith('amountReview') && change.before === 757 && change.after === 758))
   assert.deepEqual(preview.state.documentVersions, old.documentVersions)
   assert.equal(invoiceTotal(selectInvoice(preview.state, preview.state.invoices[0])), 7.57)
   assert.equal(invoiceTotal(preview.state.invoices[1]), 7.58)
-  preview.state.settings = { ...preview.state.settings, invoiceProfile: 'small-business', taxIdentifier: { kind: 'tax-number', value: '12/345/67890' } }
   assert.throws(() => changeInvoiceStatus(preview.state, draft.id, 'sent', documentAt), /Editor/)
   // Actual review text/amounts are asserted in the P05 Chromium test (Modal uses a portal).
   const accepted = saveInvoiceDraft(preview.state, { ...draft }, true, documentAt)
@@ -117,7 +116,7 @@ test('P05/P08: Schema 4 → 7 bewahrt Originale; Entwürfe zeigen Änderungen, I
   assert.equal(requireSuccess(inspectImport(storage.getItem(STORAGE_KEY)!)).report, null)
   assert.equal(requireSuccess(inspectImport(serializeBackup(accepted))).report, null)
   validateBackupState(JSON.parse(JSON.stringify(accepted)))
-  const future = JSON.stringify({ ...old, schemaVersion: 9 })
+  const future = JSON.stringify({ ...old, schemaVersion: 10 })
   assert.equal(inspectImport(future).ok, false)
   storage.setItem(STORAGE_KEY, future)
   await assert.rejects(() => new StorageSession({ storage, lock }).restore(serializeBackup(accepted)), /neuere|schreibgeschützt/)

@@ -255,8 +255,6 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         ...(invoice.recipients ? { recipients: structuredClone(invoice.recipients) } : {}),
         studentIds: invoice.studentIds,
         recipientStrategy: invoice.recipientStrategy,
-        ...(invoice.invoiceKind ? { invoiceKind: invoice.invoiceKind } : {}),
-        ...(invoice.taxPresentation ? { taxPresentation: structuredClone(invoice.taxPresentation) } : {}),
         items: structuredClone(invoice.items),
         introText: invoice.introText,
         freeText: invoice.freeText,
@@ -720,7 +718,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
 
       <nav className="mobile-bottom-nav" aria-label="Mobile Hauptnavigation" inert={isMobile && mobileNav}>{navItems.slice(0, 4).map(({ key, label, icon: Icon }) => <button className={page === key ? 'is-active' : ''} aria-current={page === key ? 'page' : undefined} aria-label={label} key={key} onClick={() => setCurrentPage(key)}><Icon aria-hidden="true" /><span>{label}</span></button>)}</nav>
 
-      <FolderReview review={folderReview} current={session.revision} onClose={() => setFolderReview(null)} onChoose={connectFolder} onConnect={() => void acceptFolder()} onRestore={(preview) => setConfirmation({ title: 'Sicherung zuordnen und wiederherstellen?', message: 'Mit der Bestätigung wird die gewählte Sicherung als neuer lokaler Stand eingeführt. Altbackups ohne Bestands-ID werden ausdrücklich zugeordnet; eine gemeinsame Herkunft wird nicht behauptet. Vorhandene Originale und Rohdaten bleiben geschützt.', label: 'Zuordnung und Wiederherstellung bestätigen', action: async () => { await acceptFolder(preview) } })} />
+      <FolderReview review={folderReview} current={session.revision} onClose={() => setFolderReview(null)} onChoose={connectFolder} onConnect={() => void acceptFolder()} onRestore={(preview) => setConfirmation({ title: 'Sicherung zuordnen und wiederherstellen?', message: 'Mit der Bestätigung wird die gewählte Sicherung als neuer lokaler Stand eingeführt. Altbackups ohne Bestands-ID werden ausdrücklich zugeordnet; eine gemeinsame Herkunft wird nicht behauptet. Beleginformationen bleiben geschützt. Beim Formatumstieg werden ausschließlich die abgeschafften strukturierten Steuerfelder und zugehörige Metadaten bereinigt.', label: 'Zuordnung und Wiederherstellung bestätigen', action: async () => { await acceptFolder(preview) } })} />
       <ImportReview review={importReview} onClose={() => setImportReview(null)} onApply={confirmImport} />
       {duoDialog && <DuoWorkflow key={duoDialog} state={state} groupId={duoDialog} onClose={() => setDuoDialog(null)} onGroup={setDuoDialog} onEdit={editInvoice} onCommit={(producer, label) => commit(producer, label, 'invoice')} />}
       <InvoiceEditor state={state} open={editor.open} draft={editor.draft} editing={editor.editing} finalized={editor.finalized} invoiceNumber={editor.invoiceNumber} guardians={state.guardians} students={state.students} settings={state.settings} onClose={requestCloseEditor} onDirtyChange={setEditorDirty} onSave={saveInvoice} onConvert={convertLegacyDraft} />

@@ -1,7 +1,6 @@
 import { localToday, paymentDay } from './calendar'
 import { calculateDueDate } from './utils'
 import { captureLegacyDocuments } from './importState'
-import { newTaxPresentation } from './invoiceProfile'
 import type { AppState, Guardian, Invoice, InvoiceDraft, InvoiceItem, LessonType, Settings, Student } from '../types'
 
 export const defaultSettings: Settings = {
@@ -17,8 +16,6 @@ export const defaultSettings: Settings = {
   iban: '',
   bic: '',
   bankName: '',
-  invoiceProfile: 'small-business',
-  taxIdentifier: { kind: 'tax-number', value: '' },
   privateRate: 30,
   duoRate: 20,
   numberPattern: '{YYYY}-{K}-{NNNN}',
@@ -31,7 +28,7 @@ export const defaultSettings: Settings = {
 
 export function emptyState(): AppState {
   return {
-    schemaVersion: 8,
+    schemaVersion: 9,
     documentVersions: [], invoiceAdministration: [], payments: [], historicalSnapshotCorrections: [],
     guardians: [],
     students: [],
@@ -62,8 +59,6 @@ export function createEmptyInvoiceDraft(settings: Settings, reference = new Date
     recipients: [],
     studentIds: [],
     recipientStrategy: 'joint',
-    invoiceKind: 'standard',
-    taxPresentation: newTaxPresentation(),
     items: [],
     introText: 'Hiermit stelle ich die Unterrichtseinheiten im Fach Gitarre für den genannten Zeitraum in Rechnung.',
     freeText: '',
@@ -165,8 +160,6 @@ export function createDemoState(referenceDate = new Date()): AppState {
   settings.iban = demoIban(100)
   settings.bic = 'MUSTDEFFXXX'
   settings.bankName = 'Musterbank Köln'
-  settings.invoiceProfile = 'small-business'
-  settings.taxIdentifier = { kind: 'tax-number', value: '12/345/67890' }
 
   const monthFormatter = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric', timeZone: 'UTC' })
   const topics = {
@@ -290,6 +283,6 @@ export function createDemoState(referenceDate = new Date()): AppState {
     const payment = demo.payments.find((entry) => entry.allocations.at(-1)?.versionId === invoice.versionId && entry.paymentDayStatus === 'confirmed')
     return payment?.paidAt ? { ...invoice, paidAt: payment.paidAt } : invoice
   })
-  demo.schemaVersion = 8
+  demo.schemaVersion = 9
   return demo
 }

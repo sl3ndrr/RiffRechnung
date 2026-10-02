@@ -1,19 +1,21 @@
 import { draftAmountChange, legacyItemCents, itemTotalCents } from './money'
 import { captureDocument } from './documents'
 import { validateEnvelope, type StorageEnvelope } from './envelope'
-import type { AppState, Invoice, InvoiceItem, Settings, Student } from '../types'
+import type { AppState, Invoice, InvoiceItem, Student } from '../types'
 import { commandResult, requireSuccess, type CommandResult } from './result'
-import { backupEnum, backupObject, backupTimestamp, knownKeys, validateBackupState, validateLegacyV2Structure, validateLegacyV3Structure, validateLegacyV4Structure, validateLegacyV5Structure, validateLegacyV6Structure, validateLegacyV7Structure } from './validation'
+import { backupEnum, backupObject, backupTimestamp, knownKeys, validateBackupState } from './validation'
+import { validateLegacyV2Structure, validateLegacyV3Structure, validateLegacyV4Structure, validateLegacyV5Structure, validateLegacyV6Structure, validateLegacyV7Structure, validateLegacyV8Structure } from './legacyValidation'
 import { ensureStudentCodePattern, invoiceStudentCode, studentCodeForIndex, studentCodeIndex } from './utils'
 import { mailboxError } from './mailbox'
+import { stripLegacyTaxFields } from './legacyTaxFields'
 
 interface MigrationChange { path: string; before: unknown; after: unknown; reason: string }
 export interface IdMapping { invoiceId: string; itemIndex: number; oldId: string; newId: string }
 export interface MigrationReport {
-  migration: 'riffrechnung-to-v8'
+  migration: 'riffrechnung-to-v9'
   version: 1
-  fromSchema: 2 | 3 | 4 | 5 | 6 | 7
-  toSchema: 8
+  fromSchema: 2 | 3 | 4 | 5 | 6 | 7 | 8
+  toSchema: 9
   source: 'local-state' | 'riffrechnung' | 'gitarrenrechnungen'
   changes: MigrationChange[]
   idMappings: IdMapping[]
@@ -27,11 +29,8 @@ export interface ImportPreview {
 }
 
 function upgradeToV6(value: unknown): AppState {
-  const state = structuredClone(value) as AppState
+  const state = stripLegacyTaxFields(value).value as AppState
   state.schemaVersion = 6 as never
-  const settings = state.settings as Settings
-  if (!settings.invoiceProfile) settings.invoiceProfile = 'small-business'
-  if (!settings.taxIdentifier) settings.taxIdentifier = { kind: 'tax-number', value: '' }
   return state
 }
 
@@ -41,7 +40,7 @@ function upgradeToV6(value: unknown): AppState {
  * keep it out of payment-year reports until a person confirms the actual day.
  */
 function upgradeToV7(value: unknown, report?: Pick<MigrationReport, 'changes'>): AppState {
-  const state = structuredClone(value) as AppState
+  const state = stripLegacyTaxFields(value).value as AppState
   const record = (path: string, before: unknown, after: unknown, reason: string) => {
     if (report && canonical(before) !== canonical(after)) report.changes.push({ path, before: before ?? null, after, reason })
   }
@@ -70,11 +69,12 @@ function upgradeToV7(value: unknown, report?: Pick<MigrationReport, 'changes'>):
   return state
 }
 
-function upgradeToV8(value: AppState, report?: Pick<MigrationReport, 'changes'>): AppState {
+function upgradeToV9(value: AppState, report?: Pick<MigrationReport, 'changes'>): AppState {
   const state = structuredClone(value)
-  if (state.schemaVersion !== 8) {
-    state.schemaVersion = 8
-    report?.changes.push({ path: 'schemaVersion', before: 7, after: 8, reason: 'Optionale Kontaktnamen, typisierte Empfänger, Rechnungsart, Steueranzeige und Duo-Verwaltung; keine historischen Angaben aus aktuellen Daten abgeleitet.' })
+  if (state.schemaVersion !== 9) {
+    const before = state.schemaVersion
+    state.schemaVersion = 9
+    report?.changes.push({ path: 'schemaVersion', before, after: 9, reason: 'Privatrechnungen: strukturierte Steuerfelder gezielt entfernen; geschützte Beleginformationen und Freitexte bleiben erhalten.' })
   }
   return state
 }
@@ -138,8 +138,8 @@ function migrateV2(data: unknown, source: MigrationReport['source']): { state: L
   validateLegacyV2Structure(data)
   // Shape has been checked, including references and ALL numeric values.
   // Only the following documented optional v2 fields may still be absent.
-  const state = structuredClone(data) as LegacyState
-  const report: MigrationReport = { migration: 'riffrechnung-to-v8', version: 1, fromSchema: 2, toSchema: 8, source, changes: [], idMappings: [] }
+  const state = stripLegacyTaxFields(data).value as LegacyState
+  const report: MigrationReport = { migration: 'riffrechnung-to-v9', version: 1, fromSchema: 2, toSchema: 9, source, changes: [], idMappings: [] }
   repairCopiedItemIds(state, report)
   const record = (path: string, before: unknown, after: unknown, reason: string) => {
     if (canonical(before) !== canonical(after)) report.changes.push({ path, before: before ?? null, after, reason })
@@ -223,35 +223,40 @@ export function inspectImport(rawData: string): CommandResult<ImportPreview> {
       if (root.schemaVersion !== backupObject(data, 'data').schemaVersion) throw new Error('Backup-Umschlag und Daten haben unterschiedliche Formatversionen.')
     }
     const version = backupObject(data, 'data').schemaVersion
-    if (version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== 6 && version !== 7 && version !== 8) throw new Error('Die Datei hat kein unterstütztes Backup-Format. Neuere oder unbekannte Formate bleiben unverändert.')
+    if (version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== 6 && version !== 7 && version !== 8 && version !== 9) throw new Error('Die Datei hat kein unterstütztes Backup-Format. Neuere oder unbekannte Formate bleiben unverändert.')
     let report: MigrationReport | null = null
     let state: AppState
-    if (version === 8) { validateBackupState(data); state = structuredClone(data) }
+    if (version === 9) { validateBackupState(data); state = structuredClone(data) }
+    else if (version === 8) {
+      validateLegacyV8Structure(data)
+      report = { migration: 'riffrechnung-to-v9', version: 1, fromSchema: 8, toSchema: 9, source, changes: [], idMappings: [] }
+      state = stripLegacyTaxFields(data).value as AppState
+    }
     else if (version === 7) {
       validateLegacyV7Structure(data)
-      report = { migration: 'riffrechnung-to-v8', version: 1, fromSchema: 7, toSchema: 8, source, changes: [], idMappings: [] }
-      state = structuredClone(data) as AppState
+      report = { migration: 'riffrechnung-to-v9', version: 1, fromSchema: 7, toSchema: 9, source, changes: [], idMappings: [] }
+      state = stripLegacyTaxFields(data).value as AppState
     }
     else if (version === 6) {
       validateLegacyV6Structure(data)
-      report = { migration: 'riffrechnung-to-v8', version: 1, fromSchema: 6, toSchema: 8, source, changes: [], idMappings: [] }
+      report = { migration: 'riffrechnung-to-v9', version: 1, fromSchema: 6, toSchema: 9, source, changes: [], idMappings: [] }
       state = upgradeToV7(data, report)
     }
     else if (version === 5) {
       validateLegacyV5Structure(data)
-      report = { migration: 'riffrechnung-to-v8', version: 1, fromSchema: 5, toSchema: 8, source, changes: [], idMappings: [] }
+      report = { migration: 'riffrechnung-to-v9', version: 1, fromSchema: 5, toSchema: 9, source, changes: [], idMappings: [] }
       state = upgradeToV7(upgradeToV6(data), report)
     }
     else if (version === 4) {
       validateLegacyV4Structure(data)
-      report = { migration: 'riffrechnung-to-v8', version: 1, fromSchema: 4, toSchema: 8, source, changes: [], idMappings: [] }
+      report = { migration: 'riffrechnung-to-v9', version: 1, fromSchema: 4, toSchema: 9, source, changes: [], idMappings: [] }
       state = upgradeToV7(upgradeToV6({ ...structuredClone(data as AppState), schemaVersion: 5 }), report)
     }
     else {
       let legacy: LegacyState
       if (version === 2) ({ state: legacy, report } = migrateV2(data, source))
-      else { validateLegacyV3Structure(data); legacy = structuredClone(data) as LegacyState }
-      report ??= { migration: 'riffrechnung-to-v8', version: 1, fromSchema: 3, toSchema: 8, source, changes: [], idMappings: [] }
+      else { validateLegacyV3Structure(data); legacy = stripLegacyTaxFields(data).value as LegacyState }
+      report ??= { migration: 'riffrechnung-to-v9', version: 1, fromSchema: 3, toSchema: 9, source, changes: [], idMappings: [] }
       state = captureLegacyDocumentsV7(legacy)
       report.changes.push({ path: 'schemaVersion', before: version, after: 7, reason: 'Vollständige älteste verfügbare Belegstände, getrennte Verwaltung und unbekannte historische Zahlungstage sichern; frühere Inhalte bleiben unbekannt' })
       for (const document of state.documentVersions) report.changes.push({ path: `documentVersions.${document.id}`, before: null, after: document, reason: 'Jetzt verfügbarer historischer Inhalt, alte Ausgabebeträge und Snapshot-/Registerbelege; keine Wiederherstellung verlorener Originale' })
@@ -262,11 +267,8 @@ export function inspectImport(rawData: string): CommandResult<ImportPreview> {
       validateLegacyV7Structure(state)
     }
     if (report) {
-      state = upgradeToV8(state, report)
-      if (version < 6) {
-        report.changes.push({ path: 'settings.invoiceProfile', before: null, after: 'small-business', reason: 'Vom Produktverantwortlichen in Paket 07 ausdrücklich gewähltes Kleinunternehmerprofil; neue Finalisierung bleibt bis zur Steuerkennung gesperrt' })
-        report.changes.push({ path: 'settings.taxIdentifier', before: null, after: state.settings.taxIdentifier, reason: 'Leeres strukturiertes Feld; keine fehlende steuerliche Kennung erfunden' })
-      }
+      for (const path of stripLegacyTaxFields(data).removedPaths) report.changes.push({ path, before: '[entfernt]', after: null, reason: 'Abgeschafftes strukturiertes Steuerfeld; kein Rohwert im Migrationsbericht aufbewahrt.' })
+      state = upgradeToV9(state, report)
       for (const invoice of state.invoices.filter((entry) => entry.status === 'draft')) {
         const change = draftAmountChange(invoice)
         if (change.changed) report.changes.push({ path: `invoices.${invoice.id}.amountReview`, before: change.before, after: change.after, reason: 'Centvergleich Altberechnung/exakte Dezimalberechnung; Originalwerte unverändert. Vor Finalisierung im Editor prüfen. Kein gespeicherter historischer Belegbetrag.' })
@@ -293,7 +295,7 @@ export function parseBackup(text: string): AppState {
 }
 
 export function serializeMigrationReport(preview: ImportPreview): string {
-  return JSON.stringify({ app: 'riffrechnung-recovery', version: 1, originalUtf8: preview.rawData, report: preview.report, warnings: preview.warnings }, null, 2)
+  return JSON.stringify({ app: 'riffrechnung-recovery', version: 1, data: preview.state, report: preview.report, warnings: preview.warnings }, null, 2)
 }
 
 export type LegacyState = Omit<AppState, 'schemaVersion' | 'documentVersions' | 'invoiceAdministration' | 'payments' | 'historicalSnapshotCorrections'> & { schemaVersion: 3 }
@@ -319,5 +321,5 @@ function captureLegacyDocumentsV7(legacy: LegacyState): AppState {
 }
 
 export function captureLegacyDocuments(legacy: LegacyState): AppState {
-  return upgradeToV8(captureLegacyDocumentsV7(legacy))
+  return upgradeToV9(captureLegacyDocumentsV7(legacy))
 }

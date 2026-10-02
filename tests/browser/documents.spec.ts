@@ -38,7 +38,7 @@ async function pdfText(page: Page, state: AppState, invoiceId: string): Promise<
   } finally { await rendering.close() }
 }
 
-test('AP6 Browser/PDF: eingefrorene Schema-7-Belege bleiben nach Migration, Druck und Reload erhalten', async ({ page }, testInfo) => {
+test('AP6 Browser/PDF: eingefrorene Schema-7-Belege bewahren Nichtsteuerdaten nach Migration, Druck und Reload', async ({ page }, testInfo) => {
   const gold = JSON.parse(readFileSync('tests/fixtures/schema7-audit.json', 'utf8')) as { issuedCorrected: AppState; oldestSeparate: AppState }
   for (const original of [gold.issuedCorrected, gold.oldestSeparate]) {
     await page.goto('/')
@@ -50,7 +50,7 @@ test('AP6 Browser/PDF: eingefrorene Schema-7-Belege bleiben nach Migration, Druc
     }, JSON.stringify(original))
     await page.reload()
     const after = await stateOf(page)
-    expect({ ...after, schemaVersion: 7 }).toEqual(original)
+    expect({ ...after, schemaVersion: 7 }).toEqual(JSON.parse(JSON.stringify(original, (key, value) => ['invoiceProfile', 'taxIdentifier', 'invoiceKind', 'taxPresentation', 'taxOutput'].includes(key) ? undefined : value)))
     const separate = after.invoices.find((entry) => entry.recipientStrategy === 'separate')!
     const printed = await pdfText(page, after, separate.id)
     expect(printed.text).toContain(separate.number!)
@@ -66,7 +66,7 @@ test('AP3 Browser/PDF: Adressloser Entwurf und 250-Euro-Beleg bleiben nach Stamm
   const state = documentFamily()
   state.guardians[0].address = { street: '', postalCode: '', city: '' }
   const base = documentDraft()
-  const draft = { ...base, invoiceKind: 'small-amount' as const, items: base.items.map((item) => ({ ...item, quantity: 1, unitPrice: 250 })) }
+  const draft = { ...base, items: base.items.map((item) => ({ ...item, quantity: 1, unitPrice: 250 })) }
   const saved = saveInvoiceDraft(state, draft, false, documentAt)
   await seed(page, saved)
   const draftPrint = await pdfText(page, saved, saved.invoices[0].id)
@@ -90,9 +90,9 @@ test('AP3 Browser/PDF: Adressloser Entwurf und 250-Euro-Beleg bleiben nach Stamm
   await page.getByRole('button', { name: 'Korrekturentwurf erzeugen', exact: true }).click()
   const correction = page.getByRole('dialog', { name: 'Korrekturentwurf bearbeiten' })
   await correction.getByLabel(/Einzelpreis/).fill('250,01')
-  await expect(correction.getByRole('button', { name: 'Finalisieren', exact: true })).toBeDisabled()
-  await expect(correction.locator('.form-errors[role="status"]')).toContainText('Standardrechnung erforderlich')
-  await expect(correction.locator('.form-errors[role="status"]')).toContainText('Straße & Hausnummer fehlt')
+  await expect(correction.getByRole('button', { name: 'Finalisieren', exact: true })).toBeEnabled()
+  await correction.getByRole('button', { name: 'Finalisieren', exact: true }).click()
+  await expect(correction).not.toBeVisible()
 })
 
 test('P04 Browser/PDF: finalisieren, Personen löschen, Original drucken, korrigieren, neu zuordnen und reload', async ({ page }, testInfo) => {
@@ -320,7 +320,7 @@ test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unverändert
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
   await page.reload()
   const state = await stateOf(page)
-  expect(state.schemaVersion).toBe(8)
+  expect(state.schemaVersion).toBe(9)
   expect(state.documentVersions[0].provenance).toBe('oldest-available')
   await invoices(page)
   await page.getByRole('button', { name: '2026-a-0001', exact: true }).click()

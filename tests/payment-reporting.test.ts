@@ -18,8 +18,6 @@ function readyState(invoiceDate = '2025-12-20'): AppState {
     issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', email: 'studio@example.de', phone: '' },
     accountHolder: 'Synthetisches Studio',
     iban: 'DE02120300000000202051',
-    invoiceProfile: 'small-business',
-    taxIdentifier: { kind: 'tax-number', value: '12/345/67890' },
   }
   state.guardians = [{ id: 'guardian-a', name: 'Familie Beispiel', email: 'familie@example.de', phone: '', address: { street: 'Testweg 2', postalCode: '12345', city: 'Teststadt' }, iban: '', paymentNote: '', createdAt: issuedAt, updatedAt: issuedAt }]
   state.students = [{ id: 'student-a', name: 'Anna Beispiel', billingCode: 'a', guardianIds: ['guardian-a'], note: '', active: true, createdAt: issuedAt, updatedAt: issuedAt }]
@@ -98,7 +96,7 @@ test('P08: Schema 6 übernimmt Vollzahlungen mit unbekanntem Zahlungstag einmali
 
   const preview = inspectImport(JSON.stringify(legacy))
   assert.ok(preview.ok)
-  assert.equal(preview.value.report?.migration, 'riffrechnung-to-v8')
+  assert.equal(preview.value.report?.migration, 'riffrechnung-to-v9')
   assert.equal(preview.value.report?.fromSchema, 6)
   assert.equal(preview.value.state.payments[0].paidAt, null)
   assert.equal(preview.value.state.payments[0].paymentDayStatus, 'unknown')
@@ -107,7 +105,7 @@ test('P08: Schema 6 übernimmt Vollzahlungen mit unbekanntem Zahlungstag einmali
   assert.equal(financialReport(preview.value.state, 2026).unknownDatePayments[0].amountCents, 3000)
 
   const reloaded = parseBackup(serializeBackup(preview.value.state))
-  assert.equal(reloaded.schemaVersion, 8)
+  assert.equal(reloaded.schemaVersion, 9)
   const repeatImport = inspectImport(serializeBackup(reloaded))
   assert.ok(repeatImport.ok)
   if (repeatImport.ok) assert.equal(repeatImport.value.report, null)

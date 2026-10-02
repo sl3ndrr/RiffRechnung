@@ -4,9 +4,8 @@ import './stabilization.test'
 import './invoice-split.test'
 import './payment-data.test'
 import './payment-reporting.test'
-import './invoice-profile.test'
+import './private-invoices.test'
 import './ap3.test'
-import './ap4.test'
 
 import './adult-recipients.test'
 import './ap6-integration.test'
@@ -118,14 +117,12 @@ function validImportState() {
     items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-a')],
   }))
   const current = captureLegacyDocuments(legacyFixture(state))
-  current.schemaVersion = 8
+  current.schemaVersion = 9
   current.settings = {
     ...current.settings,
     issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', email: 'studio@example.de', phone: '' },
     accountHolder: 'Synthetisches Studio',
     iban: 'DE02120300000000202051',
-    invoiceProfile: 'small-business',
-    taxIdentifier: { kind: 'tax-number', value: '12/345/67890' },
   }
   return current
 }
@@ -205,8 +202,6 @@ test('Entwürfe dürfen vor der Einrichtung starten; vollständige Einrichtung v
   assert.equal(isInvoiceSetupComplete(settings), false)
   settings.issuer = { ...settings.issuer, name: '  Gitarrenstudio Beispiel  ', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }
   settings.accountHolder = 'Gitarrenstudio Beispiel'
-  settings.invoiceProfile = 'small-business'
-  settings.taxIdentifier = { kind: 'tax-number', value: '12/345/67890' }
   settings.iban = 'DE02 1203 0000 0000 2020 52'
   assert.equal(isInvoiceSetupComplete(settings), false)
   settings.iban = 'DE02 1203 0000 0000 2020 51'
@@ -241,8 +236,6 @@ test('Onboarding priorisiert die Einrichtung und hält den Demo-Zugang sichtbar'
   issuerReady.settings.issuer = { ...issuerReady.settings.issuer, name: 'Gitarrenstudio Beispiel', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }
   issuerReady.settings.accountHolder = 'Gitarrenstudio Beispiel'
   issuerReady.settings.iban = 'DE02 1203 0000 0000 2020 51'
-  issuerReady.settings.invoiceProfile = 'small-business'
-  issuerReady.settings.taxIdentifier = { kind: 'tax-number', value: '12/345/67890' }
   assert.match(renderDashboard(issuerReady), /1 von 2 Schritten abgeschlossen/)
 
   const familyReady = emptyState()
@@ -537,7 +530,7 @@ test('vollständiges Backup lässt sich wiederherstellen', () => {
     },
   })
   const restored = parseBackup(serializeBackup(state))
-  assert.equal(restored.schemaVersion, 8)
+  assert.equal(restored.schemaVersion, 9)
   assert.equal(restored.settings.issuer.name, 'Test Unterricht')
   assert.equal(restored.students[0]?.billingCode, 'a')
   assert.equal(restored.voidedInvoiceNumbers[0]?.number, '2026-a-0004')
@@ -696,7 +689,7 @@ test('beschädigte lokale Daten bleiben für die Wiederherstellung unangetastet'
 
 test('Entwürfe lassen sich aus der Detailansicht nur mit vollständigen aktuellen Daten finalisieren', () => {
   const state = validImportState()
-  state.settings = { ...state.settings, issuer: { ...state.settings.issuer, name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }, accountHolder: 'Synthetisches Studio', iban: 'DE02120300000000202051', invoiceProfile: 'small-business', taxIdentifier: { kind: 'tax-number', value: '12/345/67890' } }
+  state.settings = { ...state.settings, issuer: { ...state.settings.issuer, name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }, accountHolder: 'Synthetisches Studio', iban: 'DE02120300000000202051' }
   const draft = invoice({
     number: null,
     sequence: null,

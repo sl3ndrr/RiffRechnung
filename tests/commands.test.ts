@@ -23,7 +23,7 @@ const at = '2026-09-06T12:00:00.000Z'
 function family(count = 1): AppState {
   let state = emptyState()
   state.updatedAt = at
-  state = requireSuccess(saveSettingsState(state, { ...state.settings, issuer: { ...state.settings.issuer, name: 'Synthetisches Teststudio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', email: 'studio+test@example.org' }, accountHolder: 'Teststudio', iban: 'DE02120300000000202051', invoiceProfile: 'small-business', taxIdentifier: { kind: 'tax-number', value: '12/345/67890' } }))
+  state = requireSuccess(saveSettingsState(state, { ...state.settings, issuer: { ...state.settings.issuer, name: 'Synthetisches Teststudio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', email: 'studio+test@example.org' }, accountHolder: 'Teststudio', iban: 'DE02120300000000202051' }))
   for (let index = 0; index < count; index++) state = requireSuccess(saveGuardianState(state, {
     id: `g${index}`, firstName: 'Testperson', lastName: String(index), name: `Testperson ${index}`, email: `test${index}@example.org`, phone: '', address: { street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }, iban: '', paymentNote: '', createdAt: at, updatedAt: at,
   }))
@@ -177,7 +177,8 @@ for (const count of [2, 3]) for (const finalized of [false, true]) test(`P02: ${
   preview.state.invoices.forEach((invoice, index) => assert.deepEqual({ ...invoice, versionId: undefined, items: invoice.items.map((item, itemIndex) => ({ ...item, id: before.invoices[index].items[itemIndex].id })) }, { ...before.invoices[index], versionId: undefined }))
   assert.deepEqual(legacy, before)
   const report = JSON.parse(serializeMigrationReport(preview))
-  assert.deepEqual(new TextEncoder().encode(report.originalUtf8), new TextEncoder().encode(raw))
+  assert.deepEqual(report.data, preview.state)
+  assert.equal(report.originalUtf8, undefined)
   assert.deepEqual(requireSuccess(inspectImport(raw)), preview, 'deterministische Wiederholung am gleichen Altbestand')
   const again = requireSuccess(inspectImport(serializeBackup(preview.state)))
   assert.equal(again.report, null)

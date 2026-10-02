@@ -1,5 +1,5 @@
 import { legacyFixture } from './documentFixtures'
-import { validateLegacyV3Structure } from '../src/lib/validation'
+import { validateLegacyV3Structure } from '../src/lib/legacyValidation'
 import { captureLegacyDocuments } from '../src/lib/importState'
 import { seedState, sharedLock, fakeDirectory } from './storageHarness'
 import { ValidationError } from '../src/lib/result'
@@ -17,8 +17,6 @@ const at = '2026-08-20T12:00:00.000Z'
 function families(count = 2): AppState {
   const state = emptyState()
   state.settings.issuer = { ...state.settings.issuer, name: 'Synthetisches Teststudio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }
-  state.settings.invoiceProfile = 'small-business'
-  state.settings.taxIdentifier = { kind: 'tax-number', value: '12/345/67890' }
   state.settings.accountHolder = 'Synthetisches Teststudio'
   state.settings.iban = 'DE02120300000000202051'
   for (let index = 0; index < count; index++) {
