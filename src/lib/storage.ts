@@ -1,6 +1,7 @@
 import type { AppState } from '../types'
 import { createDemoState, emptyState } from './defaults'
 import { inspectImport, type ImportPreview } from './importState'
+import { cleanRecoveryTaxFields, writeStorageBatch } from './recoveryTaxCleanup'
 import { validateBackupState } from './validation'
 import { assertOriginalsPreserved } from './safety'
 import { canonical, descendsFrom, fingerprint, reference, type StorageEnvelope } from './envelope'
@@ -24,7 +25,7 @@ export type WriteLock = <T>(action: () => Promise<T>) => Promise<T>
 export function newerFormat(raw: string): boolean {
   try {
     const root = JSON.parse(raw)
-    return root.storageVersion > 4 || root.schemaVersion > 8 || root.data?.schemaVersion > 8
+    return root.storageVersion > 4 || root.schemaVersion > 9 || root.data?.schemaVersion > 9
   } catch { return false }
 }
 
@@ -40,7 +41,7 @@ export function loadState(storage: Storage = localStorage): StateLoadResult {
       return { status: 'ready', state: inspected.value.state, envelope: inspected.value.envelope, rawData: raw }
     }
     raw = storage.getItem(LEGACY_STORAGE_KEY)
-    if (raw !== null) return { status: 'recovery', rawData: raw, readOnly: newerFormat(raw), error: 'Bisheriger Speicher gefunden. Alle alten Tabs schließen, Originaldaten exportieren und den kontrollierten Umstieg bestätigen. Der alte Speicher bleibt unverändert.' }
+    if (raw !== null) return { status: 'recovery', rawData: raw, readOnly: newerFormat(raw), error: 'Bisheriger Speicher gefunden. Alle alten Tabs schließen, Originaldaten exportieren und den kontrollierten Umstieg bestätigen. Der bisherige Bestand bleibt bis zur erfolgreichen Übernahme unverändert.' }
     return { status: 'ready', state: emptyState(), envelope: null, rawData: null }
   } catch (error) {
     return { status: 'recovery', rawData: raw ?? '', readOnly: newerFormat(raw ?? ''), error: error instanceof Error ? error.message : 'Der lokale Speicher ist nicht verfügbar.' }
@@ -125,7 +126,7 @@ export class StorageSession {
     const maxRevision = Math.max(previous?.revision ?? 0, source?.revision ?? 0)
     if (!Number.isSafeInteger(maxRevision + 1)) throw new Error('Revisionszähler ausgeschöpft. Der Bestand bleibt unverändert.')
     const envelope: StorageEnvelope = {
-      app: 'riffrechnung', storageVersion: 4, schemaVersion: 8,
+      app: 'riffrechnung', storageVersion: 4, schemaVersion: 9,
       datasetId: base?.datasetId ?? crypto.randomUUID(), commitId: crypto.randomUUID(), revision: maxRevision + 1,
       savedAt: new Date().toISOString(), operation,
       ancestors: base ? [...base.ancestors, await reference(base)] : [],
@@ -137,21 +138,36 @@ export class StorageSession {
     if (previous && source && await descendsFrom(source, previous)) envelope.ancestors = [...source.ancestors, await reference(source)]
     const raw = JSON.stringify(envelope)
     this.checkCurrent()
+    const updates = new Map<string, string | null>()
     if (preview) {
-      const archive = { version: 1, at: envelope.savedAt, previousRaw: this.token, legacyRaw: this.legacy, sourceRaw: preview.rawData, report: preview.report, storageMigration: { algorithm: 'riffrechnung-storage-v4', version: 1, fromStorageVersion: preview.envelope?.storageVersion ?? null, toStorageVersion: 4, datasetId: envelope.datasetId, identity: base ? 'existing-identity' : 'explicit-new-assignment', revision: envelope.revision }, reservations: { before: preview.state.counters, after: next.counters, voidedNumbersBefore: preview.state.voidedInvoiceNumbers, voidedNumbersAfter: next.voidedInvoiceNumbers } }
-      // A valid previous copy may be the recovery basis behind a damaged main
-      // copy. Preserve its exact input too, using the existing archive format.
-      if (localRecovery && ![this.token, this.legacy, preview.rawData].includes(localRecovery.rawData)) {
-        this.storage.setItem(`${STORAGE_KEY}-recovery-${envelope.commitId}-fallback`, JSON.stringify({ ...archive, previousRaw: localRecovery.rawData, report: localRecovery.report }))
+      // Preflight every internal copy before the first mutation. External files are untouched.
+      for (let index = 0; index < this.storage.length; index++) {
+        const key = this.storage.key(index)
+        if (key && (key === PREVIOUS_STORAGE_KEY || key === LEGACY_STORAGE_KEY || key.startsWith(`${STORAGE_KEY}-recovery-`))) {
+          const copy = this.storage.getItem(key)
+          if (copy !== null) updates.set(key, cleanRecoveryTaxFields(copy))
+        }
       }
-      this.storage.setItem(`${STORAGE_KEY}-recovery-${envelope.commitId}`, JSON.stringify(archive))
+    }
+    const cleanCopy = (copy: string | null): string | null => copy === null ? null : preview ? cleanRecoveryTaxFields(copy) : copy
+    if (preview) {
+      const archive = { version: 1, at: envelope.savedAt, previousRaw: cleanCopy(this.token), legacyRaw: cleanCopy(this.legacy), sourceRaw: cleanCopy(preview.rawData), report: preview.report, storageMigration: { algorithm: 'riffrechnung-storage-v4', version: 1, fromStorageVersion: preview.envelope?.storageVersion ?? null, toStorageVersion: 4, datasetId: envelope.datasetId, identity: base ? 'existing-identity' : 'explicit-new-assignment', revision: envelope.revision }, reservations: { before: preview.state.counters, after: next.counters, voidedNumbersBefore: preview.state.voidedInvoiceNumbers, voidedNumbersAfter: next.voidedInvoiceNumbers } }
+      // A valid previous copy may be the recovery basis behind a damaged main
+      // copy. Preserve its non-tax input too, using the existing archive format.
+      if (localRecovery && ![this.token, this.legacy, preview.rawData].includes(localRecovery.rawData)) {
+        updates.set(`${STORAGE_KEY}-recovery-${envelope.commitId}-fallback`, JSON.stringify({ ...archive, previousRaw: cleanCopy(localRecovery.rawData), report: localRecovery.report }))
+      }
+      updates.set(`${STORAGE_KEY}-recovery-${envelope.commitId}`, JSON.stringify(archive))
     }
     // Each individual setItem is atomic. A failed prerequisite aborts the write;
     // the current copy is never removed, including Quota/Security failures.
     const previousRaw = localRecovery?.rawData ?? this.token
-    if (previous && previousRaw !== null) this.storage.setItem(PREVIOUS_STORAGE_KEY, previousRaw)
-    if (this.storage.getItem(LEGACY_GUARD_KEY) === null) this.storage.setItem(LEGACY_GUARD_KEY, JSON.stringify(this.legacy))
-    this.storage.setItem(STORAGE_KEY, raw)
+    if (previous && previousRaw !== null) updates.set(PREVIOUS_STORAGE_KEY, cleanCopy(previousRaw))
+    const nextLegacy = updates.get(LEGACY_STORAGE_KEY) ?? this.legacy
+    if (preview || this.storage.getItem(LEGACY_GUARD_KEY) === null) updates.set(LEGACY_GUARD_KEY, JSON.stringify(nextLegacy))
+    updates.set(STORAGE_KEY, raw)
+    writeStorageBatch(this.storage, updates)
+    this.legacy = nextLegacy
     this.token = raw
     this.envelope = envelope
     this.current = structuredClone(next)

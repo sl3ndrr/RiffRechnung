@@ -8,7 +8,7 @@ export const documentAt = '2026-09-07T12:00:00.000Z'
 export function documentFamily(): AppState {
   let state = emptyState()
   state.updatedAt = documentAt
-  state.settings = { ...state.settings, issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', phone: '', email: 'studio@example.org' }, accountHolder: 'Studio', iban: 'DE02120300000000202051', invoiceProfile: 'small-business', taxIdentifier: { kind: 'tax-number', value: '12/345/67890' } }
+  state.settings = { ...state.settings, issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', phone: '', email: 'studio@example.org' }, accountHolder: 'Studio', iban: 'DE02120300000000202051',  }
   for (const id of ['a', 'b']) state = requireSuccess(saveGuardianState(state, { id: `g-${id}`, firstName: 'Empfaenger', lastName: id.toUpperCase(), name: `Empfaenger ${id.toUpperCase()}`, email: `${id}@example.org`, phone: '', address: { street: `Testweg ${id === 'a' ? 2 : 3}`, postalCode: '12345', city: 'Teststadt' }, iban: '', paymentNote: '', createdAt: documentAt, updatedAt: documentAt }))
   for (const id of ['a', 'b']) state = requireSuccess(saveStudentState(state, { id: `s-${id}`, name: `Testkind ${id.toUpperCase()}`, billingCode: '', guardianIds: ['g-a', 'g-b'], note: '', active: true, createdAt: documentAt, updatedAt: documentAt }))
   return state
@@ -32,5 +32,5 @@ export function legacyFixture(state: AppState): LegacyState {
 
 }
 export function editable(invoice: Invoice): InvoiceDraft {
-  return { id: invoice.id, correction: invoice.correction, invoiceDate: invoice.invoiceDate, dueDate: invoice.dueDate, period: invoice.period, guardianIds: [...invoice.guardianIds], ...(invoice.recipients ? { recipients: structuredClone(invoice.recipients) } : {}), studentIds: [...invoice.studentIds], recipientStrategy: invoice.recipientStrategy, ...(invoice.invoiceKind ? { invoiceKind: invoice.invoiceKind } : {}), ...(invoice.taxPresentation ? { taxPresentation: structuredClone(invoice.taxPresentation) } : {}), items: structuredClone(invoice.items), introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText }
+  return { id: invoice.id, correction: invoice.correction, invoiceDate: invoice.invoiceDate, dueDate: invoice.dueDate, period: invoice.period, guardianIds: [...invoice.guardianIds], ...(invoice.recipients ? { recipients: structuredClone(invoice.recipients) } : {}), studentIds: [...invoice.studentIds], recipientStrategy: invoice.recipientStrategy, items: structuredClone(invoice.items), introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText }
 }

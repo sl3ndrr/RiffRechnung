@@ -3,26 +3,23 @@ import assert from 'node:assert/strict'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { InvoicePrint } from '../src/components/InvoicePrint'
-import { prepareInvoiceCopy, saveGuardianState } from '../src/lib/commands'
-import { createCorrectionDraft } from '../src/lib/documents'
+import { saveGuardianState } from '../src/lib/commands'
 import { emptyState } from '../src/lib/defaults'
 import { inspectImport } from '../src/lib/importState'
 import { saveInvoiceDraft } from '../src/lib/invoiceActions'
-import { invoiceFinalizationErrors } from '../src/lib/utils'
-import { validateBackupState } from '../src/lib/validation'
 import { requireSuccess } from '../src/lib/result'
 import type { AppState, Guardian, InvoiceDraft } from '../src/types'
 
 const at = '2026-09-25T12:00:00.000Z'
 function family(): AppState {
   const state = emptyState()
-  state.settings = { ...state.settings, issuer: { ...state.settings.issuer, name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Testort' }, accountHolder: 'Synthetisches Studio', iban: 'DE89370400440532013000', taxIdentifier: { kind: 'tax-number', value: '12/345/67890' } }
+  state.settings = { ...state.settings, issuer: { ...state.settings.issuer, name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Testort' }, accountHolder: 'Synthetisches Studio', iban: 'DE89370400440532013000' }
   state.guardians = [{ id: 'contact', firstName: 'Anna', lastName: 'Beispiel', name: 'Anna Beispiel', email: '', phone: '', address: { street: '', postalCode: '', city: '' }, iban: '', paymentNote: '', createdAt: at, updatedAt: at }]
   state.students = [{ id: 'child', name: 'Kind', billingCode: 'a', guardianIds: ['contact'], note: '', active: true, createdAt: at, updatedAt: at }]
   return state
 }
-function draft(price: number, kind: 'standard' | 'small-amount' = 'standard'): InvoiceDraft {
-  return { invoiceKind: kind, invoiceDate: '2026-09-25', dueDate: '2026-10-09', period: 'September 2026', guardianIds: ['contact'], studentIds: ['child'], recipientStrategy: 'joint', items: [{ id: 'item-1', studentId: 'child', serviceDate: '2026-09-25', lessonType: 'solo', description: 'Unterricht', quantity: 1, unit: 'Std.', unitPrice: price }], introText: 'Unterricht', freeText: '', legalText: 'Steuerbefreiung für Kleinunternehmer (§ 19 UStG).' }
+function draft(price: number): InvoiceDraft {
+  return { invoiceDate: '2026-09-25', dueDate: '2026-10-09', period: 'September 2026', guardianIds: ['contact'], studentIds: ['child'], recipientStrategy: 'joint', items: [{ id: 'item-1', studentId: 'child', serviceDate: '2026-09-25', lessonType: 'solo', description: 'Unterricht', quantity: 1, unit: 'Std.', unitPrice: price }], introText: 'Unterricht', freeText: '', legalText: 'Steuerbefreiung für Kleinunternehmer (§ 19 UStG).' }
 }
 function print(state: AppState): string {
   return renderToStaticMarkup(createElement(InvoicePrint, { invoice: state.invoices[0], guardians: state.guardians, students: state.students, settings: state.settings }))
@@ -39,7 +36,7 @@ test('AP3: neuer Kontakt verlangt getrennte Namen ohne Leer- und Steuerzeichen; 
   assert.deepEqual(requireSuccess(saveGuardianState(newFamily, contact)).guardians[0], contact)
 })
 
-test('AP3: fünf mehrteilige Altnamen bleiben nach 7→8, Export und Import unverändert', () => {
+test('AP3: fünf mehrteilige Altnamen bleiben nach 7→9, Export und Import unverändert', () => {
   const state = emptyState()
   const names = ['Anna Maria von Weber', 'Familie Müller', 'Müller-Lüdenscheidt, Anna', 'Dr. Ali Yılmaz', 'Madonna']
   state.guardians = names.map((name, i): Guardian => ({ id: `legacy-${i}`, name, email: '', phone: '', address: { street: '', postalCode: '', city: '' }, iban: '', paymentNote: '', createdAt: at, updatedAt: at }))
@@ -47,7 +44,7 @@ test('AP3: fünf mehrteilige Altnamen bleiben nach 7→8, Export und Import unve
   const before = JSON.stringify(legacy)
   const preview = requireSuccess(inspectImport(before))
   assert.equal(preview.report?.fromSchema, 7)
-  assert.equal(preview.report?.toSchema, 8)
+  assert.equal(preview.report?.toSchema, 9)
   assert.deepEqual(preview.state.guardians.map(({ name, firstName, lastName }) => ({ name, firstName, lastName })), names.map((name) => ({ name, firstName: undefined, lastName: undefined })))
   assert.deepEqual(requireSuccess(inspectImport(JSON.stringify(preview.state))).state.guardians, preview.state.guardians)
   assert.equal(preview.rawData, before)
@@ -83,47 +80,4 @@ test('AP3: Altentwurf ohne damals gesicherte Druckdaten übernimmt keine heutige
   assert.match(output, /ENTWURF/)
   assert.doesNotMatch(output, /Heutiger Kontakt|Heutiger Aussteller|Heutiger Rechtstext/)
   assert.doesNotMatch(output, /<dt>Straße:<\/dt>|<dt>PLZ\/Ort:<\/dt>|<p class="invoice-senderline"><\/p>/)
-})
-
-test('AP3: 249,99 und 250,00 als ausdrücklich gewählte Kleinbetragsrechnung ohne Anschrift; 250,01 gesperrt', () => {
-  for (const price of [249.99, 250]) {
-    const issued = saveInvoiceDraft(family(), draft(price, 'small-amount'), true, at)
-    assert.equal(issued.documentVersions[0].amounts.totalCents, Math.round(price * 100))
-    assert.equal(issued.documentVersions[0].content.invoiceKind, 'small-amount')
-    assert.equal(issued.documentVersions[0].outputSnapshot.invoiceKind, 'small-amount')
-    const tampered = structuredClone(issued)
-    delete tampered.invoices[0].snapshot!.invoiceKind
-    assert.throws(() => validateBackupState(tampered), /invoiceKind/)
-    assert.match(print(issued), /Kleinbetragsrechnung nach § 33 UStDV/)
-    issued.guardians[0].firstName = 'Nach'
-    issued.guardians[0].lastName = 'Abschluss'
-    issued.guardians[0].name = 'Nach Abschluss'
-    issued.guardians[0].address.street = 'Neuer Weg 2'
-    assert.doesNotMatch(print(issued), /Nach Abschluss|Neuer Weg 2/)
-    validateBackupState(requireSuccess(inspectImport(JSON.stringify(issued))).state)
-  }
-  const errors = invoiceFinalizationErrors(family(), draft(250.01, 'small-amount')).join(' ')
-  assert.match(errors, /Standardrechnung erforderlich/)
-  assert.match(errors, /Straße & Hausnummer fehlt/)
-  assert.throws(() => saveInvoiceDraft(family(), draft(250.01, 'small-amount'), true, at), /Standardrechnung erforderlich/)
-})
-
-test('AP3: Kopie eines Kleinbetragsbelegs beginnt als Standardrechnung', () => {
-  const issued = saveInvoiceDraft(family(), draft(30, 'small-amount'), true, at)
-  const copy = requireSuccess(prepareInvoiceCopy(issued, issued.invoices[0].id, new Date('2026-10-25T12:00:00.000Z')))
-  assert.equal(copy.invoiceKind, 'standard')
-})
-
-test('AP3: Standardrechnung verlangt feldgenau Straße, PLZ und Ort; Korrektur über Grenze sperrt erneut', () => {
-  const state = family()
-  const errors = invoiceFinalizationErrors(state, draft(30)).join(' ')
-  assert.match(errors, /Familien → Anna Beispiel: Straße & Hausnummer fehlt/)
-  assert.match(errors, /PLZ fehlt/)
-  assert.match(errors, /Ort fehlt/)
-  const issued = saveInvoiceDraft(state, draft(249.99, 'small-amount'), true, at)
-  const corrected = createCorrectionDraft(issued, issued.invoices[0].id, 'Synthetische Korrektur', at)
-  const correction = corrected.invoices.find((entry) => entry.status === 'draft')!
-  const edited = { ...draft(250.01, 'small-amount'), id: correction.id, correction: correction.correction, items: correction.items.map((item) => ({ ...item, unitPrice: 250.01 })) }
-  assert.throws(() => saveInvoiceDraft(corrected, edited, true, at), /Standardrechnung erforderlich/)
-  assert.equal(corrected.documentVersions.length, 1)
 })

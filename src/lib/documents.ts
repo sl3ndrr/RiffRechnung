@@ -4,7 +4,6 @@ import { canonical } from './envelope'
 import { copyItemsWithFreshIds, freshId } from './identities'
 import { billingPeriodFromItems, guardianName, uid } from './utils'
 import { validateBackupState } from './validation'
-import { snapshotTaxData, snapshotTaxOutput } from './invoiceProfile'
 import { liveRecipient, recipientRefs } from './recipients'
 
 export function documentContent(invoice: Invoice): DocumentContent {
@@ -33,9 +32,6 @@ export function snapshotFor(state: Pick<AppState, 'guardians' | 'students' | 'se
     }),
     accountHolder: state.settings.accountHolder, iban: state.settings.iban,
     bic: state.settings.bic, bankName: state.settings.bankName, legalText: invoice.legalText,
-    ...(invoice.invoiceKind ? { invoiceKind: invoice.invoiceKind } : {}),
-    ...snapshotTaxData(state.settings),
-    ...(invoice.taxPresentation ? { taxOutput: snapshotTaxOutput(state.settings, invoice) } : {}),
   }
 }
 
@@ -137,10 +133,6 @@ export function createCorrectionDraft(state: AppState, invoiceId: string, reason
     number: null, sequence: null, status: 'draft', snapshot: undefined, draftPrintSnapshot: structuredClone(parent.outputSnapshot),
     items: copyItemsWithFreshIds(parent.content.items, new Set(state.invoices.flatMap((entry) => entry.items.map((item) => item.id))), uid),
     correction: { replacesId: parent.id, reason: reason.trim() }, createdAt: at, updatedAt: at,
-  }
-  if (draft.taxPresentation && draft.draftPrintSnapshot?.taxOutput) {
-    if (!draft.taxPresentation.showIdentifierInDraft) draft.draftPrintSnapshot.taxOutput.identifier = null
-    if (!draft.taxPresentation.showNoticeInDraft) draft.draftPrintSnapshot.taxOutput.noticeText = null
   }
   const next = { ...state, invoices: [...state.invoices, persistentInvoice(draft)] }
   validateBackupState(next)

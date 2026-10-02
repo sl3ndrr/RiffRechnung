@@ -1,3 +1,5 @@
+import { stripLegacyTaxFields } from '../src/lib/legacyTaxFields'
+import { cleanRecoveryTaxFields } from '../src/lib/recoveryTaxCleanup'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -6,7 +8,8 @@ import { inspectImport, serializeMigrationReport } from '../src/lib/importState'
 import { loadState, serializeBackup, StorageSession, STORAGE_KEY } from '../src/lib/storage'
 import { saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { createCorrectionDraft } from '../src/lib/documents'
-import { validateBackupState, validateLegacyV7Structure } from '../src/lib/validation'
+import { validateBackupState } from '../src/lib/validation'
+import { validateLegacyV7Structure } from '../src/lib/legacyValidation'
 import { requireSuccess } from '../src/lib/result'
 import { memoryStorage, sharedLock } from './storageHarness'
 
@@ -24,26 +27,26 @@ function migrated(original: AppState) {
   return { raw, preview: requireSuccess(inspectImport(raw)) }
 }
 
-test('AP6: eingefrorene Schema-7-Originale und Verwaltungsdaten bleiben bei 7→8 kanonisch gleich', () => {
+test('AP6: eingefrorene Schema-7-Originale und Verwaltungsdaten bleiben bei 7→8 bis auf benannte Steuerfelder gleich', () => {
   assert.equal(fixture.sourceCommit, '1449d596e6538d32f4c22ef3a0b2f845ef1aed71')
   for (const original of [fixture.issuedCorrected, fixture.oldestSeparate]) {
     const { preview } = migrated(original)
     assert.equal(preview.report?.fromSchema, 7)
-    assert.equal(preview.report?.toSchema, 8)
-    assert.deepEqual(preview.report?.changes.map((entry) => entry.path), ['schemaVersion'])
-    assert.equal(preview.state.schemaVersion, 8)
+    assert.equal(preview.report?.toSchema, 9)
+    assert.ok(preview.report?.changes.some((entry) => entry.path === 'schemaVersion'))
+    assert.equal(preview.state.schemaVersion, 9)
     const restoredV7Shape = structuredClone(preview.state) as AppState
     restoredV7Shape.schemaVersion = 7 as never
-    assert.deepEqual(restoredV7Shape, original)
+    assert.deepEqual(restoredV7Shape, stripLegacyTaxFields(original).value)
     for (const key of ['guardians', 'students', 'invoices', 'documentVersions', 'invoiceAdministration', 'payments', 'counters', 'voidedInvoiceNumbers', 'audit', 'historicalSnapshotCorrections'] as const) {
-      assert.deepEqual(preview.state[key], original[key], key)
+      assert.deepEqual(preview.state[key], stripLegacyTaxFields(original).value[key], key)
     }
     assert.equal(preview.state.duoGroups, undefined)
     for (const invoice of preview.state.invoices) {
       assert.equal(invoice.recipients, undefined)
-      assert.equal(invoice.invoiceKind, undefined)
-      assert.equal(invoice.taxPresentation, undefined)
-      assert.equal(invoice.snapshot?.taxOutput, undefined)
+      assert.equal(Reflect.get(invoice, 'invoiceKind'), undefined)
+      assert.equal(Reflect.get(invoice, 'taxPresentation'), undefined)
+      assert.equal(invoice.snapshot && Reflect.get(invoice.snapshot, 'taxOutput'), undefined)
     }
     const exported = serializeBackup(preview.state)
     const second = inspectImport(exported)
@@ -60,20 +63,20 @@ test('AP6: eingefrorene Schema-7-Originale und Verwaltungsdaten bleiben bei 7→
   assert.equal(fixture.oldestSeparate.documentVersions[0].provenance, 'oldest-available')
 })
 
-test('AP6: Vorschau, Roharchiv, Import und Reload erhalten beide Goldbestände', async () => {
+test('AP6: Vorschau, bereinigtes Archiv, Import und Reload erhalten beide Goldbestände', async () => {
   for (const original of [fixture.issuedCorrected, fixture.oldestSeparate]) {
     const storage = memoryStorage()
     const session = new StorageSession({ storage, lock: sharedLock() })
     const { raw, preview } = migrated(original)
     assert.equal(storage.length, 0, 'Vorschau darf noch nicht schreiben')
-    assert.match(serializeMigrationReport(preview), /riffrechnung-to-v8/)
+    assert.match(serializeMigrationReport(preview), /riffrechnung-to-v9/)
     const next = await session.restore(raw)
     assert.deepEqual(next, preview.state)
     const archive = JSON.parse(session.exportRecoveryArchive()) as { recoveries: Array<{ raw: string }> }
     assert.equal(archive.recoveries.length, 1)
     const recovery = JSON.parse(archive.recoveries[0].raw) as { version: number; sourceRaw: string; report: unknown }
     assert.equal(recovery.version, 1)
-    assert.equal(recovery.sourceRaw, raw)
+    assert.equal(recovery.sourceRaw, cleanRecoveryTaxFields(raw))
     assert.deepEqual(recovery.report, preview.report)
     const loaded = loadState(storage)
     assert.equal(loaded.status, 'ready')

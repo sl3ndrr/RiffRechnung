@@ -4,7 +4,7 @@ import { buildMailto } from './mailbox'
 import { validId, validPrice, validQuantity } from './values'
 import { assertInvoiceEditable } from './safety'
 import { cleanIban, paymentDataErrors, paymentDataForInvoice } from './paymentData'
-import { invoiceSetupErrors } from './invoiceProfile'
+import { invoiceSetupErrors } from './invoiceSetup'
 import { invoiceCompliance } from './invoiceCompliance'
 import { liveRecipient, recipientCanBillStudent, recipientRefs, snapshotRecipients } from './recipients'
 import type { AppState, Guardian, Invoice, InvoiceItem, InvoiceStatus, LessonType, Settings, Student } from '../types'
@@ -28,7 +28,7 @@ export function limitFooterText(value: string): string {
   return value.slice(0, MAX_FOOTER_TEXT_LENGTH)
 }
 
-type InvoiceFinalizationCandidate = Pick<Invoice, 'guardianIds' | 'studentIds' | 'invoiceDate' | 'dueDate' | 'items' | 'legalText'> & Partial<Pick<Invoice, 'recipientStrategy' | 'invoiceKind' | 'taxPresentation' | 'recipients' | 'correction'>>
+type InvoiceFinalizationCandidate = Pick<Invoice, 'guardianIds' | 'studentIds' | 'invoiceDate' | 'dueDate' | 'items' | 'legalText'> & Partial<Pick<Invoice, 'recipientStrategy' | 'recipients' | 'correction'>>
 
 export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 'students' | 'settings'>, invoice: InvoiceFinalizationCandidate): string[] {
   const errors: string[] = [...moneyErrors(invoice)]
@@ -40,7 +40,7 @@ export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 's
   const refs = recipientRefs(invoice)
   const selectedGuardians = state.guardians.filter((guardian) => refs.some((ref) => ref.type === 'guardian' && ref.id === guardian.id))
   const selfPayers = state.students.filter((student) => refs.some((ref) => ref.type === 'student' && ref.id === student.id))
-  if (!errors.length) errors.push(...invoiceCompliance(invoice.invoiceKind, invoiceTotalCents(invoice), state.settings, [...selectedGuardians, ...selfPayers], invoice.taxPresentation).map((error) => error.message))
+  if (!errors.length) errors.push(...invoiceCompliance(state.settings, [...selectedGuardians, ...selfPayers]).map((error) => error.message))
 
   if (!refs.length) errors.push('Mindestens eine empfangende Person auswählen.')
   else if (refs.some((ref) => !liveRecipient(ref, state.guardians, state.students) || ref.type === 'student' && !state.students.find((student) => student.id === ref.id)?.selfPayer)) errors.push('Alle empfangenden Personen müssen als berechtigte Stammdaten vorhanden sein.')
@@ -376,9 +376,8 @@ export function uid(prefix: string): string {
 export { cleanIban, formatIban, germanIbanError, isValidGermanIban as isValidIban } from './paymentData'
 
 export function isInvoiceSetupComplete(settings: Settings): boolean {
-  // Dashboard readiness means an invoice can be started; the chosen kind
-  // determines the additional identifier requirement at finalization.
-  return invoiceSetupErrors(settings, false).length === 0
+  // Names and payment details are checked again at finalization.
+  return invoiceSetupErrors(settings).length === 0
 }
 
 function sanitizeEpc(value: string, maxLength: number): string {
