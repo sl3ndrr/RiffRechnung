@@ -1,7 +1,7 @@
 import { deleteGuardianState, deleteStudentState, deleteInvoiceDraftState, resetUnissuedState, recordActivity } from './lib/commands'
 import { allocatePayment, archiveInvoice, createCorrectionDraft, resolveDocumentConflicts, selectInvoice } from './lib/documents'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { BookUser, Download, FilePlus2, Menu, Moon, Palette, ReceiptText, Search, Settings as SettingsIcon, Sun, Upload, X } from 'lucide-react'
+import { BookUser, FilePlus2, Menu, Moon, Palette, ReceiptText, Search, Settings as SettingsIcon, Sun, X } from 'lucide-react'
 import type { AppState, AuditEvent, Guardian, Invoice, InvoiceDraft, InvoiceStatus, PageKey, Settings as SettingsType, Student, ToastMessage } from './types'
 import { Invoices } from './views/Invoices'
 import { InvoiceEditor } from './views/InvoiceEditor'
@@ -16,9 +16,7 @@ import { ConfirmDialog } from './components/ConfirmDialog'
 import { ToastRegion } from './components/ToastRegion'
 import { InvoicePrint } from './components/InvoicePrint'
 import { createEmptyInvoiceDraft } from './lib/defaults'
-import { clearDirectoryHandle, ensureWritePermission, inspectBackupDirectory, loadLastBackupAt, StorageSession, StorageConflict, readDirectoryHandle, recordBackupExport, STORAGE_KEY, LEGACY_STORAGE_KEY, storeDirectoryHandle, type StorageRecoveryState } from './lib/storage'
-import type { DirectoryInspection, DirectoryBinding } from './lib/backupDirectory'
-import { FolderReview } from './views/FolderReview'
+import { loadLastBackupAt, StorageSession, StorageConflict, recordBackupExport, STORAGE_KEY, LEGACY_STORAGE_KEY, type StorageRecoveryState } from './lib/storage'
 import { downloadText, invoicePdfTitle, statusLabel, uid } from './lib/utils'
 import { changeInvoiceStatus } from './lib/invoiceActions'
 import { assertOriginalsPreserved, assertReplacementAllowed, FINALIZED_INVOICE_BLOCKED, isFinalizedInvoice } from './lib/safety'
@@ -65,8 +63,6 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const [settingsEpoch, setSettingsEpoch] = useState(0)
   const [settingsDirty, setSettingsDirty] = useState(false)
   const pendingWrites = useRef(0)
-  const pendingBackups = useRef(0)
-  const settingsFlush = useRef<(() => Promise<boolean>) | null>(null)
   const [page, setPage] = useState<PageKey>('invoices')
   const [mobileNav, setMobileNav] = useState(false)
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 820px)').matches)
@@ -79,16 +75,9 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const [importReview, setImportReview] = useState<ImportReviewData | null>(null)
   const [saveStateLabel, setSaveStateLabel] = useState<'saved' | 'saving' | 'error'>('saved')
   const [localSaveError, setLocalSaveError] = useState<string | null>(null)
-  const [fileBackupStatus, setFileBackupStatus] = useState<'idle' | 'saving' | 'saved' | 'conflict' | 'error'>('idle')
-  const [fileBackupError, setFileBackupError] = useState<string | null>(null)
   const [externalChangeDetected, setExternalChangeDetected] = useState(false)
   const [savedAt, setSavedAt] = useState(() => new Date())
   const [lastBackupAt, setLastBackupAt] = useState(() => mode === 'real' ? loadLastBackupAt() : null)
-  const [folderConnected, setFolderConnected] = useState(false)
-  const [folderName, setFolderName] = useState('')
-  const folderHandle = useRef<FileSystemDirectoryHandle | null>(null)
-  const [folderReview, setFolderReview] = useState<{ handle: FileSystemDirectoryHandle; inspection: DirectoryInspection } | null>(null)
-  const backupImportInput = useRef<HTMLInputElement | null>(null)
   const printRequestRef = useRef<PrintRequest | null>(null)
   const mobileMenuButtonRef = useRef<HTMLButtonElement | null>(null)
   const mobileCloseButtonRef = useRef<HTMLButtonElement | null>(null)
@@ -99,22 +88,6 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     setToasts((current) => [...current, { id, message, tone }])
     window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== id)), 4200)
   }, [])
-
-  const runBackup = useCallback(async () => {
-    if (mode === 'demo' || !session.directory) return
-    pendingBackups.current++
-    setFileBackupStatus('saving')
-    setFileBackupError(null)
-    try {
-      await session.backup()
-      pendingBackups.current--
-      setFileBackupStatus(pendingBackups.current ? 'saving' : 'saved')
-    } catch (error) {
-      pendingBackups.current--
-      setFileBackupStatus(error instanceof StorageConflict ? 'conflict' : 'error')
-      setFileBackupError(error instanceof Error ? error.message : 'Datei-Backup fehlgeschlagen.')
-    }
-  }, [mode, session])
 
   const commit = useCallback(async (producer: (current: AppState) => AppState, label: string, entityType: AuditEvent['entityType'], entityId?: string): Promise<boolean> => {
     pendingWrites.current++
@@ -133,7 +106,6 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       pendingWrites.current--
       setSaveStateLabel(pendingWrites.current ? 'saving' : 'saved')
       setExternalChangeDetected(false)
-      void runBackup()
       return true
     } catch (error) {
       pendingWrites.current--
@@ -144,7 +116,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       toast(message, 'error')
       return false
     }
-  }, [runBackup, session, toast])
+  }, [session, toast])
 
   useEffect(() => {
     if (mode === 'demo') return
@@ -160,29 +132,6 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     window.addEventListener('storage', handleStorage)
     return () => window.removeEventListener('storage', handleStorage)
   }, [mode, session])
-
-  useEffect(() => {
-    if (mode === 'demo' || recovery) return
-    let active = true
-    readDirectoryHandle().then(async (binding) => {
-      if (!binding || !active) return
-      folderHandle.current = binding.handle
-      setFolderConnected(true)
-      setFolderName(binding.handle.name)
-      try {
-        await session.connect(binding)
-        if (active) setFileBackupStatus('idle')
-      } catch (error) {
-        if (active) {
-          setFileBackupStatus(error instanceof StorageConflict ? 'conflict' : 'error')
-          setFileBackupError(error instanceof Error ? error.message : 'Ordnerverbindung muss erneut geprüft werden.')
-        }
-      }
-    }).catch((error: unknown) => {
-      if (active) { setFileBackupStatus('error'); setFileBackupError(error instanceof Error ? error.message : 'Backup-Ordner konnte nicht geprüft werden.') }
-    })
-    return () => { active = false }
-  }, [mode, recovery, session])
 
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => {
@@ -451,7 +400,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     } catch (error) { toast(error instanceof Error ? error.message : 'Die Backup-Datei konnte nicht gelesen werden.', 'error') }
   }
 
-  const applyRestore = async (preview: ImportPreview, backup = true): Promise<boolean> => {
+  const applyRestore = async (preview: ImportPreview): Promise<boolean> => {
     setSaveStateLabel('saving')
     try {
       const restored = await session.restore(preview.rawData)
@@ -459,13 +408,13 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       setState(restored)
       setRecovery(null)
       setSettingsEpoch((value) => value + 1)
+      setSettingsDirty(false)
       setLocalSaveError(null)
       setSaveStateLabel('saved')
       setSavedAt(new Date())
       setSelectedInvoiceId(null)
       setPage('invoices')
       toast(`Wiederherstellung lokal gespeichert, Revision ${session.revision?.revision ?? 'Demo'}. Der vorherige Stand und die Eingangsdaten bleiben gesichert.`, 'success')
-      if (backup) void runBackup()
       return true
     } catch (error) {
       setSaveStateLabel('error')
@@ -478,97 +427,17 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const confirmImport = (preview: ImportPreview) => {
     setConfirmation({
       title: 'Backup als neuen Stand wiederherstellen?',
-      message: `${preview.state.students.length} Lernende, ${preview.state.invoices.length} Rechnungen. ${preview.envelope ? `Bestand ${preview.envelope.datasetId}, Revision ${preview.envelope.revision}.` : 'Ohne Bestands-ID: Mit der Bestätigung ordnest du dieses Altbackup ausdrücklich zu; eine gemeinsame Herkunft ist nicht nachgewiesen.'} Der aktuelle Stand und die unveränderten Eingangsdaten werden zuerst lokal aufbewahrt. Bekannte Originalbelege dürfen nicht verändert werden.`,
+      message: `${preview.state.students.length} Lernende, ${preview.state.invoices.length} Rechnungen. ${preview.envelope ? `Bestand ${preview.envelope.datasetId}, Revision ${preview.envelope.revision}.` : 'Ohne Bestands-ID: Mit der Bestätigung ordnest du dieses Altbackup ausdrücklich zu; eine gemeinsame Herkunft ist nicht nachgewiesen.'} Ungespeicherte Einstellungen werden bei erfolgreicher Wiederherstellung verworfen. Der aktuelle Stand und die unveränderten Eingangsdaten werden zuerst lokal aufbewahrt. Bekannte Originalbelege dürfen nicht verändert werden.`,
       label: 'Wiederherstellung bestätigen', danger: true,
       action: async () => { if (await applyRestore(preview)) setImportReview(null) },
     })
   }
 
-  const inspectFolder = async (handle: FileSystemDirectoryHandle) => {
-    const inspection = await inspectBackupDirectory(handle)
-    setFolderReview({ handle, inspection })
-  }
-
-  const connectFolder = async () => {
-    if (mode === 'demo' || !window.showDirectoryPicker) return
-    try { await inspectFolder(await window.showDirectoryPicker({ mode: 'read' })) }
-    catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return
-      setFileBackupStatus('error')
-      setFileBackupError(error instanceof Error ? error.message : 'Ordner konnte nicht gelesen werden.')
-    }
-  }
-
-  const acceptFolder = async (restore?: ImportPreview) => {
-    if (!folderReview || mode === 'demo') return
-    const previousBinding = session.directory
-    try {
-      // Permission prompt remains tied to this explicit user action. Cancel/deny
-      // leaves both the local state and all files untouched.
-      if (!await ensureWritePermission(folderReview.handle, true)) throw new Error('Keine Schreibberechtigung. Der bisherige Bestand bleibt erhalten.')
-      if (restore && !await applyRestore(restore, false)) return
-      if (!session.revision) {
-        const current = await session.change((value) => value)
-        setState(current)
-      }
-      const binding: DirectoryBinding = {
-        handle: folderReview.handle, datasetId: session.revision!.datasetId,
-        legacyFiles: restore ? folderReview.inspection.entries.filter((entry) => entry.preview && !entry.preview.envelope && entry.raw === restore.rawData).map(({ name, fingerprint }) => ({ name, fingerprint })) : [],
-      }
-      await session.connect(binding)
-      await storeDirectoryHandle(binding)
-      folderHandle.current = binding.handle
-      setFolderConnected(true)
-      setFolderName(binding.handle.name)
-      setFolderReview(null)
-      await runBackup()
-    } catch (error) {
-      if (session.directory !== previousBinding) {
-        session.disconnect()
-        if (previousBinding) {
-          try { await session.connect(previousBinding) } catch { /* Existing configuration stays in IndexedDB for explicit review. */ }
-        }
-      }
-      setFileBackupStatus(error instanceof StorageConflict ? 'conflict' : 'error')
-      setFileBackupError(error instanceof Error ? error.message : 'Verbindung fehlgeschlagen.')
-      toast(error instanceof Error ? error.message : 'Verbindung fehlgeschlagen.', 'error')
-    }
-  }
-
-  const disconnectFolder = async () => {
-    if (mode === 'demo') return
-    try {
-      await session.idle()
-      await clearDirectoryHandle()
-      session.disconnect()
-      folderHandle.current = null
-      setFolderConnected(false)
-      setFolderName('')
-      setFileBackupStatus('idle')
-      setFileBackupError(null)
-    } catch (error) { toast(error instanceof Error ? error.message : 'Ordner konnte nicht getrennt werden.', 'error') }
-  }
-
-  const backupNow = async () => {
-    if (mode === 'demo') return
-    if (settingsFlush.current && !await settingsFlush.current()) return
-    if (!folderHandle.current) return exportBackup()
-    try {
-      if (!await ensureWritePermission(folderHandle.current, true)) throw new Error('Schreibberechtigung fehlt. Bitte erneut freigeben oder JSON exportieren.')
-      if (!session.directory) { await inspectFolder(folderHandle.current); return }
-      await runBackup()
-    } catch (error) { setFileBackupStatus('error'); setFileBackupError(error instanceof Error ? error.message : 'Backup fehlgeschlagen.') }
-  }
-
   const resetAll = () => setConfirmation({
-    title: 'Lokalen Bestand zurücksetzen?', message: 'Der bisherige Stand bleibt als vorherige lokale Version erhalten. Der Backup-Ordner wird zuvor getrennt.', label: 'Zurücksetzen', danger: true,
+    title: 'Lokalen Bestand zurücksetzen?', message: 'Der bisherige Stand bleibt als vorherige lokale Version erhalten. Ungespeicherte Einstellungen werden bei erfolgreichem Zurücksetzen verworfen.', label: 'Zurücksetzen', danger: true,
     action: async () => {
       try {
         assertReplacementAllowed(session.state)
-        if (mode === 'real') await clearDirectoryHandle()
-        session.disconnect()
-        folderHandle.current = null
-        setFolderConnected(false)
         const next = await session.change((current) => requireSuccess(resetUnissuedState(current)), 'reset')
         setState(next)
         setSettingsEpoch((value) => value + 1)
@@ -581,11 +450,24 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   })
 
   const saveSettings = useCallback((settings: SettingsType) => commit((current) => requireSuccess(saveSettingsState(current, settings)), 'Einstellungen aktualisiert', 'settings'), [commit])
-  const switchMode = async () => {
-    if (settingsFlush.current && !await settingsFlush.current()) return
+  const guardSettings = (action: () => void | Promise<void>): void => {
+    if (pendingWrites.current) { toast('Bitte den laufenden Speichervorgang abwarten.', 'info'); return }
+    if (!settingsDirty) { void action(); return }
+    setConfirmation({
+      title: 'Ungespeicherte Einstellungen verwerfen?',
+      message: 'Die Eingaben wurden noch nicht gespeichert. „Weiter bearbeiten“ erhält alle Formularwerte. Speichere sie mit „Jetzt speichern“, bevor du die Einstellungen verlässt.',
+      label: 'Verwerfen', cancelLabel: 'Weiter bearbeiten', danger: true,
+      action: () => {
+        setSettingsEpoch((value) => value + 1)
+        setSettingsDirty(false)
+        return action()
+      },
+    })
+  }
+  const switchMode = () => guardSettings(async () => {
     await session.idle()
     onModeChange(mode === 'real' ? 'demo' : 'real')
-  }
+  })
   const loadDemo = () => { void switchMode() }
   const closeEditor = () => {
     setEditor((current) => ({ ...current, open: false }))
@@ -619,10 +501,13 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       })
       return
     }
-    if (page === 'settings' && settingsFlush.current && !await settingsFlush.current()) return
-    setPage(next)
-    setMobileNav(false)
-    if (isMobile && mobileNav) requestAnimationFrame(() => mainContentRef.current?.focus())
+    const navigate = () => {
+      setPage(next)
+      setMobileNav(false)
+      if (isMobile && mobileNav) requestAnimationFrame(() => mainContentRef.current?.focus())
+    }
+    if (next !== page) guardSettings(navigate)
+    else navigate()
   }
   const openMobileNav = useCallback(() => {
     setMobileNav(true)
@@ -642,20 +527,10 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     document.addEventListener('keydown', closeOnEscape)
     return () => document.removeEventListener('keydown', closeOnEscape)
   }, [closeMobileNav, mobileNav])
-  const nextTheme = state.settings.theme === 'system' ? 'light' : state.settings.theme === 'light' ? 'dark' : 'system'
-  const toggleTheme = async () => {
-    if (settingsFlush.current && !await settingsFlush.current()) return
-    if (await saveSettings({ ...stateRef.current.settings, theme: nextTheme })) setSettingsEpoch((value) => value + 1)
-  }
   const themeNames = { system: 'System', light: 'Hell', dark: 'Dunkel' } as const
-  const themeToggleLabel = `Aktuelles Farbschema: ${themeNames[state.settings.theme]}. Als Nächstes ${themeNames[nextTheme]} aktivieren.`
+  const themeToggleLabel = `Farbschema in Einstellungen bearbeiten. Aktuell: ${themeNames[state.settings.theme]}.`
   const ThemeToggleIcon = state.settings.theme === 'system' ? Palette : state.settings.theme === 'light' ? Sun : Moon
   const backupStatusLabel = lastBackupAt ? `Letzter JSON-Export: ${backupDateFormatter.format(new Date(lastBackupAt))}` : 'Noch kein Backup'
-  const fileBackupLabel = folderConnected
-    ? fileBackupStatus === 'saving' ? 'Datei-Backup ausstehend …' : fileBackupStatus === 'conflict' ? 'Datei-Backup: Konflikt' : fileBackupStatus === 'error' ? 'Datei-Backup: Fehler' : fileBackupStatus === 'saved' ? 'Datei-Backup gespeichert' : `Datei-Backup ausstehend: ${folderName}`
-    : backupStatusLabel
-  const persistenceErrorText = [localSaveError ? `Lokaler Speicher: ${localSaveError}` : '', fileBackupError ? `Datei-Backup: ${fileBackupError}` : ''].filter(Boolean).join(' ')
-
   if (recovery) return (
     <>
       {localSaveError && <p role="alert">{localSaveError}</p>}
@@ -676,9 +551,6 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         <div className="sidebar__privacy"><span><ShieldDot /></span><div><strong>Nur auf diesem Gerät</strong><small>Keine automatische Cloud-Übertragung</small></div></div>
         <a className="sidebar__version" href="https://github.com/sl3ndrr/RiffRechnung/blob/main/docs/about.md" target="_blank" rel="noreferrer" aria-label={`Info öffnen (neuer Tab), aktuelle Version ${APP_VERSION}`}>Info · Version {APP_VERSION}</a>
         <div className="sidebar__secondary-actions">
-          <button type="button" aria-label="Backup exportieren" title="Backup exportieren" onClick={exportBackup}><Download aria-hidden="true" /><span>Backup exportieren</span></button>
-          <button type="button" aria-label="Backup importieren" title="Backup importieren" onClick={() => backupImportInput.current?.click()}><Upload aria-hidden="true" /><span>Backup importieren</span></button>
-          <input ref={backupImportInput} type="file" accept=".json,application/json" hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) void importBackup(file) }} />
         </div>
       </aside>
       {mobileNav && <button className="nav-scrim" aria-label="Navigation schließen" onClick={closeMobileNav} />}
@@ -687,22 +559,21 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         <header className="topbar">
           <button ref={mobileMenuButtonRef} className="icon-button mobile-only" onClick={openMobileNav} aria-label="Navigation öffnen" aria-controls="mobile-sidebar" aria-expanded={mobileNav}><Menu aria-hidden="true" /></button>
           <button className="topbar-search" onClick={async () => { await setCurrentPage('invoices'); requestAnimationFrame(() => document.querySelector<HTMLInputElement>('#invoice-search')?.focus()) }}><Search aria-hidden="true" /><span>Rechnungen durchsuchen</span></button>
-          <div className="topbar__end"><div className="topbar__storage-status" role="status" aria-live="polite"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : saveStateLabel === 'error' ? 'is-error' : ''}`}><i />{mode === 'demo' ? 'Demo – nur in dieser Sitzung' : externalChangeDetected ? 'Speicherkonflikt' : settingsDirty || saveStateLabel === 'saving' ? 'Ungespeicherte Änderungen …' : saveStateLabel === 'error' ? 'Lokal nicht gespeichert' : !session.revision ? 'Noch nichts lokal gespeichert' : `Lokal gespeichert ${savedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`}</span><span className={`backup-indicator ${fileBackupStatus === 'error' || fileBackupStatus === 'conflict' ? 'is-error' : ''}`}>{fileBackupLabel}</span></div><button className="icon-button" onClick={toggleTheme} aria-label={themeToggleLabel} title={themeToggleLabel}><ThemeToggleIcon aria-hidden="true" /></button><button className="button button--primary topbar-new" onClick={openNewInvoice} aria-label="Neue Rechnung erstellen"><FilePlus2 aria-hidden="true" /><span>Neue Rechnung</span></button></div>
+          <div className="topbar__end"><div className="topbar__storage-status" role="status" aria-live="polite"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : saveStateLabel === 'error' ? 'is-error' : ''}`}><i />{mode === 'demo' ? 'Demo – nur in dieser Sitzung' : externalChangeDetected ? 'Speicherkonflikt' : settingsDirty || saveStateLabel === 'saving' ? 'Ungespeicherte Änderungen …' : saveStateLabel === 'error' ? 'Lokal nicht gespeichert' : !session.revision ? 'Noch nichts lokal gespeichert' : `Lokal gespeichert ${savedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`}</span><span className="backup-indicator">{backupStatusLabel}</span></div><button className="icon-button" onClick={() => { void setCurrentPage('settings'); requestAnimationFrame(() => document.getElementById('appearance')?.scrollIntoView()) }} aria-label={themeToggleLabel} title={themeToggleLabel}><ThemeToggleIcon aria-hidden="true" /></button><button className="button button--primary topbar-new" onClick={openNewInvoice} aria-label="Neue Rechnung erstellen"><FilePlus2 aria-hidden="true" /><span>Neue Rechnung</span></button></div>
         </header>
 
         {externalChangeDetected && <section className="external-update" role="alert"><div><strong>Änderungen in einem anderen Tab erkannt</strong><p>Dieser Tab zeigt nicht mehr den aktuellen Datenstand. Lade neu, bevor du weiterarbeitest.</p></div><button className="button button--tonal" type="button" onClick={() => window.location.reload()}>Aktuellen Stand neu laden</button></section>}
-        {persistenceErrorText && <section className="persistence-error" role="alert"><div><strong>Speichern fehlgeschlagen</strong><p>{persistenceErrorText}</p></div><div className="button-row"><button className="button button--tonal" type="button" onClick={async () => { if (settingsFlush.current) await settingsFlush.current(); await backupNow() }}>Erneut versuchen</button><button className="button button--text" type="button" onClick={exportBackup}>JSON-Backup exportieren</button></div></section>}
+        {localSaveError && <section className="persistence-error" role="alert"><div><strong>Speichern fehlgeschlagen</strong><p>{localSaveError}</p></div><div className="button-row"><button className="button button--tonal" type="button" onClick={() => { void setCurrentPage('settings') }}>Einstellungen prüfen</button><button className="button button--text" type="button" onClick={exportBackup}>JSON-Backup exportieren</button></div></section>}
 
         <main ref={mainContentRef} id="main-content" tabIndex={-1}>
           {page === 'invoices' && <Invoices onNavigate={setCurrentPage} onLoadDemo={mode === 'real' ? loadDemo : undefined} state={state} selectedId={selectedInvoiceId} onSelect={setSelectedInvoiceId} onNew={openNewInvoice} onEdit={editInvoice} onDuplicate={duplicateInvoice} onDelete={requestDeleteInvoice} onSetStatus={setInvoiceStatus} onCorrection={startCorrection} onAllocatePayment={(paymentId, versionId, reason) => { void commit((current) => allocatePayment(current, paymentId, versionId, reason), 'Zahlung manuell zugeordnet', 'invoice') }} onResolveConflicts={(versionId, reason) => { void commit((current) => resolveDocumentConflicts(current, versionId, reason), 'Historische Abweichung geklärt', 'invoice') }} onPrint={print} />}
           {page === 'people' && <People state={state} onSaveGuardian={saveGuardian} onSaveStudent={saveStudent} onDeleteGuardian={deleteGuardian} onDeleteStudent={deleteStudent} />}
-          <div hidden={page !== 'settings'}><Settings key={settingsEpoch} state={state} onDirty={setSettingsDirty} folderSupported={mode === 'real' && Boolean(window.showDirectoryPicker)} folderConnected={folderConnected} folderName={folderName} onSave={saveSettings} onRegisterFlush={(flush) => { settingsFlush.current = flush }} onExport={exportBackup} onImport={importBackup} onConnectFolder={connectFolder} onDisconnectFolder={disconnectFolder} onBackupNow={backupNow} onReset={resetAll} onPrevious={reviewPrevious} onArchive={exportRecoveryArchive} /></div>
+          <div hidden={page !== 'settings'}><Settings key={settingsEpoch} state={state} onDirty={setSettingsDirty} onSave={saveSettings} onExport={exportBackup} onImport={importBackup} onReset={resetAll} onPrevious={reviewPrevious} onArchive={exportRecoveryArchive} /></div>
         </main>
       </div>
 
       <nav className="mobile-bottom-nav" aria-label="Mobile Hauptnavigation" inert={isMobile && mobileNav}>{navItems.slice(0, 4).map(({ key, label, icon: Icon }) => <button className={page === key ? 'is-active' : ''} aria-current={page === key ? 'page' : undefined} aria-label={label} key={key} onClick={() => setCurrentPage(key)}><Icon aria-hidden="true" /><span>{label}</span></button>)}</nav>
 
-      <FolderReview review={folderReview} current={session.revision} onClose={() => setFolderReview(null)} onChoose={connectFolder} onConnect={() => void acceptFolder()} onRestore={(preview) => setConfirmation({ title: 'Sicherung zuordnen und wiederherstellen?', message: 'Mit der Bestätigung wird die gewählte Sicherung als neuer lokaler Stand eingeführt. Altbackups ohne Bestands-ID werden ausdrücklich zugeordnet; eine gemeinsame Herkunft wird nicht behauptet. Beleginformationen bleiben geschützt. Beim Formatumstieg werden ausschließlich die abgeschafften strukturierten Steuerfelder und zugehörige Metadaten bereinigt.', label: 'Zuordnung und Wiederherstellung bestätigen', action: async () => { await acceptFolder(preview) } })} />
       <ImportReview review={importReview} onClose={() => setImportReview(null)} onApply={confirmImport} />
       <InvoiceEditor state={state} open={editor.open} draft={editor.draft} editing={editor.editing} finalized={editor.finalized} invoiceNumber={editor.invoiceNumber} guardians={state.guardians} students={state.students} settings={state.settings} onClose={requestCloseEditor} onDirtyChange={setEditorDirty} onSave={saveInvoice} onConvert={convertLegacyDraft} />
       <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} cancelLabel={confirmation?.cancelLabel} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />

@@ -6,6 +6,8 @@ import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
 import { parseBackup, serializeBackup, STORAGE_KEY, LEGACY_STORAGE_KEY } from '../../src/lib/storage'
 
 async function settings(page: Page) { await page.getByRole('button', { name: 'Einstellungen', exact: true }).click() }
+async function save(page: Page) { await page.getByRole('button', { name: 'Jetzt speichern', exact: true }).click(); await expect(page.getByRole('button', { name: 'Lokal gespeichert', exact: true })).toBeDisabled() }
+async function keepEditing(page: Page) { await page.getByRole('alertdialog', { name: 'Ungespeicherte Einstellungen verwerfen?' }).getByRole('button', { name: 'Weiter bearbeiten', exact: true }).click() }
 async function raw(page: Page) { return page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY) }
 async function stateOf(page: Page) { return parseBackup((await raw(page))!) }
 async function seed(page: Page, state: AppState) {
@@ -29,11 +31,14 @@ test('P12 Browser: negativer Preis verhindert Ansichtswechsel; gültiger Abschlu
   const before = await raw(page)
   const price = page.getByRole('textbox', { name: /^Standardpreis Solo\b/ })
   await price.fill('-1')
+  await page.getByRole('button', { name: 'Eingabe prüfen', exact: true }).click()
   await page.getByRole('button', { name: 'Personen', exact: true }).first().click()
+  await keepEditing(page)
   await expect(page.getByRole('heading', { name: 'Einstellungen', exact: true })).toBeVisible()
   await expect(price).toHaveValue('-1')
   expect(await raw(page)).toBe(before)
   await price.fill('37,50')
+  await save(page)
   await page.getByRole('button', { name: 'Personen', exact: true }).first().click()
   await expect.poll(async () => (await stateOf(page)).settings.privateRate).toBe(37.5)
   await expect(page.locator('.save-indicator')).toContainText('Lokal gespeichert')
@@ -57,13 +62,15 @@ test('P12 Browser mit Fehlerinjektion: Quota-Fehler bestätigt nichts und Wieder
   }, STORAGE_KEY)
   const name = page.getByLabel('Name / Geschäftsbezeichnung', { exact: true })
   await name.fill('Nach Wiederholung gespeichert')
+  await page.getByRole('button', { name: 'Jetzt speichern', exact: true }).click()
   await expect(page.locator('.persistence-error')).toContainText('Synthetischer Speicherfehler')
   await expect(page.locator('.save-indicator')).not.toContainText('Lokal gespeichert')
   expect(await raw(page)).toBe(before)
   await page.getByRole('button', { name: 'Personen', exact: true }).first().click()
+  await keepEditing(page)
   await expect(name).toHaveValue('Nach Wiederholung gespeichert')
   await page.evaluate(() => Reflect.set(window, 'p12FailWrite', false))
-  await page.getByRole('button', { name: 'Eingabe prüfen', exact: true }).click()
+  await save(page)
   await expect.poll(async () => (await stateOf(page)).settings.issuer.name).toBe('Nach Wiederholung gespeichert')
   await expect(page.locator('.save-indicator')).toContainText('Lokal gespeichert')
   await page.reload()
@@ -77,11 +84,14 @@ test('P12 Browser: ausländisches Konto abweisen, DE speichern und leere Origina
   const before = await raw(page)
   const iban = page.getByRole('textbox', { name: /^IBAN(?:\s|$)/ })
   await iban.fill('GB29NWBK60161331926819')
+  await page.getByRole('button', { name: 'Eingabe prüfen', exact: true }).click()
   await page.getByRole('button', { name: 'Personen', exact: true }).first().click()
+  await keepEditing(page)
   await expect(page.locator('#iban-error')).toContainText('deutsche')
   expect(await raw(page)).toBe(before)
   await iban.fill('de89 3704 0044 0532 0130 00')
   await page.getByLabel('BIC (für deutsche Empfängerkonten im EPC-QR optional)', { exact: true }).fill('MARKDEF1100')
+  await save(page)
   await page.getByRole('button', { name: 'Personen', exact: true }).first().click()
   await expect.poll(async () => (await stateOf(page)).settings.bic).toBe('MARKDEF1100')
   await page.reload()
@@ -220,45 +230,5 @@ test('P12 Browser: lokale Mitternacht in Berlin erzeugt den richtigen Rechnungst
     await page.goto('/')
     await page.getByRole('button', { name: 'Neue Rechnung erstellen', exact: true }).click()
     await expect(page.getByRole('dialog').getByLabel('Rechnungsdatum', { exact: true })).toHaveValue('2026-09-01')
-  } finally { await context.close() }
-})
-
-test('P12 echter OPFS: leerer Bestand liest vorhandenes Backup; Restore und parallele Sicherungen erhalten Dateien', async ({ playwright }, testInfo) => {
-  // Real Chromium file APIs in a synthetic persistent profile. This does not
-  // exercise the OS picker/permission UI or cross-device synchronization.
-  const context = await playwright.chromium.launchPersistentContext(testInfo.outputPath('opfs-profile'), { channel: 'chromium', headless: true, baseURL: 'http://127.0.0.1:4173' })
-  try {
-    const page = await context.newPage()
-    await page.goto('/')
-    const result = await page.evaluate(async () => {
-      const storagePath = '/src/lib/storage.ts', defaultsPath = '/src/lib/defaults.ts'
-      const { StorageSession, STORAGE_KEY, LEGACY_GUARD_KEY, PREVIOUS_STORAGE_KEY, inspectBackupDirectory } = await import(storagePath)
-      const { emptyState } = await import(defaultsPath)
-      const source = new StorageSession()
-      await source.restore(JSON.stringify(emptyState()))
-      const handle = await (await navigator.storage.getDirectory()).getDirectoryHandle('p12-synthetic-backup', { create: true })
-      const binding = { handle, datasetId: source.revision.datasetId, legacyFiles: [] }
-      await source.connect(binding)
-      await source.backup()
-      const before = await inspectBackupDirectory(handle)
-      for (const key of [STORAGE_KEY, LEGACY_GUARD_KEY, PREVIOUS_STORAGE_KEY]) localStorage.removeItem(key)
-      const empty = new StorageSession()
-      let blocked = ''
-      try { await empty.connect(binding) } catch (error) { blocked = String(error) }
-      const inspected = await inspectBackupDirectory(handle)
-      await empty.restore(inspected.entries[0].raw)
-      await empty.connect(binding)
-      await Promise.all([empty.backup(), empty.backup()])
-      const after = await inspectBackupDirectory(handle)
-      return { blocked, before: before.entries.map((entry: { name: string; raw: string }) => [entry.name, entry.raw]), inspected: inspected.entries.map((entry: { name: string; raw: string }) => [entry.name, entry.raw]), after: after.entries.map((entry: { name: string; raw: string }) => [entry.name, entry.raw]), conflict: after.conflict, state: empty.state, revision: empty.revision.revision }
-    })
-    expect(result.blocked).toContain('Zuerst den lokalen Bestand speichern')
-    expect(result.inspected).toEqual(result.before)
-    expect(result.after).toHaveLength(2)
-    for (const entry of result.before) expect(result.after).toContainEqual(entry)
-    expect(result.conflict).toBeNull()
-    expect(result.revision).toBe(2)
-    await page.reload()
-    expect(await stateOf(page)).toEqual(result.state)
   } finally { await context.close() }
 })

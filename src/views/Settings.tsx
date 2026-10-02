@@ -1,44 +1,37 @@
 import { decimalInputText } from '../lib/money'
 import { mailboxError } from '../lib/mailbox'
 import { parsePaymentTermInput } from '../lib/values'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { ArchiveRestore, CheckCircle2, CloudOff, Download, FileJson, FolderSync, HardDrive, History, Moon, Palette, Save, ShieldCheck, Sun, Upload } from 'lucide-react'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { ArchiveRestore, CheckCircle2, Download, FileJson, HardDrive, History, Moon, Palette, Save, ShieldCheck, Sun, Upload } from 'lucide-react'
 import type { AppState, Settings as SettingsType, ThemeMode } from '../types'
 import { formatInvoiceNumber, formatIban, isFooterTextWithinLimit, germanIbanError, MAX_FOOTER_TEXT_LENGTH } from '../lib/utils'
 
 import { applyStandardRateInput, parseStandardRate, settingsChangeErrors, STANDARD_RATE_ERROR } from '../lib/settings'
 import { isFinalizedInvoice } from '../lib/safety'
 
-import { SettingsBuffer } from '../lib/settingsBuffer'
+import { canonical } from '../lib/envelope'
 import { invoiceSetupErrors } from '../lib/invoiceSetup'
 import { bicError } from '../lib/paymentData'
 
 interface SettingsProps {
   state: AppState
-  folderSupported: boolean
-  folderConnected: boolean
-  folderName: string
   onSave: (settings: SettingsType) => Promise<boolean>
   onDirty: (dirty: boolean) => void
-  onRegisterFlush: (flush: (() => Promise<boolean>) | null) => void
   onExport: () => void
   onImport: (file: File) => void
-  onConnectFolder: () => void
-  onDisconnectFolder: () => void
-  onBackupNow: () => void
   onReset: () => void
   onPrevious: () => void
   onArchive: () => void
 }
 
-export function Settings({ state, folderSupported, folderConnected, folderName, onSave, onDirty, onRegisterFlush, onExport, onImport, onConnectFolder, onDisconnectFolder, onBackupNow, onReset, onPrevious, onArchive }: SettingsProps) {
+export function Settings({ state, onSave, onDirty, onExport, onImport, onReset, onPrevious, onArchive }: SettingsProps) {
   const [form, setForm] = useState<SettingsType>(state.settings)
   const [rateInputs, setRateInputs] = useState({ privateRate: decimalInputText(state.settings.privateRate), duoRate: decimalInputText(state.settings.duoRate) })
   const [paymentTermInput, setPaymentTermInput] = useState(String(state.settings.paymentTermDays))
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'pending' | 'invalid'>('saved')
-  const [buffer] = useState(() => new SettingsBuffer(state.settings))
-  const formRef = useRef(form)
-  formRef.current = form
+  const [confirmed, setConfirmed] = useState(state.settings)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const pendingSave = useRef(false)
   const footerTextValid = isFooterTextWithinLimit(form.defaultLegalText)
   const footerTextLimitReached = form.defaultLegalText.length >= MAX_FOOTER_TEXT_LENGTH
 
@@ -55,41 +48,36 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
     setForm((current) => applyStandardRateInput(current, field, raw))
   }
 
-  const validRef = useRef(true)
-  validRef.current = !invalidRateInput && !paymentTermError && !emailError && footerTextValid && !settingsChangeErrors(state.settings, form).length
-  buffer.update(form, validRef.current)
+  const valid = !invalidRateInput && !paymentTermError && !emailError && footerTextValid && !settingsChangeErrors(confirmed, form).length
+  const dirty = !valid || canonical(form) !== canonical(confirmed)
 
-  const persist = useCallback(async () => {
-    buffer.update(formRef.current, validRef.current)
-    setSaveStatus(buffer.dirty ? 'pending' : 'saved')
-    const saved = await buffer.flush(onSave)
-    setSaveStatus(saved ? 'saved' : 'invalid')
-    return saved
-  }, [buffer, onSave])
+  useLayoutEffect(() => { onDirty(dirty) }, [dirty, onDirty])
 
-  useLayoutEffect(() => {
-    onRegisterFlush(persist)
-    return () => onRegisterFlush(null)
-  }, [onRegisterFlush, persist])
-
-  useEffect(() => { void persist() }, [form, paymentTermInput, rateInputs, persist])
-
-  useLayoutEffect(() => { onDirty(buffer.dirty) }, [buffer, form, paymentTermInput, rateInputs, saveStatus, onDirty])
-
-  const setTheme = (theme: ThemeMode) => {
-    const next = { ...form, theme }
-    setForm(next)
-    formRef.current = next
-    void persist()
+  const persist = async () => {
+    if (pendingSave.current) return
+    if (!valid) { setSaveError('Bitte die markierten Eingaben prüfen.'); return }
+    const submitted = structuredClone(form)
+    pendingSave.current = true
+    setSaving(true)
+    setSaveError(null)
+    try {
+      if (await onSave(submitted)) setConfirmed(submitted)
+      else setSaveError('Einstellungen konnten nicht gespeichert werden. Deine Eingaben bleiben erhalten; bitte erneut speichern.')
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Einstellungen konnten nicht gespeichert werden. Deine Eingaben bleiben erhalten.')
+    } finally { pendingSave.current = false; setSaving(false) }
   }
+
+  const setTheme = (theme: ThemeMode) => setForm({ ...form, theme })
 
   return (
     <div className="page settings-page">
       <header className="page-header">
-        <div><p className="eyebrow">Konfiguration</p><h1>Einstellungen</h1><p>Absender, Konto, Nummernkreis, Darstellung und Datensicherung.</p></div>
-        <button className={`button ${saveStatus === 'saved' ? 'button--success' : 'button--primary'} button--large`} onClick={() => void persist()} disabled={saveStatus === 'saved' && !buffer.dirty} aria-live="polite">{saveStatus === 'saved' ? <CheckCircle2 aria-hidden="true" /> : <Save aria-hidden="true" />}{invalidRateInput || paymentTermError || emailError || !footerTextValid || saveStatus === 'invalid' ? 'Eingabe prüfen' : saveStatus === 'saved' ? 'Lokal gespeichert' : 'Jetzt speichern'}</button>
+        <div><p className="eyebrow">Konfiguration</p><h1>Einstellungen</h1><p>Absender, Konto, Nummernkreis, Darstellung und Datensicherung. Änderungen mit „Jetzt speichern“ bestätigen.</p></div>
+        <button className={`button ${!dirty && !saveError ? 'button--success' : 'button--primary'} button--large`} onClick={() => void persist()} disabled={saving || (!dirty && !saveError)} aria-live="polite">{!dirty && !saveError ? <CheckCircle2 aria-hidden="true" /> : <Save aria-hidden="true" />}{saving ? 'Speichern …' : !valid ? 'Eingabe prüfen' : dirty || saveError ? 'Jetzt speichern' : 'Lokal gespeichert'}</button>
       </header>
 
+      {saveError && <p className="form-errors" role="alert">{saveError}</p>}
       <div className="settings-layout">
         <nav className="settings-nav" aria-label="Einstellungsbereiche"><a href="#profile">Rechnungssteller</a><a href="#payment">Bankverbindung</a><a href="#numbering">Rechnungen</a><a href="#appearance">Darstellung</a><a href="#backup">Backup & Import</a><a href="#history">Änderungsverlauf</a></nav>
         <div className="settings-content" >
@@ -134,19 +122,16 @@ export function Settings({ state, folderSupported, folderConnected, folderName, 
           <section id="appearance" className="surface settings-section">
             <div className="settings-section__heading"><span><Palette aria-hidden="true" /></span><div><h2>Darstellung</h2><p>Das Rechnungs-PDF bleibt unabhängig davon immer hell.</p></div></div>
             <fieldset className="theme-picker"><legend>Farbschema</legend>{([['system', Palette, 'System'], ['light', Sun, 'Hell'], ['dark', Moon, 'Dunkel']] as const).map(([value, Icon, label]) => <label className={form.theme === value ? 'is-selected' : ''} key={value}><input type="radio" name="theme" checked={form.theme === value} onChange={() => setTheme(value)} /><Icon aria-hidden="true" /><span>{label}</span></label>)}</fieldset>
-            <label className="switch-row"><span><strong>Bewegungen reduzieren</strong><small>Expressive Übergänge auf kurze Überblendungen begrenzen</small></span><input type="checkbox" checked={form.reducedMotion} onChange={(event) => { const next = { ...form, reducedMotion: event.target.checked }; setForm(next); formRef.current = next; void persist() }} /><i /></label>
+            <label className="switch-row"><span><strong>Bewegungen reduzieren</strong><small>Expressive Übergänge auf kurze Überblendungen begrenzen</small></span><input type="checkbox" checked={form.reducedMotion} onChange={(event) => setForm({ ...form, reducedMotion: event.target.checked })} /><i /></label>
           </section>
 
           <section id="backup" className="surface settings-section settings-section--backup">
-            <div className="settings-section__heading"><span><FolderSync aria-hidden="true" /></span><div><h2>Backup & Import</h2><p>JSON-Export bleibt verfügbar. Eine Wiederherstellung erhält bekannte Originalbelege und Nummernreservierungen.</p></div></div>
+            <div className="settings-section__heading"><span><Download aria-hidden="true" /></span><div><h2>Backup & Import</h2><p>JSON-Export bleibt verfügbar. Eine Wiederherstellung erhält bekannte Originalbelege und Nummernreservierungen.</p></div></div>
             <div className="button-row"><button className="button button--tonal" onClick={onPrevious}>Vorherigen lokalen Stand prüfen</button><button className="button button--tonal" onClick={onArchive}>Wiederherstellungsarchiv exportieren</button></div>
             <div className="backup-grid">
-              <article><span className="backup-icon"><Download aria-hidden="true" /></span><h3>Manuelles Backup</h3><p>Eine Klartext-JSON-Datei mit Personen, Rechnungen, Einstellungen, Notizen, Belegversionen und Änderungsverlauf.</p><button className="button button--tonal" onClick={onExport}><Download aria-hidden="true" /> JSON exportieren</button></article>
+              <article><span className="backup-icon"><Download aria-hidden="true" /></span><h3>Manuelles Backup</h3><p>Exportiert den zuletzt gespeicherten Stand als Klartext-JSON-Datei mit Personen, Rechnungen, Einstellungen, Notizen, Belegversionen und Änderungsverlauf.</p><button className="button button--tonal" onClick={onExport}><Download aria-hidden="true" /> JSON exportieren</button></article>
               <article><span className="backup-icon"><Upload aria-hidden="true" /></span><h3>Backup wiederherstellen</h3><p>Führt eine geprüfte Sicherung nach Bestätigung als neuen Stand ein. Bekannte Originale bleiben geschützt.</p><label className="button button--tonal file-button"><Upload aria-hidden="true" /> JSON importieren<input type="file" accept="application/json,.json" onChange={(event) => { const file = event.target.files?.[0]; if (file) onImport(file); event.target.value = '' }} /></label></article>
-              <article className={folderConnected ? 'is-connected' : ''}><span className="backup-icon">{folderConnected ? <FolderSync aria-hidden="true" /> : <CloudOff aria-hidden="true" />}</span><h3>Backup-Ordner</h3><p>{!folderSupported ? 'Dieser Browser unterstützt die Ordnerauswahl nicht.' : folderConnected ? `Verbunden: ${folderName}.` : 'Vor dem Verbinden werden vorhandene Sicherungen gelesen. Schreiben erhält frühere Versionen.'}</p>{folderSupported && (folderConnected ? <div className="button-row"><button className="button button--tonal" onClick={onBackupNow}>Jetzt sichern</button><button className="button button--tonal" onClick={onConnectFolder}>Ordner prüfen / Ziel wechseln</button><button className="button button--text" onClick={onDisconnectFolder}>Trennen</button></div> : <button className="button button--tonal" onClick={onConnectFolder}><FolderSync aria-hidden="true" /> Ordner wählen</button>)}</article>
             </div>
-            <p className="field-hint" role="status">Neue versionierte Sicherungen erhalten bisherige Dateien. Bei Konflikten, fehlenden Berechtigungen oder fehlenden Browserfunktionen bleibt das Datei-Backup ausstehend; JSON-Export ist weiterhin möglich.</p>
-            <div className="info-banner"><HardDrive aria-hidden="true" /><p>Die App spricht keine Cloud-API an. Wählst du einen lokal synchronisierten Drive-Ordner, übernimmt ausschließlich die installierte Desktop-Synchronisation das spätere Hochladen. Die Ordnerfunktion ist derzeit vor allem in Chromium-Browsern verfügbar.</p></div>
           </section>
 
           <section id="history" className="surface settings-section">

@@ -12,13 +12,14 @@ import './adult-recipients.test'
 import './ap6-integration.test'
 import { legacyFixture } from './documentFixtures'
 import { captureLegacyDocuments } from '../src/lib/importState'
-import { seedState, sharedLock, fakeDirectory } from './storageHarness'
+import { seedState, sharedLock } from './storageHarness'
 import { prepareNewInvoice, saveInvoiceState } from '../src/lib/commands'
 import { requireSuccess, ValidationError } from '../src/lib/result'
 import { adjustQuantity } from '../src/lib/values'
 import './safety.test'
 import './commands.test'
 import './storage.test'
+import './downloads.test'
 import './documents.test'
 import './print-job.test'
 import test from 'node:test'
@@ -715,20 +716,16 @@ test('Editor-Finalisierung wird vor Nummern- und Snapshot-Vergabe zentral validi
 
 })
 
-test('lokales Speichern bleibt unabhängig vom Datei-Backup; Fehler erlauben keinen voreiligen Erfolg', async () => {
+test('lokaler Schreibfehler bestätigt nichts; Wiederholung und Export bleiben möglich', async () => {
   const { memoryStorage } = await import('./storageHarness')
   const storage = memoryStorage()
   const session = new StorageSession({ storage, lock: sharedLock() })
-  const directory = fakeDirectory()
   storage.fail = 'write'
   await assert.rejects(session.change(() => emptyState()), /Speicherplatz/)
-  await assert.rejects(session.backup(), /lokales Speichern/)
-  assert.equal(directory.controls.writes, 0)
+  assert.equal(session.revision, null)
+  assert.deepEqual(parseBackup(session.export()), emptyState())
   storage.fail = null
   await session.change(() => emptyState())
-  await session.connect({ handle: directory.handle, datasetId: session.revision!.datasetId, legacyFiles: [] })
-  directory.controls.fail = 'write'
-  await assert.rejects(session.backup(), /write fehlgeschlagen/)
   assert.equal(loadState(storage).status, 'ready')
 })
 

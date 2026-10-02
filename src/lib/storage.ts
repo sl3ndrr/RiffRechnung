@@ -5,11 +5,10 @@ import { cleanRecoveryTaxFields, writeStorageBatch } from './recoveryTaxCleanup'
 import { validateBackupState } from './validation'
 import { assertOriginalsPreserved } from './safety'
 import { canonical, descendsFrom, fingerprint, reference, type StorageEnvelope } from './envelope'
-import { appendBackup, checkDirectory, inspectBackupDirectory, StorageConflict, type DirectoryBinding, type DirectoryInspection } from './backupDirectory'
+import { StorageConflict } from './storageConflict'
 export { validateBackupState } from './validation'
 export { parseBackup } from './importState'
-export { ensureWritePermission, inspectBackupDirectory, StorageConflict } from './backupDirectory'
-export { storeDirectoryHandle, readDirectoryHandle, clearDirectoryHandle } from './handleStore'
+export { StorageConflict } from './storageConflict'
 
 export const STORAGE_KEY = 'riffrechnung-state-v4'
 export const LEGACY_STORAGE_KEY = 'gitarrenrechnungen-state-v2'
@@ -56,7 +55,7 @@ const browserLock: WriteLock = (action) => {
 interface SessionOptions { mode?: 'real' | 'demo'; storage?: Storage; lock?: WriteLock }
 
 // All application writes go through one queue and one origin-wide Web Lock.
-// Demo never accesses Storage, IndexedDB, permission APIs or directory handles.
+// Demo never accesses real Storage or the origin-wide write lock.
 export class StorageSession {
   readonly mode: 'real' | 'demo'
   readonly initial: StateLoadResult
@@ -68,7 +67,6 @@ export class StorageSession {
   private current: AppState
   private envelope: StorageEnvelope | null = null
   private recovery: StorageRecoveryState | null = null
-  private binding: DirectoryBinding | null = null
 
   constructor(options: SessionOptions = {}) {
     this.mode = options.mode ?? 'real'
@@ -93,7 +91,6 @@ export class StorageSession {
 
   get state(): AppState { return structuredClone(this.current) }
   get revision(): StorageEnvelope | null { return this.envelope ? structuredClone(this.envelope) : null }
-  get directory(): DirectoryBinding | null { return this.binding }
   async idle(): Promise<void> { await this.queue }
 
   private run<T>(action: () => Promise<T>): Promise<T> {
@@ -121,7 +118,7 @@ export class StorageSession {
     const previous = this.envelope ?? localRecovery?.envelope ?? null
     const source = preview?.envelope ?? null
     // An empty/recovery profile can adopt a known source identity. A populated
-    // valid profile keeps its identity; foreign backups then require a new folder.
+    // valid profile keeps its identity when restoring a foreign backup.
     const base = previous ?? source
     const maxRevision = Math.max(previous?.revision ?? 0, source?.revision ?? 0)
     if (!Number.isSafeInteger(maxRevision + 1)) throw new Error('Revisionszähler ausgeschöpft. Der Bestand bleibt unverändert.')
@@ -213,29 +210,6 @@ export class StorageSession {
     })
   }
 
-  connect(binding: DirectoryBinding): Promise<DirectoryInspection> {
-    return this.run(async () => {
-      if (this.mode === 'demo') throw new Error('Die Demo verwendet keine Backup-Ordner.')
-      this.checkCurrent()
-      if (!this.envelope) throw new Error('Zuerst den lokalen Bestand speichern oder eine vorhandene Sicherung wiederherstellen.')
-      const result = await checkDirectory(binding, this.envelope)
-      this.binding = binding
-      return result
-    })
-  }
-
-  disconnect(): void { this.binding = null }
-
-  backup(): Promise<void> {
-    return this.run(async () => {
-      if (this.mode === 'demo') throw new Error('Die Demo verwendet keine Backup-Ordner.')
-      this.checkCurrent()
-      if (!this.envelope || this.recovery) throw new Error('Datei-Backup setzt erfolgreiches lokales Speichern voraus.')
-      if (!this.binding) throw new Error('Kein geprüfter Backup-Ordner verbunden.')
-      await appendBackup(this.binding, this.envelope, this.checkCurrent)
-    })
-  }
-
   previousRaw(): string | null {
     if (this.mode === 'demo') return null
     return this.storage?.getItem(PREVIOUS_STORAGE_KEY) ?? null
@@ -271,5 +245,3 @@ export function recordBackupExport(at = new Date()): string {
   localStorage.setItem(LAST_BACKUP_AT_KEY, value)
   return value
 }
-
-export { inspectBackupDirectory as inspectDirectory }

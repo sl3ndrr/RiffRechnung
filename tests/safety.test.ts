@@ -1,7 +1,7 @@
 import { legacyFixture } from './documentFixtures'
 import { validateLegacyV3Structure } from '../src/lib/legacyValidation'
 import { captureLegacyDocuments } from '../src/lib/importState'
-import { seedState, sharedLock, fakeDirectory } from './storageHarness'
+import { seedState, sharedLock } from './storageHarness'
 import { ValidationError } from '../src/lib/result'
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -10,7 +10,7 @@ import { emptyState } from '../src/lib/defaults'
 import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { assertOriginalsPreserved, assertReplacementAllowed } from '../src/lib/safety'
 import { applyStandardRateInput, parseStandardRate, updateSettings } from '../src/lib/settings'
-import { inspectBackupDirectory, StorageSession, loadState, parseBackup, serializeBackup, STORAGE_KEY, validateBackupState } from '../src/lib/storage'
+import { StorageSession, loadState, parseBackup, serializeBackup, STORAGE_KEY, validateBackupState } from '../src/lib/storage'
 import { createLessonItem, germanIbanError, invoiceTotal, nextInvoiceAllocation } from '../src/lib/utils'
 
 const at = '2026-08-20T12:00:00.000Z'
@@ -187,47 +187,13 @@ test('P01: reservierte Nummern bleiben nach abgewiesenem Austausch und Reload be
   assert.doesNotThrow(() => assertReplacementAllowed(emptyState()))
 }))
 
-test('P03 ersetzt P01: leerer Browser liest vorhandene/beschädigte/neue Sicherungen und schreibt nicht', async () => {
-  for (const raw of [serializeBackup(families()), '{beschädigt', JSON.stringify({ schemaVersion: 99 })]) {
-    const directory = fakeDirectory({ 'riffrechnung-backup.json': raw })
-    const inspected = await inspectBackupDirectory(directory.handle)
-    assert.equal(inspected.entries[0].raw, raw)
-    assert.equal(directory.controls.writes, 0)
-    assert.equal(directory.files.get('riffrechnung-backup.json'), raw)
-  }
-  assert.equal((await inspectBackupDirectory(fakeDirectory().handle)).entries.length, 0)
-  const denied = fakeDirectory({ 'backup.json': serializeBackup(emptyState()) })
-  denied.controls.fail = 'stale'
-  await assert.rejects(inspectBackupDirectory(denied.handle), /veraltet/)
-})
-
-test('P03 ersetzt P01: veralteter Tab darf auch manuelles und automatisches Backup nicht schreiben', async () => withStorage(async () => {
-  seedState(families(1))
-  const lock = sharedLock()
-  const current = new StorageSession({ lock })
-  const stale = new StorageSession({ lock })
-  const directory = fakeDirectory()
-  const binding = { handle: directory.handle, datasetId: current.revision!.datasetId, legacyFiles: [] }
-  await current.connect(binding)
-  await stale.connect(binding)
-  await current.backup()
-  await current.change((state) => ({ ...state, settings: { ...state.settings, accountHolder: 'Neu' } }))
-  const before = [...directory.files]
-  await Promise.all([assert.rejects(stale.backup(), /anderen Tab/), assert.rejects(stale.backup(), /anderen Tab/)])
-  assert.deepEqual([...directory.files], before)
-}))
-
-test('P03 ersetzt P01: Demo erhält jede begonnene Einstellung, Nutzerdaten und Ordnerkonfiguration', async () => withStorage(async () => {
+test('P04: Demo erhält jede begonnene Einstellung und den realen Datenbestand', async () => withStorage(async () => {
   for (const initial of [emptyState(), families(), { ...emptyState(), settings: { ...emptyState().settings, issuer: { ...emptyState().settings.issuer, name: 'Begonnen' } } }]) {
     seedState(initial)
     const before = localStorage.getItem(STORAGE_KEY)
-    const directory = fakeDirectory({ 'bestehend.json': serializeBackup(initial) })
     const demo = new StorageSession({ mode: 'demo', storage: { getItem: () => { throw new Error('Demo greift auf realen Speicher zu') } } as unknown as Storage, lock: async () => { throw new Error('Demo greift auf reale Sperre zu') } })
     await demo.change((state) => ({ ...state, settings: { ...state.settings, issuer: { ...state.settings.issuer, name: 'Demo verändert' } } }))
-    await assert.rejects(demo.connect({ handle: directory.handle, datasetId: 'demo', legacyFiles: [] }), /keine Backup-Ordner/)
-    await assert.rejects(demo.backup(), /keine Backup-Ordner/)
     assert.equal(localStorage.getItem(STORAGE_KEY), before)
-    assert.equal(directory.controls.writes, 0)
     assert.deepEqual(new StorageSession({ lock: sharedLock() }).state, initial)
   }
 }))
