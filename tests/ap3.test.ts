@@ -43,7 +43,7 @@ test('AP3: fünf mehrteilige Altnamen bleiben nach 7→9, Export und Import unve
   const before = JSON.stringify(legacy)
   const preview = requireSuccess(inspectImport(before))
   assert.equal(preview.report?.fromSchema, 7)
-  assert.equal(preview.report?.toSchema, 11)
+  assert.equal(preview.report?.toSchema, 12)
   assert.deepEqual(preview.state.guardians.map(({ name }) => name), names)
   assert.deepEqual(requireSuccess(inspectImport(JSON.stringify(preview.state))).state.guardians, preview.state.guardians)
   assert.equal(preview.rawData, before)
@@ -76,3 +76,4 @@ test('AP3: Altentwurf ohne damals gesicherte Druckdaten übernimmt keine heutige
   assert.doesNotMatch(output, /Heutiger Kontakt|Heutiger Aussteller|Heutiger Rechtstext/)
   assert.doesNotMatch(output, /<dt>Straße:<\/dt>|<dt>PLZ\/Ort:<\/dt>|<p class="invoice-senderline"><\/p>/)
 })
+

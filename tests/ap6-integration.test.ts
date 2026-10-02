@@ -33,13 +33,19 @@ test('AP6: eingefrorene Schema-7-Originale und Verwaltungsdaten bleiben bei 7→
   for (const original of [fixture.issuedCorrected, fixture.oldestSeparate]) {
     const { preview } = migrated(original)
     assert.equal(preview.report?.fromSchema, 7)
-    assert.equal(preview.report?.toSchema, 11)
+    assert.equal(preview.report?.toSchema, 12)
     assert.ok(preview.report?.changes.some((entry) => entry.path === 'schemaVersion'))
-    assert.equal(preview.state.schemaVersion, 11)
-    const restoredV7Shape = structuredClone(preview.state) as AppState
-    restoredV7Shape.schemaVersion = 7 as never
-    assert.deepEqual(restoredV7Shape, normalizeLegacyRecipients(cleanLegacyContacts(stripLegacyTaxFields(original).value)))
-    for (const key of ['guardians', 'students', 'invoices', 'documentVersions', 'invoiceAdministration', 'payments', 'counters', 'voidedInvoiceNumbers', 'audit', 'historicalSnapshotCorrections'] as const) {
+    assert.equal(preview.state.schemaVersion, 12)
+    const expected = normalizeLegacyRecipients(cleanLegacyContacts(stripLegacyTaxFields(original).value))
+    const { schemaVersion: _oldSchema, counters: oldCounters, settings: oldSettings, ...oldContent } = expected
+    const { schemaVersion: _newSchema, counters: newCounters, settings: newSettings, ...newContent } = preview.state
+    void _oldSchema; void _newSchema;
+    assert.deepEqual(newContent, oldContent)
+    const retainedSettings = { ...oldSettings }
+    Reflect.deleteProperty(retainedSettings, 'numberPattern'); Reflect.deleteProperty(retainedSettings, 'resetNumberAnnually')
+    assert.deepEqual(newSettings, retainedSettings)
+    for (const [key, count] of Object.entries(oldCounters)) assert.ok(newCounters[key] >= count)
+    for (const key of ['guardians', 'students', 'invoices', 'documentVersions', 'invoiceAdministration', 'payments', 'voidedInvoiceNumbers', 'audit', 'historicalSnapshotCorrections'] as const) {
       assert.deepEqual(preview.state[key], normalizeLegacyRecipients(cleanLegacyContacts(stripLegacyTaxFields(original).value))[key], key)
     }
     assert.equal(Reflect.get(preview.state, 'duoGroups'), undefined)
@@ -70,7 +76,7 @@ test('AP6: Vorschau, bereinigtes Archiv, Import und Reload erhalten beide Goldbe
     const session = new StorageSession({ storage, lock: sharedLock() })
     const { raw, preview } = migrated(original)
     assert.equal(storage.length, 0, 'Vorschau darf noch nicht schreiben')
-    assert.match(serializeMigrationReport(preview), /riffrechnung-to-v11/)
+    assert.match(serializeMigrationReport(preview), /riffrechnung-to-v12/)
     const next = await session.restore(raw)
     assert.deepEqual(next, preview.state)
     const archive = JSON.parse(session.exportRecoveryArchive()) as { recoveries: Array<{ raw: string }> }
@@ -133,3 +139,4 @@ test('AP6: Datenschutzsperre gilt nach Migration und Import; historische separat
     assert.deepEqual(loadState(storage).status, 'ready')
   }
 })
+

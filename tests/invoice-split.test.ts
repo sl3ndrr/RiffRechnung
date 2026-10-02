@@ -50,7 +50,7 @@ test('AP1: gemeinsame Rechnung für eine oder mehrere berechtigte Personen bleib
     assert.equal(state.invoices.length, 1)
     assert.equal(activeInvoices(state).length, 1)
     assert.equal(state.documentVersions.length, 1)
-    assert.equal(state.invoices[0].number, '2026-a-0001')
+    assert.equal(state.invoices[0].number, '2026-0001-a')
     assert.equal(state.documentVersions[0].amounts.totalCents, 758)
     assert.deepEqual(state.invoices[0].snapshot?.recipients.map((guardian) => guardian.id), guardianIds)
     reload(state)
@@ -119,3 +119,4 @@ test('AP1: Kopie eines historischen aufgeteilten Belegs ist gesperrt', () => {
   assert.equal(result.ok, false)
   if (!result.ok) assert.match(result.errors[0].message, /Teilbetragspositionen/)
 })
+

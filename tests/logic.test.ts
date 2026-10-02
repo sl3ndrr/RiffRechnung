@@ -1,3 +1,4 @@
+import './p06-invoice-numbering.test'
 import './p05-contacts-recipients.test'
 import './money-calendar.test'
 import './duo.test'
@@ -33,7 +34,7 @@ import { InvoicePrint } from '../src/components/InvoicePrint'
 import { createDemoState, defaultSettings, emptyState } from '../src/lib/defaults'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, runInvoiceMenuAction } from '../src/lib/invoiceMenu'
 import { loadLastBackupAt, StorageSession, loadState, parseBackup, recordBackupExport, serializeBackup } from '../src/lib/storage'
-import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, ensureStudentCodePattern, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoiceFinalizationErrors, invoicePdfTitle, invoiceTotal, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
+import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoiceFinalizationErrors, invoicePdfTitle, invoiceTotal, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
 import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { assertOriginalsPreserved } from '../src/lib/safety'
 import { applyStandardRateInput, updateSettings } from '../src/lib/settings'
@@ -117,7 +118,7 @@ function validImportState() {
     items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-a')],
   }))
   const current = captureLegacyDocuments(legacyFixture(state))
-  current.schemaVersion = 11
+  current.schemaVersion = 12
   current.settings = {
     ...current.settings,
     issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', email: 'studio@example.de', phone: '' },
@@ -133,11 +134,9 @@ function corruptBackup(mutate: (data: Record<string, unknown>) => void): string 
   return JSON.stringify(backup)
 }
 
-test('konfigurierbare Rechnungsnummern werden korrekt formatiert', () => {
-  assert.equal(formatInvoiceNumber(defaultSettings, 23, 2026, 'a'), '2026-a-0023')
-  assert.equal(formatInvoiceNumber({ ...defaultSettings, numberPattern: 'RG-{YY}-{NNN}' }, 7, 2026, 'b'), 'RG-26-b-007')
-  assert.equal(formatInvoiceNumber({ ...defaultSettings, numberPattern: 'RG-{YYYY}' }, 7, 2026, 'c'), 'RG-2026-c-0007')
-  assert.equal(ensureStudentCodePattern('{YYYY}-{NNNN}'), '{YYYY}-{K}-{NNNN}')
+test('feste Rechnungsnummern haben Jahr, mindestens vierstellige Folge und nachgestellte Kennung', () => {
+  assert.equal(formatInvoiceNumber(23, 2026, 'a'), '2026-0023-a')
+  assert.equal(formatInvoiceNumber(10000, 2026, 'a+b'), '2026-10000-a+b')
   assert.equal(studentCodeForIndex(0), 'a')
   assert.equal(studentCodeForIndex(26), 'aa')
 })
@@ -147,10 +146,10 @@ test('jedes Kind erhält einen eigenen fortlaufenden Nummernkreis', () => {
   state.students = [student('student-a', 'Anna', 'a'), student('student-b', 'Ben', 'b'), student('student-ab', 'Zora', 'ab')]
   state.invoices = [invoice()]
   state.counters = { '2026:a': 2, '2026:ab': 4 }
-  assert.deepEqual(nextInvoiceAllocation(state, '2026-08-01', ['student-a']), { number: '2026-a-0002', sequence: 2, counterKey: '2026:a' })
-  assert.deepEqual(nextInvoiceAllocation(state, '2026-08-01', ['student-b']), { number: '2026-b-0001', sequence: 1, counterKey: '2026:b' })
-  assert.deepEqual(nextInvoiceAllocation(state, '2026-08-01', ['student-b', 'student-a']), { number: '2026-a+b-0004', sequence: 4, counterKey: '2026:a+b' })
-  assert.deepEqual(nextInvoiceAllocation(state, '2026-08-01', ['student-ab']), { number: '2026-ab-0004', sequence: 4, counterKey: '2026:ab' })
+  assert.deepEqual(nextInvoiceAllocation(state, '2026-08-01', ['student-a']), { number: '2026-0002-a', sequence: 2, counterKey: '2026:a' })
+  assert.deepEqual(nextInvoiceAllocation(state, '2026-08-01', ['student-b']), { number: '2026-0001-b', sequence: 1, counterKey: '2026:b' })
+  assert.deepEqual(nextInvoiceAllocation(state, '2026-08-01', ['student-b', 'student-a']), { number: '2026-0001-a+b', sequence: 1, counterKey: '2026:a+b' })
+  assert.deepEqual(nextInvoiceAllocation(state, '2026-08-01', ['student-ab']), { number: '2026-0004-ab', sequence: 4, counterKey: '2026:ab' })
 })
 
 test('gelöschte finalisierte Rechnungsnummern bleiben reserviert', () => {
@@ -166,7 +165,7 @@ test('gelöschte finalisierte Rechnungsnummern bleiben reserviert', () => {
     amount: 120,
     recipient: 'Testfamilie',
   }]
-  assert.equal(nextInvoiceAllocation(state, '2026-08-21', ['student-a']).number, '2026-a-0002')
+  assert.equal(nextInvoiceAllocation(state, '2026-08-21', ['student-a']).number, '2026-0002-a')
 })
 
 test('historisch verbrauchte Nummern bleiben reserviert', () => {
@@ -188,7 +187,7 @@ test('historisch verbrauchte Nummern bleiben reserviert', () => {
       legalText: defaultSettings.defaultLegalText,
     },
   })]
-  assert.equal(nextInvoiceAllocation(state, '2026-08-21', ['student-a']).number, '2026-a-0002')
+  assert.equal(nextInvoiceAllocation(state, '2026-08-21', ['student-a']).number, '2026-0002-a')
 
 })
 
@@ -485,7 +484,7 @@ test('vollständiges Backup lässt sich wiederherstellen', () => {
     },
   })
   const restored = parseBackup(serializeBackup(state))
-  assert.equal(restored.schemaVersion, 11)
+  assert.equal(restored.schemaVersion, 12)
   assert.equal(restored.settings.issuer.name, 'Test Unterricht')
   assert.equal(restored.students[0]?.billingCode, 'a')
   assert.equal(restored.voidedInvoiceNumbers[0]?.number, '2026-a-0004')
@@ -575,7 +574,7 @@ test('ältere Backups erhalten stabile Kinderkennzeichen in Speicherreihenfolge'
   const restored = parseBackup(JSON.stringify(legacy))
   assert.deepEqual(restored.students.map((item) => item.billingCode), ['a', 'b'])
   assert.equal(restored.nextStudentCodeIndex, 2)
-  assert.equal(restored.settings.numberPattern, '{YYYY}-{K}-{NNNN}')
+  assert.equal(Reflect.has(restored.settings, 'numberPattern'), false)
 })
 
 test('ältere Kombinationszähler werden auf segmentierte Schlüssel migriert', () => {
@@ -667,7 +666,7 @@ test('Entwürfe lassen sich aus der Detailansicht nur mit vollständigen aktuell
   const original = structuredClone(state)
   assert.throws(() => changeInvoiceStatus({ ...state, guardians: [] }, draft.id, 'sent'), (error: unknown) => error instanceof ValidationError && error.path === 'students[0].guardianIds[0]')
   assert.deepEqual(state, original)
-  assert.equal(changeInvoiceStatus(state, draft.id, 'sent').invoices[0].number, '2026-a-0001')
+  assert.equal(changeInvoiceStatus(state, draft.id, 'sent').invoices[0].number, '2026-0001-a')
 
 })
 
@@ -712,7 +711,7 @@ test('Editor-Finalisierung wird vor Nummern- und Snapshot-Vergabe zentral validi
   })
   assert.deepEqual(state, original)
   const finalized = saveInvoiceDraft(state, validDraft, true)
-  assert.equal(finalized.invoices.at(-1)?.number, '2026-a-0002')
+  assert.equal(finalized.invoices.at(-1)?.number, '2026-0002-a')
   assert.equal(finalized.invoices.at(-1)?.snapshot?.recipients[0].id, 'guardian-a')
 
 })
@@ -804,3 +803,4 @@ test('Zeitpunkt des letzten Backup-Exports wird persistiert', () => {
 test('nicht unterstütztes Backup wird abgelehnt', () => {
   assert.throws(() => parseBackup('{"schemaVersion":99}'), /unterstütztes Backup-Format/)
 })
+

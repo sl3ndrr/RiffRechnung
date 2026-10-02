@@ -52,7 +52,10 @@ test('AP6 Browser/PDF: eingefrorene Schema-7-Belege bewahren Nichtsteuerdaten na
     }, JSON.stringify(original))
     await page.reload()
     const after = await stateOf(page)
-    expect({ ...after, schemaVersion: 7 }).toEqual(normalizeLegacyRecipients(cleanLegacyContacts(stripLegacyTaxFields(original).value)))
+    const expected = normalizeLegacyRecipients(cleanLegacyContacts(stripLegacyTaxFields(original).value))
+    const retainedSettings = { ...expected.settings }; Reflect.deleteProperty(retainedSettings, 'numberPattern'); Reflect.deleteProperty(retainedSettings, 'resetNumberAnnually')
+    expect({ ...after, schemaVersion: 7, counters: expected.counters, settings: retainedSettings }).toEqual({ ...expected, settings: retainedSettings })
+    for (const [key, count] of Object.entries(expected.counters)) expect(after.counters[key]).toBeGreaterThanOrEqual(count)
     const separate = after.invoices.find((entry) => entry.recipientStrategy === 'separate')!
     const printed = await pdfText(page, after, separate.id)
     expect(printed.text).toContain(separate.number!)
@@ -100,7 +103,7 @@ test('P04 Browser/PDF: finalisieren, Personen löschen, Original drucken, korrig
   await invoices(page)
   await page.getByRole('button', { name: 'Entwurf', exact: true }).click()
   await page.getByRole('button', { name: 'Finalisieren', exact: true }).click()
-  await expect(page.locator('.invoice-detail h2')).toHaveText('2026-a-0001')
+  await expect(page.locator('.invoice-detail h2')).toHaveText('2026-0001-a')
   const originalState = await stateOf(page)
   const original = originalState.invoices[0]
   const first = await pdfText(page, originalState, original.id)
@@ -155,7 +158,7 @@ test('P04 Browser/PDF: finalisieren, Personen löschen, Original drucken, korrig
 test('P04 Browser: Zahlungen manuell zuordnen, archivieren und vollständiges Backup nach Import neu laden', async ({ page, context }) => {
   await seed(page, saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt))
   await invoices(page)
-  await page.getByRole('button', { name: '2026-a-0001', exact: true }).click()
+  await page.getByRole('button', { name: '2026-0001-a', exact: true }).click()
   await page.getByLabel('Tatsächlicher Zahlungstag', { exact: true }).fill('2026-09-10')
   await page.getByRole('button', { name: 'Vollzahlung erfassen', exact: true }).click()
   await expect.poll(async () => (await stateOf(page)).payments.length).toBe(1)
@@ -311,10 +314,10 @@ test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unverändert
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
   await page.reload()
   const state = await stateOf(page)
-  expect(state.schemaVersion).toBe(11)
+  expect(state.schemaVersion).toBe(12)
   expect(state.documentVersions[0].provenance).toBe('oldest-available')
   await invoices(page)
-  await page.getByRole('button', { name: '2026-a-0001', exact: true }).click()
+  await page.getByRole('button', { name: '2026-0001-a', exact: true }).click()
   await expect(page.getByText('Historische Abweichungen', { exact: true })).toBeVisible()
   await page.getByText('Gesicherte Ausgabeangaben', { exact: true }).click()
   await expect(page.locator('.document-history dd').filter({ hasText: /^Leer$/ })).toHaveCount(4)
@@ -347,7 +350,7 @@ test('P05 Browser: Altentwurf prüfen; Editor, Liste, EPC und PDF auf Cent', asy
   await expect(editor).not.toBeVisible()
   await page.reload()
   await invoices(page)
-  await page.getByRole('button', { name: '2026-a-0001', exact: true }).click()
+  await page.getByRole('button', { name: '2026-0001-a', exact: true }).click()
   await expect(page.locator('.invoice-detail__amount')).toContainText('7,58')
   const saved = await stateOf(page)
   const epc = await page.evaluate(async (state) => {
@@ -469,3 +472,4 @@ test('AP5 Browser/PDF: Selbstzahlerin und Minderjähriger mit zwei Empfängern v
     expect(await stateOf(imported)).toEqual(before)
   } finally { await destination.close() }
 })
+

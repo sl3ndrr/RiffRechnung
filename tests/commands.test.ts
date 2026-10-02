@@ -361,7 +361,7 @@ test('P03: Import prüft den aktuellen Zielzustand erneut und erhält Nummernres
   const preview = requireSuccess(inspectImport(serializeBackup(saved)))
   const session = new StorageSession({ lock: sharedLock() })
   const imported = await session.restore(preview.rawData)
-  assert.equal(nextInvoiceAllocation(imported, '2026-08-15', ['s0']).number, '2026-a-0003')
+  assert.equal(nextInvoiceAllocation(imported, '2026-08-15', ['s0']).number, '2026-0003-a')
   await assert.rejects(session.restore(serializeBackup(emptyState())), /Finalisierte/)
   preview.state = emptyState()
   assert.deepEqual(await session.restore(preview.rawData), saved, 'Vorschau ersetzt nicht die erneut geprüften Eingangsbytes')
@@ -377,3 +377,4 @@ test('P02: ältere, beschädigte und unbekannte neuere lokale Daten können auch
     assert.equal(entries.get(STORAGE_KEY), raw)
   }
 }))
+

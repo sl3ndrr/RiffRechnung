@@ -92,9 +92,9 @@ test('P01: eindeutige Einzel- und Geschwisterrechnungen bestehen Entwurf, Finali
   assert.equal(invoiceTotal(state.invoices[0]), 30)
   assert.deepEqual(state.invoices[0].snapshot?.students.map((student) => student.id), ['s0'])
   state = roundTrip(state)
-  assert.equal(state.invoices[0].number, '2026-a-0001')
+  assert.equal(state.invoices[0].number, '2026-0001-a')
   const next = saveInvoiceDraft(state, draftFor(state, ['s1']), true, at)
-  assert.equal(next.invoices[1].number, '2026-b-0001')
+  assert.equal(next.invoices[1].number, '2026-0001-b')
   assert.equal(next.invoices.reduce((sum, invoice) => sum + invoiceTotal(invoice), 0), 60)
   roundTrip(next)
 
@@ -103,7 +103,7 @@ test('P01: eindeutige Einzel- und Geschwisterrechnungen bestehen Entwurf, Finali
   const joint = roundTrip(saveInvoiceDraft(siblings, draftFor(siblings, ['s0', 's1']), true, at))
   assert.equal(joint.invoices.length, 1)
   assert.equal(invoiceTotal(joint.invoices[0]), 60)
-  assert.equal(joint.invoices[0].number, '2026-a+b-0001')
+  assert.equal(joint.invoices[0].number, '2026-0001-a+b')
   assert.deepEqual(joint.invoices[0].snapshot?.recipients.map((guardian) => guardian.id), ['g0', 'g1'])
 }))
 
@@ -183,7 +183,7 @@ test('P01: reservierte Nummern bleiben nach abgewiesenem Austausch und Reload be
   const state = families(1)
   state.voidedInvoiceNumbers = [{ number: '2026-a-0001', sequence: 1, year: 2026, invoiceDate: '2026-08-01', deletedAt: at, reason: 'reopened', amount: 30, recipient: 'Historische Testfamilie' }]
   assert.throws(() => assertReplacementAllowed(state), /reservierten Nummern/)
-  assert.equal(nextInvoiceAllocation(roundTrip(state), '2026-08-01', ['s0']).number, '2026-a-0002')
+  assert.equal(nextInvoiceAllocation(roundTrip(state), '2026-08-01', ['s0']).number, '2026-0002-a')
   assert.doesNotThrow(() => assertReplacementAllowed(emptyState()))
 }))
 
@@ -216,3 +216,4 @@ test('P01: nur deutsche Konten für Änderungen und Finalisierung; fremde histor
   const paid = roundTrip(changeInvoiceStatus(historical, historical.invoices[0].id, 'paid', at, '2026-09-05'))
   assert.deepEqual(paid.invoices[0].snapshot, historical.invoices[0].snapshot)
 }))
+
