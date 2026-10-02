@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import type { AppState } from '../src/types'
+import type { LegacyState } from '../src/lib/importState'
 import { documentAt, documentDraft, documentFamily } from './documentFixtures'
 import { saveInvoiceDraft, changeInvoiceStatus } from '../src/lib/invoiceActions'
 import { studentCodeIndex } from '../src/lib/utils'
@@ -12,9 +13,8 @@ export const households = [
 export function duoFamily(): AppState {
   const state = documentFamily()
   households.forEach((household, index) => {
-    Object.assign(state.students[index], { name: household.student, billingCode: household.code, note: household.note, guardianIds: [state.guardians[index].id] })
-    const [firstName, lastName] = household.guardian.split(' ')
-    Object.assign(state.guardians[index], { firstName, lastName, name: household.guardian, email: `${household.code}@example.org`, paymentNote: household.note })
+    Object.assign(state.students[index], { name: household.student, billingCode: household.code,  guardianIds: [state.guardians[index].id] })
+    Object.assign(state.guardians[index], { name: household.guardian, email: `${household.code}@example.org` })
     state.guardians[index].address.street = `${household.code.toUpperCase()}-Weg ${index + 1}`
   })
   state.nextStudentCodeIndex = Math.max(...households.map((household) => studentCodeIndex(household.code))) + 1
@@ -26,7 +26,7 @@ export function duoDrafts(): AppState {
   let state = duoFamily()
   households.forEach((household, index) => {
     const studentId = index === 0 ? 's-a' : 's-b'
-    state = saveInvoiceDraft(state, { ...documentDraft(), guardianIds: [index === 0 ? 'g-a' : 'g-b'], studentIds: [studentId],
+    state = saveInvoiceDraft(state, { ...documentDraft(), recipients: ([index === 0 ? 'g-a' : 'g-b']).map((id) => ({ type: 'guardian' as const, id })), studentIds: [studentId],
       introText: household.intro, freeText: household.free, legalText: household.legal,
       items: [{ ...duoLesson, id: `duo-item-${index}`, studentId, lessonType: 'duo', unitPrice: index === 0 ? 10.10 : 20.02 }],
     }, false, documentAt, () => `duo-invoice-${index}`)
@@ -40,7 +40,7 @@ export function duoIssued(): AppState {
 }
 /** Frozen output of the unchanged P02 group commands, never rebuilt by new code. */
 const legacy = JSON.parse(readFileSync('tests/fixtures/duo-schema9.json', 'utf8')) as {
-  sourceCommit: string; drafts: AppState; issued: AppState
+  sourceCommit: string; drafts: Omit<AppState, 'invoices'> & { invoices: LegacyState['invoices'] }; issued: Omit<AppState, 'invoices'> & { invoices: LegacyState['invoices'] }
 }
 export const legacyDuoSource = legacy.sourceCommit
 export function legacyDuoState(schemaVersion: 8 | 9 = 9, issued = false) {

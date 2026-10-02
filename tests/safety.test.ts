@@ -20,8 +20,8 @@ function families(count = 2): AppState {
   state.settings.accountHolder = 'Synthetisches Teststudio'
   state.settings.iban = 'DE02120300000000202051'
   for (let index = 0; index < count; index++) {
-    state.guardians.push({ id: `g${index}`, name: `Testfamilie ${index}`, email: `test${index}@example.org`, phone: '', address: { street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' }, iban: '', paymentNote: '', createdAt: at, updatedAt: at })
-    state.students.push({ id: `s${index}`, name: `Testkind ${index}`, billingCode: String.fromCharCode(97 + index), guardianIds: [`g${index}`], note: '', active: true, createdAt: at, updatedAt: at })
+    state.guardians.push({ id: `g${index}`, name: `Testfamilie ${index}`, email: `test${index}@example.org`, phone: '', address: { street: 'Testweg 1', postalCode: '12345', city: 'Teststadt' },   createdAt: at, updatedAt: at })
+    state.students.push({ id: `s${index}`, name: `Testkind ${index}`, billingCode: String.fromCharCode(97 + index), guardianIds: [`g${index}`],  active: true, createdAt: at, updatedAt: at })
   }
   state.nextStudentCodeIndex = count
   return state
@@ -30,7 +30,7 @@ function families(count = 2): AppState {
 function draftFor(state: AppState, ids = ['s0']): InvoiceDraft {
   return {
     invoiceDate: '2026-08-01', dueDate: '2026-08-15', period: 'August 2026',
-    guardianIds: [...new Set(ids.flatMap((id) => state.students.find((student) => student.id === id)!.guardianIds))],
+    recipients: ([...new Set(ids.flatMap((id) => state.students.find((student) => student.id === id)!.guardianIds))]).map((id) => ({ type: 'guardian' as const, id })),
     studentIds: ids, recipientStrategy: 'joint',
     items: ids.map((id) => createLessonItem(id, '2026-08-05', state.settings, `item-${id}`)),
     introText: '', freeText: '', legalText: '',
@@ -104,7 +104,7 @@ test('P01: eindeutige Einzel- und Geschwisterrechnungen bestehen Entwurf, Finali
   assert.equal(joint.invoices.length, 1)
   assert.equal(invoiceTotal(joint.invoices[0]), 60)
   assert.equal(joint.invoices[0].number, '2026-a+b-0001')
-  assert.deepEqual(joint.invoices[0].snapshot?.guardians.map((guardian) => guardian.id), ['g0', 'g1'])
+  assert.deepEqual(joint.invoices[0].snapshot?.recipients.map((guardian) => guardian.id), ['g0', 'g1'])
 }))
 
 test('P01: fehlende Referenzen und doppelte Positions-IDs werden vor Übernahme abgewiesen', () => {
@@ -145,7 +145,7 @@ test('P01: historische Belege ohne Stammdaten bleiben samt Betrag, Snapshot und 
   const original = structuredClone(state)
   const invoice = state.invoices[0]
   assert.throws(() => changeInvoiceStatus(state, invoice.id, 'draft'), /Korrekturentwurf/)
-  for (const patch of [{ guardianIds: [] }, { items: [] }, { freeText: 'Geändert' }, { invoiceDate: '2026-09-01' }]) {
+  for (const patch of [{ recipients: ([]).map((id) => ({ type: 'guardian' as const, id })) }, { items: [] }, { freeText: 'Geändert' }, { invoiceDate: '2026-09-01' }]) {
     assert.throws(() => saveInvoiceDraft(state, { ...invoice, ...patch }, false), /Finalisierte Belege/)
     const altered = { ...state, invoices: [{ ...invoice, ...patch }] }
     assert.throws(() => assertOriginalsPreserved(state, altered), /Finalisierte Belege/)
@@ -167,9 +167,9 @@ test('P01: verdeckte Empfängerabweichungen und Verlust ungesicherter historisch
   const state = families()
   const finalized = saveInvoiceDraft(state, draftFor(state), true, at)
   const changed = structuredClone(finalized)
-  changed.invoices[0].guardianIds = ['g1']
+  changed.invoices[0].recipients = (['g1']).map((id) => ({ type: 'guardian' as const, id }))
   assert.throws(() => assertOriginalsPreserved(finalized, changed), /Finalisierte Belege/)
-  changed.invoices[0].snapshot!.guardians = [{ ...changed.guardians[1].address, id: 'g1', name: 'Andere Familie', email: '' }]
+  changed.invoices[0].snapshot!.recipients = [{ ...changed.guardians[1].address, type: 'guardian', id: 'g1', name: 'Andere Familie', email: '' }]
   assert.throws(() => assertOriginalsPreserved(finalized, changed), /Finalisierte Belege/)
   const historicalSource = legacyFixture(finalized)
   delete historicalSource.invoices[0].snapshot

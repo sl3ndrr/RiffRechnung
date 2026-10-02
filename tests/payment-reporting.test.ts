@@ -1,3 +1,4 @@
+import { legacyVersionedFixture } from './documentFixtures'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import type { AppState, InvoiceDraft } from '../src/types'
@@ -19,14 +20,14 @@ function readyState(invoiceDate = '2025-12-20'): AppState {
     accountHolder: 'Synthetisches Studio',
     iban: 'DE02120300000000202051',
   }
-  state.guardians = [{ id: 'guardian-a', name: 'Familie Beispiel', email: 'familie@example.de', phone: '', address: { street: 'Testweg 2', postalCode: '12345', city: 'Teststadt' }, iban: '', paymentNote: '', createdAt: issuedAt, updatedAt: issuedAt }]
-  state.students = [{ id: 'student-a', name: 'Anna Beispiel', billingCode: 'a', guardianIds: ['guardian-a'], note: '', active: true, createdAt: issuedAt, updatedAt: issuedAt }]
+  state.guardians = [{ id: 'guardian-a', name: 'Familie Beispiel', email: 'familie@example.de', phone: '', address: { street: 'Testweg 2', postalCode: '12345', city: 'Teststadt' },   createdAt: issuedAt, updatedAt: issuedAt }]
+  state.students = [{ id: 'student-a', name: 'Anna Beispiel', billingCode: 'a', guardianIds: ['guardian-a'],  active: true, createdAt: issuedAt, updatedAt: issuedAt }]
   state.nextStudentCodeIndex = 1
   const draft: InvoiceDraft = {
     invoiceDate,
     dueDate: '2026-01-03',
     period: 'Dezember 2025',
-    guardianIds: ['guardian-a'],
+    recipients: (['guardian-a']).map((id) => ({ type: 'guardian' as const, id })),
     studentIds: ['student-a'],
     recipientStrategy: 'joint',
     items: [{ ...createLessonItem('student-a', invoiceDate, state.settings, 'item-payment-report'), quantity: 1, unitPrice: 30 }],
@@ -75,20 +76,20 @@ test('P08: Nachpflege, Datumskorrektur und Statusrücknahme behalten den Geldflu
 test('P08: Schema 6 übernimmt Vollzahlungen mit unbekanntem Zahlungstag einmalig und verlustfrei', () => {
   let current = readyState()
   current = changeInvoiceStatus(current, current.invoices[0].id, 'paid', '2026-01-04T08:15:00.000Z', '2026-01-03')
-  const legacy = structuredClone(current) as unknown as { schemaVersion: number; payments: Array<Record<string, unknown>> }
+  const legacy = legacyVersionedFixture(current, 6)
   legacy.schemaVersion = 6
   for (const guardian of (legacy as unknown as { guardians: Array<Record<string, unknown>> }).guardians) {
     Reflect.deleteProperty(guardian, 'firstName')
     Reflect.deleteProperty(guardian, 'lastName')
   }
-  legacy.payments.forEach((payment) => {
+  legacy.payments.forEach((payment: Record<string, unknown>) => {
     Reflect.deleteProperty(payment, 'paymentDayStatus')
     Reflect.deleteProperty(payment, 'legacyPaymentDay')
   })
 
   const preview = inspectImport(JSON.stringify(legacy))
   assert.ok(preview.ok)
-  assert.equal(preview.value.report?.migration, 'riffrechnung-to-v10')
+  assert.equal(preview.value.report?.migration, 'riffrechnung-to-v11')
   assert.equal(preview.value.report?.fromSchema, 6)
   assert.equal(preview.value.state.payments[0].paidAt, null)
   assert.equal(preview.value.state.payments[0].paymentDayStatus, 'unknown')
@@ -96,7 +97,7 @@ test('P08: Schema 6 übernimmt Vollzahlungen mit unbekanntem Zahlungstag einmali
   assert.equal(preview.value.state.payments[0].amountCents, 3000)
 
   const reloaded = parseBackup(serializeBackup(preview.value.state))
-  assert.equal(reloaded.schemaVersion, 10)
+  assert.equal(reloaded.schemaVersion, 11)
   const repeatImport = inspectImport(serializeBackup(reloaded))
   assert.ok(repeatImport.ok)
   if (repeatImport.ok) assert.equal(repeatImport.value.report, null)

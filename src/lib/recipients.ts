@@ -1,7 +1,7 @@
 import type { Guardian, Invoice, InvoiceSnapshot, RecipientRef, RecipientSnapshot, Student } from '../types'
 
-export function recipientRefs(invoice: Pick<Invoice, 'guardianIds' | 'recipients'>): RecipientRef[] {
-  return invoice.recipients ?? invoice.guardianIds.map((id) => ({ type: 'guardian', id }))
+export function recipientRefs(invoice: Pick<Invoice, 'recipients'>): RecipientRef[] {
+  return invoice.recipients
 }
 
 export function guardianIdsFor(refs: RecipientRef[]): string[] {
@@ -11,7 +11,7 @@ export function guardianIdsFor(refs: RecipientRef[]): string[] {
 export function recipientKey(ref: RecipientRef): string { return `${ref.type}:${ref.id}` }
 
 export function snapshotRecipients(snapshot: InvoiceSnapshot): RecipientSnapshot[] {
-  return snapshot.recipients ?? snapshot.guardians.map((guardian) => ({ ...guardian, type: 'guardian' }))
+  return snapshot.recipients
 }
 
 export function liveRecipient(ref: RecipientRef, guardians: Guardian[], students: Student[]): RecipientSnapshot | null {

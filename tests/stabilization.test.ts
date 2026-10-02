@@ -109,7 +109,7 @@ test('P12: Fachbefehle bleiben nach jedem Übergang speicherbar, exportierbar, i
     assert.equal(requireSuccess(inspectImport(session.export())).report, null)
   }
   await apply((s) => requireSuccess(saveSettingsState(s, { ...s.settings, privateRate: 10.10 })))
-  await apply((s) => requireSuccess(saveGuardianState(s, { ...s.guardians[0], firstName: 'Synthetische Familie', lastName: 'A', name: 'Synthetische Familie A' })))
+  await apply((s) => requireSuccess(saveGuardianState(s, { ...s.guardians[0],   name: 'Synthetische Familie A' })))
   await apply((s) => requireSuccess(saveStudentState(s, { ...s.students[0], active: false })))
   await apply((s) => requireSuccess(saveStudentState(s, { ...s.students[0], active: true })))
   await apply((s) => saveInvoiceDraft(s, documentDraft(), false, documentAt))
@@ -131,7 +131,7 @@ test('P12: Fachbefehle bleiben nach jedem Übergang speicherbar, exportierbar, i
   await apply((s) => createCorrectionDraft(s, originalId, 'Neue Zuordnung', documentAt))
   await apply((s) => requireSuccess(deleteInvoiceDraftState(s, s.invoices.at(-1)!.id)))
   await apply((s) => createCorrectionDraft(s, originalId, 'Neue Zuordnung', documentAt))
-  await apply((s) => saveInvoiceDraft(s, { ...reassignCorrectionStudent(editable(s.invoices.at(-1)!), 's-a', 's-b'), guardianIds: ['g-b'] }, true, documentAt))
+  await apply((s) => saveInvoiceDraft(s, { ...reassignCorrectionStudent(editable(s.invoices.at(-1)!), 's-a', 's-b'), recipients: (['g-b']).map((id) => ({ type: 'guardian' as const, id })) }, true, documentAt))
   const correctedId = session.state.documentVersions.at(-1)!.id
   await apply((s) => allocatePayment(s, s.payments[0].id, correctedId, 'Auf Korrektur übertragen', documentAt))
   await apply((s) => resolveDocumentConflicts(s, correctedId, 'Zuordnung geprüft', documentAt))

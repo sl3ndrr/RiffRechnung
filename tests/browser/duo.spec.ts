@@ -5,6 +5,7 @@ import { duoDrafts, legacyDuoState, households } from '../duoFixtures'
 import { documentAt, documentFamily, documentDraft } from '../documentFixtures'
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
 import { parseBackup, serializeBackup, STORAGE_KEY } from '../../src/lib/storage'
+import { normalizeLegacyRecipients } from '../../src/lib/legacyContactsRecipients'
 
 async function stateOf(page: Page): Promise<AppState> {
   return parseBackup((await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY))!)
@@ -26,7 +27,7 @@ async function openDraft(page: Page, name: string) {
 
 test('P03 Browser: beide Erziehungsberechtigte ausdrücklich auf einer gemeinsamen Duo-Rechnung wählen', async ({ page }) => {
   const state = documentFamily()
-  await seed(page, saveInvoiceDraft(state, { ...documentDraft(), guardianIds: [] }, false, documentAt))
+  await seed(page, saveInvoiceDraft(state, { ...documentDraft(), recipients: ([]).map((id) => ({ type: 'guardian' as const, id })) }, false, documentAt))
   const editor = await openDraft(page, 'Testkind A')
   const audience = editor.getByRole('group', { name: 'Rechnungsempfänger' })
   await audience.locator('label.choice-chip').filter({ hasText: 'Empfaenger A' }).click()
@@ -41,7 +42,7 @@ test('P03 Browser: beide Erziehungsberechtigte ausdrücklich auf einer gemeinsam
   const saved = await stateOf(page)
   expect(saved.invoices).toHaveLength(1)
   expect(saved.documentVersions).toHaveLength(1)
-  expect(saved.invoices[0].snapshot?.guardians.map((person) => person.id)).toEqual(['g-a', 'g-b'])
+  expect(saved.invoices[0].snapshot?.recipients.map((person) => person.id)).toEqual(['g-a', 'g-b'])
   expect(saved.invoices[0].number).toBe('2026-a-0001')
   expect('duoGroups' in saved).toBe(false)
   await expect(page.getByRole('button', { name: 'Duo · zwei Haushalte', exact: true })).toHaveCount(0)
@@ -55,13 +56,13 @@ test('P03 Browser: alte Gruppenentwürfe im lokalen Klärungspfad übernehmen un
   await expect(page.getByRole('heading', { name: 'Lokale Daten benötigen Wiederherstellung' })).toBeVisible()
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(raw)
   await page.getByRole('button', { name: 'Altformat und Reparatur prüfen' }).click()
-  await expect(page.getByText('Altformat 9 → Format 10:', { exact: false })).toBeVisible()
+  await expect(page.getByText('Altformat 9 → Format 11:', { exact: false })).toBeVisible()
   await page.getByRole('button', { name: 'Wiederherstellung vorbereiten' }).click()
   await page.getByRole('button', { name: 'Wiederherstellung bestätigen' }).click()
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
   await page.reload()
   const imported = await stateOf(page)
-  expect(imported.invoices).toEqual(old.invoices)
+  expect(imported.invoices).toEqual(normalizeLegacyRecipients(old).invoices)
   expect('duoGroups' in imported).toBe(false)
   await expect(page.getByRole('button', { name: 'Duo-Verknüpfung öffnen' })).toHaveCount(0)
   for (let i = 0; i < 2; i++) {
@@ -72,7 +73,7 @@ test('P03 Browser: alte Gruppenentwürfe im lokalen Klärungspfad übernehmen un
     await expect(editor).not.toBeVisible()
     const saved = await stateOf(page)
     expect(saved.documentVersions).toHaveLength(i + 1)
-    if (i === 0) expect(saved.invoices.find((invoice) => invoice.id === old.invoices[1].id)).toEqual(old.invoices[1])
+    if (i === 0) expect(saved.invoices.find((invoice) => invoice.id === old.invoices[1].id)).toEqual(normalizeLegacyRecipients(old).invoices[1])
   }
   const issued = await stateOf(page)
   expect(issued.documentVersions.map((version) => version.amounts.totalCents)).toEqual([758, 1502])

@@ -3,10 +3,9 @@ import assert from 'node:assert/strict'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { AppState, InvoiceDraft, RecipientRef, Student } from '../src/types'
-import { documentAt, documentDraft, documentFamily, editable } from './documentFixtures'
+import { documentAt, documentDraft, documentFamily, editable, legacyVersionedFixture } from './documentFixtures'
 import { prepareInvoiceCopy, saveStudentState } from '../src/lib/commands'
 import { requireSuccess } from '../src/lib/result'
-import { guardianIdsFor } from '../src/lib/recipients'
 import { saveInvoiceDraft, changeInvoiceStatus } from '../src/lib/invoiceActions'
 import { createCorrectionDraft, selectInvoice } from '../src/lib/documents'
 import { invoiceFinalizationErrors, nextInvoiceAllocation } from '../src/lib/utils'
@@ -21,11 +20,11 @@ const contact = { email: 'eva@example.org', phone: '', address: { street: 'Testa
 function adultState(): AppState {
   const state = documentFamily()
   const adult: Student = { id: 's-adult', name: 'Eva Beispiel', billingCode: '', guardianIds: [], selfPayer: true, contact,
-    note: '', active: true, createdAt: documentAt, updatedAt: documentAt }
+     active: true, createdAt: documentAt, updatedAt: documentAt }
   return requireSuccess(saveStudentState(state, adult))
 }
 function draft(state: AppState, studentIds: string[], recipients: RecipientRef[]): InvoiceDraft {
-  return { ...documentDraft(), studentIds, recipients, guardianIds: guardianIdsFor(recipients),
+  return { ...documentDraft(), studentIds, recipients,
     items: studentIds.map((studentId) => ({ ...documentDraft().items[0], id: `position-${studentId}`, studentId, description: `Unterricht ${state.students.find((student) => student.id === studentId)!.name}` })) }
 }
 function pdfHtml(state: AppState, id: string): string {
@@ -53,7 +52,7 @@ test('AP5: Selbstzahlerin – Anlage, Entwurf, Finalisierung, Zahlung, Druck und
   state = saveInvoiceDraft(state, editable(state.invoices[0]), true, documentAt)
   const original = structuredClone(state.documentVersions[0])
   assert.equal(state.invoices[0].number, '2026-c-0001')
-  assert.deepEqual(state.invoices[0].snapshot?.guardians, [])
+  assert.deepEqual(state.invoices[0].snapshot?.recipients.map((ref) => ref.type), ['student'])
   assert.equal(state.invoices[0].snapshot?.recipients?.[0].street, 'Testallee 8')
   state = changeInvoiceStatus(state, state.invoices[0].id, 'paid', documentAt, '2026-09-12')
   assert.equal(state.payments[0].amountCents, 758)
@@ -68,7 +67,7 @@ test('AP5: zwei Erziehungsberechtigte bleiben als typisierte Empfänger ein geme
   const refs: RecipientRef[] = [{ type: 'guardian', id: 'g-a' }, { type: 'guardian', id: 'g-b' }]
   state = saveInvoiceDraft(state, draft(state, ['s-a'], refs), false, documentAt)
   state = saveInvoiceDraft(state, editable(state.invoices[0]), true, documentAt)
-  assert.deepEqual(state.invoices[0].guardianIds, ['g-a', 'g-b'])
+  assert.deepEqual(state.invoices[0].recipients.map((ref) => ref.id), ['g-a', 'g-b'])
   assert.deepEqual(state.invoices[0].snapshot?.recipients?.map((entry) => entry.id), ['g-a', 'g-b'])
   assert.equal(state.documentVersions.length, 1)
   state = changeInvoiceStatus(state, state.invoices[0].id, 'paid', documentAt, '2026-09-12')
@@ -81,7 +80,7 @@ test('AP5: neue Kopie eines Altbelegs erhält typisierte Empfänger ohne Origina
   let state = documentFamily()
   state = saveInvoiceDraft(state, documentDraft(), true, documentAt)
   const original = structuredClone(state.documentVersions[0])
-  assert.equal(state.invoices[0].recipients, undefined)
+  assert.deepEqual(state.invoices[0].recipients, [{ type: 'guardian', id: 'g-a' }])
   const copy = requireSuccess(prepareInvoiceCopy(state, state.invoices[0].id, new Date('2026-10-01T12:00:00.000Z')))
   assert.deepEqual(copy.recipients, [{ type: 'guardian', id: 'g-a' }])
   state = saveInvoiceDraft(state, copy, true, '2026-10-01T12:00:00.000Z')
@@ -102,7 +101,6 @@ test('AP5: Moduswechsel erhält Kennzeichen, Altsnapshot, Korrekturkette und res
   state = createCorrectionDraft(state, state.invoices[0].id, 'Empfängerwechsel', documentAt)
   const correction = editable(state.invoices[1])
   correction.recipients = [{ type: 'student', id: 's-a' }]
-  correction.guardianIds = []
   state = saveInvoiceDraft(state, correction, true, documentAt)
   assert.equal(state.invoices[1].number, '2026-a-0002')
   assert.equal(state.documentVersions[1].replacesId, original.id)
@@ -110,22 +108,19 @@ test('AP5: Moduswechsel erhält Kennzeichen, Altsnapshot, Korrekturkette und res
   await roundtrip(state)
 })
 
-test('AP5: gemischte Kombination und gleichlautende Student-/Guardian-ID sind eindeutig', async () => {
-  let state = adultState()
+test('AP5: gemischte Haushalte bleiben gesperrt; gleichlautende typisierte IDs bleiben eindeutig', async () => {
+  const state = adultState()
   const refs: RecipientRef[] = [{ type: 'student', id: 's-adult' }, { type: 'guardian', id: 'g-a' }]
-  state = saveInvoiceDraft(state, draft(state, ['s-a', 's-adult'], refs), true, documentAt)
-  assert.equal(state.invoices[0].number, '2026-a+c-0001')
-  assert.deepEqual(state.invoices[0].snapshot?.recipients?.map((entry) => entry.type), ['student', 'guardian'])
-  assert.match(pdfHtml(state, state.invoices[0].id), /Eva Beispiel und Empfaenger A/)
-  assert.deepEqual(invoiceFinalizationErrors(state, { ...draft(state, ['s-a', 's-adult'], [{ type: 'student', id: 's-adult' }]) }).some((error) => /jeder Lernende/i.test(error)), true)
+  assert.throws(() => saveInvoiceDraft(state, draft(state, ['s-a', 's-adult'], refs), true, documentAt), /jedem ausgewählten Lernenden/)
+  assert.equal(invoiceFinalizationErrors(state, draft(state, ['s-a', 's-adult'], [{ type: 'student', id: 's-adult' }])).some((error) => /jeder Lernende/i.test(error)), true)
   const collision = structuredClone(state)
   collision.students.find((entry) => entry.id === 's-adult')!.id = 'g-a'
-  collision.invoices = []; collision.documentVersions = []; collision.invoiceAdministration = []; collision.counters = {}
   validateBackupState(collision)
-  const sameIdRefs: RecipientRef[] = [{ type: 'student', id: 'g-a' }, { type: 'guardian', id: 'g-a' }]
-  const sameId = saveInvoiceDraft(collision, draft(collision, ['g-a', 's-a'], sameIdRefs), true, documentAt)
-  assert.deepEqual(sameId.invoices[0].snapshot?.recipients?.map((entry) => `${entry.type}:${entry.id}`), ['student:g-a', 'guardian:g-a'])
-  await roundtrip(state)
+  const own = saveInvoiceDraft(collision, draft(collision, ['g-a'], [{ type: 'student', id: 'g-a' }]), true, documentAt)
+  assert.deepEqual(own.invoices[0].snapshot?.recipients.map((entry) => `${entry.type}:${entry.id}`), ['student:g-a'])
+  const guardian = saveInvoiceDraft(collision, draft(collision, ['s-a'], [{ type: 'guardian', id: 'g-a' }]), true, documentAt)
+  assert.deepEqual(guardian.invoices[0].snapshot?.recipients.map((entry) => `${entry.type}:${entry.id}`), ['guardian:g-a'])
+  await roundtrip(own); await roundtrip(guardian)
 })
 
 test('AP5: Kombinationszähler beachtet Legacy-Schlüssel, Reservierungen und eigenständiges ab', () => {
@@ -141,30 +136,26 @@ test('AP5: Kombinationszähler beachtet Legacy-Schlüssel, Reservierungen und ei
   assert.equal(nextInvoiceAllocation(state, '2026-09-01', ['s-ac']).number, '2026-ac-0008')
 })
 
-test('AP5: Schema 7→8 ist additiv, idempotent, berichtet und archiviert Rohdaten', async () => {
+test('AP5: Schema 7→11 normalisiert Empfänger, idempotent, berichtet und archiviert Rohdaten', async () => {
   const state = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
-  const old = { ...structuredClone(state), schemaVersion: 7 }
-  for (const guardian of old.guardians) {
-    delete guardian.firstName
-    delete guardian.lastName
-  }
+  const old = legacyVersionedFixture(state, 7)
   validateLegacyV7Structure(old)
   const raw = JSON.stringify(old)
   const preview = requireSuccess(inspectImport(raw))
   assert.equal(preview.report?.fromSchema, 7)
-  assert.equal(preview.report?.toSchema, 10)
+  assert.equal(preview.report?.toSchema, 11)
   assert.deepEqual(preview.state.documentVersions, state.documentVersions)
   assert.deepEqual(preview.state.invoices[0].snapshot, state.invoices[0].snapshot)
-  assert.equal(preview.state.invoices[0].recipients, undefined)
-  assert.match(serializeMigrationReport(preview), /riffrechnung-to-v10/)
+  assert.deepEqual(preview.state.invoices[0].recipients, [{ type: 'guardian', id: 'g-a' }])
+  assert.match(serializeMigrationReport(preview), /riffrechnung-to-v11/)
   const repeat = requireSuccess(inspectImport(serializeBackup(preview.state)))
   assert.equal(repeat.report, null)
   const storage = memoryStorage()
   const session = new StorageSession({ storage, lock: sharedLock() })
   await session.restore(raw)
-  assert.match(session.exportRecoveryArchive(), /riffrechnung-to-v10/)
+  assert.match(session.exportRecoveryArchive(), /riffrechnung-to-v11/)
   assert.match(session.exportRecoveryArchive(), /schemaVersion/)
   assert.equal(loadState(storage).status, 'ready')
   assert.equal(inspectImport(JSON.stringify({ ...old, recipients: [] })).ok, false)
-  assert.equal(inspectImport(JSON.stringify({ ...old, schemaVersion: 11 })).ok, false)
+  assert.equal(inspectImport(JSON.stringify({ ...old, schemaVersion: 12 })).ok, false)
 })

@@ -1,3 +1,4 @@
+import './p05-contacts-recipients.test'
 import './money-calendar.test'
 import './duo.test'
 import './duo-output.test'
@@ -42,7 +43,7 @@ const student = (id: string, name: string, billingCode: string): Student => ({
   name,
   billingCode,
   guardianIds: [],
-  note: '',
+
   active: true,
   createdAt: '2026-08-01T10:00:00.000Z',
   updatedAt: '2026-08-01T10:00:00.000Z',
@@ -57,7 +58,7 @@ const invoice = (overrides: Partial<Invoice> = {}): Invoice => ({
   dueDate: '2026-08-15',
   period: 'August 2026',
   status: 'sent',
-  guardianIds: [],
+  recipients: ([]).map((id) => ({ type: 'guardian' as const, id })),
   studentIds: ['student-a'],
   recipientStrategy: 'joint',
   items: [],
@@ -104,19 +105,19 @@ function validImportState() {
     email: 'alex@example.de',
     phone: '0123456789',
     address: { street: 'Beispielweg 1', postalCode: '12345', city: 'Beispielstadt' },
-    iban: '',
-    paymentNote: '',
+
+
     createdAt: '2026-08-01T10:00:00.000Z',
     updatedAt: '2026-08-01T10:00:00.000Z',
   })
   state.students.push({ ...student('student-a', 'Anna', 'a'), guardianIds: ['guardian-a'] })
   state.nextStudentCodeIndex = 1
   state.invoices.push(invoice({
-    guardianIds: ['guardian-a'],
+    recipients: (['guardian-a']).map((id) => ({ type: 'guardian' as const, id })),
     items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-a')],
   }))
   const current = captureLegacyDocuments(legacyFixture(state))
-  current.schemaVersion = 10
+  current.schemaVersion = 11
   current.settings = {
     ...current.settings,
     issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', email: 'studio@example.de', phone: '' },
@@ -178,7 +179,7 @@ test('historisch verbrauchte Nummern bleiben reserviert', () => {
     sentAt: '2026-08-01T10:00:00.000Z',
     snapshot: {
       issuer: structuredClone(defaultSettings.issuer),
-      guardians: [],
+      recipients: [],
       students: [{ id: 'student-a', name: 'Anna' }],
       accountHolder: '',
       iban: '',
@@ -288,13 +289,13 @@ test('Familien- und Rechnungslisten werden stabil nach der gewählten Spalte sor
   assert.deepEqual(sortPeople([ben, anna], 'created-desc').map((entry) => entry.name), ['Anna', 'Ben'])
 
   const guardians: Guardian[] = [
-    { id: 'guardian-a', name: 'Anna Familie', email: '', phone: '', iban: '', paymentNote: '', address: { street: '', postalCode: '', city: '' }, createdAt: anna.createdAt, updatedAt: anna.updatedAt },
-    { id: 'guardian-b', name: 'Zora Familie', email: '', phone: '', iban: '', paymentNote: '', address: { street: '', postalCode: '', city: '' }, createdAt: ben.createdAt, updatedAt: ben.updatedAt },
+    { id: 'guardian-a', name: 'Anna Familie', email: '', phone: '',   address: { street: '', postalCode: '', city: '' }, createdAt: anna.createdAt, updatedAt: anna.updatedAt },
+    { id: 'guardian-b', name: 'Zora Familie', email: '', phone: '',   address: { street: '', postalCode: '', city: '' }, createdAt: ben.createdAt, updatedAt: ben.updatedAt },
   ]
   const first = invoice({
     id: 'invoice-first',
     number: '2026-a-0010',
-    guardianIds: ['guardian-a'],
+    recipients: (['guardian-a']).map((id) => ({ type: 'guardian' as const, id })),
     studentIds: ['student-a'],
     status: 'paid',
     items: [{ ...createLessonItem('student-a', '2026-09-01', defaultSettings, 'item-first'), unitPrice: 50 }],
@@ -302,7 +303,7 @@ test('Familien- und Rechnungslisten werden stabil nach der gewählten Spalte sor
   const second = invoice({
     id: 'invoice-second',
     number: '2026-a-0002',
-    guardianIds: ['guardian-b'],
+    recipients: (['guardian-b']).map((id) => ({ type: 'guardian' as const, id })),
     studentIds: ['student-b'],
     status: 'draft',
     items: [{ ...createLessonItem('student-b', '2026-07-01', defaultSettings, 'item-second'), unitPrice: 10 }],
@@ -422,7 +423,7 @@ test('Demo-Daten bilden Familien, Unterricht und Rechnungen seit Januar 2025 vol
   assert.equal(demo.guardians.length, 10)
   assert.equal(demo.students.length, 10)
   assert.ok(demo.guardians.every((guardian) => guardian.email.endsWith('@example.de') && guardian.phone && guardian.address.street && guardian.address.postalCode && guardian.address.city))
-  assert.ok(demo.students.every((entry) => entry.guardianIds.length > 0 && entry.note && entry.active))
+  assert.ok(demo.students.every((entry) => entry.guardianIds.length > 0 && entry.active))
   assert.ok(demo.students.some((entry) => entry.guardianIds.length === 2))
 
   const expectedMonths: string[] = []
@@ -464,7 +465,7 @@ test('vollständiges Backup lässt sich wiederherstellen', () => {
   state.voidedInvoiceNumbers.push({ number: '2026-a-0004', sequence: 4, year: 2026, invoiceDate: '2026-08-01', deletedAt: '2026-08-20T12:00:00.000Z', amount: 90, recipient: 'Testfamilie' })
   const correctedSnapshot = {
     issuer: structuredClone(state.settings.issuer),
-    guardians: [],
+    recipients: [],
     students: [{ id: 'student-a', name: 'Anna' }],
     accountHolder: 'Neuer Kontoinhaber',
     iban: '',
@@ -484,7 +485,7 @@ test('vollständiges Backup lässt sich wiederherstellen', () => {
     },
   })
   const restored = parseBackup(serializeBackup(state))
-  assert.equal(restored.schemaVersion, 10)
+  assert.equal(restored.schemaVersion, 11)
   assert.equal(restored.settings.issuer.name, 'Test Unterricht')
   assert.equal(restored.students[0]?.billingCode, 'a')
   assert.equal(restored.voidedInvoiceNumbers[0]?.number, '2026-a-0004')
@@ -494,7 +495,7 @@ test('vollständiges Backup lässt sich wiederherstellen', () => {
 test('finalisierte Inhalte und Snapshots bleiben auch bei angeforderter Korrektur unverändert', () => {
   const state = validImportState()
   const original = structuredClone(state)
-  const draft = { ...state.invoices[0], guardianIds: ['guardian-other'] }
+  const draft = { ...state.invoices[0], recipients: (['guardian-other']).map((id) => ({ type: 'guardian' as const, id })) }
   assert.throws(() => saveInvoiceDraft(state, draft, false), /Finalisierte Belege/)
   const changed = structuredClone(state)
   changed.invoices[0].freeText = 'Nachträglicher Inhalt'
@@ -549,7 +550,7 @@ test('finalisierte Historie darf gelöschte Stammdaten über den Snapshot refere
   const state = validImportState()
   state.invoices[0].snapshot = {
     issuer: structuredClone(state.settings.issuer),
-    guardians: [{ id: 'guardian-a', name: 'Alex Beispiel', email: 'alex@example.de', street: 'Beispielweg 1', postalCode: '12345', city: 'Beispielstadt' }],
+    recipients: ([{ id: 'guardian-a', name: 'Alex Beispiel', email: 'alex@example.de', street: 'Beispielweg 1', postalCode: '12345', city: 'Beispielstadt' }]).map((person) => ({ ...person, type: 'guardian' as const })),
     students: [{ id: 'student-a', name: 'Anna' }],
     accountHolder: state.settings.accountHolder,
     iban: state.settings.iban,
@@ -561,7 +562,7 @@ test('finalisierte Historie darf gelöschte Stammdaten über den Snapshot refere
   state.students = []
 
   const restored = parseBackup(JSON.stringify(legacyFixture(state)))
-  assert.deepEqual(restored.invoices[0]?.guardianIds, ['guardian-a'])
+  assert.deepEqual(restored.invoices[0].recipients.map((ref) => ref.id), ['guardian-a'])
   assert.deepEqual(restored.invoices[0]?.studentIds, ['student-a'])
 })
 
@@ -648,13 +649,13 @@ test('Entwürfe lassen sich aus der Detailansicht nur mit vollständigen aktuell
     number: null,
     sequence: null,
     status: 'draft',
-    guardianIds: ['guardian-a'],
+    recipients: (['guardian-a']).map((id) => ({ type: 'guardian' as const, id })),
     studentIds: ['student-a'],
     items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-finalization')],
   })
   assert.deepEqual(invoiceFinalizationErrors(state, draft), [])
-  assert.match(invoiceFinalizationErrors(state, { ...draft, guardianIds: [] }).join(' '), /empfangende Person/)
-  assert.match(invoiceFinalizationErrors(state, { ...draft, guardianIds: ['guardian-missing'] }).join(' '), /Stammdaten/)
+  assert.match(invoiceFinalizationErrors(state, { ...draft, recipients: ([]).map((id) => ({ type: 'guardian' as const, id })) }).join(' '), /empfangende Person/)
+  assert.match(invoiceFinalizationErrors(state, { ...draft, recipients: (['guardian-missing']).map((id) => ({ type: 'guardian' as const, id })) }).join(' '), /Stammdaten/)
   assert.match(invoiceFinalizationErrors(state, { ...draft, studentIds: [] }).join(' '), /lernende/i)
   assert.match(invoiceFinalizationErrors(state, { ...draft, studentIds: ['student-missing'] }).join(' '), /Stammdaten/)
   assert.match(invoiceFinalizationErrors(state, { ...draft, items: [] }).join(' '), /Position/)
@@ -676,7 +677,7 @@ test('Editor-Finalisierung wird vor Nummern- und Snapshot-Vergabe zentral validi
     invoiceDate: '2026-08-01',
     dueDate: '2026-08-15',
     period: 'August 2026',
-    guardianIds: ['guardian-a'],
+    recipients: (['guardian-a']).map((id) => ({ type: 'guardian' as const, id })),
     studentIds: ['student-a'],
     recipientStrategy: 'joint',
     items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-editor-finalization')],
@@ -690,9 +691,9 @@ test('Editor-Finalisierung wird vor Nummern- und Snapshot-Vergabe zentral validi
     name: 'Nicht zugeordnet',
   }
   const scenarios: Array<{ name: string; draft: InvoiceDraft; expected: RegExp; guardians?: Guardian[] }> = [
-    { name: 'kein Empfänger', draft: { ...validDraft, guardianIds: [] }, expected: /empfangende Person/ },
-    { name: 'gelöschter Empfänger', draft: { ...validDraft, guardianIds: ['guardian-missing'] }, expected: /Stammdaten/ },
-    { name: 'nicht zugeordneter Empfänger', draft: { ...validDraft, guardianIds: ['guardian-unlinked'] }, guardians: [...state.guardians, unlinkedGuardian], expected: /zugeordnet/ },
+    { name: 'kein Empfänger', draft: { ...validDraft, recipients: ([]).map((id) => ({ type: 'guardian' as const, id })) }, expected: /empfangende Person/ },
+    { name: 'gelöschter Empfänger', draft: { ...validDraft, recipients: (['guardian-missing']).map((id) => ({ type: 'guardian' as const, id })) }, expected: /Stammdaten/ },
+    { name: 'nicht zugeordneter Empfänger', draft: { ...validDraft, recipients: (['guardian-unlinked']).map((id) => ({ type: 'guardian' as const, id })) }, guardians: [...state.guardians, unlinkedGuardian], expected: /zugeordnet/ },
     { name: 'kein Kind', draft: { ...validDraft, studentIds: [] }, expected: /lernende/i },
     { name: 'gelöschtes Kind', draft: { ...validDraft, studentIds: ['student-missing'] }, expected: /Stammdaten/ },
     { name: 'keine Position', draft: { ...validDraft, items: [] }, expected: /Position/ },
@@ -712,7 +713,7 @@ test('Editor-Finalisierung wird vor Nummern- und Snapshot-Vergabe zentral validi
   assert.deepEqual(state, original)
   const finalized = saveInvoiceDraft(state, validDraft, true)
   assert.equal(finalized.invoices.at(-1)?.number, '2026-a-0002')
-  assert.equal(finalized.invoices.at(-1)?.snapshot?.guardians[0].id, 'guardian-a')
+  assert.equal(finalized.invoices.at(-1)?.snapshot?.recipients[0].id, 'guardian-a')
 
 })
 
@@ -723,7 +724,7 @@ test('lokaler Schreibfehler bestätigt nichts; Wiederholung und Export bleiben m
   storage.fail = 'write'
   await assert.rejects(session.change(() => emptyState()), /Speicherplatz/)
   assert.equal(session.revision, null)
-  assert.deepEqual(parseBackup(session.export()), emptyState())
+  assert.deepEqual(parseBackup(session.export()), session.state)
   storage.fail = null
   await session.change(() => emptyState())
   assert.equal(loadState(storage).status, 'ready')

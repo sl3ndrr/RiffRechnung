@@ -1,5 +1,5 @@
 import { localToday, shiftCalendarMonths } from './calendar'
-import { contactName, contactPartError } from './contactName'
+import { contactNameError } from './contactName'
 import type { AppState, Guardian, InvoiceDraft, Settings, Student } from '../types'
 import { createEmptyInvoiceDraft, emptyState } from './defaults'
 import { assertInvoiceEditable, assertReplacementAllowed } from './safety'
@@ -25,13 +25,8 @@ export function saveGuardianState(state: AppState, guardian: Guardian): CommandR
     validateBackupState(state)
     const existing = state.guardians.find((entry) => entry.id === guardian.id)
     const saved = structuredClone(guardian)
-    if (saved.firstName !== undefined || saved.lastName !== undefined || !existing) {
-      const errors = [contactPartError(saved.firstName, 'Vorname'), contactPartError(saved.lastName, 'Nachname')].filter(Boolean)
-      if (errors.length) throw new Error(errors.join(' '))
-      if (saved.name !== contactName(saved.firstName!, saved.lastName!)) throw new Error('Der Anzeigename muss ausdrücklich aus Vor- und Nachname gebildet werden.')
-      saved.firstName = saved.firstName!.trim()
-      saved.lastName = saved.lastName!.trim()
-    } else if (saved.name !== existing.name) throw new Error('Ein nicht aufgeteilter Altname darf nur nach ausdrücklicher Eingabe beider Namen geändert werden.')
+    const error = existing?.name === saved.name ? null : contactNameError(saved.name, 'Name')
+    if (error) throw new Error(error)
     const next = { ...state, guardians: existing ? state.guardians.map((entry) => entry.id === saved.id ? saved : entry) : [...state.guardians, saved] }
     validateBackupState(next)
     return next
@@ -83,7 +78,7 @@ export function prepareInvoiceCopy(state: AppState, invoiceId: string, targetDat
     const invoiceDate = localToday(targetDate)
     const draft: InvoiceDraft = {
       invoiceDate, dueDate: calculateDueDate(invoiceDate, state.settings.paymentTermDays),
-      period: billingPeriodFromItems(items, invoiceDate), guardianIds: [...invoice.guardianIds], studentIds: [...invoice.studentIds],
+      period: billingPeriodFromItems(items, invoiceDate), studentIds: [...invoice.studentIds],
       recipients: structuredClone(recipientRefs(invoice)),
       recipientStrategy: invoice.recipientStrategy, items, introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText,
     }
@@ -105,12 +100,12 @@ export function convertLegacyDraftState(state: AppState, sourceId: string, revie
     const source = state.invoices.find((invoice) => invoice.id === sourceId)
     if (!source || source.status !== 'draft' || source.recipientStrategy !== 'separate' || source.correction || source.number || source.versionId) throw new Error('Nur ein offener historischer Aufteilungsentwurf kann umgewandelt werden.')
     if (!LEGACY_REVIEW_FIELDS.every((field) => reviewed.includes(field))) throw new Error('Bitte Empfänger, Lernende, Positionen, Einleitung und Freitext einzeln sichtbar prüfen und bestätigen.')
-    if (source.guardianIds.length === 1 && (guardianIds.length !== 1 || guardianIds[0] !== source.guardianIds[0])) throw new Error('Der einzelne Altentwurf wird nur mit seinem bisherigen Empfänger übernommen.')
+    if (guardianIdsFor(source.recipients).length === 1 && (guardianIds.length !== 1 || guardianIds[0] !== guardianIdsFor(source.recipients)[0])) throw new Error('Der einzelne Altentwurf wird nur mit seinem bisherigen Empfänger übernommen.')
     if (!guardianIds.length || new Set(guardianIds).size !== guardianIds.length || guardianIds.some((id) => !state.guardians.some((guardian) => guardian.id === id))) throw new Error('Bitte die empfangenden Personen ausdrücklich auswählen.')
     if (edited.id !== sourceId || edited.correction || edited.recipientStrategy !== 'separate') throw new Error('Der zu prüfende Altentwurf hat sich geändert. Bitte neu laden.')
     if (guardianIds.some((id) => edited.studentIds.some((studentId) => !state.students.find((student) => student.id === studentId)?.guardianIds.includes(id)))) throw new Error('Alle ausgewählten Empfänger müssen jedem ausgewählten Lernenden zugeordnet sein.')
-    const sourceRemoved = source.guardianIds.length === 1 ? state : { ...state, invoices: state.invoices.filter((invoice) => invoice.id !== sourceId) }
-    const converted: InvoiceDraft = { ...edited, id: source.guardianIds.length === 1 ? sourceId : undefined, guardianIds: [...guardianIds], recipients: guardianIds.map((id) => ({ type: 'guardian', id })), recipientStrategy: 'joint' }
+    const sourceRemoved = guardianIdsFor(source.recipients).length === 1 ? state : { ...state, invoices: state.invoices.filter((invoice) => invoice.id !== sourceId) }
+    const converted: InvoiceDraft = { ...edited, id: guardianIdsFor(source.recipients).length === 1 ? sourceId : undefined, recipients: guardianIds.map((id) => ({ type: 'guardian', id })), recipientStrategy: 'joint' }
     const next = saveInvoiceDraft(sourceRemoved, converted, false, at)
     if (next.counters !== state.counters || next.invoices.length !== state.invoices.length || next.invoices.some((invoice) => invoice.number !== null && !state.invoices.some((old) => old.id === invoice.id))) throw new Error('Die Umwandlung darf keine Rechnungsnummer verbrauchen.')
     return next
@@ -124,8 +119,7 @@ export function deleteGuardianState(state: AppState, id: string): CommandResult<
       ...state, guardians: state.guardians.filter((guardian) => guardian.id !== id),
       students: state.students.map((student) => ({ ...student, guardianIds: student.guardianIds.filter((value) => value !== id) })),
       invoices: state.invoices.map((invoice) => invoice.status === 'draft' && !invoice.correction ? { ...invoice,
-        ...(invoice.recipients ? { recipients: invoice.recipients.filter((ref) => ref.type !== 'guardian' || ref.id !== id) } : {}),
-        guardianIds: invoice.recipients ? guardianIdsFor(invoice.recipients.filter((ref) => ref.type !== 'guardian' || ref.id !== id)) : invoice.guardianIds.filter((value) => value !== id) } : invoice),
+        recipients: invoice.recipients.filter((ref) => ref.type !== 'guardian' || ref.id !== id) } : invoice),
     }
     validateBackupState(next)
     return next
@@ -138,7 +132,7 @@ export function deleteStudentState(state: AppState, id: string): CommandResult<A
     const next = {
       ...state, students: state.students.filter((student) => student.id !== id),
       invoices: state.invoices.map((invoice) => invoice.status === 'draft' && !invoice.correction ? { ...invoice, studentIds: invoice.studentIds.filter((value) => value !== id), items: invoice.items.filter((item) => item.studentId !== id),
-        ...(invoice.recipients ? { recipients: invoice.recipients.filter((ref) => ref.type !== 'student' || ref.id !== id) } : {}) } : invoice),
+        recipients: invoice.recipients.filter((ref) => ref.type !== 'student' || ref.id !== id) } : invoice),
     }
     validateBackupState(next)
     return next

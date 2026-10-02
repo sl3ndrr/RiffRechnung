@@ -1,5 +1,6 @@
+import { cleanLegacyContacts, normalizeLegacyRecipients } from '../src/lib/legacyContactsRecipients'
+import { cleanRecoveryFields } from '../src/lib/recoveryContactCleanup'
 import { stripLegacyTaxFields } from '../src/lib/legacyTaxFields'
-import { cleanRecoveryTaxFields } from '../src/lib/recoveryTaxCleanup'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -32,18 +33,18 @@ test('AP6: eingefrorene Schema-7-Originale und Verwaltungsdaten bleiben bei 7→
   for (const original of [fixture.issuedCorrected, fixture.oldestSeparate]) {
     const { preview } = migrated(original)
     assert.equal(preview.report?.fromSchema, 7)
-    assert.equal(preview.report?.toSchema, 10)
+    assert.equal(preview.report?.toSchema, 11)
     assert.ok(preview.report?.changes.some((entry) => entry.path === 'schemaVersion'))
-    assert.equal(preview.state.schemaVersion, 10)
+    assert.equal(preview.state.schemaVersion, 11)
     const restoredV7Shape = structuredClone(preview.state) as AppState
     restoredV7Shape.schemaVersion = 7 as never
-    assert.deepEqual(restoredV7Shape, stripLegacyTaxFields(original).value)
+    assert.deepEqual(restoredV7Shape, normalizeLegacyRecipients(cleanLegacyContacts(stripLegacyTaxFields(original).value)))
     for (const key of ['guardians', 'students', 'invoices', 'documentVersions', 'invoiceAdministration', 'payments', 'counters', 'voidedInvoiceNumbers', 'audit', 'historicalSnapshotCorrections'] as const) {
-      assert.deepEqual(preview.state[key], stripLegacyTaxFields(original).value[key], key)
+      assert.deepEqual(preview.state[key], normalizeLegacyRecipients(cleanLegacyContacts(stripLegacyTaxFields(original).value))[key], key)
     }
     assert.equal(Reflect.get(preview.state, 'duoGroups'), undefined)
     for (const invoice of preview.state.invoices) {
-      assert.equal(invoice.recipients, undefined)
+      assert.ok(Array.isArray(invoice.recipients))
       assert.equal(Reflect.get(invoice, 'invoiceKind'), undefined)
       assert.equal(Reflect.get(invoice, 'taxPresentation'), undefined)
       assert.equal(invoice.snapshot && Reflect.get(invoice.snapshot, 'taxOutput'), undefined)
@@ -69,14 +70,14 @@ test('AP6: Vorschau, bereinigtes Archiv, Import und Reload erhalten beide Goldbe
     const session = new StorageSession({ storage, lock: sharedLock() })
     const { raw, preview } = migrated(original)
     assert.equal(storage.length, 0, 'Vorschau darf noch nicht schreiben')
-    assert.match(serializeMigrationReport(preview), /riffrechnung-to-v10/)
+    assert.match(serializeMigrationReport(preview), /riffrechnung-to-v11/)
     const next = await session.restore(raw)
     assert.deepEqual(next, preview.state)
     const archive = JSON.parse(session.exportRecoveryArchive()) as { recoveries: Array<{ raw: string }> }
     assert.equal(archive.recoveries.length, 1)
     const recovery = JSON.parse(archive.recoveries[0].raw) as { version: number; sourceRaw: string; report: unknown }
     assert.equal(recovery.version, 1)
-    assert.equal(recovery.sourceRaw, cleanRecoveryTaxFields(raw))
+    assert.equal(recovery.sourceRaw, cleanRecoveryFields(raw))
     assert.deepEqual(recovery.report, preview.report)
     const loaded = loadState(storage)
     assert.equal(loaded.status, 'ready')

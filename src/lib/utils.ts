@@ -26,12 +26,11 @@ export function limitFooterText(value: string): string {
   return value.slice(0, MAX_FOOTER_TEXT_LENGTH)
 }
 
-type InvoiceFinalizationCandidate = Pick<Invoice, 'guardianIds' | 'studentIds' | 'invoiceDate' | 'dueDate' | 'items' | 'legalText'> & Partial<Pick<Invoice, 'recipientStrategy' | 'recipients' | 'correction'>>
+type InvoiceFinalizationCandidate = Pick<Invoice, 'recipients' | 'studentIds' | 'invoiceDate' | 'dueDate' | 'items' | 'legalText'> & Partial<Pick<Invoice, 'recipientStrategy' | 'correction'>>
 
 export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 'students' | 'settings'>, invoice: InvoiceFinalizationCandidate): string[] {
   const errors: string[] = [...moneyErrors(invoice)]
   if (invoice.recipientStrategy === 'separate' && !('correction' in invoice && invoice.correction)) errors.push('Neue getrennte Rechnungen sind nicht zulässig. Historische Entwürfe ausdrücklich als gemeinsame Rechnung übernehmen.')
-  const guardianIds = new Set(state.guardians.map((guardian) => guardian.id))
   const studentIds = new Set(state.students.map((student) => student.id))
   const selectedStudentIds = new Set(invoice.studentIds)
   const selectedStudents = state.students.filter((student) => selectedStudentIds.has(student.id))
@@ -45,12 +44,8 @@ export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 's
   if (!invoice.studentIds.length) errors.push('Mindestens eine lernende Person auswählen.')
   else if (invoice.studentIds.some((id) => !studentIds.has(id))) errors.push('Alle ausgewählten Lernenden müssen in den aktuellen Stammdaten vorhanden sein.')
 
-  if (invoice.recipients) {
-    if (refs.some((ref) => !selectedStudents.some((student) => recipientCanBillStudent(ref, student))) || selectedStudents.some((student) => !refs.some((ref) => recipientCanBillStudent(ref, student)))) errors.push('Jeder Rechnungsempfänger muss mindestens einem ausgewählten Lernenden zugeordnet sein und jeder Lernende einen Rechnungsempfänger haben.')
-  } else {
-    const linkedGuardianIds = new Set(selectedStudents.flatMap((student) => student.guardianIds))
-    if (invoice.guardianIds.length && invoice.guardianIds.some((id) => guardianIds.has(id) && (!linkedGuardianIds.has(id) || selectedStudents.some((student) => !student.guardianIds.includes(id))))) errors.push('Alle empfangenden Personen müssen jedem ausgewählten Lernenden zugeordnet sein; Angaben zu anderen Lernenden dürfen nicht weitergegeben werden.')
-  }
+  if (refs.some((ref) => !selectedStudents.some((student) => recipientCanBillStudent(ref, student))) || selectedStudents.some((student) => !refs.some((ref) => recipientCanBillStudent(ref, student)))) errors.push('Jeder Rechnungsempfänger muss mindestens einem ausgewählten Lernenden zugeordnet sein und jeder Lernende einen Rechnungsempfänger haben.')
+  if (refs.some((ref) => selectedStudents.some((student) => !recipientCanBillStudent(ref, student)))) errors.push('Alle empfangenden Personen müssen jedem ausgewählten Lernenden zugeordnet sein; Angaben zu anderen Lernenden dürfen nicht weitergegeben werden.')
   if (!invoice.invoiceDate || !invoice.dueDate) errors.push('Rechnungs- und Fälligkeitsdatum angeben.')
   if (!billingPeriodFromItems(invoice.items, invoice.invoiceDate)) errors.push('Leistungszeitraum über die Positionsdaten angeben.')
   if (!invoice.items.length) errors.push('Mindestens eine Position ergänzen.')

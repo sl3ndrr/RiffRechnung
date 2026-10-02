@@ -28,7 +28,7 @@ export const defaultSettings: Settings = {
 
 export function emptyState(): AppState {
   return {
-    schemaVersion: 10,
+    schemaVersion: 11,
     documentVersions: [], invoiceAdministration: [], payments: [], historicalSnapshotCorrections: [],
     guardians: [],
     students: [],
@@ -55,7 +55,6 @@ export function createEmptyInvoiceDraft(settings: Settings, reference = new Date
     invoiceDate: localToday(invoiceDate),
     dueDate: calculateDueDate(localToday(invoiceDate), settings.paymentTermDays),
     period: monthName,
-    guardianIds: [],
     recipients: [],
     studentIds: [],
     recipientStrategy: 'joint',
@@ -93,14 +92,12 @@ export function createDemoState(referenceDate = new Date()): AppState {
     { id: 'guardian-demo-sebastian-wagner', name: 'Sebastian Wagner', email: 'sebastian.wagner@example.de', phone: '+49 221 555 16 02', address: { street: 'Sülzburgstraße 42', postalCode: '50937', city: 'Köln' }, family: 'Wagner' },
     { id: 'guardian-demo-marco-romano', name: 'Marco Romano', email: 'marco.romano@example.de', phone: '+49 221 555 17 01', address: { street: 'Deutzer Freiheit 73', postalCode: '50679', city: 'Köln' }, family: 'Romano' },
   ]
-  const guardians: Guardian[] = guardianSeeds.map((guardian, index) => ({
+  const guardians: Guardian[] = guardianSeeds.map((guardian) => ({
     id: guardian.id,
     name: guardian.name,
     email: guardian.email,
     phone: guardian.phone,
     address: guardian.address,
-    iban: demoIban(index + 1),
-    paymentNote: `Monatliche Sammelrechnung für Familie ${guardian.family} per E-Mail`,
     createdAt: seededAt,
     updatedAt: seededAt,
   }))
@@ -110,28 +107,26 @@ export function createDemoState(referenceDate = new Date()): AppState {
     name: string
     billingCode: string
     guardianIds: string[]
-    note: string
     lessonType: LessonType
     weekdays: [number, number]
     duration: number
   }> = [
-    { id: 'student-demo-mia-schneider', name: 'Mia Schneider', billingCode: 'a', guardianIds: ['guardian-demo-claudia-schneider', 'guardian-demo-tobias-schneider'], note: 'Solo-Unterricht · Montag und Donnerstag · 45 Minuten', lessonType: 'solo', weekdays: [1, 4], duration: .75 },
-    { id: 'student-demo-jonas-schneider', name: 'Jonas Schneider', billingCode: 'b', guardianIds: ['guardian-demo-claudia-schneider', 'guardian-demo-tobias-schneider'], note: 'Duo-Unterricht mit Elif · Dienstag und Freitag · 45 Minuten', lessonType: 'duo', weekdays: [2, 5], duration: .75 },
-    { id: 'student-demo-elif-yilmaz', name: 'Elif Yılmaz', billingCode: 'c', guardianIds: ['guardian-demo-aylin-yilmaz', 'guardian-demo-murat-yilmaz'], note: 'Duo-Unterricht mit Jonas · Dienstag und Freitag · 45 Minuten', lessonType: 'duo', weekdays: [2, 5], duration: .75 },
-    { id: 'student-demo-deniz-yilmaz', name: 'Deniz Yılmaz', billingCode: 'd', guardianIds: ['guardian-demo-aylin-yilmaz', 'guardian-demo-murat-yilmaz'], note: 'Solo-Unterricht · Mittwoch und Samstag · 60 Minuten', lessonType: 'solo', weekdays: [3, 6], duration: 1 },
-    { id: 'student-demo-paul-becker', name: 'Paul Becker', billingCode: 'e', guardianIds: ['guardian-demo-anna-becker'], note: 'Solo-Unterricht · Montag und Mittwoch · 45 Minuten', lessonType: 'solo', weekdays: [1, 3], duration: .75 },
-    { id: 'student-demo-sophie-hoffmann', name: 'Sophie Hoffmann', billingCode: 'f', guardianIds: ['guardian-demo-thomas-hoffmann'], note: 'Duo-Unterricht mit Noah · Mittwoch und Freitag · 45 Minuten', lessonType: 'duo', weekdays: [3, 5], duration: .75 },
-    { id: 'student-demo-minh-nguyen', name: 'Minh Nguyen', billingCode: 'g', guardianIds: ['guardian-demo-linh-nguyen'], note: 'Solo-Unterricht · Dienstag und Donnerstag · 60 Minuten', lessonType: 'solo', weekdays: [2, 4], duration: 1 },
-    { id: 'student-demo-emma-wagner', name: 'Emma Wagner', billingCode: 'h', guardianIds: ['guardian-demo-katharina-wagner', 'guardian-demo-sebastian-wagner'], note: 'Solo-Unterricht · Montag und Donnerstag · 45 Minuten', lessonType: 'solo', weekdays: [1, 4], duration: .75 },
-    { id: 'student-demo-noah-wagner', name: 'Noah Wagner', billingCode: 'i', guardianIds: ['guardian-demo-katharina-wagner', 'guardian-demo-sebastian-wagner'], note: 'Duo-Unterricht mit Sophie · Mittwoch und Freitag · 45 Minuten', lessonType: 'duo', weekdays: [3, 5], duration: .75 },
-    { id: 'student-demo-luca-romano', name: 'Luca Romano', billingCode: 'j', guardianIds: ['guardian-demo-marco-romano'], note: 'Solo-Unterricht · Dienstag und Samstag · 60 Minuten', lessonType: 'solo', weekdays: [2, 6], duration: 1 },
+    { id: 'student-demo-mia-schneider', name: 'Mia Schneider', billingCode: 'a', guardianIds: ['guardian-demo-claudia-schneider', 'guardian-demo-tobias-schneider'], lessonType: 'solo', weekdays: [1, 4], duration: .75 },
+    { id: 'student-demo-jonas-schneider', name: 'Jonas Schneider', billingCode: 'b', guardianIds: ['guardian-demo-claudia-schneider', 'guardian-demo-tobias-schneider'], lessonType: 'duo', weekdays: [2, 5], duration: .75 },
+    { id: 'student-demo-elif-yilmaz', name: 'Elif Yılmaz', billingCode: 'c', guardianIds: ['guardian-demo-aylin-yilmaz', 'guardian-demo-murat-yilmaz'], lessonType: 'duo', weekdays: [2, 5], duration: .75 },
+    { id: 'student-demo-deniz-yilmaz', name: 'Deniz Yılmaz', billingCode: 'd', guardianIds: ['guardian-demo-aylin-yilmaz', 'guardian-demo-murat-yilmaz'], lessonType: 'solo', weekdays: [3, 6], duration: 1 },
+    { id: 'student-demo-paul-becker', name: 'Paul Becker', billingCode: 'e', guardianIds: ['guardian-demo-anna-becker'], lessonType: 'solo', weekdays: [1, 3], duration: .75 },
+    { id: 'student-demo-sophie-hoffmann', name: 'Sophie Hoffmann', billingCode: 'f', guardianIds: ['guardian-demo-thomas-hoffmann'], lessonType: 'duo', weekdays: [3, 5], duration: .75 },
+    { id: 'student-demo-minh-nguyen', name: 'Minh Nguyen', billingCode: 'g', guardianIds: ['guardian-demo-linh-nguyen'], lessonType: 'solo', weekdays: [2, 4], duration: 1 },
+    { id: 'student-demo-emma-wagner', name: 'Emma Wagner', billingCode: 'h', guardianIds: ['guardian-demo-katharina-wagner', 'guardian-demo-sebastian-wagner'], lessonType: 'solo', weekdays: [1, 4], duration: .75 },
+    { id: 'student-demo-noah-wagner', name: 'Noah Wagner', billingCode: 'i', guardianIds: ['guardian-demo-katharina-wagner', 'guardian-demo-sebastian-wagner'], lessonType: 'duo', weekdays: [3, 5], duration: .75 },
+    { id: 'student-demo-luca-romano', name: 'Luca Romano', billingCode: 'j', guardianIds: ['guardian-demo-marco-romano'], lessonType: 'solo', weekdays: [2, 6], duration: 1 },
   ]
   const students: Student[] = studentSeeds.map((student) => ({
     id: student.id,
     name: student.name,
     billingCode: student.billingCode,
     guardianIds: student.guardianIds,
-    note: student.note,
     active: true,
     createdAt: seededAt,
     updatedAt: seededAt,
@@ -216,7 +211,7 @@ export function createDemoState(referenceDate = new Date()): AppState {
       dueDate: isoDate(dueDateValue),
       period: monthFormatter.format(new Date(Date.UTC(year, month, 1, 12))),
       status,
-      guardianIds: family.guardianIds,
+      recipients: family.guardianIds.map((id) => ({ type: 'guardian', id })),
       studentIds: family.studentIds,
       recipientStrategy: 'joint',
       items: lessonItemsFor(family, year, month),
@@ -226,9 +221,9 @@ export function createDemoState(referenceDate = new Date()): AppState {
       ...(finalized ? {
         snapshot: {
           issuer: structuredClone(settings.issuer),
-          guardians: family.guardianIds.flatMap((guardianId) => {
+          recipients: family.guardianIds.flatMap((guardianId) => {
             const guardian = guardians.find((item) => item.id === guardianId)
-            return guardian ? [{ id: guardian.id, name: guardian.name, email: guardian.email, ...guardian.address }] : []
+            return guardian ? [{ type: 'guardian' as const, id: guardian.id, name: guardian.name, email: guardian.email, ...guardian.address }] : []
           }),
           students: family.studentIds.flatMap((studentId) => {
             const student = students.find((item) => item.id === studentId)
@@ -283,6 +278,6 @@ export function createDemoState(referenceDate = new Date()): AppState {
     const payment = demo.payments.find((entry) => entry.allocations.at(-1)?.versionId === invoice.versionId && entry.paymentDayStatus === 'confirmed')
     return payment?.paidAt ? { ...invoice, paidAt: payment.paidAt } : invoice
   })
-  demo.schemaVersion = 10
+  demo.schemaVersion = 11
   return demo
 }

@@ -71,7 +71,7 @@ test('AP1 Fallback: gemeinsame Rechnung an zwei Personen als JSON exportieren, i
   console.log(`P12 JSON-Fallback: ${browserName} ${browser.version()}; Node ${process.version}; ${process.platform}`)
   await testInfo.attach('browser-version.txt', { body: `${browserName} ${browser.version()} / ${process.platform} / Node ${process.version}`, contentType: 'text/plain' })
   const state = documentFamily()
-  const draft = { ...documentDraft(), guardianIds: ['g-a', 'g-b'], studentIds: ['s-a', 's-b'], recipientStrategy: 'joint' as const,
+  const draft = { ...documentDraft(), recipients: (['g-a', 'g-b']).map((id) => ({ type: 'guardian' as const, id })), studentIds: ['s-a', 's-b'], recipientStrategy: 'joint' as const,
     items: ['a', 'b'].map((id) => ({ ...documentDraft().items[0], id: `position-${id}`, studentId: `s-${id}`, quantity: 1, unitPrice: 30 })) }
   const result = saveInvoiceDraft(state, draft, true, documentAt)
   await page.goto('/')
@@ -96,7 +96,7 @@ test('AP1 Fallback: gemeinsame Rechnung an zwei Personen als JSON exportieren, i
     const saved = parseBackup(raw!)
     expect(saved).toEqual(result)
     expect(saved.invoices.map((invoice) => invoice.snapshot!.students.map((student) => student.id))).toEqual([['s-a', 's-b']])
-    expect(saved.invoices.map((invoice) => invoice.snapshot!.guardians.map((guardian) => guardian.id))).toEqual([['g-a', 'g-b']])
+    expect(saved.invoices.map((invoice) => invoice.snapshot!.recipients.map((guardian) => guardian.id))).toEqual([['g-a', 'g-b']])
     expect(saved.invoices.reduce((sum, invoice) => sum + invoiceTotalCents(invoice), 0)).toBe(6000)
     expect(new Set(saved.invoices.flatMap((invoice) => invoice.items.map((item) => item.id))).size).toBe(2)
   } finally {

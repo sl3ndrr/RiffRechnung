@@ -12,7 +12,7 @@ import { duoDrafts, duoIssued, households } from './duoFixtures'
 
 test('P03 Datenschutz: gewöhnliche Empfängerberechtigung und private Ausgabe bleiben geschützt', () => {
   const draftState = duoDrafts()
-  const wrong = { ...editable(draftState.invoices[0]), guardianIds: ['g-b'] }
+  const wrong = { ...editable(draftState.invoices[0]), recipients: (['g-b']).map((id) => ({ type: 'guardian' as const, id })) }
   assert.throws(() => saveInvoiceDraft(draftState, wrong, false), /zugeordnet/)
   assert.throws(() => saveInvoiceDraft(draftState, wrong, true), /zugeordnet/)
   const state = duoIssued()

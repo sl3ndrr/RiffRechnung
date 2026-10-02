@@ -1,7 +1,8 @@
+import { cleanRecoveryFields } from './recoveryContactCleanup'
 import type { AppState } from '../types'
 import { createDemoState, emptyState } from './defaults'
 import { inspectImport, type ImportPreview } from './importState'
-import { cleanRecoveryTaxFields, writeStorageBatch } from './recoveryTaxCleanup'
+import { writeStorageBatch } from './recoveryTaxCleanup'
 import { validateBackupState } from './validation'
 import { assertOriginalsPreserved } from './safety'
 import { canonical, descendsFrom, fingerprint, reference, type StorageEnvelope } from './envelope'
@@ -24,7 +25,7 @@ export type WriteLock = <T>(action: () => Promise<T>) => Promise<T>
 export function newerFormat(raw: string): boolean {
   try {
     const root = JSON.parse(raw)
-    return root.storageVersion > 4 || root.schemaVersion > 10 || root.data?.schemaVersion > 10
+    return root.storageVersion > 4 || root.schemaVersion > 11 || root.data?.schemaVersion > 11
   } catch { return false }
 }
 
@@ -123,7 +124,7 @@ export class StorageSession {
     const maxRevision = Math.max(previous?.revision ?? 0, source?.revision ?? 0)
     if (!Number.isSafeInteger(maxRevision + 1)) throw new Error('Revisionszähler ausgeschöpft. Der Bestand bleibt unverändert.')
     const envelope: StorageEnvelope = {
-      app: 'riffrechnung', storageVersion: 4, schemaVersion: 10,
+      app: 'riffrechnung', storageVersion: 4, schemaVersion: 11,
       datasetId: base?.datasetId ?? crypto.randomUUID(), commitId: crypto.randomUUID(), revision: maxRevision + 1,
       savedAt: new Date().toISOString(), operation,
       ancestors: base ? [...base.ancestors, await reference(base)] : [],
@@ -142,11 +143,11 @@ export class StorageSession {
         const key = this.storage.key(index)
         if (key && (key === PREVIOUS_STORAGE_KEY || key === LEGACY_STORAGE_KEY || key.startsWith(`${STORAGE_KEY}-recovery-`))) {
           const copy = this.storage.getItem(key)
-          if (copy !== null) updates.set(key, cleanRecoveryTaxFields(copy))
+          if (copy !== null) updates.set(key, cleanRecoveryFields(copy))
         }
       }
     }
-    const cleanCopy = (copy: string | null): string | null => copy === null ? null : preview ? cleanRecoveryTaxFields(copy) : copy
+    const cleanCopy = (copy: string | null): string | null => copy === null ? null : preview ? cleanRecoveryFields(copy) : copy
     if (preview) {
       const archive = { version: 1, at: envelope.savedAt, previousRaw: cleanCopy(this.token), legacyRaw: cleanCopy(this.legacy), sourceRaw: cleanCopy(preview.rawData), report: preview.report, storageMigration: { algorithm: 'riffrechnung-storage-v4', version: 1, fromStorageVersion: preview.envelope?.storageVersion ?? null, toStorageVersion: 4, datasetId: envelope.datasetId, identity: base ? 'existing-identity' : 'explicit-new-assignment', revision: envelope.revision }, reservations: { before: preview.state.counters, after: next.counters, voidedNumbersBefore: preview.state.voidedInvoiceNumbers, voidedNumbersAfter: next.voidedInvoiceNumbers } }
       // A valid previous copy may be the recovery basis behind a damaged main

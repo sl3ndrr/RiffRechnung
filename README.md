@@ -11,7 +11,7 @@ Eine vollständig clientseitige Web-App für Rechnungen rund um Gitarrenunterric
 - frei definierbare Positionen, Zahlungsziel und Textbausteine
 - Kleinunternehmerprofil mit vollständiger Ausstelleranschrift; typisierte Steuerkennung bei Standardrechnungen verpflichtend, bei ausdrücklich gewählten Kleinbetragsrechnungen bis 250,00 € ausblendbar; Empfängeranschrift nur bei Standardrechnungen
 - Befreiungshinweis je Rechnung im Steuerblock oder in einer Fußzeile an der Endsumme; finale Belege sichern Kennungsentscheidung, Hinweistext und Position
-- neue Empfängerkontakte mit getrenntem Vor- und Nachnamen; alle übrigen Kontaktangaben optional, alte Anzeigenamen bleiben erhalten
+- Empfängerkontakte mit einem Feld „Name“; Kontaktangaben und Anschriften optional, bisherige Anzeigenamen bleiben erhalten
 - Entwurf, versendet, bezahlt und automatisch erkanntes „überfällig“; verknüpfte Korrekturentwürfe erhalten den vollständigen Originalbeleg
 - konfigurierbarer Nummernkreis mit dauerhaftem Kennzeichen je lernender Person (`a`, `b`, `c` …); Kombinationen zählen getrennt und Nummern werden erst bei Finalisierung vergeben
 - unveränderliche vollständige Belegversionen mit damaligen Positionen, Beträgen, Personen, Konto und Texten; einsehbare Korrekturgründe und Snapshot-Differenzen
@@ -89,16 +89,23 @@ und Wiederherstellungsarchiv. Fehlende Partner werden nicht rekonstruiert;
 unklare Bestände bleiben mit Originaldaten zur Klärung erhalten.
 Die Prüfgrenzen stehen im [P03-Abschlussbericht](docs/p03-remove-duo-workflow.md).
 
+Schema 11 entfernt Zahler-IBAN und interne Personen-/Zahlungsnotizen auch aus
+bestehenden Stammdaten und internen Wiederherstellungskopien. Nach erfolgreicher
+Übernahme bleiben diese Felder in Speicherung und neuen Exporten entfernt.
+Fehler beim Umstieg lassen den Ausgangsbestand unverändert. Ein vorhandener
+Kontaktname hat Vorrang; nur ohne Namen werden vorhandene Vor-/Nachnamenswerte
+zusammengesetzt. Namen werden nicht zerlegt. Rechnungen und Snapshots verwenden
+nur noch `recipients`; alte Projektionen liest ausschließlich der Altimport.
+`Student.guardianIds`, Ausstellerkonten, GiroCode und `freeText` bleiben erhalten.
+Die Prüfgrenzen stehen im [P05-Abschlussbericht](docs/p05-contacts-recipients.md).
+
 Unter **Personen** kann eine erwachsene lernende Person **Zahlt selbst** wählen und
 optionale E-Mail- und Anschriftdaten hinterlegen. Name und Kontaktdaten werden
-nicht als zweiter Elternteil erfasst. Eine finale Standardrechnung benötigt die
-vollständige Anschrift jedes ausgewählten Empfängers. Eine ausdrücklich gewählte
-Kleinbetragsrechnung bis 250,00 € kann ohne Empfängeranschrift abgeschlossen
-werden. Bei Minderjährigen bleiben mehrere
-Erziehungsberechtigte möglich. Neue gemeinsame Rechnungen können ausdrücklich
-Empfänger beider Arten enthalten; alle ausgewählten Empfänger sehen dann die
-Namen und Positionen aller ausgewählten Lernenden. Freitexte vor dem Abschluss
-prüfen. Das Kennzeichen einer lernenden Person bleibt beim Zahlmoduswechsel
+nicht als zweiter Elternteil erfasst. Anschriften sind optional. Bei Minderjährigen
+können ein oder zwei Erziehungsberechtigte Empfänger einer einzigen Rechnung sein.
+Beide vorhandenen Anschriften bleiben im Snapshot eingefroren. Jeder ausgewählte
+Empfänger muss zum Empfang der Angaben aller ausgewählten Lernenden berechtigt sein;
+sonst ist die neue Rechnung gesperrt. Das Kennzeichen einer lernenden Person bleibt beim Zahlmoduswechsel
 gleich; ausgestellte Belege behalten ihren damaligen Empfänger-Snapshot.
 
 Finalisieren sichert den vollständigen Beleg. Spätere Änderungen an Stammdaten,
@@ -172,7 +179,7 @@ beschreibt Migration, Wiederholung nach Fehlern und Kontrolle nach Reload.
 
 - Rechnungen, Einstellungen und Historie liegen im verwendeten Browserprofil. Ein Geräteschutz, ein gesperrtes Benutzerkonto und ein geschütztes Browserprofil sind deshalb Teil des Schutzmodells. Inkognito-Modus, das Löschen von Website-Daten oder ein Geräteverlust können lokale Daten entfernen.
 - Browser-Speicher ist an den **Origin** (Schema, Host und Port), nicht an den Repository-Unterpfad gebunden. Die konfigurierte GitHub-Pages-Auslieferung hat ohne `CNAME` den Origin `https://sl3ndrr.github.io`; RiffRechnung liegt darunter unter `/RiffRechnung/`. Andere dort ausgelieferte Projekte teilen den Origin und sind kein getrenntes Speicher-Sicherheitsgebiet. Die im Eigentümerkonto vorhandenen weiteren Repositories belegen nicht, dass sie auch dort ausgeliefert werden; das konnte aus der Repository-Konfiguration nicht abschließend festgestellt werden. Wenn nicht vertrauenswürdige Anwendungen unter diesem Origin betrieben werden sollen, ist ein separater Origin eine Betriebsoption.
-- JSON-Exports sind normale Klartextdateien. Sie enthalten Personen-/Kontaktangaben, Rechnungen, Einstellungen, Freitexte und Notizen, vollständige Belegversionen sowie Änderungs- und Zahlungszuordnungshistorie. Sicherungen nur geschützt ablegen und vor dem Weitergeben prüfen.
+- JSON-Exports sind normale Klartextdateien. Sie enthalten Personen-/Kontaktangaben, Rechnungen, Einstellungen, Rechnungshinweise, vollständige Belegversionen sowie Änderungs- und Zahlungszuordnungshistorie. Sicherungen nur geschützt ablegen und vor dem Weitergeben prüfen.
 - Die App nutzt keine Cloud-API. Wird eine exportierte Datei in einem synchronisierten Ordner abgelegt, kann dessen installierte Desktop-Synchronisation die Klartextdatei an den jeweiligen Dienst übertragen; dessen Datenschutz- und Freigaberegeln gelten zusätzlich.
 - Rechnungsnummern sind innerhalb jedes Lernendenkennzeichens monoton und eindeutig. Die erste angelegte lernende Person erhält `a`, die zweite `b`; eine gemeinsame Rechnung für beide verwendet `a+b`. `ab` kann dagegen das Kennzeichen einer einzelnen später angelegten Person sein. Parallel genutzte Browserprofile/Geräte teilen keinen Nummernkreis; für einen lückenlosen gemeinsamen Nummernkreis darf nur ein führender Datenbestand verwendet werden.
 - Finalisierte Rechnungen bleiben erhalten; inhaltliche Änderungen erzeugen Korrekturen. Archivierung und Zahlungs-/Versandverwaltung ändern den gesicherten Inhalt nicht. Originalnummern und frühere Registereinträge bleiben dauerhaft reserviert.

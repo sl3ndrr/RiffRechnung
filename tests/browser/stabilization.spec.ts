@@ -139,7 +139,7 @@ test('P12 Browser: unterbrochene Migration erhält Rohdaten und lässt sich nach
 })
 
 test('P12 Browser: unbekanntes neueres Format bleibt auch bei Wiederherstellungsversuch bytegleich', async ({ page }) => {
-  const future = JSON.stringify({ schemaVersion: 11, data: 'Synthetisches unbekanntes Format' })
+  const future = JSON.stringify({ schemaVersion: 12, data: 'Synthetisches unbekanntes Format' })
   await page.goto('/')
   await page.evaluate(({ key, future }) => localStorage.setItem(key, future), { key: STORAGE_KEY, future })
   await page.reload()
@@ -157,6 +157,9 @@ test('P12 Browser: unbekanntes neueres Format bleibt auch bei Wiederherstellungs
 
 test('P12 Browser: unabhängige Originaldatei kehrt mit echtem alten Code in getrenntem Profil zurück', async ({ page, browser }, testInfo) => {
   const legacy = { ...legacyFixture(saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)), schemaVersion: 2 }
+  // The unchanged historical app requires these retired master-data fields.
+  legacy.guardians.forEach((guardian) => Object.assign(guardian, { iban: '', paymentNote: '' }))
+  legacy.students.forEach((student) => Object.assign(student, { note: '' }))
   await page.goto('/legacy/index.html')
   await page.evaluate(({ key, source }) => localStorage.setItem(key, source), { key: LEGACY_STORAGE_KEY, source: JSON.stringify(legacy) })
   await page.reload()
@@ -197,8 +200,7 @@ test('P12 Browser ergänzt Quellmuster: Footer-Submit, Kindaktivierung und Rechn
   await page.getByRole('button', { name: 'Personen', exact: true }).first().click()
   await page.getByRole('button', { name: 'Erziehungsberechtigte Person hinzufügen', exact: true }).click()
   const guardian = page.getByRole('dialog', { name: 'Erziehungsberechtigte Person anlegen', exact: true })
-  await guardian.getByLabel('Vorname *', { exact: true }).fill('Zusätzliche')
-  await guardian.getByLabel('Nachname *', { exact: true }).fill('Testperson')
+  await guardian.getByLabel('Name *', { exact: true }).fill('Zusätzliche Testperson')
   await guardian.getByRole('button', { name: 'Speichern', exact: true }).click()
   await expect(guardian).not.toBeVisible()
   expect((await stateOf(page)).guardians.some((entry) => entry.name === 'Zusätzliche Testperson')).toBe(true)

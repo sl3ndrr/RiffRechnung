@@ -28,7 +28,7 @@ function reload(state: AppState) {
 test('AP1: frühere Ergebnisrechnung mit einem oder mehreren Empfängern erreicht weder Entwurf noch Forderung', () => {
   for (const guardianIds of [['g-a'], ['g-a', 'g-b']]) {
     const state = documentFamily()
-    const draft = { ...resultDraft(), guardianIds }
+    const draft = { ...resultDraft(), recipients: (guardianIds).map((id) => ({ type: 'guardian' as const, id })) }
     const before = structuredClone(state)
     for (const finalize of [false, true]) {
       assert.throws(() => saveInvoiceDraft(state, draft, finalize, documentAt), /Getrennte Rechnungen/)
@@ -45,14 +45,14 @@ test('AP1: frühere Ergebnisrechnung mit einem oder mehreren Empfängern erreich
 test('AP1: gemeinsame Rechnung für eine oder mehrere berechtigte Personen bleibt je eine Forderung mit einer Nummer', () => {
   for (const guardianIds of [['g-a'], ['g-a', 'g-b']]) {
     let state = documentFamily()
-    const draft = { ...documentDraft(), guardianIds }
+    const draft = { ...documentDraft(), recipients: (guardianIds).map((id) => ({ type: 'guardian' as const, id })) }
     state = saveInvoiceDraft(state, draft, true, documentAt)
     assert.equal(state.invoices.length, 1)
     assert.equal(activeInvoices(state).length, 1)
     assert.equal(state.documentVersions.length, 1)
     assert.equal(state.invoices[0].number, '2026-a-0001')
     assert.equal(state.documentVersions[0].amounts.totalCents, 758)
-    assert.deepEqual(state.invoices[0].snapshot?.guardians.map((guardian) => guardian.id), guardianIds)
+    assert.deepEqual(state.invoices[0].snapshot?.recipients.map((guardian) => guardian.id), guardianIds)
     reload(state)
   }
 })
@@ -85,7 +85,7 @@ test('AP1: beide Altentwurfsformen bleiben bis zur bestätigten atomaren Umwandl
   const one = documentFamily()
   one.invoices = [legacy(resultDraft(), 'legacy-one')]
   const two = documentFamily()
-  two.invoices = [legacy({ ...resultDraft(), guardianIds: ['g-a', 'g-b'] }, 'legacy-two')]
+  two.invoices = [legacy({ ...resultDraft(), recipients: (['g-a', 'g-b']).map((id) => ({ type: 'guardian' as const, id })) }, 'legacy-two')]
   for (const [state, id, guardians] of [[one, 'legacy-one', ['g-a']], [two, 'legacy-two', ['g-a', 'g-b']]] as const) {
     const before = structuredClone(reload(state))
     const draft = editable(state.invoices[0])
@@ -95,7 +95,7 @@ test('AP1: beide Altentwurfsformen bleiben bis zur bestätigten atomaren Umwandl
     const result = requireSuccess(convertLegacyDraftState(state, id, LEGACY_REVIEW_FIELDS, [...guardians], draft, documentAt))
     assert.equal(result.invoices.length, 1)
     assert.equal(result.invoices[0].recipientStrategy, 'joint')
-    assert.deepEqual(result.invoices[0].guardianIds, guardians)
+    assert.deepEqual(result.invoices[0].recipients.map((ref) => ref.id), guardians)
     assert.equal(result.invoices[0].number, null)
     assert.deepEqual(result.counters, state.counters)
     assert.equal(result.invoices[0].introText, draft.introText)
@@ -106,7 +106,7 @@ test('AP1: beide Altentwurfsformen bleiben bis zur bestätigten atomaren Umwandl
   }
   const invalid = documentFamily()
   invalid.students[0].guardianIds = ['g-a']
-  invalid.invoices = [legacy({ ...resultDraft(), guardianIds: ['g-a', 'g-b'] }, 'legacy-mixed')]
+  invalid.invoices = [legacy({ ...resultDraft(), recipients: (['g-a', 'g-b']).map((id) => ({ type: 'guardian' as const, id })) }, 'legacy-mixed')]
   assert.equal(convertLegacyDraftState(invalid, 'legacy-mixed', LEGACY_REVIEW_FIELDS, ['g-a', 'g-b'], editable(invalid.invoices[0]), documentAt).ok, false)
   assert.equal(invalid.invoices[0].recipientStrategy, 'separate')
 })
