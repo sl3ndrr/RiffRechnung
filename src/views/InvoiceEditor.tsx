@@ -1,4 +1,3 @@
-import { duoForInvoice, duoInvoices } from '../lib/duoModel'
 import { decimalInputText, draftAmountChange, previewCents } from '../lib/money'
 import { correctionErrors, reassignCorrectionStudent } from '../lib/documents'
 import { LEGACY_REVIEW_FIELDS } from '../lib/commands'
@@ -153,8 +152,6 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
     }
   }
 
-  const duoGroup = form.id ? duoForInvoice(state, form.id) : undefined
-  const duoLinked = Boolean(duoGroup && duoInvoices(state, duoGroup).length === 2)
   const legacyDraft = form.recipientStrategy === 'separate' && !form.correction && !finalized
   const convert = () => {
     if (!form.id) { setErrors(['Der historische Entwurf muss vor der Umwandlung gespeichert sein.']); return }
@@ -180,14 +177,13 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
           ) : legacyDraft ? (
             <button className="button button--primary" type="button" onClick={convert}>Als gemeinsamen Entwurf übernehmen</button>
           ) : (
-            <><button className="button button--tonal" type="submit" form={INVOICE_EDITOR_FORM_ID}>Als Entwurf speichern</button><button className="button button--primary" type="button" disabled={duoLinked || correctionBlockers.length > 0} onClick={() => submit(true)}><Send aria-hidden="true" /> Finalisieren</button></>
+            <><button className="button button--tonal" type="submit" form={INVOICE_EDITOR_FORM_ID}>Als Entwurf speichern</button><button className="button button--primary" type="button" disabled={correctionBlockers.length > 0} onClick={() => submit(true)}><Send aria-hidden="true" /> Finalisieren</button></>
           )}
         </>
       }
     >
       <form className="invoice-form" id={INVOICE_EDITOR_FORM_ID} onSubmit={(event) => { event.preventDefault(); submit(false) }}>
         {editing && !state.invoices.find((invoice) => invoice.id === draft.id)?.calculation && change.changed && <p role="status" className="notice">Dezimalberechnung prüfen: bisher {euro.format(change.before / 100)}, jetzt {change.after === null ? 'ungültiger Betrag' : euro.format(change.after / 100)}. Positionsbeträge werden einzeln kaufmännisch auf Cent gerundet. Speichern oder Finalisieren übernimmt die hier angezeigten neuen Beträge; Originalbelege bleiben erhalten.</p>}
-        {duoLinked && <p role="status">Duo-Zielrechnung: Empfänger ausdrücklich auswählen und eigene Preise und Texte prüfen. Abschluss beider Rechnungen über die vollständige Duo-Vorschau.</p>}
         <p className="muted">Mengen: 0,01–99,99 (bis 2 Nachkommastellen). Preise in EUR je Einheit; gespeicherte Untercentpräzision bleibt erhalten. Gesamt höchstens 999.999.999,99 EUR.</p>
         {finalized && <div className="revision-banner"><FileCheck2 aria-hidden="true" /><div><strong>Finalisierte Rechnung</strong><p>{FINALIZED_INVOICE_BLOCKED}</p></div></div>}
         {errors.length > 0 && <div className="form-errors" role="alert"><strong>Bitte noch prüfen:</strong><ul>{errors.map((error) => <li key={error}>{error}</li>)}</ul></div>}
@@ -209,7 +205,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
         </section>}
         <section className="form-section">
           <div className="form-section__heading"><span>1</span><div><h3>Für wen?</h3><p>Lernende und Rechnungsempfänger auswählen.</p></div></div>
-          <fieldset className="chip-fieldset" disabled={finalized || duoLinked}><legend>Lernende</legend><div className="choice-chips">{students.filter((student) => student.active || form.studentIds.includes(student.id)).map((student) => <label className={form.studentIds.includes(student.id) ? 'choice-chip is-selected' : 'choice-chip'} key={student.id}><input type="checkbox" checked={form.studentIds.includes(student.id)} onChange={() => selectStudent(student)} /><span className="avatar">{student.name.slice(0, 1)}</span>{student.name}</label>)}</div>{!students.length && <p className="field-hint field-hint--warning">Lege zuerst unter „Personen“ eine lernende Person an.</p>}{finalized && <p className="field-hint">Die Zuordnung bleibt gesperrt, weil sie Bestandteil des Rechnungsnummernkreises ist.</p>}</fieldset>
+          <fieldset className="chip-fieldset" disabled={finalized}><legend>Lernende</legend><div className="choice-chips">{students.filter((student) => student.active || form.studentIds.includes(student.id)).map((student) => <label className={form.studentIds.includes(student.id) ? 'choice-chip is-selected' : 'choice-chip'} key={student.id}><input type="checkbox" checked={form.studentIds.includes(student.id)} onChange={() => selectStudent(student)} /><span className="avatar">{student.name.slice(0, 1)}</span>{student.name}</label>)}</div>{!students.length && <p className="field-hint field-hint--warning">Lege zuerst unter „Personen“ eine lernende Person an.</p>}{finalized && <p className="field-hint">Die Zuordnung bleibt gesperrt, weil sie Bestandteil des Rechnungsnummernkreises ist.</p>}</fieldset>
           <fieldset className="chip-fieldset"><legend>Rechnungsempfänger</legend><div className="choice-chips">{eligibleGuardians.map((guardian) => { const ref: RecipientRef = { type: 'guardian', id: guardian.id }; return <label className={selectedRecipients.some((entry) => recipientKey(entry) === recipientKey(ref)) ? 'choice-chip is-selected' : 'choice-chip'} key={recipientKey(ref)}><input type="checkbox" checked={selectedRecipients.some((entry) => recipientKey(entry) === recipientKey(ref))} onChange={() => toggleRecipient(ref)} /><span className="avatar avatar--warm">{guardian.name.slice(0, 1)}</span>{guardian.name}</label> })}{eligibleSelfPayers.map((student) => { const ref: RecipientRef = { type: 'student', id: student.id }; return <label className={selectedRecipients.some((entry) => recipientKey(entry) === recipientKey(ref)) ? 'choice-chip is-selected' : 'choice-chip'} key={recipientKey(ref)}><input type="checkbox" checked={selectedRecipients.some((entry) => recipientKey(entry) === recipientKey(ref))} onChange={() => toggleRecipient(ref)} /><span className="avatar">{student.name.slice(0, 1)}</span>{student.name} · {student.selfPayer ? 'zahlt selbst' : 'früher selbstzahlend'}</label> })}</div></fieldset>
           {form.studentIds.length > 1 && selectedRecipients.length > 1 && <p className="field-hint field-hint--warning">Gemeinsame Rechnung: Alle ausgewählten Rechnungsempfänger sehen die Namen und Positionen aller ausgewählten Lernenden. Bitte die Zusammenstellung und Freitexte prüfen.</p>}
           {form.guardianIds.length > 1 && finalized && <p className="field-hint">Die vorhandene Rechnungsnummer bleibt eine gemeinsame Rechnung für die ausgewählten Empfänger:innen.</p>}

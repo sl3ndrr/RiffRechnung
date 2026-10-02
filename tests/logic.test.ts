@@ -1,5 +1,6 @@
 import './money-calendar.test'
 import './duo.test'
+import './duo-output.test'
 import './stabilization.test'
 import './invoice-split.test'
 import './payment-data.test'
@@ -114,7 +115,7 @@ function validImportState() {
     items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-a')],
   }))
   const current = captureLegacyDocuments(legacyFixture(state))
-  current.schemaVersion = 9
+  current.schemaVersion = 10
   current.settings = {
     ...current.settings,
     issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', email: 'studio@example.de', phone: '' },
@@ -482,7 +483,7 @@ test('vollständiges Backup lässt sich wiederherstellen', () => {
     },
   })
   const restored = parseBackup(serializeBackup(state))
-  assert.equal(restored.schemaVersion, 9)
+  assert.equal(restored.schemaVersion, 10)
   assert.equal(restored.settings.issuer.name, 'Test Unterricht')
   assert.equal(restored.students[0]?.billingCode, 'a')
   assert.equal(restored.voidedInvoiceNumbers[0]?.number, '2026-a-0004')

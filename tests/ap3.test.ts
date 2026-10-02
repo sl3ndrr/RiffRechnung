@@ -44,7 +44,7 @@ test('AP3: fünf mehrteilige Altnamen bleiben nach 7→9, Export und Import unve
   const before = JSON.stringify(legacy)
   const preview = requireSuccess(inspectImport(before))
   assert.equal(preview.report?.fromSchema, 7)
-  assert.equal(preview.report?.toSchema, 9)
+  assert.equal(preview.report?.toSchema, 10)
   assert.deepEqual(preview.state.guardians.map(({ name, firstName, lastName }) => ({ name, firstName, lastName })), names.map((name) => ({ name, firstName: undefined, lastName: undefined })))
   assert.deepEqual(requireSuccess(inspectImport(JSON.stringify(preview.state))).state.guardians, preview.state.guardians)
   assert.equal(preview.rawData, before)

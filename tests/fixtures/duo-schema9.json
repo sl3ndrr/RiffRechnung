@@ -1,0 +1,780 @@
+{
+  "sourceCommit": "83c747488f643dc6d1416319c8a1d594e9ae4305",
+  "drafts": {
+    "schemaVersion": 9,
+    "documentVersions": [],
+    "invoiceAdministration": [],
+    "payments": [],
+    "historicalSnapshotCorrections": [],
+    "guardians": [
+      {
+        "id": "g-a",
+        "firstName": "Mira",
+        "lastName": "Nordlicht",
+        "name": "Mira Nordlicht",
+        "email": "aur@example.org",
+        "phone": "",
+        "address": {
+          "street": "AUR-Weg 1",
+          "postalCode": "12345",
+          "city": "Teststadt"
+        },
+        "iban": "",
+        "paymentNote": "GEHEIM_A: Duo mit Bastian Suedwind",
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z"
+      },
+      {
+        "id": "g-b",
+        "firstName": "Tarek",
+        "lastName": "Suedwind",
+        "name": "Tarek Suedwind",
+        "email": "bas@example.org",
+        "phone": "",
+        "address": {
+          "street": "BAS-Weg 2",
+          "postalCode": "12345",
+          "city": "Teststadt"
+        },
+        "iban": "",
+        "paymentNote": "GEHEIM_B: Duo mit Aurora Nordlicht",
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z"
+      }
+    ],
+    "students": [
+      {
+        "id": "s-a",
+        "name": "Aurora Nordlicht",
+        "billingCode": "aur",
+        "guardianIds": [
+          "g-a"
+        ],
+        "note": "GEHEIM_A: Duo mit Bastian Suedwind",
+        "active": true,
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z"
+      },
+      {
+        "id": "s-b",
+        "name": "Bastian Suedwind",
+        "billingCode": "bas",
+        "guardianIds": [
+          "g-b"
+        ],
+        "note": "GEHEIM_B: Duo mit Aurora Nordlicht",
+        "active": true,
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z"
+      }
+    ],
+    "invoices": [
+      {
+        "id": "invoice-f426348d-b3dd-446f-8fd4-203d9dcbaab9",
+        "invoiceDate": "2026-09-25",
+        "dueDate": "2026-10-09",
+        "period": "September 2026",
+        "guardianIds": [
+          "g-a"
+        ],
+        "studentIds": [
+          "s-a"
+        ],
+        "recipientStrategy": "joint",
+        "items": [
+          {
+            "serviceDate": "2026-09-25",
+            "description": "Rhythmusarbeit (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "id": "item-5f233ae4-ee0b-4ec0-8cd2-56185b72af3b",
+            "studentId": "s-a",
+            "lessonType": "duo",
+            "unitPrice": 10.1
+          }
+        ],
+        "introText": "Einleitung Aurora",
+        "freeText": "Hinweis Aurora",
+        "legalText": "Rechtstext Aurora",
+        "number": null,
+        "sequence": null,
+        "year": 2026,
+        "status": "draft",
+        "calculation": "decimal-v1",
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z",
+        "draftPrintSnapshot": {
+          "issuer": {
+            "name": "Synthetisches Studio",
+            "street": "Testweg 1",
+            "postalCode": "12345",
+            "city": "Teststadt",
+            "phone": "",
+            "email": "studio@example.org"
+          },
+          "guardians": [
+            {
+              "id": "g-a",
+              "name": "Mira Nordlicht",
+              "email": "aur@example.org",
+              "street": "AUR-Weg 1",
+              "postalCode": "12345",
+              "city": "Teststadt"
+            }
+          ],
+          "students": [
+            {
+              "id": "s-a",
+              "name": "Aurora Nordlicht"
+            }
+          ],
+          "accountHolder": "Studio",
+          "iban": "DE02120300000000202051",
+          "bic": "",
+          "bankName": "",
+          "legalText": "Rechtstext Aurora"
+        }
+      },
+      {
+        "id": "invoice-33c0b69e-a183-4f76-a5a1-8a3d9d2a6030",
+        "invoiceDate": "2026-09-25",
+        "dueDate": "2026-10-09",
+        "period": "September 2026",
+        "guardianIds": [
+          "g-b"
+        ],
+        "studentIds": [
+          "s-b"
+        ],
+        "recipientStrategy": "joint",
+        "items": [
+          {
+            "serviceDate": "2026-09-25",
+            "description": "Rhythmusarbeit (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "id": "item-bc577086-62a6-471d-925d-9bcb238ec971",
+            "studentId": "s-b",
+            "lessonType": "duo",
+            "unitPrice": 20.02
+          }
+        ],
+        "introText": "Einleitung Bastian",
+        "freeText": "Hinweis Bastian",
+        "legalText": "Rechtstext Bastian",
+        "number": null,
+        "sequence": null,
+        "year": 2026,
+        "status": "draft",
+        "calculation": "decimal-v1",
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z",
+        "draftPrintSnapshot": {
+          "issuer": {
+            "name": "Synthetisches Studio",
+            "street": "Testweg 1",
+            "postalCode": "12345",
+            "city": "Teststadt",
+            "phone": "",
+            "email": "studio@example.org"
+          },
+          "guardians": [
+            {
+              "id": "g-b",
+              "name": "Tarek Suedwind",
+              "email": "bas@example.org",
+              "street": "BAS-Weg 2",
+              "postalCode": "12345",
+              "city": "Teststadt"
+            }
+          ],
+          "students": [
+            {
+              "id": "s-b",
+              "name": "Bastian Suedwind"
+            }
+          ],
+          "accountHolder": "Studio",
+          "iban": "DE02120300000000202051",
+          "bic": "",
+          "bankName": "",
+          "legalText": "Rechtstext Bastian"
+        }
+      }
+    ],
+    "voidedInvoiceNumbers": [],
+    "settings": {
+      "issuer": {
+        "name": "Synthetisches Studio",
+        "street": "Testweg 1",
+        "postalCode": "12345",
+        "city": "Teststadt",
+        "phone": "",
+        "email": "studio@example.org"
+      },
+      "accountHolder": "Studio",
+      "iban": "DE02120300000000202051",
+      "bic": "",
+      "bankName": "",
+      "privateRate": 30,
+      "duoRate": 20,
+      "numberPattern": "{YYYY}-{K}-{NNNN}",
+      "resetNumberAnnually": true,
+      "paymentTermDays": 14,
+      "defaultLegalText": "",
+      "theme": "system",
+      "reducedMotion": false
+    },
+    "counters": {},
+    "nextStudentCodeIndex": 1397,
+    "audit": [],
+    "updatedAt": "2026-09-07T12:00:00.000Z",
+    "duoGroups": [
+      {
+        "id": "duo-d7a05cf1-9d47-49dc-9499-dbad41e75538",
+        "targets": [
+          {
+            "invoiceId": "invoice-f426348d-b3dd-446f-8fd4-203d9dcbaab9",
+            "itemId": "item-5f233ae4-ee0b-4ec0-8cd2-56185b72af3b"
+          },
+          {
+            "invoiceId": "invoice-33c0b69e-a183-4f76-a5a1-8a3d9d2a6030",
+            "itemId": "item-bc577086-62a6-471d-925d-9bcb238ec971"
+          }
+        ],
+        "lesson": {
+          "serviceDate": "2026-09-25",
+          "description": "Rhythmusarbeit (Duo)",
+          "quantity": 0.75,
+          "unit": "Std."
+        },
+        "totalCents": 9999
+      }
+    ]
+  },
+  "issued": {
+    "schemaVersion": 9,
+    "documentVersions": [
+      {
+        "id": "version-528deeac-fe73-4da2-b729-150c8a30d2b8",
+        "invoiceId": "invoice-449542a8-8917-48be-a128-a97860f9612e",
+        "originalId": "version-528deeac-fe73-4da2-b729-150c8a30d2b8",
+        "replacesId": null,
+        "cancelsId": null,
+        "reason": "",
+        "provenance": "issued",
+        "sourceUpdatedAt": "2026-09-07T12:00:00.000Z",
+        "content": {
+          "id": "invoice-449542a8-8917-48be-a128-a97860f9612e",
+          "invoiceDate": "2026-09-25",
+          "dueDate": "2026-10-09",
+          "period": "September 2026",
+          "guardianIds": [
+            "g-a"
+          ],
+          "studentIds": [
+            "s-a"
+          ],
+          "recipientStrategy": "joint",
+          "items": [
+            {
+              "serviceDate": "2026-09-25",
+              "description": "Rhythmusarbeit (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "id": "item-c63d5643-cef8-485c-b37f-fa6874cda70f",
+              "studentId": "s-a",
+              "lessonType": "duo",
+              "unitPrice": 10.1
+            }
+          ],
+          "introText": "Einleitung Aurora",
+          "freeText": "Hinweis Aurora",
+          "legalText": "Rechtstext Aurora",
+          "number": "2026-aur-0001",
+          "sequence": 1,
+          "year": 2026,
+          "calculation": "decimal-v1",
+          "createdAt": "2026-09-07T12:00:00.000Z",
+          "snapshot": {
+            "issuer": {
+              "name": "Synthetisches Studio",
+              "street": "Testweg 1",
+              "postalCode": "12345",
+              "city": "Teststadt",
+              "phone": "",
+              "email": "studio@example.org"
+            },
+            "guardians": [
+              {
+                "id": "g-a",
+                "name": "Mira Nordlicht",
+                "email": "aur@example.org",
+                "street": "AUR-Weg 1",
+                "postalCode": "12345",
+                "city": "Teststadt"
+              }
+            ],
+            "students": [
+              {
+                "id": "s-a",
+                "name": "Aurora Nordlicht"
+              }
+            ],
+            "accountHolder": "Studio",
+            "iban": "DE02120300000000202051",
+            "bic": "",
+            "bankName": "",
+            "legalText": "Rechtstext Aurora"
+          }
+        },
+        "outputSnapshot": {
+          "issuer": {
+            "name": "Synthetisches Studio",
+            "street": "Testweg 1",
+            "postalCode": "12345",
+            "city": "Teststadt",
+            "phone": "",
+            "email": "studio@example.org"
+          },
+          "guardians": [
+            {
+              "id": "g-a",
+              "name": "Mira Nordlicht",
+              "email": "aur@example.org",
+              "street": "AUR-Weg 1",
+              "postalCode": "12345",
+              "city": "Teststadt"
+            }
+          ],
+          "students": [
+            {
+              "id": "s-a",
+              "name": "Aurora Nordlicht"
+            }
+          ],
+          "accountHolder": "Studio",
+          "iban": "DE02120300000000202051",
+          "bic": "",
+          "bankName": "",
+          "legalText": "Rechtstext Aurora"
+        },
+        "outputPeriod": "September 2026",
+        "outputLegalText": "Rechtstext Aurora",
+        "amounts": {
+          "itemCents": [
+            758
+          ],
+          "totalCents": 758,
+          "legacyCalculatedTotalCents": 758,
+          "source": "decimal-output",
+          "calculation": "decimal-v1"
+        },
+        "conflicts": [],
+        "snapshotHistory": [],
+        "registerEntries": []
+      },
+      {
+        "id": "version-9d3601ae-52f3-48ed-a028-ed1cf4588076",
+        "invoiceId": "invoice-179ba405-b345-4959-9f97-53536de654df",
+        "originalId": "version-9d3601ae-52f3-48ed-a028-ed1cf4588076",
+        "replacesId": null,
+        "cancelsId": null,
+        "reason": "",
+        "provenance": "issued",
+        "sourceUpdatedAt": "2026-09-07T12:00:00.000Z",
+        "content": {
+          "id": "invoice-179ba405-b345-4959-9f97-53536de654df",
+          "invoiceDate": "2026-09-25",
+          "dueDate": "2026-10-09",
+          "period": "September 2026",
+          "guardianIds": [
+            "g-b"
+          ],
+          "studentIds": [
+            "s-b"
+          ],
+          "recipientStrategy": "joint",
+          "items": [
+            {
+              "serviceDate": "2026-09-25",
+              "description": "Rhythmusarbeit (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "id": "item-0af667ec-0d39-494f-8cd4-c44d021dc351",
+              "studentId": "s-b",
+              "lessonType": "duo",
+              "unitPrice": 20.02
+            }
+          ],
+          "introText": "Einleitung Bastian",
+          "freeText": "Hinweis Bastian",
+          "legalText": "Rechtstext Bastian",
+          "number": "2026-bas-0001",
+          "sequence": 1,
+          "year": 2026,
+          "calculation": "decimal-v1",
+          "createdAt": "2026-09-07T12:00:00.000Z",
+          "snapshot": {
+            "issuer": {
+              "name": "Synthetisches Studio",
+              "street": "Testweg 1",
+              "postalCode": "12345",
+              "city": "Teststadt",
+              "phone": "",
+              "email": "studio@example.org"
+            },
+            "guardians": [
+              {
+                "id": "g-b",
+                "name": "Tarek Suedwind",
+                "email": "bas@example.org",
+                "street": "BAS-Weg 2",
+                "postalCode": "12345",
+                "city": "Teststadt"
+              }
+            ],
+            "students": [
+              {
+                "id": "s-b",
+                "name": "Bastian Suedwind"
+              }
+            ],
+            "accountHolder": "Studio",
+            "iban": "DE02120300000000202051",
+            "bic": "",
+            "bankName": "",
+            "legalText": "Rechtstext Bastian"
+          }
+        },
+        "outputSnapshot": {
+          "issuer": {
+            "name": "Synthetisches Studio",
+            "street": "Testweg 1",
+            "postalCode": "12345",
+            "city": "Teststadt",
+            "phone": "",
+            "email": "studio@example.org"
+          },
+          "guardians": [
+            {
+              "id": "g-b",
+              "name": "Tarek Suedwind",
+              "email": "bas@example.org",
+              "street": "BAS-Weg 2",
+              "postalCode": "12345",
+              "city": "Teststadt"
+            }
+          ],
+          "students": [
+            {
+              "id": "s-b",
+              "name": "Bastian Suedwind"
+            }
+          ],
+          "accountHolder": "Studio",
+          "iban": "DE02120300000000202051",
+          "bic": "",
+          "bankName": "",
+          "legalText": "Rechtstext Bastian"
+        },
+        "outputPeriod": "September 2026",
+        "outputLegalText": "Rechtstext Bastian",
+        "amounts": {
+          "itemCents": [
+            1502
+          ],
+          "totalCents": 1502,
+          "legacyCalculatedTotalCents": 1502,
+          "source": "decimal-output",
+          "calculation": "decimal-v1"
+        },
+        "conflicts": [],
+        "snapshotHistory": [],
+        "registerEntries": []
+      }
+    ],
+    "invoiceAdministration": [
+      {
+        "versionId": "version-528deeac-fe73-4da2-b729-150c8a30d2b8",
+        "archived": false,
+        "events": [
+          {
+            "at": "2026-09-07T12:00:00.000Z",
+            "status": "sent",
+            "kind": "status",
+            "reason": "Beleg finalisiert."
+          }
+        ],
+        "resolutions": []
+      },
+      {
+        "versionId": "version-9d3601ae-52f3-48ed-a028-ed1cf4588076",
+        "archived": false,
+        "events": [
+          {
+            "at": "2026-09-07T12:00:00.000Z",
+            "status": "sent",
+            "kind": "status",
+            "reason": "Beleg finalisiert."
+          }
+        ],
+        "resolutions": []
+      }
+    ],
+    "payments": [],
+    "historicalSnapshotCorrections": [],
+    "guardians": [
+      {
+        "id": "g-a",
+        "firstName": "Mira",
+        "lastName": "Nordlicht",
+        "name": "Mira Nordlicht",
+        "email": "aur@example.org",
+        "phone": "",
+        "address": {
+          "street": "AUR-Weg 1",
+          "postalCode": "12345",
+          "city": "Teststadt"
+        },
+        "iban": "",
+        "paymentNote": "GEHEIM_A: Duo mit Bastian Suedwind",
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z"
+      },
+      {
+        "id": "g-b",
+        "firstName": "Tarek",
+        "lastName": "Suedwind",
+        "name": "Tarek Suedwind",
+        "email": "bas@example.org",
+        "phone": "",
+        "address": {
+          "street": "BAS-Weg 2",
+          "postalCode": "12345",
+          "city": "Teststadt"
+        },
+        "iban": "",
+        "paymentNote": "GEHEIM_B: Duo mit Aurora Nordlicht",
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z"
+      }
+    ],
+    "students": [
+      {
+        "id": "s-a",
+        "name": "Aurora Nordlicht",
+        "billingCode": "aur",
+        "guardianIds": [
+          "g-a"
+        ],
+        "note": "GEHEIM_A: Duo mit Bastian Suedwind",
+        "active": true,
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z"
+      },
+      {
+        "id": "s-b",
+        "name": "Bastian Suedwind",
+        "billingCode": "bas",
+        "guardianIds": [
+          "g-b"
+        ],
+        "note": "GEHEIM_B: Duo mit Aurora Nordlicht",
+        "active": true,
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z"
+      }
+    ],
+    "invoices": [
+      {
+        "id": "invoice-449542a8-8917-48be-a128-a97860f9612e",
+        "invoiceDate": "2026-09-25",
+        "dueDate": "2026-10-09",
+        "period": "September 2026",
+        "guardianIds": [
+          "g-a"
+        ],
+        "studentIds": [
+          "s-a"
+        ],
+        "recipientStrategy": "joint",
+        "items": [
+          {
+            "serviceDate": "2026-09-25",
+            "description": "Rhythmusarbeit (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "id": "item-c63d5643-cef8-485c-b37f-fa6874cda70f",
+            "studentId": "s-a",
+            "lessonType": "duo",
+            "unitPrice": 10.1
+          }
+        ],
+        "introText": "Einleitung Aurora",
+        "freeText": "Hinweis Aurora",
+        "legalText": "Rechtstext Aurora",
+        "number": "2026-aur-0001",
+        "sequence": 1,
+        "year": 2026,
+        "status": "sent",
+        "calculation": "decimal-v1",
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z",
+        "sentAt": "2026-09-07T12:00:00.000Z",
+        "snapshot": {
+          "issuer": {
+            "name": "Synthetisches Studio",
+            "street": "Testweg 1",
+            "postalCode": "12345",
+            "city": "Teststadt",
+            "phone": "",
+            "email": "studio@example.org"
+          },
+          "guardians": [
+            {
+              "id": "g-a",
+              "name": "Mira Nordlicht",
+              "email": "aur@example.org",
+              "street": "AUR-Weg 1",
+              "postalCode": "12345",
+              "city": "Teststadt"
+            }
+          ],
+          "students": [
+            {
+              "id": "s-a",
+              "name": "Aurora Nordlicht"
+            }
+          ],
+          "accountHolder": "Studio",
+          "iban": "DE02120300000000202051",
+          "bic": "",
+          "bankName": "",
+          "legalText": "Rechtstext Aurora"
+        },
+        "versionId": "version-528deeac-fe73-4da2-b729-150c8a30d2b8"
+      },
+      {
+        "id": "invoice-179ba405-b345-4959-9f97-53536de654df",
+        "invoiceDate": "2026-09-25",
+        "dueDate": "2026-10-09",
+        "period": "September 2026",
+        "guardianIds": [
+          "g-b"
+        ],
+        "studentIds": [
+          "s-b"
+        ],
+        "recipientStrategy": "joint",
+        "items": [
+          {
+            "serviceDate": "2026-09-25",
+            "description": "Rhythmusarbeit (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "id": "item-0af667ec-0d39-494f-8cd4-c44d021dc351",
+            "studentId": "s-b",
+            "lessonType": "duo",
+            "unitPrice": 20.02
+          }
+        ],
+        "introText": "Einleitung Bastian",
+        "freeText": "Hinweis Bastian",
+        "legalText": "Rechtstext Bastian",
+        "number": "2026-bas-0001",
+        "sequence": 1,
+        "year": 2026,
+        "status": "sent",
+        "calculation": "decimal-v1",
+        "createdAt": "2026-09-07T12:00:00.000Z",
+        "updatedAt": "2026-09-07T12:00:00.000Z",
+        "sentAt": "2026-09-07T12:00:00.000Z",
+        "snapshot": {
+          "issuer": {
+            "name": "Synthetisches Studio",
+            "street": "Testweg 1",
+            "postalCode": "12345",
+            "city": "Teststadt",
+            "phone": "",
+            "email": "studio@example.org"
+          },
+          "guardians": [
+            {
+              "id": "g-b",
+              "name": "Tarek Suedwind",
+              "email": "bas@example.org",
+              "street": "BAS-Weg 2",
+              "postalCode": "12345",
+              "city": "Teststadt"
+            }
+          ],
+          "students": [
+            {
+              "id": "s-b",
+              "name": "Bastian Suedwind"
+            }
+          ],
+          "accountHolder": "Studio",
+          "iban": "DE02120300000000202051",
+          "bic": "",
+          "bankName": "",
+          "legalText": "Rechtstext Bastian"
+        },
+        "versionId": "version-9d3601ae-52f3-48ed-a028-ed1cf4588076"
+      }
+    ],
+    "voidedInvoiceNumbers": [],
+    "settings": {
+      "issuer": {
+        "name": "Synthetisches Studio",
+        "street": "Testweg 1",
+        "postalCode": "12345",
+        "city": "Teststadt",
+        "phone": "",
+        "email": "studio@example.org"
+      },
+      "accountHolder": "Studio",
+      "iban": "DE02120300000000202051",
+      "bic": "",
+      "bankName": "",
+      "privateRate": 30,
+      "duoRate": 20,
+      "numberPattern": "{YYYY}-{K}-{NNNN}",
+      "resetNumberAnnually": true,
+      "paymentTermDays": 14,
+      "defaultLegalText": "",
+      "theme": "system",
+      "reducedMotion": false
+    },
+    "counters": {
+      "2026:aur": 2,
+      "2026:bas": 2
+    },
+    "nextStudentCodeIndex": 1397,
+    "audit": [],
+    "updatedAt": "2026-09-07T12:00:00.000Z",
+    "duoGroups": [
+      {
+        "id": "duo-b1b50c0b-edd2-4f42-8aa4-fdc259616ebd",
+        "targets": [
+          {
+            "invoiceId": "invoice-449542a8-8917-48be-a128-a97860f9612e",
+            "itemId": "item-c63d5643-cef8-485c-b37f-fa6874cda70f"
+          },
+          {
+            "invoiceId": "invoice-179ba405-b345-4959-9f97-53536de654df",
+            "itemId": "item-0af667ec-0d39-494f-8cd4-c44d021dc351"
+          }
+        ],
+        "lesson": {
+          "serviceDate": "2026-09-25",
+          "description": "Rhythmusarbeit (Duo)",
+          "quantity": 0.75,
+          "unit": "Std."
+        },
+        "totalCents": 2260
+      }
+    ]
+  }
+}
