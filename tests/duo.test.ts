@@ -1,24 +1,22 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createElement } from 'react'
-import { renderToStaticMarkup } from 'react-dom/server'
 import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
-import { createCorrectionDraft, selectInvoice, activeInvoices, archiveInvoice } from '../src/lib/documents'
+import { createCorrectionDraft, activeInvoices, archiveInvoice } from '../src/lib/documents'
 import { deleteInvoiceDraftState } from '../src/lib/commands'
 import { requireSuccess } from '../src/lib/result'
 import { inspectImport } from '../src/lib/importState'
 import { invoiceTotalCents } from '../src/lib/money'
-import { invoicePdfTitle, buildEpcPayload, applyLessonType } from '../src/lib/utils'
+import { applyLessonType, buildEpcPayload } from '../src/lib/utils'
 import { validateBackupState } from '../src/lib/validation'
 import { serializeBackup, parseBackup, StorageSession, STORAGE_KEY, PREVIOUS_STORAGE_KEY, loadState } from '../src/lib/storage'
-import { InvoicePrint } from '../src/components/InvoicePrint'
 import { documentAt, documentDraft, documentFamily, editable } from './documentFixtures'
-import { duoDrafts, duoIssued, legacyDuoState, households } from './duoFixtures'
+import { duoDrafts, legacyDuoState, legacyDuoSource } from './duoFixtures'
 import { memoryStorage, seedState, sharedLock } from './storageHarness'
 
 function migrated(raw: string) { return requireSuccess(inspectImport(raw)) }
 
 test('P03: Schema 8/9 löst nur Gruppenmetadaten; Preise, Empfänger und alle Entwürfe bleiben unverändert', async () => {
+  assert.equal(legacyDuoSource, '83c747488f643dc6d1416319c8a1d594e9ae4305')
   for (const schema of [8, 9] as const) {
     const legacy = legacyDuoState(schema), before = structuredClone(legacy)
     const raw = '\uFEFF' + JSON.stringify(legacy, null, 2) + '\r\n'
@@ -135,25 +133,9 @@ test('P03: Einzelabschluss und Bearbeitung benötigen keinen gültigen Partner o
   const partner = structuredClone(state.invoices[1])
   state = saveInvoiceDraft(state, { ...editable(state.invoices[0]), freeText: 'Unabhängig bearbeitet' }, true, documentAt)
   assert.equal(state.documentVersions.length, 1)
-  assert.deepEqual(state.invoices[1], partner)
+  assert.deepEqual(state.invoices.find((invoice) => invoice.id === partner.id), partner)
   const deleted = requireSuccess(deleteInvoiceDraftState(state, partner.id))
   assert.equal(deleted.invoices.length, 1)
-})
-
-test('P03 Datenschutz: gewöhnliche Empfängerberechtigung und private Ausgabe bleiben geschützt', () => {
-  const draftState = duoDrafts()
-  const wrong = { ...editable(draftState.invoices[0]), guardianIds: ['g-b'] }
-  assert.throws(() => saveInvoiceDraft(draftState, wrong, false), /zugeordnet/)
-  assert.throws(() => saveInvoiceDraft(draftState, wrong, true), /zugeordnet/)
-  const state = duoIssued()
-  state.invoices.forEach((raw, i) => {
-    const invoice = selectInvoice(state, raw), own = households[i], foreign = households[1 - i]
-    const html = renderToStaticMarkup(createElement(InvoicePrint, { invoice, guardians: state.guardians, students: state.students, settings: state.settings, includeGiroCode: false }))
-    assert.ok(html.includes(own.student) && html.includes(own.guardian))
-    for (const output of [html, invoicePdfTitle(invoice, state.students), buildEpcPayload(invoice, state.settings, invoiceTotalCents(invoice) / 100), JSON.stringify(raw.snapshot), JSON.stringify(state.documentVersions[i])]) {
-      for (const marker of [foreign.student, foreign.guardian, foreign.note, own.note, 'GEHEIM_', 'legacy-duo-group']) assert.ok(!output.includes(marker), marker)
-    }
-  })
 })
 
 test('P03: Zahlung und Korrektur einer unabhängigen Duo-Rechnung ändern keinen anderen Beleg', () => {
@@ -184,4 +166,20 @@ test('P03: Quota, Validierungsfehler und veralteter Tab hinterlassen keinen halb
     assert.equal(a.state.documentVersions.length, 1)
     assert.deepEqual(a.state.invoices[1], state.invoices[1])
   }
+})
+
+test('P03: Selbstzahler nutzt Duo-Preis, GiroCode und denselben Personenbuchstaben ohne Gruppe', () => {
+  const state = documentFamily(), student = state.students[0]
+  student.selfPayer = true
+  student.guardianIds = []
+  const draft = documentDraft()
+  draft.guardianIds = []
+  draft.recipients = [{ type: 'student', id: student.id }]
+  draft.items = [applyLessonType(draft.items[0], 'duo', state.settings)]
+  const next = saveInvoiceDraft(state, draft, true, documentAt)
+  assert.equal(next.invoices[0].number, '2026-a-0001')
+  assert.deepEqual(next.invoices[0].snapshot?.recipients?.map((recipient) => recipient.id), [student.id])
+  assert.equal(next.invoices[0].items[0].unitPrice, state.settings.duoRate)
+  assert.match(buildEpcPayload(next.invoices[0], state.settings, invoiceTotalCents(next.invoices[0]) / 100), /2026-a-0001/)
+  assert.equal('duoGroups' in next, false)
 })

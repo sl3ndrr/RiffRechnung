@@ -39,6 +39,3 @@ function validateDuoGroups(value: unknown): void {
     if (group.totalCents !== undefined) backupInteger(group.totalCents, `${path}.totalCents`, 0)
   })
 }
-
-
-

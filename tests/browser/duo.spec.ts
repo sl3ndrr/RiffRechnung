@@ -88,7 +88,7 @@ test('P03 Browser: alte Gruppenentwürfe im lokalen Klärungspfad übernehmen un
       const pdf = await rendering.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true })
       const text = execFileSync('pdftotext', ['-layout', '-', '-'], { input: pdf, encoding: 'utf8' })
       for (const marker of [households[i].student, households[i].guardian, households[i].intro, households[i].free, households[i].legal, i === 0 ? '7,58' : '15,02']) expect(text).toContain(marker)
-      for (const marker of [households[1 - i].student, households[1 - i].guardian, 'GEHEIM_', 'legacy-duo-group']) expect(text).not.toContain(marker)
+      for (const marker of [households[1 - i].student, households[1 - i].guardian, 'GEHEIM_', old.duoGroups[0].id]) expect(text).not.toContain(marker)
       expect(await rendering.evaluate(() => document.documentElement.dataset.giroPayload)).toContain(issued.invoices[i].number!)
       await testInfo.attach(`p03-haushalt-${i + 1}.pdf`, { body: pdf, contentType: 'application/pdf' })
     } finally { await rendering.close() }

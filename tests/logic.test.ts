@@ -1,5 +1,6 @@
 import './money-calendar.test'
 import './duo.test'
+import './duo-output.test'
 import './stabilization.test'
 import './invoice-split.test'
 import './payment-data.test'

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import type { AppState } from '../src/types'
 import { documentAt, documentDraft, documentFamily } from './documentFixtures'
 import { saveInvoiceDraft, changeInvoiceStatus } from '../src/lib/invoiceActions'
@@ -37,11 +38,14 @@ export function duoIssued(): AppState {
   for (const invoice of state.invoices) state = changeInvoiceStatus(state, invoice.id, 'sent', documentAt)
   return state
 }
-/** Explicit pre-P03 schema-8/9 fixture; no production group API remains. */
+/** Frozen output of the unchanged P02 group commands, never rebuilt by new code. */
+const legacy = JSON.parse(readFileSync('tests/fixtures/duo-schema9.json', 'utf8')) as {
+  sourceCommit: string; drafts: AppState; issued: AppState
+}
+export const legacyDuoSource = legacy.sourceCommit
 export function legacyDuoState(schemaVersion: 8 | 9 = 9, issued = false) {
-  const state = issued ? duoIssued() : duoDrafts()
-  return { ...state, schemaVersion, duoGroups: [{ id: 'legacy-duo-group',
-    targets: state.invoices.map((invoice) => ({ invoiceId: invoice.id, itemId: invoice.items[0].id })),
-    lesson: structuredClone(duoLesson), totalCents: 9999,
-  }] }
+  const state = structuredClone(issued ? legacy.issued : legacy.drafts)
+  return { ...state, schemaVersion, duoGroups: Reflect.get(state, 'duoGroups') as {
+    id: string; targets: { invoiceId: string; itemId: string }[]; lesson: typeof duoLesson; totalCents: number
+  }[] }
 }
