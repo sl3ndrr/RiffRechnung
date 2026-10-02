@@ -504,7 +504,7 @@ test('P07 Browser/PDF: Schema-12-Konflikte behalten dieselbe Ansicht, Druckausga
   await page.evaluate(async () => {
     const path = '/src/lib/storage.ts'
     const { StorageSession } = await import(path)
-    await new StorageSession().change((state) => ({ ...state,
+    await new StorageSession().change((state: AppState) => ({ ...state,
       guardians: state.guardians.map((person) => ({ ...person, name: 'HEUTIGER EMPFÄNGER', address: { street: 'HEUTIGE ANSCHRIFT', postalCode: '', city: '' } })),
       students: state.students.map((person) => ({ ...person, name: 'HEUTIGER LEISTUNGSNAME' })),
       settings: { ...state.settings, accountHolder: 'HEUTIGES KONTO', bic: 'MARKDEF1100', bankName: 'HEUTIGE BANK' },

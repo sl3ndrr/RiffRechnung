@@ -91,7 +91,7 @@ export function migrateInvoiceNumbering(value: AppState, changes: Change[] = [],
     changes.push({ path: `settings.${key}`, before: settings[key] ?? null, after: null, reason: 'Nur Migrationsinput; neue Nummern fest YYYY-NNNN-Kennung, jährlich je Person/Kombination.' })
     Reflect.deleteProperty(state.settings, key)
   }
-  state.schemaVersion = 12
+  state.schemaVersion = 12 as never
   changes.push({ path: 'schemaVersion', before: 11, after: 12, reason: `Feste jährliche Nummerierung; konservatives Umstiegsjahr ${migrationYear}. Nummern, Kennungen und Reservierungsbelege bleiben unverändert.` })
   return state
 }
