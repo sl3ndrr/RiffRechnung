@@ -173,8 +173,6 @@ export interface Settings {
   bankName: string
   privateRate: number
   duoRate: number
-  numberPattern: string
-  resetNumberAnnually: boolean
   paymentTermDays: number
   defaultLegalText: string
   theme: ThemeMode
@@ -205,7 +203,7 @@ export interface VoidedInvoiceNumber {
 }
 
 export interface AppState {
-  schemaVersion: 11
+  schemaVersion: 12
   guardians: Guardian[]
   students: Student[]
   invoices: Invoice[]
@@ -241,3 +239,4 @@ export interface InvoiceDraft {
   freeText: string
   legalText: string
 }
+

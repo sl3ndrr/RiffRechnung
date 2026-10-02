@@ -309,16 +309,6 @@ export function studentCodeIndex(code: string): number {
   return value - 1
 }
 
-export function ensureStudentCodePattern(pattern?: string): string {
-  const source = pattern?.trim() || '{YYYY}-{NNNN}'
-  if (source.includes('{K}')) return source
-  const sequenceToken = /\{N+\}/.exec(source)
-  if (!sequenceToken || sequenceToken.index === undefined) return `${source}-{K}-{NNNN}`
-  const prefix = source.slice(0, sequenceToken.index)
-  const separator = /[-/_.]/.test(prefix.at(-1) ?? '') ? prefix.at(-1) : '-'
-  return `${prefix}{K}${separator}${source.slice(sequenceToken.index)}`
-}
-
 export function invoiceStudentCode(state: Pick<AppState, 'students'>, studentIds: string[]): string {
   const codes = [...new Set(studentIds
     .map((id) => state.students.find((student) => student.id === id)?.billingCode?.toLowerCase())
@@ -327,33 +317,36 @@ export function invoiceStudentCode(state: Pick<AppState, 'students'>, studentIds
   return codes.join('+') || 'x'
 }
 
-export function formatInvoiceNumber(settings: Settings, sequence: number, year: number, studentCode = 'a'): string {
-  const pattern = ensureStudentCodePattern(settings.numberPattern)
-  const hasSequence = /\{N+\}/.test(pattern)
-  const formatted = pattern
-    .replaceAll('{YYYY}', String(year))
-    .replaceAll('{YY}', String(year).slice(-2))
-    .replaceAll('{K}', studentCode.toLowerCase())
-    .replace(/\{(N+)\}/g, (_match, digits: string) => String(sequence).padStart(digits.length, '0'))
-  return hasSequence ? formatted : `${formatted}-${String(sequence).padStart(4, '0')}`
+/** New allocations always use an annual, person/combinations specific circle. */
+export function formatInvoiceNumber(sequence: number, year: number, studentCode: string): string {
+  return `${year}-${String(sequence).padStart(4, '0')}-${studentCode}`
 }
 
 export function nextInvoiceAllocation(state: AppState, invoiceDate: string, studentIds: string[]): { number: string; sequence: number; counterKey: string } {
   const year = parseDate(invoiceDate).getFullYear()
   const studentCode = invoiceStudentCode(state, studentIds)
-  const counterScope = state.settings.resetNumberAnnually ? String(year) : 'global'
-  const counterKey = `${counterScope}:${studentCode}`
-  const legacyCounterKey = `${counterScope}:${studentCode.replaceAll('+', '')}`
-  let sequence = Math.max(1, state.counters[counterKey] ?? 1, state.counters[legacyCounterKey] ?? 1)
-  let candidate = formatInvoiceNumber(state.settings, sequence, year, studentCode)
-  const used = new Set([
-    ...state.invoices.map((invoice) => invoice.number),
-    ...state.voidedInvoiceNumbers.map((invoice) => invoice.number),
-  ].filter(Boolean))
-  while (used.has(candidate)) {
-    sequence += 1
-    candidate = formatInvoiceNumber(state.settings, sequence, year, studentCode)
+  const counterKey = `${year}:${studentCode}`
+  let sequence = Math.max(1, state.counters[counterKey] ?? 1, state.counters[`${year}:*`] ?? 1)
+  const documents = [...state.invoices, ...state.documentVersions.map((version) => version.content)]
+  for (const invoice of documents) {
+    if (invoice.number && invoice.year === year && invoiceStudentCode(state, invoice.studentIds) === studentCode) {
+      sequence = Math.max(sequence, (invoice.sequence ?? 0) + 1)
+    }
   }
+  const reservations = [...state.voidedInvoiceNumbers, ...state.documentVersions.flatMap((version) => version.registerEntries)]
+  for (const reservation of reservations) {
+    const match = /^(\d{4})-(\d+)-([a-z]+(?:\+[a-z]+)*)$/.exec(reservation.number)
+    const old = /^(\d{4})-([a-z]+(?:\+[a-z]+)*)-(\d+)$/.exec(reservation.number)
+    const reservedCode = match?.[3] ?? old?.[2]
+    if (reservedCode && Number(match?.[1] ?? old?.[1]) === year && reservedCode.split('+').sort((a, b) => studentCodeIndex(a) - studentCodeIndex(b)).join('+') === studentCode) {
+      sequence = Math.max(sequence, Number(match?.[2] ?? old?.[3]) + 1, (reservation.sequence ?? 0) + 1)
+    }
+  }
+  const used = new Set([...documents, ...reservations].map((entry) => entry.number).filter(Boolean))
+  let candidate = formatInvoiceNumber(sequence, year, studentCode)
+  while (used.has(candidate)) candidate = formatInvoiceNumber(++sequence, year, studentCode)
+  // Finalization stores sequence + 1, so both values must remain safe integers.
+  if (!Number.isSafeInteger(sequence + 1)) throw new Error('Rechnungsfolge ausgeschöpft. Bestehende Nummern bleiben erhalten.')
   return { number: candidate, sequence, counterKey }
 }
 
@@ -458,3 +451,4 @@ export function outputUnitPrice(invoice: Invoice, item: InvoiceItem): string {
   const [whole, fraction = ''] = decimalInputText(item.unitPrice).split('.')
   return `${new Intl.NumberFormat('de-DE').format(BigInt(whole))},${fraction.padEnd(2, '0')}\u00a0€`
 }
+

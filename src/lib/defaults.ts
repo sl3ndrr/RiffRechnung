@@ -18,8 +18,6 @@ export const defaultSettings: Settings = {
   bankName: '',
   privateRate: 30,
   duoRate: 20,
-  numberPattern: '{YYYY}-{K}-{NNNN}',
-  resetNumberAnnually: true,
   paymentTermDays: 14,
   defaultLegalText: '',
   theme: 'system',
@@ -28,7 +26,7 @@ export const defaultSettings: Settings = {
 
 export function emptyState(): AppState {
   return {
-    schemaVersion: 11,
+    schemaVersion: 12,
     documentVersions: [], invoiceAdministration: [], payments: [], historicalSnapshotCorrections: [],
     guardians: [],
     students: [],
@@ -262,7 +260,7 @@ export function createDemoState(referenceDate = new Date()): AppState {
     students,
     invoices,
     voidedInvoiceNumbers: [],
-    settings,
+    settings: { ...settings, numberPattern: '{YYYY}-{K}-{NNNN}', resetNumberAnnually: true },
     counters: Object.fromEntries([...sequenceByScope].map(([key, sequence]) => [key, sequence + 1])),
     nextStudentCodeIndex: students.length,
     audit: [{ id: 'event-demo-data-loaded', at: now, label: 'Vollständige Beispieldaten ab Januar 2025 angelegt', entityType: 'system' }],
@@ -278,6 +276,7 @@ export function createDemoState(referenceDate = new Date()): AppState {
     const payment = demo.payments.find((entry) => entry.allocations.at(-1)?.versionId === invoice.versionId && entry.paymentDayStatus === 'confirmed')
     return payment?.paidAt ? { ...invoice, paidAt: payment.paidAt } : invoice
   })
-  demo.schemaVersion = 11
+  demo.schemaVersion = 12
   return demo
 }
+
