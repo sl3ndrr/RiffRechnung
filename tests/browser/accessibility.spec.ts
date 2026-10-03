@@ -3,7 +3,9 @@ import { documentAt, documentDraft, documentFamily } from '../documentFixtures'
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
 import { serializeBackup, STORAGE_KEY } from '../../src/lib/storage'
 import type { AppState } from '../../src/types'
-import { version } from '../../package.json'
+import { readFileSync } from 'node:fs'
+
+const { version } = JSON.parse(readFileSync('package.json', 'utf8')) as { version: string }
 
 async function seed(page: Page, state: AppState) {
   await page.goto('/')
