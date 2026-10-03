@@ -346,6 +346,8 @@ export function serializeMigrationReport(preview: ImportPreview): string {
 type LegacySnapshot = Omit<NonNullable<Invoice['snapshot']>, 'recipients'> & { guardians: import('../types').GuardianSnapshot[]; recipients?: NonNullable<Invoice['snapshot']>['recipients'] }
 type LegacyAuditEvent = Omit<AuditEvent, 'snapshotCorrection'> & { snapshotCorrection?: { oldValue: LegacySnapshot | null; newValue: LegacySnapshot } }
 interface LegacyInvoice extends Omit<Invoice, 'recipients' | 'snapshot'> {
+  year: number
+  period: string
   guardianIds: string[]
   recipients?: Invoice['recipients']
   snapshot?: LegacySnapshot

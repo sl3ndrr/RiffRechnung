@@ -12,7 +12,7 @@ export function consolidateDocumentOutput(state: AppState, changes: Change[] = [
         reason: 'Bestehende output-Felder sind die verbindliche Ausgabequelle. Historische Rohangaben und Konflikte bleiben im bisherigen Beleg erhalten; keine neue Archivkopie.' })
     }
   }
-  state.schemaVersion = 13
+  state.schemaVersion = 13 as never
   changes.push({ path: 'schemaVersion', before: 12, after: 13, reason: 'Beleginhalt ohne doppelte Ausgabeinformationen; Ausgabe, Rohbelege, Beträge, Nummern und historische Nachweise unverändert.' })
   return state
 }

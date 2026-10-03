@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { AppState, InvoiceDraft, RecipientRef, Student } from '../src/types'
-import { documentAt, documentDraft, documentFamily, editable, legacyVersionedFixture } from './documentFixtures'
+import { documentAt, documentDraft, documentFamily, editable, legacyVersionedFixture, expectedConsolidatedVersions } from './documentFixtures'
 import { prepareInvoiceCopy, saveStudentState } from '../src/lib/commands'
 import { requireSuccess } from '../src/lib/result'
 import { saveInvoiceDraft, changeInvoiceStatus } from '../src/lib/invoiceActions'
@@ -144,7 +144,8 @@ test('AP5: Schema 7→11 normalisiert Empfänger, idempotent, berichtet und arch
   const preview = requireSuccess(inspectImport(raw))
   assert.equal(preview.report?.fromSchema, 7)
   assert.equal(preview.report?.toSchema, 14)
-  assert.deepEqual(preview.state.documentVersions, state.documentVersions)
+  const expected = legacyVersionedFixture(state, 13)
+  assert.deepEqual(preview.state.documentVersions, expectedConsolidatedVersions(expected.documentVersions))
   assert.deepEqual(preview.state.invoices[0].snapshot, state.invoices[0].snapshot)
   assert.deepEqual(preview.state.invoices[0].recipients, [{ type: 'guardian', id: 'g-a' }])
   assert.match(serializeMigrationReport(preview), /riffrechnung-to-v14/)
