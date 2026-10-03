@@ -118,7 +118,7 @@ export function Settings({ state, onSave, onDirty, onExport, onImport, onReset, 
           <section id="appearance" className="surface settings-section">
             <div className="settings-section__heading"><span><Palette aria-hidden="true" /></span><div><h2>Darstellung</h2><p>Das Rechnungs-PDF bleibt unabhängig davon immer hell.</p></div></div>
             <fieldset className="theme-picker"><legend>Farbschema</legend>{([['system', Palette, 'System'], ['light', Sun, 'Hell'], ['dark', Moon, 'Dunkel']] as const).map(([value, Icon, label]) => <label className={form.theme === value ? 'is-selected' : ''} key={value}><input type="radio" name="theme" checked={form.theme === value} onChange={() => setTheme(value)} /><Icon aria-hidden="true" /><span>{label}</span></label>)}</fieldset>
-            <label className="switch-row"><span><strong>Bewegungen reduzieren</strong><small>Expressive Übergänge auf kurze Überblendungen begrenzen</small></span><input type="checkbox" checked={form.reducedMotion} onChange={(event) => setForm({ ...form, reducedMotion: event.target.checked })} /><i /></label>
+            <label className="switch-row"><span><strong>Bewegungen reduzieren</strong><small>Bewegungspräferenz für die Darstellung speichern</small></span><input type="checkbox" checked={form.reducedMotion} onChange={(event) => setForm({ ...form, reducedMotion: event.target.checked })} /><i /></label>
           </section>
 
           <section id="backup" className="surface settings-section settings-section--backup">
