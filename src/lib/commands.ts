@@ -1,6 +1,6 @@
 import { calculateDueDate, localToday, shiftCalendarMonths } from './calendar'
 import { contactNameError } from './contactName'
-import type { AppState, Guardian, InvoiceDraft, Settings, Student } from '../types'
+import type { AppState, Guardian, InvoiceDraft, Settings, Student, ThemeMode } from '../types'
 import { emptyState } from './defaults'
 import { createEmptyInvoiceDraft, invoiceDraftFields } from './invoiceDrafts'
 import { assertInvoiceEditable, assertReplacementAllowed } from './safety'
@@ -18,6 +18,16 @@ export function saveSettingsState(state: AppState, settings: Settings): CommandR
   return commandResult(() => {
     validateBackupState(state)
     const next = { ...state, settings: updateSettings(state.settings, structuredClone(settings)) }
+    validateBackupState(next)
+    return next
+  })
+}
+
+export function changeThemeState(state: AppState, theme: ThemeMode): CommandResult<AppState> {
+  return commandResult(() => {
+    validateBackupState(state)
+    // A display preference must not validate or normalize an unfinished account.
+    const next = { ...state, settings: { ...state.settings, theme } }
     validateBackupState(next)
     return next
   })
