@@ -8,7 +8,12 @@ import { Calendar, CircleDollarSign, FileCheck2, Minus, Plus, Save, Send, Trash2
 import type { AppState, Guardian, InvoiceDraft, LessonType, RecipientRef, Settings, Student } from '../types'
 import { FINALIZED_INVOICE_BLOCKED } from '../lib/safety'
 import { Modal } from '../components/Modal'
-import { applyLessonType, billingPeriodFromItems, calculateDueDate, createLessonItem, euro, invoiceFinalizationErrors, itemTotal } from '../lib/utils'
+import { applyLessonType, createLessonItem } from '../lib/invoiceDrafts'
+import { billingPeriodFromItems } from '../lib/invoiceOutput'
+import { calculateDueDate } from '../lib/calendar'
+import { euro } from '../lib/utils'
+import { invoiceFinalizationErrors } from '../lib/invoiceRules'
+import { itemTotal } from '../lib/money'
 import { guardianIdsFor, recipientCanBillStudent, recipientKey, recipientRefs } from '../lib/recipients'
 
 const INVOICE_EDITOR_FORM_ID = 'invoice-editor-form'

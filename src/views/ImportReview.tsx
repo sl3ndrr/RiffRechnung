@@ -2,7 +2,7 @@ import { Modal } from '../components/Modal'
 import { serializeBackup } from '../lib/storage'
 import { serializeMigrationReport, type ImportPreview } from '../lib/importState'
 import type { CommandResult } from '../lib/result'
-import { downloadBytes, downloadText } from '../lib/utils'
+import { downloadBytes, downloadText } from '../lib/downloads'
 
 export interface ImportReviewData {
   bytes: Uint8Array

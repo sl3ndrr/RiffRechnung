@@ -7,7 +7,9 @@ import { commandResult } from './result'
 import type { AppState, Invoice, InvoiceDraft, InvoiceStatus } from '../types'
 import { assertInvoiceEditable, assertOriginalsPreserved } from './safety'
 import { validateBackupState } from './validation'
-import { invoiceFinalizationErrors, nextInvoiceAllocation, uid } from './utils'
+import { invoiceFinalizationErrors } from './invoiceRules'
+import { nextInvoiceAllocation } from './invoiceNumbering'
+import { uid } from './identities'
 import { recipientCanBillStudent, recipientRefs } from './recipients'
 
 function requiredPaymentDay(value: string | undefined): string {
@@ -154,3 +156,4 @@ export function invoiceDraftErrors(state: AppState, draft: InvoiceDraft): string
   const result = commandResult(() => saveInvoiceDraft(state, draft, false))
   return result.ok ? [] : result.errors.map((error) => error.message)
 }
+

@@ -77,3 +77,43 @@ export function paymentDataForInvoice(invoice: Pick<Invoice, 'snapshot'>, settin
     bankName: source.bankName,
   }
 }
+
+
+function sanitizeEpc(value: string, maxLength: number): string {
+  return value.replace(/[\r\n]/g, ' ').trim().slice(0, maxLength)
+}
+
+export function buildEpcPayload(invoice: Invoice, settings: Settings, amount: number): string {
+  if (!Number.isFinite(amount) || amount < 0.01 || amount > 999_999_999.99) {
+    throw new Error('EPC-GiroCode: Der Betrag muss zwischen 0,01 und 999.999.999,99 EUR liegen.')
+  }
+  const account = paymentDataForInvoice(invoice, settings)
+  const paymentErrors = paymentDataErrors(account)
+  if (paymentErrors.length) throw new Error(`EPC-GiroCode: ${paymentErrors[0].message}`)
+  const name = account.accountHolder
+  const iban = cleanIban(account.iban)
+  const bic = account.bic
+  const purpose = invoice.number ? `Rechnung ${invoice.number}` : 'Rechnung Entwurf'
+  const fields = [
+    'BCD',
+    '002',
+    '1',
+    'SCT',
+    sanitizeEpc(bic, 11),
+    sanitizeEpc(name, 70),
+    iban,
+    `EUR${amount.toFixed(2)}`,
+    '',
+    '',
+    sanitizeEpc(purpose, 140),
+    '',
+  ]
+  while (fields.at(-1) === '') fields.pop()
+  const payload = fields.join('\n')
+  const byteLength = new TextEncoder().encode(payload).byteLength
+  if (byteLength > 331) throw new Error(`EPC-GiroCode: Die Payload überschreitet mit ${byteLength} Byte das Maximum von 331 Byte.`)
+  return payload
+}
+
+
+export { isValidGermanIban as isValidIban }

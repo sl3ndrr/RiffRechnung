@@ -16,3 +16,9 @@ export function copyItemsWithFreshIds(items: InvoiceItem[], occupied: Set<string
   const used = new Set([...occupied, ...items.map((item) => item.id)])
   return items.map((item) => ({ ...structuredClone(item), id: freshId('item', used, createId) }))
 }
+
+
+export function uid(prefix: string): string {
+  return `${prefix}-${crypto.randomUUID()}`
+}
+

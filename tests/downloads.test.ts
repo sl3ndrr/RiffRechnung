@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { downloadBytes, downloadText } from '../src/lib/utils'
+import { downloadBytes, downloadText } from '../src/lib/downloads'
 
 test('P04: Downloads erhalten Blob und angehängten Link bis zur asynchronen Initiierung; Fehler geben sie frei', async () => {
   const originalDocument = Object.getOwnPropertyDescriptor(globalThis, 'document')
@@ -66,3 +66,4 @@ test('P04: Downloads erhalten Blob und angehängten Link bis zur asynchronen Ini
     else Reflect.deleteProperty(globalThis, 'window')
   }
 })
+

@@ -38,3 +38,9 @@ export function paymentDay(value: string): string {
   calendarParts(day)
   return day
 }
+
+
+export function calculateDueDate(invoiceDate: string, paymentTermDays: number): string {
+  try { return addCalendarDays(invoiceDate, paymentTermDays) } catch { return '' }
+}
+

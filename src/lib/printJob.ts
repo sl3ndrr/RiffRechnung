@@ -1,5 +1,6 @@
 import type { Guardian, Invoice, Settings, Student } from '../types'
-import { buildEpcPayload, invoiceTotal } from './utils'
+import { buildEpcPayload } from './paymentData'
+import { invoiceTotal } from './money'
 import { paymentDataForInvoice } from './paymentData'
 
 export interface PrintRequest {
@@ -76,3 +77,4 @@ export function resolveGiroCode(
 export function isCurrentPrintRequest(request: PrintRequest | null, requestId: string, invoiceId: string): request is PrintRequest {
   return Boolean(request && request.id === requestId && request.invoice.id === invoiceId)
 }
+

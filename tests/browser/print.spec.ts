@@ -5,8 +5,8 @@ import type { AppState, InvoiceDraft } from '../../src/types'
 import { documentAt, documentDraft, documentFamily } from '../documentFixtures'
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
 import { serializeBackup } from '../../src/lib/storage'
-import { buildEpcPayload } from '../../src/lib/utils'
-import { invoiceTotal } from '../../src/lib/utils'
+import { buildEpcPayload } from '../../src/lib/paymentData'
+import { invoiceTotal } from '../../src/lib/money'
 
 async function seed(page: Page, state: AppState) {
   await page.goto('/')

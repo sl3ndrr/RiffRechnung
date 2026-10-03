@@ -1,7 +1,7 @@
-import { localToday, paymentDay } from './calendar'
-import { calculateDueDate, formatInvoiceNumber } from './utils'
+import { paymentDay } from './calendar'
+import { formatInvoiceNumber } from './invoiceNumbering'
 import { captureLegacyDocuments } from './importState'
-import type { AppState, Guardian, Invoice, InvoiceDraft, InvoiceItem, LessonType, Settings, Student } from '../types'
+import type { AppState, Guardian, Invoice, InvoiceItem, LessonType, Settings, Student } from '../types'
 
 export const defaultSettings: Settings = {
   issuer: {
@@ -42,20 +42,6 @@ export function emptyState(): AppState {
 // Synthetic demo dates were explicitly created in UTC.
 function isoDate(date: Date): string {
   return date.toISOString().slice(0, 10)
-}
-
-export function createEmptyInvoiceDraft(settings: Settings, reference = new Date()): InvoiceDraft {
-  const invoiceDate = reference
-
-  return {
-    invoiceDate: localToday(invoiceDate),
-    dueDate: calculateDueDate(localToday(invoiceDate), settings.paymentTermDays),
-    recipients: [],
-    studentIds: [],
-    recipientStrategy: 'joint',
-    items: [],
-    freeText: '',
-  }
 }
 
 export function createDemoState(referenceDate = new Date()): AppState {

@@ -10,3 +10,10 @@ export function invoiceSetupErrors(settings: Settings): InvoiceFieldError[] {
     ...paymentDataErrors(settings).map((error) => ({ field: `settings.${error.field}`, message: `Einstellungen → Bankverbindung → ${error.message}` })),
   ]
 }
+
+
+export function isInvoiceSetupComplete(settings: Settings): boolean {
+  // Names and payment details are checked again at finalization.
+  return invoiceSetupErrors(settings).length === 0
+}
+

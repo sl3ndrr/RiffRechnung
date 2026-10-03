@@ -70,3 +70,13 @@ export function decimalInputText(value: number): string {
   const digits = String(coefficient).padStart(scale + 1, '0')
   return digits.slice(0, -scale) + '.' + digits.slice(-scale)
 }
+
+
+export function invoiceTotal(invoice: Pick<Invoice, 'items' | 'issuedAmounts'>): number {
+  return invoiceTotalCents(invoice) / 100
+}
+
+export function itemTotal(item: InvoiceItem): number {
+  return itemTotalCents(item) / 100
+}
+

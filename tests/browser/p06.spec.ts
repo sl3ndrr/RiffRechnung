@@ -27,7 +27,7 @@ test('P06 Browser: geschützter Schema-11-Umstieg, festes Format, gemeinsame Emp
     const storagePath = '/src/lib/storage.ts', actionsPath = '/src/lib/invoiceActions.ts'
     const { StorageSession } = await import(storagePath)
     const { saveInvoiceDraft } = await import(actionsPath)
-    const paymentPath = '/src/lib/utils.ts', numberingPath = '/src/lib/utils.ts'
+    const paymentPath = '/src/lib/paymentData.ts', numberingPath = '/src/lib/invoiceNumbering.ts'
     const { buildEpcPayload } = await import(paymentPath)
     const { nextInvoiceAllocation } = await import(numberingPath)
     const session = new StorageSession()

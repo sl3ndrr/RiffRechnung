@@ -101,7 +101,7 @@ test('P12 Browser: ausländisches Konto abweisen, DE speichern und leere Origina
     const storagePath = '/src/lib/storage.ts', documentPath = '/src/lib/documents.ts'
     const { StorageSession } = await import(storagePath)
     const { selectInvoice } = await import(documentPath)
-    const paymentPath = '/src/lib/utils.ts', moneyPath = '/src/lib/utils.ts'
+    const paymentPath = '/src/lib/paymentData.ts', moneyPath = '/src/lib/money.ts'
     const { buildEpcPayload } = await import(paymentPath)
     const { invoiceTotal } = await import(moneyPath)
     const state = new StorageSession().state

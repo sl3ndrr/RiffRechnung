@@ -359,7 +359,7 @@ test('P05 Browser: Altentwurf prüfen; Editor, Liste, EPC und PDF auf Cent', asy
   const saved = await stateOf(page)
   const epc = await page.evaluate(async (state) => {
     const docsPath = '/src/lib/documents.ts'
-    const paymentPath = '/src/lib/utils.ts', moneyPath = '/src/lib/utils.ts'
+    const paymentPath = '/src/lib/paymentData.ts', moneyPath = '/src/lib/money.ts'
     const { buildEpcPayload } = await import(paymentPath)
     const { invoiceTotal } = await import(moneyPath)
     const { selectInvoice } = await import(docsPath)

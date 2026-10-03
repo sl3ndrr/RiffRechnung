@@ -11,7 +11,7 @@ import type { AppState, AuditEvent, Invoice, InvoiceItem, Student } from '../typ
 import { commandResult, requireSuccess, type CommandResult } from './result'
 import { backupArray, backupEnum, backupObject, backupTimestamp, knownKeys, validateBackupState } from './validation'
 import { validateLegacyV2Structure, validateLegacyV3Structure, validateLegacyV4Structure, validateLegacyV5Structure, validateLegacyV6Structure, validateLegacyV7Structure, validateLegacyV8Structure, validateLegacyV9Structure, validateLegacyV10Structure, validateLegacyV11Structure, validateLegacyV12Structure, validateLegacyV13Structure, validateLegacyV14Structure } from './legacyValidation'
-import { invoiceStudentCode, studentCodeForIndex, studentCodeIndex } from './utils'
+import { invoiceStudentCode, studentCodeForIndex, studentCodeIndex } from './invoiceNumbering'
 import { mailboxError } from './mailbox'
 import { stripLegacyTaxFields } from './legacyTaxFields'
 

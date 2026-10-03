@@ -12,10 +12,10 @@ import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions
 import { assertOriginalsPreserved, assertReplacementAllowed } from '../src/lib/safety'
 import { applyStandardRateInput, parseStandardRate, updateSettings } from '../src/lib/settings'
 import { StorageSession, loadState, parseBackup, serializeBackup, STORAGE_KEY, validateBackupState } from '../src/lib/storage'
-import { createLessonItem } from '../src/lib/utils'
-import { germanIbanError } from '../src/lib/utils'
-import { invoiceTotal } from '../src/lib/utils'
-import { nextInvoiceAllocation } from '../src/lib/utils'
+import { createLessonItem } from '../src/lib/invoiceDrafts'
+import { germanIbanError } from '../src/lib/paymentData'
+import { invoiceTotal } from '../src/lib/money'
+import { nextInvoiceAllocation } from '../src/lib/invoiceNumbering'
 
 const at = '2026-08-20T12:00:00.000Z'
 function families(count = 2): AppState {
