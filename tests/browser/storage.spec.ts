@@ -204,13 +204,13 @@ test('P04: Verwerfen speichert nichts; Darstellung und Demo-Wechsel respektieren
   await page.getByRole('button', { name: 'Demo verlassen', exact: true }).click()
   const confirmation = page.getByRole('alertdialog', { name: 'Ungespeicherte Einstellungen verwerfen?' })
   await confirmation.getByRole('button', { name: 'Weiter bearbeiten' }).click()
-  await expect(page.getByRole('radio', { name: 'Dunkel', exact: true })).toBeChecked()
+  await expect(page.locator('.theme-picker').getByRole('radio', { name: 'Dunkel', exact: true })).toBeChecked()
   await page.getByRole('button', { name: 'Personen', exact: true }).first().click()
   await confirmation.getByRole('button', { name: 'Verwerfen' }).click()
   expect(await stored(page)).toBe(before)
   await settings(page)
   await expect(page.getByLabel('Name / Geschäftsbezeichnung', { exact: true })).not.toHaveValue('Nicht speichern')
-  await expect(page.getByRole('radio', { name: 'System', exact: true })).toBeChecked()
+  await expect(page.locator('.theme-picker').getByRole('radio', { name: 'Dunkel', exact: true })).toBeChecked()
 })
 
 test('P04: weder Echtmodus noch Demo benutzen Picker, IndexedDB oder Datei-APIs', async ({ page }) => {

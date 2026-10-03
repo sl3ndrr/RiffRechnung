@@ -10,6 +10,8 @@ Der Demo-Einstieg arbeitet mit Beispieldaten getrennt vom echten Bestand.
 2. Änderungen mit **Jetzt speichern** bestätigen. Rechnungsdaten bleiben im selben Browserprofil und unter derselben Webadresse. Das Gerät und Browserprofil selbst müssen geschützt werden; die Speicherung ist keine Verschlüsselung.
 3. Unter **Personen** Erziehungsberechtigte mit einem Namen anlegen, dann Lernende zuordnen. Für eine gemeinsame Rechnung können beispielsweise ein oder zwei gemeinsame Erziehungsberechtigte ausgewählt werden. Erwachsene Lernende können **Zahlt selbst** verwenden und eigene Kontaktangaben hinterlegen.
 
+Das Farbschema lässt sich oben rechts oder unter **Einstellungen → Darstellung** mit **Hell · System · Dunkel** sofort wechseln. **System** folgt der Gerätepräferenz. Die Auswahl wird sofort gespeichert und verändert keine ungespeicherten Formulareingaben; im Demo-Modus gilt sie nur für die Sitzung. Das Rechnungs-PDF bleibt immer hell.
+
 Anschriften sind optional, auch unvollständige Angaben werden verwendet.
 Personen stehen fest A–Z; Suche und der Filter für aktive Lernende bleiben verfügbar.
 Jede lernende Person erhält eine bleibende Kennung in Anlagereihenfolge: `a`, `b`, …, `z`, `aa`, `ab`, … . Umbenennen oder Deaktivieren verschiebt sie nicht.
