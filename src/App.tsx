@@ -1,8 +1,7 @@
-import { deleteGuardianState, deleteStudentState, deleteInvoiceDraftState, resetUnissuedState, recordActivity } from './lib/commands'
-import { allocatePayment, archiveInvoice, createCorrectionDraft, resolveDocumentConflicts, selectInvoice } from './lib/documents'
+import { deleteGuardianState, deleteStudentState, deleteInvoiceDraftState } from './lib/commands'
+import { allocatePayment, archiveInvoice, createCorrectionDraft, resolveDocumentConflicts } from './lib/documents'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { BookUser, Menu, ReceiptText, Settings as SettingsIcon, X } from 'lucide-react'
-import type { AppState, AuditEvent, Guardian, Invoice, InvoiceDraft, InvoiceStatus, PageKey, Settings as SettingsType, Student, ToastMessage } from './types'
+import type { Guardian, Invoice, InvoiceDraft, InvoiceStatus, PageKey, Settings as SettingsType, Student, ToastMessage } from './types'
 import { Invoices } from './views/Invoices'
 import { InvoiceEditor } from './views/InvoiceEditor'
 import { People } from './views/People'
@@ -16,22 +15,14 @@ import { ConfirmDialog } from './components/ConfirmDialog'
 import { ToastRegion } from './components/ToastRegion'
 import { InvoicePrint } from './components/InvoicePrint'
 import { createEmptyInvoiceDraft, invoiceDraftFields } from './lib/invoiceDrafts'
-import { loadLastBackupAt, StorageSession, StorageConflict, recordBackupExport, STORAGE_KEY, LEGACY_STORAGE_KEY, type StorageRecoveryState } from './lib/storage'
 import { downloadText } from './lib/downloads'
-import { invoicePdfTitle, statusLabel } from './lib/invoiceOutput'
+import { statusLabel } from './lib/invoiceOutput'
 import { uid } from './lib/identities'
 import { changeInvoiceStatus } from './lib/invoiceActions'
-import { assertOriginalsPreserved, assertReplacementAllowed, FINALIZED_INVOICE_BLOCKED, isFinalizedInvoice } from './lib/safety'
-import { APP_VERSION } from './version'
-import { isCurrentPrintRequest, type PrintRequest } from './lib/printJob'
-
-const navItems: Array<{ key: PageKey; label: string; icon: typeof ReceiptText }> = [
-  { key: 'invoices', label: 'Rechnungen', icon: ReceiptText },
-  { key: 'people', label: 'Personen', icon: BookUser },
-  { key: 'settings', label: 'Einstellungen', icon: SettingsIcon },
-]
-
-const backupDateFormatter = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+import { FINALIZED_INVOICE_BLOCKED, isFinalizedInvoice } from './lib/safety'
+import { WorkspaceShell } from './components/WorkspaceShell'
+import { useInvoicePrint } from './hooks/useInvoicePrint'
+import { useLocalWorkspace } from './hooks/useLocalWorkspace'
 
 interface Confirmation {
   title: string
@@ -54,33 +45,14 @@ function App() {
 }
 
 function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange: (mode: 'real' | 'demo') => void }) {
-  const [session] = useState(() => new StorageSession({ mode }))
-  const initialLoad = session.initial
-  const [state, setState] = useState<AppState>(session.state)
-  const [recovery, setRecovery] = useState<StorageRecoveryState | null>(() => initialLoad.status === 'recovery' ? initialLoad : null)
-  const stateRef = useRef(state)
-  stateRef.current = state
   const [settingsEpoch, setSettingsEpoch] = useState(0)
   const [settingsDirty, setSettingsDirty] = useState(false)
-  const pendingWrites = useRef(0)
   const [page, setPage] = useState<PageKey>('invoices')
-  const [mobileNav, setMobileNav] = useState(false)
-  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 820px)').matches)
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
-  const [editor, setEditor] = useState<InvoiceEditorState>({ open: false, draft: createEmptyInvoiceDraft(state.settings), editing: false })
   const [editorDirty, setEditorDirty] = useState(false)
-  const [printRequest, setPrintRequest] = useState<PrintRequest | null>(null)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
   const [importReview, setImportReview] = useState<ImportReviewData | null>(null)
-  const [saveStateLabel, setSaveStateLabel] = useState<'saved' | 'saving' | 'error'>('saved')
-  const [localSaveError, setLocalSaveError] = useState<string | null>(null)
-  const [externalChangeDetected, setExternalChangeDetected] = useState(false)
-  const [savedAt, setSavedAt] = useState(() => new Date())
-  const [lastBackupAt, setLastBackupAt] = useState(() => mode === 'real' ? loadLastBackupAt() : null)
-  const printRequestRef = useRef<PrintRequest | null>(null)
-  const mobileMenuButtonRef = useRef<HTMLButtonElement | null>(null)
-  const mobileCloseButtonRef = useRef<HTMLButtonElement | null>(null)
   const mainContentRef = useRef<HTMLElement | null>(null)
 
   const toast = useCallback((message: string, tone: ToastMessage['tone'] = 'info') => {
@@ -89,49 +61,11 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== id)), 4200)
   }, [])
 
-  const commit = useCallback(async (producer: (current: AppState) => AppState, label: string, entityType: AuditEvent['entityType'], entityId?: string): Promise<boolean> => {
-    pendingWrites.current++
-    setSaveStateLabel('saving')
-    setLocalSaveError(null)
-    try {
-      const committed = await session.change((current) => {
-        const next = producer(current)
-        assertOriginalsPreserved(current, next)
-        const at = new Date().toISOString()
-        return recordActivity(next, { id: uid('event'), at, label, entityType, entityId })
-      })
-      stateRef.current = committed
-      setState(committed)
-      setSavedAt(new Date())
-      pendingWrites.current--
-      setSaveStateLabel(pendingWrites.current ? 'saving' : 'saved')
-      setExternalChangeDetected(false)
-      return true
-    } catch (error) {
-      pendingWrites.current--
-      const message = error instanceof Error ? error.message : 'Änderung konnte nicht gespeichert werden.'
-      setSaveStateLabel('error')
-      setLocalSaveError(message)
-      if (error instanceof StorageConflict) setExternalChangeDetected(true)
-      toast(message, 'error')
-      return false
-    }
-  }, [session, toast])
+  const { session, state, stateRef, recovery, pendingWrites, commit, restore, reset, exportBackup,
+    saveStateLabel, localSaveError, externalChangeDetected, savedAt, lastBackupAt } = useLocalWorkspace(mode, toast)
+  const [editor, setEditor] = useState<InvoiceEditorState>({ open: false, draft: createEmptyInvoiceDraft(state.settings), editing: false })
 
-  useEffect(() => {
-    if (mode === 'demo') return
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key !== STORAGE_KEY && event.key !== LEGACY_STORAGE_KEY && event.key !== null) return
-      try { session.checkCurrent() } catch { setExternalChangeDetected(true) }
-    }
-    try { session.checkCurrent() } catch (error) {
-      setExternalChangeDetected(true)
-      setLocalSaveError(error instanceof Error ? error.message : 'Speicher muss geprüft werden.')
-    }
-    if (!navigator.locks) setLocalSaveError('Dieser Browser hat keine Web Locks. Speichern bleibt gesperrt; JSON-Export ist möglich.')
-    window.addEventListener('storage', handleStorage)
-    return () => window.removeEventListener('storage', handleStorage)
-  }, [mode, session])
+  const { print, printRequest, handlePrintReady, handlePrintError } = useInvoicePrint(stateRef, toast, setConfirmation)
 
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => {
@@ -142,37 +76,11 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     return () => window.removeEventListener('beforeunload', warn)
   }, [editorDirty, saveStateLabel, settingsDirty])
 
-  useEffect(() => {
-    const media = window.matchMedia('(max-width: 820px)')
-    const update = () => {
-      setIsMobile(media.matches)
-      if (!media.matches) setMobileNav(false)
-    }
-    update()
-    media.addEventListener('change', update)
-    return () => media.removeEventListener('change', update)
-  }, [])
-
-  useEffect(() => {
-    const root = document.documentElement
-    const apply = () => {
-      const dark = state.settings.theme === 'dark' || (state.settings.theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
-      root.dataset.theme = dark ? 'dark' : 'light'
-      root.style.colorScheme = dark ? 'dark' : 'light'
-      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#151821' : '#f6f6fb')
-    }
-    apply()
-    const media = matchMedia('(prefers-color-scheme: dark)')
-    media.addEventListener('change', apply)
-    root.classList.toggle('reduce-motion', state.settings.reducedMotion)
-    return () => media.removeEventListener('change', apply)
-  }, [state.settings.reducedMotion, state.settings.theme])
-
   const openNewInvoice = useCallback(() => {
     const result = prepareNewInvoice(stateRef.current)
     if (!result.ok) return toast(result.errors.map((error) => error.message).join(' '), 'error')
     setEditor({ open: true, draft: result.value, editing: false })
-  }, [toast])
+  }, [stateRef, toast])
 
   const editInvoice = (invoice: Invoice) => {
     // The editor is available for every draft. A legacy/output snapshot alone
@@ -287,74 +195,6 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     },
   })
 
-  const print = (invoice: Invoice) => {
-    const current = stateRef.current
-    const request: PrintRequest = {
-      id: uid('print'),
-      invoice: selectInvoice(current, current.invoices.find((entry) => entry.id === invoice.id) ?? invoice),
-      guardians: structuredClone(current.guardians),
-      students: structuredClone(current.students),
-      settings: structuredClone(current.settings),
-      includeGiroCode: true,
-    }
-    printRequestRef.current = request
-    setPrintRequest(request)
-  }
-
-  const handlePrintReady = useCallback(async (requestId: string, invoiceId: string) => {
-    const request = printRequestRef.current
-    if (!isCurrentPrintRequest(request, requestId, invoiceId)) return
-    try {
-      await document.fonts?.ready
-    } catch {
-      // A printable fallback font is still better than crossing into another job.
-    }
-    if (!isCurrentPrintRequest(printRequestRef.current, requestId, invoiceId)) return
-
-    printRequestRef.current = null
-    const previousTitle = document.title
-    const restoreTitle = () => {
-      document.title = previousTitle
-      setPrintRequest((current) => current?.id === requestId ? null : current)
-    }
-    document.title = invoicePdfTitle(request.invoice, request.students)
-    window.addEventListener('afterprint', restoreTitle, { once: true })
-    try {
-      window.print()
-    } catch {
-      window.removeEventListener('afterprint', restoreTitle)
-      restoreTitle()
-      toast('Druckdialog konnte nicht geöffnet werden.', 'error')
-    }
-  }, [toast])
-
-  const handlePrintError = useCallback((requestId: string, invoiceId: string, message: string) => {
-    const request = printRequestRef.current
-    if (!isCurrentPrintRequest(request, requestId, invoiceId)) return
-    setConfirmation({
-      title: 'GiroCode nicht verfügbar',
-      message: `${message} Die Rechnung selbst ist vollständig und kann bewusst ohne GiroCode gedruckt werden. Bankdaten, Betrag und Verwendungszweck bleiben unverändert aus diesem Druckauftrag.`,
-      label: 'Ohne GiroCode drucken',
-      action: () => {
-        const pending = printRequestRef.current
-        if (!isCurrentPrintRequest(pending, requestId, invoiceId)) return
-        const fallback = { ...pending, includeGiroCode: false, giroCodeFallbackReason: message }
-        printRequestRef.current = fallback
-        setPrintRequest(fallback)
-      },
-    })
-  }, [])
-
-  const exportBackup = () => {
-    downloadText(`riffrechnung-backup-${new Date().toISOString().slice(0, 10)}.json`, session.export())
-    try {
-      if (mode === 'real') setLastBackupAt(recordBackupExport())
-    } catch {
-      setLastBackupAt(new Date().toISOString())
-    }
-    toast('JSON-Export des zuletzt bestätigten Stands gestartet.', 'info')
-  }
-
   const exportRecoveryData = () => {
     if (!recovery?.rawData) return
     downloadText(`riffrechnung-beschaedigte-lokaldaten-${new Date().toISOString().slice(0, 10)}.txt`, recovery.rawData, 'text/plain')
@@ -389,27 +229,12 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   }
 
   const applyRestore = async (preview: ImportPreview): Promise<boolean> => {
-    setSaveStateLabel('saving')
-    try {
-      const restored = await session.restore(preview.rawData)
-      stateRef.current = restored
-      setState(restored)
-      setRecovery(null)
-      setSettingsEpoch((value) => value + 1)
-      setSettingsDirty(false)
-      setLocalSaveError(null)
-      setSaveStateLabel('saved')
-      setSavedAt(new Date())
-      setSelectedInvoiceId(null)
-      setPage('invoices')
-      toast(`Wiederherstellung lokal gespeichert, Revision ${session.revision?.revision ?? 'Demo'}. Der vorherige Stand und die Eingangsdaten bleiben bereinigt gesichert.`, 'success')
-      return true
-    } catch (error) {
-      setSaveStateLabel('error')
-      setLocalSaveError(error instanceof Error ? error.message : 'Wiederherstellung fehlgeschlagen.')
-      toast(error instanceof Error ? error.message : 'Wiederherstellung fehlgeschlagen.', 'error')
-      return false
-    }
+    if (!await restore(preview.rawData)) return false
+    setSettingsEpoch((value) => value + 1)
+    setSettingsDirty(false)
+    setSelectedInvoiceId(null)
+    setPage('invoices')
+    return true
   }
 
   const confirmImport = (preview: ImportPreview) => {
@@ -425,11 +250,8 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     title: 'Lokalen Bestand zurücksetzen?', message: 'Der bisherige Stand bleibt als vorherige lokale Version erhalten. Ungespeicherte Einstellungen werden bei erfolgreichem Zurücksetzen verworfen.', label: 'Zurücksetzen', danger: true,
     action: async () => {
       try {
-        assertReplacementAllowed(session.state)
-        const next = await session.change((current) => requireSuccess(resetUnissuedState(current)), 'reset')
-        setState(next)
+        await reset()
         setSettingsEpoch((value) => value + 1)
-        stateRef.current = next
         setSelectedInvoiceId(null)
         setPage('invoices')
         toast('Zurücksetzen lokal gespeichert.', 'success')
@@ -472,7 +294,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       action: closeEditor,
     })
   }
-  const setCurrentPage = async (next: PageKey) => {
+  const setCurrentPage = (next: PageKey, afterNavigation?: () => void) => {
     if (editor.open && editorDirty && next !== page) {
       setConfirmation({
         title: 'Ungespeicherte Rechnungsänderungen verwerfen?',
@@ -483,7 +305,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         action: () => {
           closeEditor()
           setPage(next)
-          setMobileNav(false)
+          afterNavigation?.()
           requestAnimationFrame(() => mainContentRef.current?.focus())
         },
       })
@@ -491,31 +313,12 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     }
     const navigate = () => {
       setPage(next)
-      setMobileNav(false)
-      if (isMobile && mobileNav) requestAnimationFrame(() => mainContentRef.current?.focus())
+      afterNavigation?.()
     }
     if (next !== page) guardSettings(navigate)
     else navigate()
   }
-  const openMobileNav = useCallback(() => {
-    setMobileNav(true)
-    requestAnimationFrame(() => mobileCloseButtonRef.current?.focus())
-  }, [])
-  const closeMobileNav = useCallback(() => {
-    setMobileNav(false)
-    requestAnimationFrame(() => mobileMenuButtonRef.current?.focus())
-  }, [])
-  useEffect(() => {
-    if (!mobileNav) return
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.key !== 'Escape') return
-      event.preventDefault()
-      closeMobileNav()
-    }
-    document.addEventListener('keydown', closeOnEscape)
-    return () => document.removeEventListener('keydown', closeOnEscape)
-  }, [closeMobileNav, mobileNav])
-  const backupStatusLabel = lastBackupAt ? `Letzter JSON-Export: ${backupDateFormatter.format(new Date(lastBackupAt))}` : 'Noch kein Backup'
+  const saveStatus = mode === 'demo' ? 'Demo – nur in dieser Sitzung' : externalChangeDetected ? 'Speicherkonflikt' : settingsDirty || saveStateLabel === 'saving' ? 'Ungespeicherte Änderungen …' : saveStateLabel === 'error' ? 'Lokal nicht gespeichert' : !session.revision ? 'Noch nichts lokal gespeichert' : `Lokal gespeichert ${savedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`
   if (recovery) return (
     <>
       {localSaveError && <p role="alert">{localSaveError}</p>}
@@ -529,21 +332,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   return (
     <div className="app-shell">
       {mode === 'demo' && <section className="demo-banner" role="status">Demo – nur in dieser Sitzung. <button className="button button--tonal" onClick={() => void switchMode()}>Demo verlassen</button></section>}
-      <a href="#main-content" className="skip-link">Zum Inhalt springen</a>
-      <aside id="mobile-sidebar" className={`sidebar ${mobileNav ? 'sidebar--open' : ''}`} inert={isMobile && !mobileNav}>
-        <div className="brand"><span className="brand__mark" aria-hidden="true">🧾</span><div><strong>RiffRechnung</strong><small>Rechnungen</small></div><button ref={mobileCloseButtonRef} className="icon-button mobile-only" onClick={closeMobileNav} aria-label="Navigation schließen"><X aria-hidden="true" /></button></div>
-        <nav aria-label="Hauptnavigation">{navItems.map(({ key, label, icon: Icon }) => <button className={page === key ? 'is-active' : ''} aria-current={page === key ? 'page' : undefined} aria-label={label} key={key} onClick={() => setCurrentPage(key)}><Icon aria-hidden="true" /><span>{label}</span>{key === 'invoices' && state.invoices.filter((invoice) => invoice.status === 'draft').length > 0 && <b>{state.invoices.filter((invoice) => invoice.status === 'draft').length}</b>}</button>)}</nav>
-        <div className="sidebar__privacy"><span><ShieldDot /></span><div><strong>Nur auf diesem Gerät</strong><small>Keine automatische Cloud-Übertragung</small></div></div>
-        <a className="sidebar__version" href="https://github.com/sl3ndrr/RiffRechnung/blob/main/docs/about.md" target="_blank" rel="noreferrer" aria-label={`Info öffnen (neuer Tab), aktuelle Version ${APP_VERSION}`}>Info · Version {APP_VERSION}</a>
-      </aside>
-      {mobileNav && <button className="nav-scrim" aria-label="Navigation schließen" onClick={closeMobileNav} />}
-
-      <div className="app-main" inert={isMobile && mobileNav}>
-        <header className="topbar">
-          <button ref={mobileMenuButtonRef} className="icon-button mobile-only" onClick={openMobileNav} aria-label="Navigation öffnen" aria-controls="mobile-sidebar" aria-expanded={mobileNav}><Menu aria-hidden="true" /></button>
-          <div className="topbar__end"><div className="topbar__storage-status" role="status" aria-live="polite"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : saveStateLabel === 'error' ? 'is-error' : ''}`}><i />{mode === 'demo' ? 'Demo – nur in dieser Sitzung' : externalChangeDetected ? 'Speicherkonflikt' : settingsDirty || saveStateLabel === 'saving' ? 'Ungespeicherte Änderungen …' : saveStateLabel === 'error' ? 'Lokal nicht gespeichert' : !session.revision ? 'Noch nichts lokal gespeichert' : `Lokal gespeichert ${savedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`}</span><span className="backup-indicator">{backupStatusLabel}</span></div></div>
-        </header>
-
+      <WorkspaceShell page={page} settings={state.settings} draftCount={state.invoices.filter((invoice) => invoice.status === 'draft').length} lastBackupAt={lastBackupAt} saveStateLabel={saveStateLabel} saveStatus={saveStatus} mainContentRef={mainContentRef} onNavigate={setCurrentPage}>
         {externalChangeDetected && <section className="external-update" role="alert"><div><strong>Änderungen in einem anderen Tab erkannt</strong><p>Dieser Tab zeigt nicht mehr den aktuellen Datenstand. Lade neu, bevor du weiterarbeitest.</p></div><button className="button button--tonal" type="button" onClick={() => window.location.reload()}>Aktuellen Stand neu laden</button></section>}
         {localSaveError && <section className="persistence-error" role="alert"><div><strong>Speichern fehlgeschlagen</strong><p>{localSaveError}</p></div><div className="button-row"><button className="button button--tonal" type="button" onClick={() => { void setCurrentPage('settings') }}>Einstellungen prüfen</button><button className="button button--text" type="button" onClick={exportBackup}>JSON-Backup exportieren</button></div></section>}
 
@@ -552,9 +341,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
           {page === 'people' && <People state={state} onSaveGuardian={saveGuardian} onSaveStudent={saveStudent} onDeleteGuardian={deleteGuardian} onDeleteStudent={deleteStudent} />}
           <div hidden={page !== 'settings'}><Settings key={settingsEpoch} state={state} onDirty={setSettingsDirty} onSave={saveSettings} onExport={exportBackup} onImport={importBackup} onReset={resetAll} onPrevious={reviewPrevious} onArchive={exportRecoveryArchive} /></div>
         </main>
-      </div>
-
-      <nav className="mobile-bottom-nav" aria-label="Mobile Hauptnavigation" inert={isMobile && mobileNav}>{navItems.slice(0, 4).map(({ key, label, icon: Icon }) => <button className={page === key ? 'is-active' : ''} aria-current={page === key ? 'page' : undefined} aria-label={label} key={key} onClick={() => setCurrentPage(key)}><Icon aria-hidden="true" /><span>{label}</span></button>)}</nav>
+      </WorkspaceShell>
 
       <ImportReview review={importReview} onClose={() => setImportReview(null)} onApply={confirmImport} />
       <InvoiceEditor state={state} open={editor.open} draft={editor.draft} editing={editor.editing} guardians={state.guardians} students={state.students} settings={state.settings} onClose={requestCloseEditor} onDirtyChange={setEditorDirty} onSave={saveInvoice} onConvert={convertLegacyDraft} />
@@ -563,10 +350,6 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       <div className="print-root"><InvoicePrint invoice={printRequest?.invoice ?? null} guardians={printRequest?.guardians ?? []} students={printRequest?.students ?? []} settings={printRequest?.settings ?? state.settings} requestId={printRequest?.id} includeGiroCode={printRequest?.includeGiroCode} giroCodeFallbackReason={printRequest?.giroCodeFallbackReason} onPrintReady={handlePrintReady} onPrintError={handlePrintError} /></div>
     </div>
   )
-}
-
-function ShieldDot() {
-  return <span className="shield-dot" aria-hidden="true"><i /></span>
 }
 
 export default App
