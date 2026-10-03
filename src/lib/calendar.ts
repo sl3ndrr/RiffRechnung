@@ -16,6 +16,17 @@ export function calendarDate(year: number, month: number, day: number): string {
 export function localToday(reference = new Date()): string {
   return calendarDate(reference.getFullYear(), reference.getMonth() + 1, reference.getDate())
 }
+/** Signed calendar days from start to end, independent of timezone and DST. */
+export function calendarDaysBetween(start: string, end: string): number {
+  const ordinal = (value: string) => {
+    const [year, month, day] = calendarParts(value)
+    const previousYear = year - 1
+    let days = 365 * previousYear + Math.floor(previousYear / 4) - Math.floor(previousYear / 100) + Math.floor(previousYear / 400) + day
+    for (let m = 1; m < month; m++) days += daysInMonth(year, m)
+    return days
+  }
+  return ordinal(end) - ordinal(start)
+}
 export function shiftCalendarMonths(value: string, months: number): string {
   const [year, month, day] = calendarParts(value)
   if (!Number.isSafeInteger(months)) throw new Error('Ungültige Monatsverschiebung.')
