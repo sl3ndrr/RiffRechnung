@@ -91,7 +91,8 @@ test('P03 Browser: alte Gruppenentwürfe im lokalen Klärungspfad übernehmen un
       await expect.poll(() => rendering.evaluate(() => document.documentElement.dataset.documentReady)).toBe(issued.invoices[i].id)
       const pdf = await rendering.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true })
       const text = execFileSync('pdftotext', ['-layout', '-', '-'], { input: pdf, encoding: 'utf8' })
-      for (const marker of [households[i].student, households[i].guardian, households[i].intro, households[i].free, households[i].legal, i === 0 ? '7,58' : '15,02']) expect(text).toContain(marker)
+      for (const marker of [households[i].student, households[i].guardian, households[i].free, i === 0 ? '7,58' : '15,02']) expect(text).toContain(marker)
+      for (const marker of [households[i].intro, households[i].legal]) expect(text).not.toContain(marker)
       for (const marker of [households[1 - i].student, households[1 - i].guardian, 'GEHEIM_', old.duoGroups[0].id]) expect(text).not.toContain(marker)
       expect(await rendering.evaluate(() => document.documentElement.dataset.giroPayload)).toContain(issued.invoices[i].number!)
       await testInfo.attach(`p03-haushalt-${i + 1}.pdf`, { body: pdf, contentType: 'application/pdf' })
@@ -140,5 +141,4 @@ test('P03 Browser: unabhängige Entwürfe überstehen Speicherkonflikt und Quota
   expect(saved.invoices.find((invoice) => invoice.id === 'duo-invoice-1')?.status).toBe('draft')
   await second.close()
 })
-
 

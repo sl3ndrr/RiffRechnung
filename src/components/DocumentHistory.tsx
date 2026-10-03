@@ -64,7 +64,7 @@ export function InvoiceCorrection({ state, invoice, onSelect, onCorrection }: Pi
     <Modal open={open} title="Rechnung korrigieren" onClose={() => setOpen(false)} footer={<button className="button button--text" type="button" onClick={() => setOpen(false)}>Abbrechen</button>}>
       {unresolved && <p className="notice" role="alert">Vor der Finalisierung der Korrektur müssen die historischen Abweichungen unter „Details“ mit einer Begründung geklärt werden.</p>}
       <form className="form-stack" onSubmit={(event) => { event.preventDefault(); if (!reason.trim()) return; onCorrection(invoice, reason); setOpen(false) }}>
-        <label className="field"><span>Korrekturgrund</span><textarea autoFocus required value={reason} onChange={(event) => setReason(event.target.value)} /></label>
+        <label className="field"><span>Korrekturgrund</span><textarea data-dialog-initial-focus required value={reason} onChange={(event) => setReason(event.target.value)} /></label>
         <p>Das Original bleibt erhalten. Der neue Entwurf ersetzt die Forderung erst nach Finalisierung mit neuer Nummer. Zahlungen werden nicht automatisch übertragen.</p>
         <button className="button button--primary" type="submit">Korrekturentwurf erzeugen</button>
       </form>
@@ -102,4 +102,3 @@ function PaymentAllocation({ state, paymentId, versionIds, onAllocatePayment }: 
     <button className="button button--tonal" disabled={!reason.trim() || target === current} onClick={() => { onAllocatePayment(paymentId, target || null, reason); setReason('') }}>Zuordnung speichern</button>
   </div>
 }
-

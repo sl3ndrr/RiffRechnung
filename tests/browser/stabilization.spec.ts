@@ -141,7 +141,7 @@ test('P12 Browser: unterbrochene Migration erhält Rohdaten und lässt sich nach
 })
 
 test('P12 Browser: unbekanntes neueres Format bleibt auch bei Wiederherstellungsversuch bytegleich', async ({ page }) => {
-  const future = JSON.stringify({ schemaVersion: 15, data: 'Synthetisches unbekanntes Format' })
+  const future = JSON.stringify({ schemaVersion: 16, data: 'Synthetisches unbekanntes Format' })
   await page.goto('/')
   await page.evaluate(({ key, future }) => localStorage.setItem(key, future), { key: STORAGE_KEY, future })
   await page.reload()
@@ -162,6 +162,11 @@ test('P12 Browser: unabhängige Originaldatei kehrt mit echtem alten Code in get
   // The unchanged historical app requires these retired master-data fields.
   legacy.guardians.forEach((guardian) => Object.assign(guardian, { iban: '', paymentNote: '' }))
   legacy.students.forEach((student) => Object.assign(student, { note: '' }))
+  Object.assign(legacy.settings, { defaultLegalText: 'Synthetischer historischer Rechtstext' })
+  legacy.invoices.forEach((invoice) => {
+    Object.assign(invoice, { introText: 'Synthetische historische Einleitung', legalText: 'Synthetischer historischer Rechtstext' })
+    if (invoice.snapshot) Object.assign(invoice.snapshot, { legalText: 'Synthetischer historischer Rechtstext' })
+  })
   await page.goto('/legacy/index.html')
   await page.evaluate(({ key, source }) => localStorage.setItem(key, source), { key: LEGACY_STORAGE_KEY, source: JSON.stringify(legacy) })
   await page.reload()
@@ -237,5 +242,4 @@ test('P12 Browser: lokale Mitternacht in Berlin erzeugt den richtigen Rechnungst
     await expect(page.getByRole('dialog').getByLabel('Rechnungsdatum', { exact: true })).toHaveValue('2026-09-01')
   } finally { await context.close() }
 })
-
 

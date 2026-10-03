@@ -26,7 +26,8 @@ for (const width of [390, 1280]) {
     family.students[0].name = 'Zora'; family.students[1].name = 'Anna'
     family.guardians[0].name = 'Zora Familie'; family.guardians[1].name = 'Anna Familie'
     let state = saveInvoiceDraft(family, documentDraft(), true, documentAt)
-    state = saveInvoiceDraft(state, { ...documentDraft(), invoiceDate: '2026-09-02' }, true, documentAt)
+    const second = documentDraft()
+    state = saveInvoiceDraft(state, { ...second, invoiceDate: '2026-09-02', items: second.items.map((item) => ({ ...item, id: `${item.id}-second` })) }, true, documentAt)
     await seed(page, state)
     await expect(page.getByRole('button', { name: 'Neue Rechnung', exact: true })).toHaveCount(1)
     await expect(page.getByRole('searchbox', { name: 'Rechnungen durchsuchen', exact: true })).toHaveCount(1)

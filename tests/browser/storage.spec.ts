@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { emptyState } from '../../src/lib/defaults'
+import { expectedTextless } from '../documentFixtures'
 import { serializeBackup, STORAGE_KEY, LEGACY_STORAGE_KEY } from '../../src/lib/storage'
 
 async function settings(page: Page) {
@@ -206,7 +207,7 @@ test('tatsächlich geöffnete Altversion: kontrollierter Umstieg schützt den ne
   await current.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
   await expect(current.locator('.save-indicator')).toContainText('Lokal gespeichert')
   const migrated = await stored(current)
-  expect(await page.evaluate((key) => localStorage.getItem(key), LEGACY_STORAGE_KEY)).toBe(original)
+  expect(await page.evaluate((key) => localStorage.getItem(key), LEGACY_STORAGE_KEY)).toBe(JSON.stringify(expectedTextless(JSON.parse(original!))))
   // Deliberately keep the genuine historical app open and let ITS autosave run.
   await page.getByLabel('Name / Geschäftsbezeichnung', { exact: true }).fill('Alter Tab schreibt nach Umstieg')
   await expect(current.locator('.external-update')).toBeVisible()
