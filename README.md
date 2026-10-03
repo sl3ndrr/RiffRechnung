@@ -42,16 +42,19 @@ Produktionsprüfung:
 ```bash
 npm run lint
 npm test
-npm run typecheck
 npm run build
 npx playwright install --with-deps chromium firefox webkit
 npm run test:browser
+npm run test:migrations
 npm audit --json
 npm run preview
 ```
 
 Die PDF-Regressionsprüfung benötigt zusätzlich `pdftotext` aus Poppler. Der
 Ubuntu-CI-Job installiert es mit `sudo apt-get install -y poppler-utils`.
+`npm run build` enthält die vollständige Typprüfung; `npm run typecheck` bleibt
+als eigenständige Prüfung ohne Vite-Build verfügbar. `npm test` bündelt und führt
+alle `tests/*.test.ts` direkt aus, ohne Registrierungshub.
 
 ## Auf GitHub Pages veröffentlichen
 
@@ -228,11 +231,14 @@ Die unterstützte E-Mail-Regel und die genauen Format-/Reparaturgrenzen stehen i
 [Produktentscheidungen](docs/product-decisions.md#paket-02--speicherbare-zustände-und-reparaturen).
 
 
-Die Browserprüfung nutzt ausschließlich synthetische Daten. Sie baut zusätzlich
-den historischen Commit `ba7857fd9180fa392c42a0235643e478e5077ee5` als temporäre
-Testseite unter derselben Origin, um einen wirklich geöffneten alten Tab zu prüfen.
-`npm run test:browser` benötigt dafür Git, tar und bei fehlendem Commit lesenden
-GitHub-Zugriff. Die Testseite wird anschließend entfernt und nicht ausgeliefert.
+Die Browserprüfung nutzt ausschließlich synthetische Daten. `npm run test:browser`
+prüft UI/PDF in Chromium und JSON-Fallbacks in Chromium, Firefox und WebKit ohne
+historischen Git-Fetch oder App-Build. Nur `npm run test:migrations` baut den
+unveränderten Commit `ba7857fd9180fa392c42a0235643e478e5077ee5` als temporäre
+Testseite unter derselben Origin. Dieser getrennte Pfad prüft einen wirklich
+geöffneten alten Tab und die Rückkehr einer unabhängigen Originaldatei mit altem
+Code. Er benötigt Git, tar und bei fehlendem Commit lesenden GitHub-Zugriff.
+Die Testseite wird anschließend entfernt und nicht ausgeliefert.
 Ein isoliertes dauerhaftes Chromium-Profil enthält synthetische alte OPFS-Dateien
 und IndexedDB-Handles. Die Browserprüfung kontrolliert, dass die App sie ungenutzt
 und unverändert lässt; aktive Ordnerdialoge und Dateischreibrechte entfallen.
@@ -274,4 +280,3 @@ neuen Snapshots. Bei der Migration aus Format 2–5 bleibt die Steuerkennung lee
 und sperrt neue Finalisierungen bis zur bewussten Eingabe. Historische Snapshots
 werden nicht ergänzt; auch eine dort leere BIC bleibt leer. Grundlagen und
 Produktannahmen stehen in [Produktentscheidungen](docs/product-decisions.md).
-

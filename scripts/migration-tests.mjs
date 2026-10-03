@@ -15,7 +15,7 @@ try {
   execFileSync('tar', ['-x', '-C', source], { input: execFileSync('git', ['archive', legacyCommit]) })
   console.log(`Historischer Browser-Test: ${legacyCommit}, gleiche Origin, synthetische Daten`)
   execFileSync(process.execPath, [resolve('node_modules/vite/bin/vite.js'), 'build', source, '--base', '/legacy/', '--outDir', target], { stdio: 'inherit' })
-  const result = spawnSync(process.execPath, [resolve('node_modules/@playwright/test/cli.js'), 'test', ...process.argv.slice(2)], { stdio: 'inherit' })
+  const result = spawnSync(process.execPath, [resolve('node_modules/@playwright/test/cli.js'), 'test', '--config=playwright.migrations.config.ts', ...process.argv.slice(2)], { stdio: 'inherit' })
   if (result.error) throw result.error
   process.exitCode = result.status ?? 1
 } finally {

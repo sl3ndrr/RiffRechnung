@@ -281,6 +281,7 @@ test('P02: ungültige Formularzahlen überschreiben weder Preise noch Mengen', a
   assert.equal(adjustQuantity(0.01, -1), 0.01)
   assert.equal(adjustQuantity(99.99, 1), 99.99)
   assert.equal(adjustQuantity(0.75, 1), 1)
+  assert.equal(adjustQuantity(0.75, -1), 0.5)
   for (const quantity of [0.01, 0.25, 1.5, 99.99]) {
     const candidate = draft(state)
     candidate.items[0] = applyItemNumberInput(candidate.items[0], 'quantity', String(quantity))

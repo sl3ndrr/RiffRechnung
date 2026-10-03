@@ -1,5 +1,4 @@
 import { test, expect, type Page } from '@playwright/test'
-import { readFile } from 'node:fs/promises'
 import type { AppState } from '../../src/types'
 import { documentAt, documentDraft, documentFamily, legacyFixture } from '../documentFixtures'
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
@@ -157,51 +156,6 @@ test('P12 Browser: unbekanntes neueres Format bleibt auch bei Wiederherstellungs
   expect(await raw(page)).toBe(future)
 })
 
-test('P12 Browser: unabhängige Originaldatei kehrt mit echtem alten Code in getrenntem Profil zurück', async ({ page, browser }, testInfo) => {
-  const legacy = { ...legacyFixture(saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)), schemaVersion: 2 }
-  // The unchanged historical app requires these retired master-data fields.
-  legacy.guardians.forEach((guardian) => Object.assign(guardian, { iban: '', paymentNote: '' }))
-  legacy.students.forEach((student) => Object.assign(student, { note: '' }))
-  Object.assign(legacy.settings, { defaultLegalText: 'Synthetischer historischer Rechtstext' })
-  legacy.invoices.forEach((invoice) => {
-    Object.assign(invoice, { introText: 'Synthetische historische Einleitung', legalText: 'Synthetischer historischer Rechtstext' })
-    if (invoice.snapshot) Object.assign(invoice.snapshot, { legalText: 'Synthetischer historischer Rechtstext' })
-  })
-  await page.goto('/legacy/index.html')
-  await page.evaluate(({ key, source }) => localStorage.setItem(key, source), { key: LEGACY_STORAGE_KEY, source: JSON.stringify(legacy) })
-  await page.reload()
-  await settings(page)
-  const downloading = page.waitForEvent('download')
-  await page.getByRole('button', { name: /JSON.*exportieren|Backup exportieren|JSON-Backup/i }).first().click()
-  const independentBackup = await readFile((await (await downloading).path())!)
-  await testInfo.attach('unabhaengige-originalsicherung.json', { body: independentBackup, contentType: 'application/json' })
-  const originalData = JSON.parse(independentBackup.toString()).data
-  // Navigate away so the old application is closed before migration.
-  await page.goto('/')
-  await confirmMigration(page)
-  await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
-  const migrated = await raw(page)
-  expect((await stateOf(page)).documentVersions[0].amounts.totalCents).toBe(757)
-  const isolated = await browser.newContext({ baseURL: 'http://127.0.0.1:4173' })
-  try {
-    const rollback = await isolated.newPage()
-    await rollback.goto('/legacy/index.html')
-    await settings(rollback)
-    await rollback.getByRole('main').locator('input[type=file]').setInputFiles({ name: 'original.json', mimeType: 'application/json', buffer: independentBackup })
-    await rollback.getByRole('button', { name: 'Daten ersetzen', exact: true }).click()
-    await expect.poll(() => rollback.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '{}').invoices?.length, LEGACY_STORAGE_KEY)).toBe(1)
-    await rollback.reload()
-    const restored = await rollback.evaluate((key) => JSON.parse(localStorage.getItem(key)!), LEGACY_STORAGE_KEY)
-    expect(restored.invoices).toEqual(originalData.invoices)
-    expect(restored.settings).toEqual(originalData.settings)
-    expect(restored.counters).toEqual(originalData.counters)
-    expect(await raw(rollback)).toBeNull()
-    expect(await raw(page)).toBe(migrated)
-    await rollback.getByRole('button', { name: /^Rechnungen(?:\s*\d+)?$/ }).first().click()
-    await expect(rollback.locator('.invoice-list-table')).toContainText(originalData.invoices[0].number!)
-  } finally { await isolated.close() }
-})
-
 test('P12 Browser ergänzt Quellmuster: Footer-Submit, Kindaktivierung und Rechnungsentwurf', async ({ page }) => {
   await seed(page, documentFamily())
   await page.getByRole('button', { name: 'Personen', exact: true }).first().click()
@@ -242,4 +196,3 @@ test('P12 Browser: lokale Mitternacht in Berlin erzeugt den richtigen Rechnungst
     await expect(page.getByRole('dialog').getByLabel('Rechnungsdatum', { exact: true })).toHaveValue('2026-09-01')
   } finally { await context.close() }
 })
-
