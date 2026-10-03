@@ -454,7 +454,9 @@ test('AP5 Browser/PDF: Selbstzahlerin und Minderjähriger mit zwei Empfängern v
     const invoice = saved.invoices.at(-1)!
     expect(invoice.snapshot?.recipients?.map((recipient) => recipient.name)).toEqual(expectedRecipients)
     await page.getByLabel('Tatsächlicher Zahlungstag', { exact: true }).fill('2026-09-20')
+    const expectedPayments = saved.payments.length + 1
     await page.getByRole('button', { name: 'Vollzahlung erfassen' }).click()
+    await expect.poll(async () => (await stateOf(page)).payments.length).toBe(expectedPayments)
     saved = await stateOf(page)
     const pdf = await pdfText(page, saved, invoice.id)
     for (const name of expectedRecipients) expect(pdf.text).toContain(name)
