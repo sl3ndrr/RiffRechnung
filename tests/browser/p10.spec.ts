@@ -92,6 +92,7 @@ for (const width of [390, 1280]) {
     expect(after.invoices[1].number).toBeNull()
     expect(after.invoices[1].correction?.replacesId).toBe(original.id)
     await page.keyboard.press('Escape')
+    await detail.getByRole('button', { name: 'Detailansicht schließen', exact: true }).click()
     await page.getByRole('button', { name: '2026-0001-a', exact: true }).click()
     await expect(detail.getByRole('button', { name: 'Korrekturentwurf öffnen', exact: true })).toBeVisible()
     await testInfo.attach(`p10-final-${width}.png`, { body: await page.screenshot(), contentType: 'image/png' })

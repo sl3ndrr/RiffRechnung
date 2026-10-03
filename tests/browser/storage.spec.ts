@@ -208,8 +208,19 @@ test('tatsächlich geöffnete Altversion: kontrollierter Umstieg schützt den ne
   await expect(current.locator('.save-indicator')).toContainText('Lokal gespeichert')
   const migrated = await stored(current)
   expect(await page.evaluate((key) => localStorage.getItem(key), LEGACY_STORAGE_KEY)).toBe(JSON.stringify(expectedTextless(JSON.parse(original!))))
-  // Deliberately keep the genuine historical app open and let ITS autosave run.
+  // P09 removes retired fields from internal copies. The genuine historical
+  // app rejects autosave against that incomplete old schema; its explicit
+  // recovery import can still write the old key and must be detected.
   await page.getByLabel('Name / Geschäftsbezeichnung', { exact: true }).fill('Alter Tab schreibt nach Umstieg')
+  await expect(page.locator('.persistence-error')).toBeVisible()
+  expect(await stored(current)).toBe(migrated)
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Lokale Daten benötigen Wiederherstellung' })).toBeVisible()
+  const restoredLegacy = JSON.parse(original!)
+  restoredLegacy.settings.issuer.name = 'Alter Tab schreibt nach Umstieg'
+  await page.locator('input[type=file]').setInputFiles({ name: 'historische-sicherung.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(restoredLegacy)) })
+  await page.getByRole('button', { name: 'Daten ersetzen', exact: true }).click()
+  await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).settings.issuer.name, LEGACY_STORAGE_KEY)).toBe('Alter Tab schreibt nach Umstieg')
   await expect(current.locator('.external-update')).toBeVisible()
   expect(await stored(current)).toBe(migrated)
   await current.reload()
