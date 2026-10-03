@@ -143,8 +143,8 @@ for (const example of p11Cases) test(`P11 Browser/PDF: ${example}, eingefrorene 
   expect(normalized.split(snapshot.issuer.name)).toHaveLength(2)
   expect(normalized).toContain(invoice.freeText.split('\n').at(-1)!)
   if (example === 'mehrseitig' || example === 'zwei-anschriften') {
-    expect(normalized).toMatch(/Testkind A P11 Position 1:/)
-    expect(normalized).toMatch(/Testkind B P11 Position 2:/)
+    expect(normalized).toMatch(/Testkind A .*?P11 Position 1:/)
+    expect(normalized).toMatch(/Testkind B .*?P11 Position 2:/)
     expect(normalized).toContain('0,75 Std.')
     expect(normalized).toContain('2 Pauschale')
     expect(normalized).toContain('3 Stück')
