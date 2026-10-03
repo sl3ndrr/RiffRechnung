@@ -56,7 +56,7 @@ test('P03 Browser: alte Gruppenentwürfe im lokalen Klärungspfad übernehmen un
   await expect(page.getByRole('heading', { name: 'Lokale Daten benötigen Wiederherstellung' })).toBeVisible()
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(raw)
   await page.getByRole('button', { name: 'Altformat und Reparatur prüfen' }).click()
-  await expect(page.getByText('Altformat 9 → Format 13:', { exact: false })).toBeVisible()
+  await expect(page.getByText('Altformat 9 → Format 14:', { exact: false })).toBeVisible()
   await page.getByRole('button', { name: 'Wiederherstellung vorbereiten' }).click()
   await page.getByRole('button', { name: 'Wiederherstellung bestätigen' }).click()
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()

@@ -8,13 +8,13 @@ import { parseBackup, serializeBackup, STORAGE_KEY } from '../../src/lib/storage
 async function stateOf(page: Page): Promise<AppState> {
   return parseBackup((await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY))!)
 }
-async function seed(page: Page, state: AppState) {
+async function seed(page: Page, state: AppState | string) {
   await page.goto('/')
   await page.evaluate(async (raw) => {
     const path = '/src/lib/storage.ts'
     const { StorageSession } = await import(path)
     await new StorageSession().restore(raw)
-  }, serializeBackup(state))
+  }, typeof state === 'string' ? state : serializeBackup(state))
   await page.reload()
 }
 const detail = (page: Page) => page.locator('.invoice-detail')
@@ -73,7 +73,7 @@ test('P08 Browser: unbekannter Schema-13-Zahlungstag wird erst durch ausdrückli
   const legacy = legacyVersionedFixture(state, 13)
   legacy.payments[0].legacyPaymentDay = legacy.payments[0].paidAt
   legacy.payments[0].paidAt = null; legacy.payments[0].paymentDayStatus = 'unknown'
-  await seed(page, legacy)
+  await seed(page, JSON.stringify(legacy))
   await open(page)
   await expect(detail(page).locator('.status-chip')).toHaveText('Bezahlt')
   await expect(page.getByLabel('Tatsächlicher Zahlungstag', { exact: true })).toHaveValue('')
