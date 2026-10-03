@@ -25,9 +25,9 @@ test('P03: Schema 8/9 löst nur Gruppenmetadaten; Preise, Empfänger und alle En
     const raw = '\uFEFF' + JSON.stringify(legacy, null, 2) + '\r\n'
     const preview = migrated(raw)
     assert.deepEqual(legacy, before)
-    assert.equal(preview.state.schemaVersion, 13)
+    assert.equal(preview.state.schemaVersion, 14)
     assert.equal('duoGroups' in preview.state, false)
-    assert.equal(preview.report?.migration, 'riffrechnung-to-v13')
+    assert.equal(preview.report?.migration, 'riffrechnung-to-v14')
     assert.equal(preview.report?.fromSchema, schema)
     assert.deepEqual(preview.report?.changes.find((change) => change.path === 'duoGroups')?.before, legacy.duoGroups)
     assert.deepEqual(preview.state.invoices, normalizeLegacyRecipients(before).invoices)

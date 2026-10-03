@@ -47,7 +47,7 @@ test('P06 Browser: geschützter Schema-11-Umstieg, festes Format, gemeinsame Emp
   expect(result.payload).toContain('Rechnung 2026-0003-a+b')
   await page.reload()
   const state = parseBackup((await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY))!)
-  expect(state.schemaVersion).toBe(13)
+  expect(state.schemaVersion).toBe(14)
   expect(state.invoices[0]).toEqual(issued.invoices[0])
   expect(state.documentVersions[0]).toEqual(issued.documentVersions[0])
   expect(state.students.map((person) => person.billingCode)).toEqual(['a', 'b'])

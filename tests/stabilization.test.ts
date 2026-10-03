@@ -118,7 +118,7 @@ test('P12: Fachbefehle bleiben nach jedem Übergang speicherbar, exportierbar, i
   await apply((s) => requireSuccess(deleteInvoiceDraftState(s, s.invoices.at(-1)!.id)))
   await apply((s) => changeInvoiceStatus(s, originalId, 'sent', documentAt))
   const original = session.state.documentVersions[0]
-  await apply((s) => changeInvoiceStatus(s, originalId, 'overdue', documentAt))
+  await apply((s) => changeInvoiceStatus(s, originalId, 'sent', documentAt))
   await apply((s) => changeInvoiceStatus(s, originalId, 'paid', documentAt, '2026-09-03'))
   await apply((s) => changeInvoiceStatus(s, originalId, 'paid', documentAt, '2026-09-04'))
   await apply((s) => changeInvoiceStatus(s, originalId, 'sent', documentAt))

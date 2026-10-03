@@ -6,7 +6,7 @@ import { emptyState } from '../src/lib/defaults'
 import { createLessonItem } from '../src/lib/utils'
 import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { createCorrectionDraft } from '../src/lib/documents'
-import { activeInvoices, openCents } from '../src/lib/documents'
+import { activeInvoices, openCents, selectInvoice } from '../src/lib/documents'
 import { inspectImport } from '../src/lib/importState'
 import { parseBackup, serializeBackup } from '../src/lib/storage'
 
@@ -67,7 +67,7 @@ test('P08: Nachpflege, Datumskorrektur und Statusrücknahme behalten den Geldflu
   assert.equal(state.payments[0].allocations.at(-1)?.versionId, null)
 
   state = changeInvoiceStatus(state, invoice.id, 'paid', '2026-02-05T08:15:00.000Z', '2026-02-02')
-  assert.equal(state.invoices[0].status, 'paid')
+  assert.equal(selectInvoice(state, state.invoices[0]).status, 'paid')
   assert.equal(state.payments.length, 1)
   assert.equal(state.payments[0].amountCents, 3000)
   assert.equal(openCents(state, state.invoices[0]), 0)
@@ -89,7 +89,7 @@ test('P08: Schema 6 übernimmt Vollzahlungen mit unbekanntem Zahlungstag einmali
 
   const preview = inspectImport(JSON.stringify(legacy))
   assert.ok(preview.ok)
-  assert.equal(preview.value.report?.migration, 'riffrechnung-to-v13')
+  assert.equal(preview.value.report?.migration, 'riffrechnung-to-v14')
   assert.equal(preview.value.report?.fromSchema, 6)
   assert.equal(preview.value.state.payments[0].paidAt, null)
   assert.equal(preview.value.state.payments[0].paymentDayStatus, 'unknown')
@@ -97,7 +97,7 @@ test('P08: Schema 6 übernimmt Vollzahlungen mit unbekanntem Zahlungstag einmali
   assert.equal(preview.value.state.payments[0].amountCents, 3000)
 
   const reloaded = parseBackup(serializeBackup(preview.value.state))
-  assert.equal(reloaded.schemaVersion, 13)
+  assert.equal(reloaded.schemaVersion, 14)
   const repeatImport = inspectImport(serializeBackup(reloaded))
   assert.ok(repeatImport.ok)
   if (repeatImport.ok) assert.equal(repeatImport.value.report, null)

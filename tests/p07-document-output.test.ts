@@ -41,7 +41,7 @@ test('P07: neue finale Versionen speichern Ausgabeinformationen nur außerhalb c
 test('P07: Schema 12→13 bewahrt alle geschützten Rohangaben, Ausgabe und vorhandene Konflikte ohne neue Archivkopie', async () => {
   const old = historicalOutputFixture(issued()), raw = JSON.stringify(old)
   const preview = requireSuccess(inspectImport(raw)), state = preview.state
-  assert.equal(preview.report?.fromSchema, 12); assert.equal(preview.report?.toSchema, 13)
+  assert.equal(preview.report?.fromSchema, 12); assert.equal(preview.report?.toSchema, 14)
   assert.equal(JSON.stringify(old), raw)
   for (const key of ['invoices', 'invoiceAdministration', 'payments', 'historicalSnapshotCorrections', 'voidedInvoiceNumbers', 'counters', 'students', 'guardians', 'settings'] as const) assert.deepEqual(state[key], old[key], key)
   assert.deepEqual(state.documentVersions, expectedConsolidatedVersions(old.documentVersions))
@@ -68,7 +68,8 @@ test('P07: Korrektur verwendet die Ausgabeprojektion; historische Originale, Num
   const original = structuredClone(state)
   state = createCorrectionDraft(state, state.invoices[0].id, 'Ausgabe berichtigen', documentAt)
   const draft = state.invoices.at(-1)!
-  assert.equal(draft.period, original.documentVersions[0].outputPeriod)
+  assert.equal(Object.hasOwn(draft, 'period'), false)
+  assert.equal(selectInvoice(state, draft).period, original.documentVersions[0].outputPeriod)
   assert.equal(draft.legalText, original.documentVersions[0].outputLegalText)
   assert.deepEqual(draft.draftPrintSnapshot, original.documentVersions[0].outputSnapshot)
   state = saveInvoiceDraft(state, { ...editable(draft), freeText: 'Berichtigter Hinweis' }, true, documentAt)
