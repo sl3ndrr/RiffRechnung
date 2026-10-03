@@ -47,7 +47,7 @@ async function waitForPrintFonts(): Promise<void> {
 export function InvoicePrint({ invoice, guardians, students, settings, pendingNumberLabel, requestId, includeGiroCode = true, giroCodeFallbackReason, onPrintReady, onPrintError, qrEncoder }: InvoicePrintProps) {
   const [qrCode, setQrCode] = useState<GeneratedQrCode | null>(null)
   const total = invoice ? invoiceTotal(invoice) : 0
-  const period = invoice ? invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate) : ''
+  const period = invoice ? invoice.versionId ? invoice.period ?? '' : billingPeriodFromItems(invoice.items, invoice.invoiceDate) : ''
   const source = invoice?.snapshot ?? invoice?.draftPrintSnapshot
   const legacyDraftWithoutPrintData = invoice?.status === 'draft' && !source
   const printInvoice = useMemo(() => invoice?.status === 'draft' && source ? { ...invoice, snapshot: source } : invoice, [invoice, source])

@@ -19,7 +19,7 @@ export interface IdMapping { invoiceId: string; itemIndex: number; oldId: string
 export interface MigrationReport {
   migration: 'riffrechnung-to-v14'
   version: 1
-  fromSchema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12
+  fromSchema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13
   toSchema: 14
   source: 'local-state' | 'riffrechnung' | 'gitarrenrechnungen'
   changes: MigrationChange[]
