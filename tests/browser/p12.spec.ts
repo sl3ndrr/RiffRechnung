@@ -56,6 +56,13 @@ for (const width of [320, 390, 900, 1280]) {
       await expect(page.locator('.position-summary')).toContainText('Originaler Unterricht')
       await page.getByRole('button', { name: 'Bearbeiten', exact: true }).click()
       const editor = page.getByRole('dialog', { name: 'Entwurf bearbeiten', exact: true })
+      expect(await editor.locator('.modal__footer').evaluate((footer) => {
+        const bounds = footer.getBoundingClientRect()
+        return [...footer.querySelectorAll('button')].every((button) => {
+          const rect = button.getBoundingClientRect()
+          return rect.left >= bounds.left && rect.right <= bounds.right && button.scrollWidth <= button.clientWidth + 1
+        })
+      })).toBe(true)
       const item = editor.locator('.editor-item').first()
       expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
       for (const label of ['Datum', 'Beschreibung', 'Menge', 'Einheit', 'Art', 'Lernende Person']) await expect(item.getByLabel(label, { exact: true })).toBeVisible()

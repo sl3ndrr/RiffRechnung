@@ -214,7 +214,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .search-field { display: flex; min-width: 260px; height: 50px; flex: 1; align-items: center; gap: var(--space-3); padding: 0 15px; border: 1px solid transparent; border-radius: var(--radius-sm); background: var(--surface-container-low); color: var(--on-surface-variant); }
 .search-field:focus-within { border-color: var(--primary); background: var(--surface-container-lowest); outline: 3px solid var(--primary); outline-offset: 2px; }
 .search-field input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: var(--on-surface); }
-.search-field input::placeholder { color: var(--on-surface-variant); opacity: .72; }
+.search-field input::placeholder { color: var(--on-surface-variant); opacity: 1; }
 .select-field { position: relative; display: inline-flex; align-items: center; }
 .select-field select { min-height: 48px; padding: 0 40px 0 16px; border: 1px solid var(--outline-variant); border-radius: var(--radius-sm); outline: 0; appearance: none; background: var(--surface-container-lowest); color: var(--on-surface); cursor: pointer; }
 .select-field:focus-within { outline: 3px solid var(--primary); outline-offset: 2px; }
@@ -625,8 +625,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .modal__header { padding: 20px; }
   .modal__body { padding: 18px; }
   .modal__footer { flex-wrap: wrap; padding: 12px; }
-  .modal__footer .button { flex: 1; padding-inline: 10px; font-size: 12px; }
-  .modal__footer .button--text { flex: 0; }
+  .modal__footer .button { flex: 1 1 auto; padding-inline: 10px; font-size: 12px; }
+  .modal__footer .button--text { flex: 0 0 auto; }
   .modal-total { width: 100%; grid-template-columns: 1fr auto; align-items: center; margin: 0 4px 3px; }
   .form-section { padding: 17px; }
 }
