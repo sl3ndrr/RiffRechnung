@@ -1,7 +1,7 @@
 import { invoiceTotalCents, sumCents } from '../lib/money'
 import { outputItemTotal } from '../lib/invoiceOutput'
 import { DocumentHistory, InvoiceCorrection, HistoricalSnapshotEvidence, type DocumentHistoryActions } from '../components/DocumentHistory'
-import { activeInvoices, isActiveClaim, selectedInvoices, versionFor } from '../lib/documents'
+import { activeInvoices, isActiveClaim, openCents, selectedInvoices, versionFor } from '../lib/documents'
 import { needsHistoricalSplitReview } from '../lib/historicalSplit'
 import { FINALIZED_INVOICE_BLOCKED, isFinalizedInvoice } from '../lib/safety'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -16,6 +16,7 @@ import { euro, formatDate, formatDateLong } from '../lib/utils'
 import { invoiceTotal } from '../lib/money'
 
 interface InvoicesProps extends DocumentHistoryActions {
+  initialStatus?: 'all' | 'unpaid'
   state: AppState
   onNavigate: (page: PageKey) => void
   onLoadDemo?: () => void
@@ -29,11 +30,11 @@ interface InvoicesProps extends DocumentHistoryActions {
   onPrint: (invoice: Invoice) => void
 }
 
-export function Invoices({ state, onNavigate, onLoadDemo, selectedId, onSelect, onNew, onEdit, onDuplicate, onDelete, onSetStatus, onPrint, onCorrection, onAllocatePayment, onResolveConflicts }: InvoicesProps) {
+export function Invoices({ state, initialStatus = 'all', onNavigate, onLoadDemo, selectedId, onSelect, onNew, onEdit, onDuplicate, onDelete, onSetStatus, onPrint, onCorrection, onAllocatePayment, onResolveConflicts }: InvoicesProps) {
   const [search, setSearch] = useState('')
   const [showArchived, setShowArchived] = useState(false)
   const invoices = useMemo(() => selectedInvoices(state), [state])
-  const [status, setStatus] = useState<'all' | InvoiceStatus>('all')
+  const [status, setStatus] = useState<'all' | 'unpaid' | InvoiceStatus>(initialStatus)
   const [year, setYear] = useState('all')
   const [menu, setMenu] = useState<{ invoiceId: string; trigger: HTMLButtonElement } | null>(null)
   const [menuPosition, setMenuPosition] = useState<InvoiceMenuPosition | null>(null)
@@ -49,7 +50,9 @@ export function Invoices({ state, onNavigate, onLoadDemo, selectedId, onSelect, 
       .filter((invoice) => {
         if (!showArchived && state.invoiceAdministration.some((admin) => admin.versionId === invoice.versionId && admin.archived)) return false
         const actualStatus = effectiveStatus(invoice)
-        if (status !== 'all' && actualStatus !== status) return false
+        if (status === 'unpaid') {
+          if (invoice.archived || !isActiveClaim(state, invoice) || openCents(state, invoice) <= 0) return false
+        } else if (status !== 'all' && actualStatus !== status) return false
         if (year !== 'all' && String(invoice.year) !== year) return false
         if (!needle) return true
         const haystack = [invoice.number, billingPeriodFromItems(invoice.items, invoice.invoiceDate), guardianName(invoice, state.guardians, state.students), studentName(invoice, state.students), ...invoice.items.map((item) => item.description)].join(' ').toLocaleLowerCase('de-DE')
@@ -157,7 +160,7 @@ export function Invoices({ state, onNavigate, onLoadDemo, selectedId, onSelect, 
           <span className="sr-only">Rechnungen durchsuchen</span>
           <input id="invoice-search" type="search" placeholder="Nummer, Rechnungsempfänger, Lernende oder Thema …" value={search} onChange={(event) => setSearch(event.target.value)} />
         </label>
-        <label className="select-field select-field--compact"><span className="sr-only">Status</span><select value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">Alle Status</option>{Object.entries(statusLabel).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select><ChevronDown aria-hidden="true" /></label>
+        <label className="select-field select-field--compact"><span className="sr-only">Status</span><select value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">Alle Status</option><option value="unpaid">Noch nicht gezahlt</option>{Object.entries(statusLabel).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select><ChevronDown aria-hidden="true" /></label>
         <label className="select-field select-field--compact"><span className="sr-only">Jahr</span><select value={year} onChange={(event) => setYear(event.target.value)}><option value="all">Alle Jahre</option>{years.map((item) => <option value={item} key={item}>{item}</option>)}</select><ChevronDown aria-hidden="true" /></label>
       </section>
 
@@ -324,4 +327,3 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
     </aside>
   )
 }
-

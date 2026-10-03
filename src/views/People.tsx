@@ -13,6 +13,7 @@ const GUARDIAN_FORM_ID = 'guardian-entry-form'
 const STUDENT_FORM_ID = 'student-entry-form'
 
 interface PeopleProps {
+  initialCreate?: 'guardian' | 'student'
   state: AppState
   onSaveGuardian: (guardian: Guardian) => Promise<boolean>
   onSaveStudent: (student: Student) => Promise<boolean>
@@ -33,10 +34,10 @@ const blankStudent = (): Student => ({
 })
 const blankContact = (): NonNullable<Student['contact']> => ({ email: '', phone: '', address: { street: '', postalCode: '', city: '' } })
 
-export function People({ state, onSaveGuardian, onSaveStudent, onDeleteGuardian, onDeleteStudent }: PeopleProps) {
+export function People({ state, initialCreate, onSaveGuardian, onSaveStudent, onDeleteGuardian, onDeleteStudent }: PeopleProps) {
   const [search, setSearch] = useState('')
-  const [guardianForm, setGuardianForm] = useState<Guardian | null>(null)
-  const [studentForm, setStudentForm] = useState<Student | null>(null)
+  const [guardianForm, setGuardianForm] = useState<Guardian | null>(() => initialCreate === 'guardian' ? blankGuardian() : null)
+  const [studentForm, setStudentForm] = useState<Student | null>(() => initialCreate === 'student' ? blankStudent() : null)
   const [onlyActiveStudents, setOnlyActiveStudents] = useState(true)
   const [error, setError] = useState('')
   const needle = search.toLocaleLowerCase('de-DE').trim()
@@ -151,4 +152,3 @@ export function People({ state, onSaveGuardian, onSaveStudent, onDeleteGuardian,
     </div>
   )
 }
-
