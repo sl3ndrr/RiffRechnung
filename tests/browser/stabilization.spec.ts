@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import type { AppState } from '../../src/types'
 import { documentAt, documentDraft, documentFamily, legacyFixture } from '../documentFixtures'
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
-import { parseBackup, serializeBackup, STORAGE_KEY } from '../../src/lib/storage'
+import { parseBackup, serializeBackup, STORAGE_KEY, LEGACY_STORAGE_KEY } from '../../src/lib/storage'
 
 async function settings(page: Page) { await page.getByRole('button', { name: 'Einstellungen', exact: true }).click() }
 async function save(page: Page) { await page.getByRole('button', { name: 'Jetzt speichern', exact: true }).click(); await expect(page.getByRole('button', { name: 'Lokal gespeichert', exact: true })).toBeDisabled() }
@@ -23,7 +23,6 @@ async function confirmMigration(page: Page) {
   await page.getByRole('button', { name: 'Wiederherstellung vorbereiten', exact: true }).click()
   await page.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
 }
-
 
 test('P12 Browser: negativer Preis verhindert Ansichtswechsel; gültiger Abschluss überlebt Schließen', async ({ page, context }) => {
   await seed(page, documentFamily())
@@ -47,7 +46,6 @@ test('P12 Browser: negativer Preis verhindert Ansichtswechsel; gültiger Abschlu
   await reopened.goto('/')
   expect((await stateOf(reopened)).settings.privateRate).toBe(37.5)
 })
-
 
 test('P12 Browser mit Fehlerinjektion: Quota-Fehler bestätigt nichts und Wiederholung speichert den Formularwert', async ({ page }) => {
   await seed(page, documentFamily())
@@ -77,7 +75,6 @@ test('P12 Browser mit Fehlerinjektion: Quota-Fehler bestätigt nichts und Wieder
   await page.reload()
   expect((await stateOf(page)).settings.issuer.name).toBe('Nach Wiederholung gespeichert')
 })
-
 
 test('P12 Browser: ausländisches Konto abweisen, DE speichern und leere Original-BIC erhalten', async ({ page }) => {
   await seed(page, saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt))
@@ -113,7 +110,6 @@ test('P12 Browser: ausländisches Konto abweisen, DE speichern und leere Origina
   expect(payload.split('\n').slice(4, 8)).toEqual(['', 'Studio', 'DE02120300000000202051', 'EUR7.58'])
 })
 
-
 test('P12 Browser: unterbrochene Migration erhält Rohdaten und lässt sich nach Reload fortsetzen', async ({ page }) => {
   const source = JSON.stringify(legacyFixture(saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt))) + '\r\n'
   await page.goto('/')
@@ -129,7 +125,7 @@ test('P12 Browser: unterbrochene Migration erhält Rohdaten und lässt sich nach
   await confirmMigration(page)
   await expect(page.locator('.toast').filter({ hasText: 'Migration unterbrochen' })).toBeVisible()
   expect(await raw(page)).toBeNull()
-  expect(await page.evaluate((key) => localStorage.getItem(key))).toBe(source)
+  expect(await page.evaluate((key) => localStorage.getItem(key), LEGACY_STORAGE_KEY)).toBe(source)
   await page.reload()
   await confirmMigration(page)
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
@@ -142,7 +138,6 @@ test('P12 Browser: unterbrochene Migration erhält Rohdaten und lässt sich nach
   expect(await archives()).toEqual(savedArchives)
   expect((await stateOf(page)).documentVersions).toHaveLength(1)
 })
-
 
 test('P12 Browser: unbekanntes neueres Format bleibt auch bei Wiederherstellungsversuch bytegleich', async ({ page }) => {
   const future = JSON.stringify({ schemaVersion: 16, data: 'Synthetisches unbekanntes Format' })
@@ -160,7 +155,6 @@ test('P12 Browser: unbekanntes neueres Format bleibt auch bei Wiederherstellungs
   await page.reload()
   expect(await raw(page)).toBe(future)
 })
-
 
 test('P12 Browser ergänzt Quellmuster: Footer-Submit, Kindaktivierung und Rechnungsentwurf', async ({ page }) => {
   await seed(page, documentFamily())
@@ -192,7 +186,6 @@ test('P12 Browser ergänzt Quellmuster: Footer-Submit, Kindaktivierung und Rechn
   expect(state.students.find((entry) => entry.id === 's-a')!.active).toBe(false)
 })
 
-
 test('P12 Browser: lokale Mitternacht in Berlin erzeugt den richtigen Rechnungstag', async ({ browser }) => {
   const context = await browser.newContext({ baseURL: 'http://127.0.0.1:4173', timezoneId: 'Europe/Berlin' })
   try {
@@ -203,3 +196,4 @@ test('P12 Browser: lokale Mitternacht in Berlin erzeugt den richtigen Rechnungst
     await expect(page.getByRole('dialog').getByLabel('Rechnungsdatum', { exact: true })).toHaveValue('2026-09-01')
   } finally { await context.close() }
 })
+
