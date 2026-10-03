@@ -161,7 +161,7 @@ export interface InvoicePayment {
   paidAt: string | null
   /** Separates a user-confirmed bank day from migrated, unconfirmed legacy data. */
   paymentDayStatus: 'confirmed' | 'unknown'
-  /** Raw pre-P08 value retained only for traceability; it is never used for reports. */
+  /** Raw pre-P08 value retained for traceability; it never determines the confirmed payment day. */
   legacyPaymentDay?: string
   recordedAt: string
   provenance: 'recorded' | 'legacy-status'
@@ -240,5 +240,4 @@ export interface InvoiceDraft {
   items: InvoiceItem[]
   freeText: string
 }
-
 

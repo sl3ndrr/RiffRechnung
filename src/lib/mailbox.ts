@@ -1,4 +1,4 @@
-// One optional ASCII dot-atom mailbox; see docs/product-decisions.md.
+// One optional ASCII dot-atom mailbox; see docs/technical.md.
 export const MAILBOX_ERROR = 'Bitte genau eine E-Mail-Adresse ohne Anzeigenamen, Leer- oder Steuerzeichen eingeben (z. B. vorname+unterricht@example.de).'
 
 export function mailboxError(value: string): string | null {

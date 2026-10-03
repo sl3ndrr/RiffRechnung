@@ -3,6 +3,9 @@ import { documentAt, documentDraft, documentFamily } from '../documentFixtures'
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
 import { serializeBackup, STORAGE_KEY } from '../../src/lib/storage'
 import type { AppState } from '../../src/types'
+import { readFileSync } from 'node:fs'
+
+const { version } = JSON.parse(readFileSync('package.json', 'utf8')) as { version: string }
 
 async function seed(page: Page, state: AppState) {
   await page.goto('/')
@@ -309,6 +312,8 @@ test('P02 Browser: kompakte Einrichtung, ein isolierter Demo-Einstieg und Info-L
   const demo = page.getByRole('button', { name: 'Mit Beispieldaten testen', exact: true })
   await expect(demo).toHaveCount(1)
   await expect(page.getByRole('link', { name: /Info öffnen/ })).toHaveAttribute('href', 'https://github.com/sl3ndrr/RiffRechnung/blob/main/docs/about.md')
+  await expect(page.getByRole('link', { name: /Info öffnen/ })).toHaveText(`Info · Version ${version}`)
+  await expect(page.getByRole('link', { name: /Info öffnen/ })).toHaveAttribute('aria-label', `Info öffnen (neuer Tab), aktuelle Version ${version}`)
   await demo.click()
   await expect(page.getByRole('button', { name: 'Demo verlassen', exact: true })).toBeVisible()
   await expect(demo).toHaveCount(0)
@@ -316,4 +321,3 @@ test('P02 Browser: kompakte Einrichtung, ein isolierter Demo-Einstieg und Info-L
   await expect(demo).toHaveCount(1)
   await expect(page.getByRole('region', { name: 'Einrichtung', exact: true })).toBeVisible()
 })
-
