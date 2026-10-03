@@ -34,6 +34,16 @@ Das Farbschema ist eine sofort gespeicherte Ausnahme: Topbar und Einstellungsaus
 Neue Empfängerkonten verlangen eine gültige deutsche IBAN, Kontoinhaber und gegebenenfalls gültige BIC. Das GiroCode-Payload verwendet die eingefrorene Ausgabe. Druck wartet auf Schrift-/Bildbereitschaft und verwirft verspätete Ergebnisse einer anderen Anforderung. QR-Fehler benötigen eine ausdrückliche Fallbackbestätigung.
 Kontakt-E-Mail ist optional und auf eine ASCII-dot-atom-Adresse ohne Anzeigenamen oder Steuerzeichen begrenzt (`mailbox.ts`); historische Abweichungen werden beim Import gemeldet, nicht still korrigiert.
 
+## Dashboard-Kennzahlen
+
+`dashboardStats(state, now, year?)` in `dashboardStats.ts` ist eine reine Lesefunktion. Das Jahr folgt standardmäßig dem lokalen Jahr von `now`; `monthly.months` enthält immer die Monate 1–12. `availableYears` enthält die Jahre bestätigter Zahlungstage sowie das laufende Jahr, absteigend sortiert. Unbekannte historische Zahlungstage werden nicht aus Rohdaten oder Erfassungszeiten ergänzt.
+
+Zahlungseingänge zählen jeden vorhandenen Zahlungsdatensatz genau einmal, unabhängig von seiner aktuellen Zuordnung und davon, ob der Beleg archiviert oder ersetzt ist. Eine gelöste oder geänderte Zuordnung entfernt keinen Geldfluss. Bestätigte Teilzahlungen zählen einzeln nach Zahlungstag; `confirmedPaymentDay` beschreibt dagegen die vollständige Begleichung eines Belegs. Unbekannte Tage gehören ausschließlich zu `paid.allTimeCents` und `paid.withoutConfirmedDay`, nicht zum Jahresbetrag oder zur Monatsreihe.
+
+Offene Ansprüche verwenden die vorhandene Belegprojektion, `isActiveClaim`, `openCents` und `effectiveStatus`; archivierte Belege entfallen. Korrekturentwürfe ändern den Originalanspruch nicht. Empfänger- und Lernendenlabels folgen den eingefrorenen Ausgaben. Tagesdifferenzen entstehen über `calendarDaysBetween` ohne Millisekundenrechnung; zukünftige Rechnungen zeigen null Tage seit Ausstellung. Berechenbare Entwürfe zählen in `drafts.count` und `totalCents`; eine Vorschau mit `null` zählt nur in `uncalculableCount`.
+
+Alle Summen verwenden `sumCents`. Für Ansprüche ohne Überzahlung gilt Rechnungssumme = Zuordnung + Restbetrag. Bestehende Zuordnungen können eine niedrigere Korrektur überzahlen: gemäß `openCents` bleibt der Rest dann null, während der volle Zahlungseingang erhalten bleibt. Die Gleichheit lässt sich für diesen bereits unterstützten Fall nicht ohne Verfälschung der Zahlungen erzwingen. Die Fachtests prüfen beide Fälle sowie Jahreswechsel, Sommerzeit, historische Ausgabebeträge und Demo-Daten. Eine Dashboard-Oberfläche gehört nicht zu dieser Funktionsschicht.
+
 ## Migration und ausdrücklich erlaubte Feldbereinigung
 
 `inspectImport` unterstützt die vorhandenen Schemas 2–15 und prüft alte Formate über begrenzte Adapter. Die Vorschau schreibt nichts. `StorageSession.restore` prüft bekannte Originale, Bestandshistorie und Kennungen vor dem bestätigten Schreiben. Ein Fehler oder eine unlesbare verdächtige Nebenstruktur lässt die Ausgangsschlüssel unverändert. Vor einem Umstieg alte Tabs schließen und vorhandene externe Sicherungen aufbewahren; eine Rückkehr zu altem Code auf dem umgestellten Profil ist kein unterstützter Rückweg.
