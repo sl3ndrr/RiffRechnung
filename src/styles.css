@@ -602,8 +602,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .invoice-list-table { table-layout: fixed; }
   .invoice-list-table th:first-child { width: 34%; }
   .invoice-list-table th:nth-child(2) { width: 28%; }
-  .invoice-list-table th:nth-child(5) { width: 25%; }
-  .invoice-list-table th:nth-child(6) { width: 13%; }
+  .invoice-list-table th:nth-child(5) { width: auto; }
+  .invoice-list-table th:nth-child(6) { width: 46px; }
   .invoice-list-table th, .invoice-list-table td { padding-inline: 6px; overflow-wrap: anywhere; }
   .invoice-list-table .invoice-detail-link { max-width: 100%; white-space: normal; text-align: left; line-height: 1.4; padding-inline: 0; }
   .invoice-list-table .status-chip { max-width: 100%; padding-inline: 6px; white-space: normal; }

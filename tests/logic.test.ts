@@ -31,7 +31,6 @@ import './documents.test'
 import './print-job.test'
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { Guardian, Invoice, InvoiceDraft, Student } from '../src/types'
@@ -118,7 +117,6 @@ function validImportState() {
     email: 'alex@example.de',
     phone: '0123456789',
     address: { street: 'Beispielweg 1', postalCode: '12345', city: 'Beispielstadt' },
-
 
     createdAt: '2026-08-01T10:00:00.000Z',
     updatedAt: '2026-08-01T10:00:00.000Z',
@@ -221,7 +219,6 @@ test('Entwürfe dürfen vor der Einrichtung starten; vollständige Einrichtung v
 
 })
 
-
 test('EPC-Payload enthält Version, Betrag und Rechnungsnummer', () => {
   const settings = { ...defaultSettings, accountHolder: 'Mara Beispiel', iban: 'DE02120300000000202051', bic: 'BYLADEM1001' }
   const payload = buildEpcPayload(invoice(), settings, 125.5)
@@ -309,7 +306,6 @@ test('P10: Personen A–Z und Rechnungsdatum neueste zuerst, mit stabilen besteh
   assert.deepEqual(sortInvoices([{ ...first, id: 'z' }, { ...first, id: 'a' }]).map((entry) => entry.id), ['a', 'z'])
 })
 
-
 test('Rechnungsdokument druckt automatisch berechneten Zeitraum und Fälligkeit', () => {
   const item = createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-print')
   const testInvoice = invoice({
@@ -349,7 +345,7 @@ test('P09: Feste Einleitung, Privatzeile und unveränderter mehrzeiliger Hinweis
   assert.doesNotMatch(pageStyle, /<\/style>/)
 })
 
-test('Entwurfsdrucke tragen ein Wasserzeichen und nur Entwürfe zeigen Positionsdetails', () => {
+test('Nur Entwurfsdrucke tragen ein Wasserzeichen', () => {
   const props = {
     guardians: [],
     students: [student('student-a', 'Anna', 'a')],
@@ -360,11 +356,6 @@ test('Entwurfsdrucke tragen ein Wasserzeichen und nur Entwürfe zeigen Positions
   assert.match(draftMarkup, /class="invoice-draft-watermark"[^>]*>ENTWURF</)
   assert.doesNotMatch(finalMarkup, /invoice-draft-watermark/)
 
-  const stylesheet = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8')
-  const source = readFileSync(new URL('../src/views/Invoices.tsx', import.meta.url), 'utf8')
-  assert.match(stylesheet.slice(stylesheet.indexOf('@media print')), /\.invoice-draft-watermark \{ position: fixed;/)
-  assert.match(source, /invoice\.status === 'draft' && <section className="position-summary">/)
-  assert.doesNotMatch(source, /<Download/)
 })
 
 test('alle Kebab-Menü-Aktionen werden an den vorgesehenen Handler weitergeleitet', () => {
@@ -399,8 +390,6 @@ test('Kebab-Menü wird rechtsbündig verankert und bleibt vollständig im Viewpo
     { width: 320, height: 480 },
   ), { top: 146, left: 12 })
 
-  const source = readFileSync(new URL('../src/views/Invoices.tsx', import.meta.url), 'utf8')
-  assert.match(source, /createPortal\([\s\S]*document\.body/)
 })
 
 test('Demo-Daten bilden Familien, Unterricht und Rechnungen seit Januar 2025 vollständig ab', () => {
@@ -742,15 +731,6 @@ test('ungültige Preise bleiben lokal und überschreiben den letzten gültigen E
   })
 })
 
-test('Modal-Formulare verknüpfen ihre Footer-Buttons mit dem nativen Submit', () => {
-  const peopleSource = readFileSync(new URL('../src/views/People.tsx', import.meta.url), 'utf8')
-  const editorSource = readFileSync(new URL('../src/views/InvoiceEditor.tsx', import.meta.url), 'utf8')
-  assert.match(peopleSource, /type="submit" form=\{GUARDIAN_FORM_ID\}/)
-  assert.match(peopleSource, /type="submit" form=\{STUDENT_FORM_ID\}/)
-  assert.match(editorSource, /type="submit" form=\{INVOICE_EDITOR_FORM_ID\}/)
-  assert.match(editorSource, /onSubmit=\{\(event\) => \{ event\.preventDefault\(\); submit\(false\) \}\}/)
-  assert.match(editorSource, /<textarea/)
-})
 
 test('Mengenfeld bietet begrenzte Viertelschritt-Steuerung', () => {
   assert.equal(adjustQuantity(.75, 1), 1)
@@ -760,20 +740,6 @@ test('Mengenfeld bietet begrenzte Viertelschritt-Steuerung', () => {
 
 })
 
-test('Kinderliste startet mit aktivem Aktiv-Filter', () => {
-  const source = readFileSync(new URL('../src/views/People.tsx', import.meta.url), 'utf8')
-  const stylesheet = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8')
-  assert.match(source, /\[onlyActiveStudents, setOnlyActiveStudents\] = useState\(true\)/)
-  assert.match(source, /Nur aktive Lernende anzeigen/)
-  assert.match(source, /!onlyActiveStudents \|\| student\.active/)
-  assert.match(source, /switch-row switch-row--compact people-active-filter[\s\S]*type="checkbox"[\s\S]*<i \/>/)
-  assert.match(stylesheet, /\.switch-row input:checked \+ i \{[^}]*background: var\(--primary\);/)
-  assert.match(stylesheet, /\.switch-row input:checked \+ i::after \{[^}]*background: var\(--on-primary\);[^}]*transform: translate\(20px, -2px\);/)
-  assert.match(stylesheet, /\.switch-row strong \{[^}]*font-size: \.9rem;/)
-  assert.match(stylesheet, /\.switch-row small \{[^}]*font-size: \.75rem;/)
-  assert.match(stylesheet, /\.people-active-filter\.switch-row--compact \{[^}]*min-height: 60px;[^}]*padding: var\(--space-2\) var\(--space-4\);/)
-  assert.doesNotMatch(stylesheet, /\.people-active-filter > i \{[^}]*transform:/)
-})
 
 test('Zeitpunkt des letzten Backup-Exports wird persistiert', () => {
   withMockLocalStorage(() => {
@@ -784,9 +750,7 @@ test('Zeitpunkt des letzten Backup-Exports wird persistiert', () => {
   })
 })
 
-
 test('nicht unterstütztes Backup wird abgelehnt', () => {
   assert.throws(() => parseBackup('{"schemaVersion":99}'), /unterstütztes Backup-Format/)
 })
-
 

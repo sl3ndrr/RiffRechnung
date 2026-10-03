@@ -45,7 +45,7 @@ export function WorkspaceShell({ children, page, settings, draftCount, lastBacku
       const dark = settings.theme === 'dark' || (settings.theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
       root.dataset.theme = dark ? 'dark' : 'light'
       root.style.colorScheme = dark ? 'dark' : 'light'
-      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#151821' : '#f6f6fb')
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#151618' : '#f7f7f8')
     }
     apply()
     const media = matchMedia('(prefers-color-scheme: dark)')
