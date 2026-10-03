@@ -4,7 +4,8 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { selectInvoice } from '../src/lib/documents'
-import { invoicePdfTitle, buildEpcPayload } from '../src/lib/utils'
+import { invoicePdfTitle } from '../src/lib/utils'
+import { buildEpcPayload } from '../src/lib/utils'
 import { invoiceTotalCents } from '../src/lib/money'
 import { InvoicePrint } from '../src/components/InvoicePrint'
 import { editable } from './documentFixtures'
@@ -25,4 +26,5 @@ test('P03 Datenschutz: gewöhnliche Empfängerberechtigung und private Ausgabe b
     }
   })
 })
+
 

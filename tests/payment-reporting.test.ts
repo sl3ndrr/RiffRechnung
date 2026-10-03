@@ -31,10 +31,8 @@ function readyState(invoiceDate = '2025-12-20'): AppState {
     studentIds: ['student-a'],
     recipientStrategy: 'joint',
     items: [{ ...createLessonItem('student-a', invoiceDate, state.settings, 'item-payment-report'), quantity: 1, unitPrice: 30 }],
-    introText: 'Unterricht',
     freeText: '',
-    legalText: state.settings.defaultLegalText,
-  }
+    }
   return saveInvoiceDraft(state, draft, true, issuedAt)
 }
 
@@ -89,7 +87,7 @@ test('P08: Schema 6 übernimmt Vollzahlungen mit unbekanntem Zahlungstag einmali
 
   const preview = inspectImport(JSON.stringify(legacy))
   assert.ok(preview.ok)
-  assert.equal(preview.value.report?.migration, 'riffrechnung-to-v14')
+  assert.equal(preview.value.report?.migration, 'riffrechnung-to-v15')
   assert.equal(preview.value.report?.fromSchema, 6)
   assert.equal(preview.value.state.payments[0].paidAt, null)
   assert.equal(preview.value.state.payments[0].paymentDayStatus, 'unknown')
@@ -97,7 +95,7 @@ test('P08: Schema 6 übernimmt Vollzahlungen mit unbekanntem Zahlungstag einmali
   assert.equal(preview.value.state.payments[0].amountCents, 3000)
 
   const reloaded = parseBackup(serializeBackup(preview.value.state))
-  assert.equal(reloaded.schemaVersion, 14)
+  assert.equal(reloaded.schemaVersion, 15)
   const repeatImport = inspectImport(serializeBackup(reloaded))
   assert.ok(repeatImport.ok)
   if (repeatImport.ok) assert.equal(repeatImport.value.report, null)
@@ -117,4 +115,5 @@ test('P08: korrigierte Belege ersetzen die Forderung ohne Zahlungsnachweise zu v
   assert.equal(state.payments.length, 1)
 
 })
+
 

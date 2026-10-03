@@ -1,3 +1,4 @@
+import { cleanRecoveryInvoiceTexts } from './legacyInvoiceTexts'
 import { cleanLegacyContacts, RETIRED_CONTACT_FIELDS } from './legacyContactsRecipients'
 import { cleanRecoveryTaxFields } from './recoveryTaxCleanup'
 
@@ -5,7 +6,7 @@ const object = (value: unknown): Record<string, unknown> | null => value !== nul
 
 /** Migration-only cleanup of internal raw copies and reports. Unreadable evidence fails closed. */
 export function cleanRecoveryFields(raw: string): string {
-  const taxCleaned = cleanRecoveryTaxFields(raw)
+  const taxCleaned = cleanRecoveryInvoiceTexts(cleanRecoveryTaxFields(raw))
   let value: unknown
   try { value = JSON.parse(taxCleaned.replace(/^\uFEFF/, '')) } catch {
     for (const match of taxCleaned.matchAll(/"(?:[^"\\]|\\.)*"/gsu)) {
@@ -43,3 +44,4 @@ export function cleanRecoveryFields(raw: string): string {
   const result = clean(value)
   return JSON.stringify(result) === JSON.stringify(value) ? taxCleaned : JSON.stringify(result)
 }
+

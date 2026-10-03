@@ -1,3 +1,4 @@
+import { expectedTextless } from './documentFixtures'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -10,7 +11,8 @@ import { inspectImport, parseBackup } from '../src/lib/importState'
 import { validateBackupState } from '../src/lib/validation'
 import { assertOriginalsPreserved } from '../src/lib/safety'
 import { StorageSession, serializeBackup } from '../src/lib/storage'
-import { buildEpcPayload, invoiceTotal } from '../src/lib/utils'
+import { buildEpcPayload } from '../src/lib/utils'
+import { invoiceTotal } from '../src/lib/utils'
 import { requireSuccess } from '../src/lib/result'
 import { documentAt, documentDraft, documentFamily, editable, expectedConsolidatedVersions, historicalOutputFixture } from './documentFixtures'
 import { memoryStorage, sharedLock } from './storageHarness'
@@ -22,13 +24,12 @@ test('P07: neue finale Versionen speichern Ausgabeinformationen nur außerhalb c
   const content = state.documentVersions[0].content
   for (const field of ['snapshot', 'draftPrintSnapshot', 'period', 'legalText']) assert.equal(Object.hasOwn(content, field), false)
   state.settings.issuer.name = 'HEUTIGER AUSSTELLER'; state.settings.bic = 'MARKDEF1100'; state.settings.bankName = 'HEUTIGE BANK'
-  state.settings.defaultLegalText = 'HEUTIGER RECHTSTEXT'
   state.guardians.forEach((person) => { person.name = 'HEUTIGER EMPFÄNGER'; person.address.street = 'HEUTIGE ANSCHRIFT' })
   state.students[0].name = 'HEUTIGER LEISTUNGSNAME'
   const selected = selectInvoice(state, state.invoices[0])
   assert.deepEqual(selected.snapshot, before[0].outputSnapshot)
   assert.deepEqual(selected.snapshot!.recipients.map((entry) => entry.street), ['Testweg 2', 'Testweg 3'])
-  assert.equal(selected.snapshot!.bic, ''); assert.equal(selected.snapshot!.bankName, ''); assert.equal(selected.legalText, '')
+  assert.equal(selected.snapshot!.bic, ''); assert.equal(selected.snapshot!.bankName, ''); assert.equal(Object.hasOwn(selected, 'legalText'), false)
   assert.equal(selected.period, before[0].outputPeriod)
   const payload = buildEpcPayload(selected, state.settings, invoiceTotal(selected)).split('\n')
   assert.equal(payload[4], ''); assert.equal(payload[5], before[0].outputSnapshot.accountHolder)
@@ -41,14 +42,14 @@ test('P07: neue finale Versionen speichern Ausgabeinformationen nur außerhalb c
 test('P07: Schema 12→13 bewahrt alle geschützten Rohangaben, Ausgabe und vorhandene Konflikte ohne neue Archivkopie', async () => {
   const old = historicalOutputFixture(issued()), raw = JSON.stringify(old)
   const preview = requireSuccess(inspectImport(raw)), state = preview.state
-  assert.equal(preview.report?.fromSchema, 12); assert.equal(preview.report?.toSchema, 14)
+  assert.equal(preview.report?.fromSchema, 12); assert.equal(preview.report?.toSchema, 15)
   assert.equal(JSON.stringify(old), raw)
-  for (const key of ['invoices', 'invoiceAdministration', 'payments', 'historicalSnapshotCorrections', 'voidedInvoiceNumbers', 'counters', 'students', 'guardians', 'settings'] as const) assert.deepEqual(state[key], old[key], key)
+  for (const key of ['invoices', 'invoiceAdministration', 'payments', 'historicalSnapshotCorrections', 'voidedInvoiceNumbers', 'counters', 'students', 'guardians', 'settings'] as const) assert.deepEqual(state[key], expectedTextless(old[key]), key)
   assert.deepEqual(state.documentVersions, expectedConsolidatedVersions(old.documentVersions))
   const selected = selectInvoice(state, state.invoices[0]), version = old.documentVersions[0]
-  assert.deepEqual(documentContent(selected), documentContent({ ...old.invoices[0], ...version.content }, false))
+  assert.deepEqual(documentContent(selected), documentContent(expectedTextless({ ...old.invoices[0], ...version.content }), false))
   assert.deepEqual(selected.snapshot, version.outputSnapshot)
-  assert.equal(selected.period, version.outputPeriod); assert.equal(selected.legalText, version.outputLegalText)
+  assert.equal(selected.period, version.outputPeriod)
   assert.equal(invoiceTotal(selected), 9)
   assert.equal(buildEpcPayload(selected, state.settings, invoiceTotal(selected)).split('\n')[7], 'EUR9.00')
   assert.doesNotMatch(JSON.stringify(preview.report), /P09: vorhandener Rohtext|Abweichender Roh-Empfänger/)
@@ -70,7 +71,6 @@ test('P07: Korrektur verwendet die Ausgabeprojektion; historische Originale, Num
   const draft = state.invoices.at(-1)!
   assert.equal(Object.hasOwn(draft, 'period'), false)
   assert.equal(selectInvoice(state, draft).period, original.documentVersions[0].outputPeriod)
-  assert.equal(draft.legalText, original.documentVersions[0].outputLegalText)
   assert.deepEqual(draft.draftPrintSnapshot, original.documentVersions[0].outputSnapshot)
   state = saveInvoiceDraft(state, { ...editable(draft), freeText: 'Berichtigter Hinweis' }, true, documentAt)
   assertOriginalsPreserved(original, state)
@@ -93,3 +93,4 @@ test('P07: Kanonisierung behält Schlüsselordnung, undefined-Behandlung und Arr
   assert.equal(visited.has(resolve('src/lib/documents.ts')), false)
   assert.equal(visited.has(resolve('src/lib/envelope.ts')), false)
 })
+

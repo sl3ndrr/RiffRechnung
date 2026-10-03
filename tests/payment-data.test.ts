@@ -1,16 +1,17 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { buildEpcPayload } from '../src/lib/utils'
-import { bicError, cleanIban, germanIbanError, isValidGermanIban, normalizeBic, paymentDataErrors, paymentDataForInvoice } from '../src/lib/paymentData'
+import { bicError, isValidGermanIban, normalizeBic, paymentDataErrors, paymentDataForInvoice } from '../src/lib/paymentData'
+import { cleanIban, germanIbanError } from '../src/lib/utils'
 import { defaultSettings } from '../src/lib/defaults'
 import type { Invoice, InvoiceSnapshot } from '../src/types'
 
 const snapshot = (overrides: Partial<InvoiceSnapshot> = {}): InvoiceSnapshot => ({
   issuer: { name: 'Studio Alt', street: 'Altweg 1', postalCode: '12345', city: 'Altstadt', email: '', phone: '' },
-  recipients: [], students: [], accountHolder: 'Historisches Studio', iban: 'DE89370400440532013000', bic: '', bankName: 'Historische Bank', legalText: '', ...overrides,
+  recipients: [], students: [], accountHolder: 'Historisches Studio', iban: 'DE89370400440532013000', bic: '', bankName: 'Historische Bank', ...overrides,
 })
 const invoice = (outputSnapshot?: InvoiceSnapshot): Invoice => ({
-  id: 'invoice-payment', number: '2026-a-0001', sequence: 1, year: 2026, invoiceDate: '2026-09-01', dueDate: '2026-09-15', period: 'September 2026', status: 'sent', recipients: ([]).map((id) => ({ type: 'guardian' as const, id })), studentIds: [], recipientStrategy: 'joint', items: [], introText: '', freeText: '', legalText: '', snapshot: outputSnapshot, createdAt: '2026-09-01T10:00:00.000Z', updatedAt: '2026-09-01T10:00:00.000Z',
+  id: 'invoice-payment', number: '2026-a-0001', sequence: 1, year: 2026, invoiceDate: '2026-09-01', dueDate: '2026-09-15', period: 'September 2026', status: 'sent', recipients: ([]).map((id) => ({ type: 'guardian' as const, id })), studentIds: [], recipientStrategy: 'joint', items: [], freeText: '', snapshot: outputSnapshot, createdAt: '2026-09-01T10:00:00.000Z', updatedAt: '2026-09-01T10:00:00.000Z',
 })
 
 test('deutsche IBANs werden normalisiert und nach Format sowie MOD-97 geprüft', () => {
@@ -43,3 +44,4 @@ test('leere Snapshot-BIC bleibt gegenüber heutigen Einstellungen autoritativ', 
   assert.equal(fields[6], 'DE89370400440532013000')
   assert.equal(fields[7], 'EUR30.00')
 })
+

@@ -31,7 +31,7 @@ export function DocumentHistory({ state, invoice, onSelect, onCorrection, onAllo
     {parent && <DifferenceTable title="Änderungen gegenüber dem ersetzten Beleg" before={parent.content} after={version.content} />}
     <details><summary>Gesicherte Ausgabeangaben</summary>
       <dl className="detail-list"><div><dt>Kontoinhaber</dt><dd>{invoice.snapshot?.accountHolder || 'Leer'}</dd></div><div><dt>IBAN</dt><dd>{invoice.snapshot?.iban || 'Leer'}</dd></div><div><dt>BIC</dt><dd>{invoice.snapshot?.bic || 'Leer'}</dd></div><div><dt>Bank</dt><dd>{invoice.snapshot?.bankName || 'Leer'}</dd></div></dl>
-      <p>Einleitung: {invoice.introText}</p><p>Hinweis: {invoice.freeText}</p><p>Rechtstext: {invoice.legalText || 'Leer'}</p>
+      <p>Hinweis: {invoice.freeText}</p>
       <p>Betragsquelle: {version.amounts.source === 'number-register' ? 'Historisches Nummernregister' : 'Gesicherte bisherige Rechnungsausgabe'}.</p>
     </details>
     {version.conflicts.length > 0 && <section className="form-errors" aria-label="Historische Abweichungen">
@@ -81,3 +81,4 @@ function PaymentAllocation({ state, paymentId, versionIds, onAllocatePayment }: 
     <button className="button button--tonal" disabled={!reason.trim() || target === current} onClick={() => { onAllocatePayment(paymentId, target || null, reason); setReason('') }}>Zuordnung speichern</button>
   </div>
 }
+

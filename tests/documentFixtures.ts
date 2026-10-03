@@ -16,7 +16,7 @@ export function documentFamily(): AppState {
   return state
 }
 export function documentDraft(): InvoiceDraft {
-  return { invoiceDate: '2026-09-01', dueDate: '2026-09-15', period: 'September 2026', recipients: (['g-a']).map((id) => ({ type: 'guardian' as const, id })), studentIds: ['s-a'], recipientStrategy: 'joint', items: [{ id: 'original-position', studentId: 's-a', serviceDate: '2026-08-15', lessonType: 'solo', description: 'Originaler Unterricht', quantity: .75, unit: 'Std.', unitPrice: 10.10 }], introText: 'Originale Einleitung', freeText: 'Originaler Hinweis', legalText: '' }
+  return { invoiceDate: '2026-09-01', dueDate: '2026-09-15', period: 'September 2026', recipients: (['g-a']).map((id) => ({ type: 'guardian' as const, id })), studentIds: ['s-a'], recipientStrategy: 'joint', items: [{ id: 'original-position', studentId: 's-a', serviceDate: '2026-08-15', lessonType: 'solo', description: 'Originaler Unterricht', quantity: .75, unit: 'Std.', unitPrice: 10.10 }], freeText: 'Originaler Hinweis', }
 }
 /** Explicit legacy fixture construction. Never normalize test results with this helper. */
 export function legacyFixture(state: AppState): LegacyState {
@@ -78,7 +78,7 @@ export function legacyVersionedFixture(state: AppState, schemaVersion: number) {
 }
 
 export function editable(invoice: Invoice): InvoiceDraft {
-  return { id: invoice.id, correction: invoice.correction, invoiceDate: invoice.invoiceDate, dueDate: invoice.dueDate, period: invoice.period, recipients: structuredClone(invoice.recipients), studentIds: [...invoice.studentIds], recipientStrategy: invoice.recipientStrategy, items: structuredClone(invoice.items), introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText }
+  return { id: invoice.id, correction: invoice.correction, invoiceDate: invoice.invoiceDate, dueDate: invoice.dueDate, period: invoice.period, recipients: structuredClone(invoice.recipients), studentIds: [...invoice.studentIds], recipientStrategy: invoice.recipientStrategy, items: structuredClone(invoice.items), freeText: invoice.freeText, }
 }
 
 
@@ -87,7 +87,7 @@ export function expectedConsolidatedVersions(versions: AppState['documentVersion
   return versions.map((version) => {
     const content = { ...version.content }
     for (const key of ['snapshot', 'draftPrintSnapshot', 'period', 'legalText']) Reflect.deleteProperty(content, key)
-    return { ...version, content }
+    return expectedTextless({ ...version, content })
   })
 }
 
@@ -118,3 +118,11 @@ export function historicalOutputFixture(state: AppState) {
   return old
 }
 
+
+
+/** Explicit P09 expectation, independent of the migration implementation. */
+export function expectedTextless<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(expectedTextless) as T
+  if (!value || typeof value !== 'object') return value
+  return Object.fromEntries(Object.entries(value).filter(([key]) => !['introText', 'legalText', 'defaultLegalText', 'outputLegalText'].includes(key)).map(([key, entry]) => [key, expectedTextless(entry)])) as T
+}

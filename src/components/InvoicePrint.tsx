@@ -2,7 +2,7 @@ import { sumCents } from '../lib/money'
 import { useEffect, useMemo, useState } from 'react'
 import QRCode from 'qrcode'
 import type { Guardian, Invoice, Settings, Student } from '../types'
-import { billingPeriodFromItems, buildInvoicePrintPageStyle, euro, footerTextForPrint, formatDateLong, formatIban, groupItemsByStudent, invoiceTotal, outputItemTotal, outputItemCents, outputUnitPrice, number, parseDate } from '../lib/utils'
+import { billingPeriodFromItems, buildInvoicePrintPageStyle, euro, formatDateLong, formatIban, groupItemsByStudent, invoiceTotal, outputItemTotal, outputItemCents, outputUnitPrice, number, parseDate } from '../lib/utils'
 import { paymentDataForInvoice } from '../lib/paymentData'
 import { generateGiroCode, resolveGiroCode, type GiroCodeEncoder } from '../lib/printJob'
 import { liveRecipient, recipientKey, recipientRefs, snapshotRecipients } from '../lib/recipients'
@@ -51,8 +51,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
   const source = invoice?.snapshot ?? invoice?.draftPrintSnapshot
   const legacyDraftWithoutPrintData = invoice?.status === 'draft' && !source
   const printInvoice = useMemo(() => invoice?.status === 'draft' && source ? { ...invoice, snapshot: source } : invoice, [invoice, source])
-  const footerText = invoice ? footerTextForPrint(invoice.legalText) : ''
-  const pageStyle = invoice ? buildInvoicePrintPageStyle(footerText, invoice.number) : ''
+  const pageStyle = invoice ? buildInvoicePrintPageStyle(invoice.number) : ''
   const issuer = source?.issuer ?? (legacyDraftWithoutPrintData ? { name: '', street: '', postalCode: '', city: '', email: '', phone: '' } : settings.issuer)
   const account = printInvoice && !legacyDraftWithoutPrintData ? paymentDataForInvoice(printInvoice, settings) : { accountHolder: '', iban: '', bic: '', bankName: '' }
   const recipientList = useMemo(() => {
@@ -191,7 +190,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
 
         <section className="invoice-intro">
           <p>Sehr geehrte/r {salutation},</p>
-          <p>{invoice.introText}</p>
+          <p>Hiermit stelle ich die folgenden Leistungen in Rechnung.</p>
           <p><strong>Unterricht für:</strong> {studentList.map((student) => student.name).join(', ') || '–'}</p>
         </section>
 
@@ -235,7 +234,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
             <div className="invoice-thanks"><p>Vielen Dank</p><strong>{issuer.name}</strong></div>
             <footer className="invoice-footer">
               <div className="invoice-footer__rule" />
-              <div className="invoice-footer__content"><p>{footerText}</p><span className="invoice-footer__reference">Rechnung {invoice.number ?? 'Entwurf'} · Seitenzahl im Seitenrand</span></div>
+              <div className="invoice-footer__content"><span className="invoice-footer__reference">Rechnung {invoice.number ?? 'Entwurf'} · Seitenzahl im Seitenrand</span></div>
             </footer>
           </section>
         </section>
@@ -269,3 +268,4 @@ function PrintGroup({ invoice, label, items, showSubtotal }: { invoice: Invoice;
     </>
   )
 }
+

@@ -1,3 +1,4 @@
+import { expectedTextless } from './documentFixtures'
 import { expectedConsolidatedVersions } from './documentFixtures'
 import { cleanLegacyContacts, normalizeLegacyRecipients } from '../src/lib/legacyContactsRecipients'
 import { cleanRecoveryFields } from '../src/lib/recoveryContactCleanup'
@@ -9,7 +10,8 @@ import { deleteInvoiceDraftState } from '../src/lib/commands'
 import { requireSuccess } from '../src/lib/result'
 import { inspectImport } from '../src/lib/importState'
 import { invoiceTotalCents } from '../src/lib/money'
-import { applyLessonType, buildEpcPayload } from '../src/lib/utils'
+import { applyLessonType } from '../src/lib/utils'
+import { buildEpcPayload } from '../src/lib/utils'
 import { validateBackupState } from '../src/lib/validation'
 import { serializeBackup, parseBackup, StorageSession, STORAGE_KEY, PREVIOUS_STORAGE_KEY, loadState } from '../src/lib/storage'
 import { documentAt, documentDraft, documentFamily, editable } from './documentFixtures'
@@ -25,12 +27,12 @@ test('P03: Schema 8/9 löst nur Gruppenmetadaten; Preise, Empfänger und alle En
     const raw = '\uFEFF' + JSON.stringify(legacy, null, 2) + '\r\n'
     const preview = migrated(raw)
     assert.deepEqual(legacy, before)
-    assert.equal(preview.state.schemaVersion, 14)
+    assert.equal(preview.state.schemaVersion, 15)
     assert.equal('duoGroups' in preview.state, false)
-    assert.equal(preview.report?.migration, 'riffrechnung-to-v14')
+    assert.equal(preview.report?.migration, 'riffrechnung-to-v15')
     assert.equal(preview.report?.fromSchema, schema)
     assert.deepEqual(preview.report?.changes.find((change) => change.path === 'duoGroups')?.before, legacy.duoGroups)
-    assert.deepEqual(preview.state.invoices, normalizeLegacyRecipients(before).invoices)
+    assert.deepEqual(preview.state.invoices, expectedTextless(normalizeLegacyRecipients(before).invoices))
     assert.deepEqual(preview.state.invoices.map(invoiceTotalCents), [758, 1502])
     assert.equal(preview.rawData, raw)
     const storage = memoryStorage(), session = new StorageSession({ storage, lock: sharedLock() })
@@ -56,14 +58,14 @@ test('P03: lokaler Schema-9-Stand wartet ohne Schreibverlust auf kontrollierte �
   assert.equal(storage.getItem(STORAGE_KEY), raw)
   const session = new StorageSession({ storage, lock: sharedLock() })
   await session.restore(raw)
-  assert.deepEqual(session.state.invoices, normalizeLegacyRecipients(old).invoices)
+  assert.deepEqual(session.state.invoices, expectedTextless(normalizeLegacyRecipients(old).invoices))
   assert.equal(loadState(storage).status, 'ready')
 })
 
 test('P03: historische finale Duo-Belege, Nummern, Originalversionen und Verwaltungsdaten bleiben gleich', async () => {
   for (const schema of [8, 9] as const) {
     const old = legacyDuoState(schema, true), preview = migrated(JSON.stringify(old))
-    for (const key of ['invoices', 'documentVersions', 'invoiceAdministration', 'payments', 'counters', 'voidedInvoiceNumbers'] as const) assert.deepEqual(preview.state[key], key === 'documentVersions' ? expectedConsolidatedVersions(normalizeLegacyRecipients(cleanLegacyContacts(old)).documentVersions) : normalizeLegacyRecipients(cleanLegacyContacts(old))[key])
+    for (const key of ['invoices', 'documentVersions', 'invoiceAdministration', 'payments', 'counters', 'voidedInvoiceNumbers'] as const) assert.deepEqual(preview.state[key], key === 'documentVersions' ? expectedConsolidatedVersions(normalizeLegacyRecipients(cleanLegacyContacts(old)).documentVersions) : expectedTextless(normalizeLegacyRecipients(cleanLegacyContacts(old))[key]))
     assert.deepEqual(preview.state.invoices.map((invoice) => invoice.number), ['2026-aur-0001', '2026-bas-0001'])
     assert.deepEqual(parseBackup(serializeBackup(preview.state)), preview.state)
     const storage = memoryStorage(), session = new StorageSession({ storage, lock: sharedLock() })
@@ -78,11 +80,11 @@ test('P03: fehlende Partner oder Positionen erzeugen keine Ersatzdaten; übrige 
     if (missing === 'invoice') old.invoices.pop()
     else old.invoices[1].items = []
     const preview = migrated(JSON.stringify(old))
-    assert.deepEqual(preview.state.invoices, normalizeLegacyRecipients(old).invoices)
+    assert.deepEqual(preview.state.invoices, expectedTextless(normalizeLegacyRecipients(old).invoices))
     assert.deepEqual(preview.report?.changes.find((change) => change.path === 'duoGroups')?.before, old.duoGroups)
     const next = changeInvoiceStatus(preview.state, old.invoices[0].id, 'sent', documentAt)
     assert.equal(next.documentVersions.length, 1)
-    assert.deepEqual(next.invoices.slice(1), normalizeLegacyRecipients(old).invoices.slice(1))
+    assert.deepEqual(next.invoices.slice(1), expectedTextless(normalizeLegacyRecipients(old).invoices).slice(1))
   }
 })
 
@@ -185,4 +187,5 @@ test('P03: Selbstzahler nutzt Duo-Preis, GiroCode und denselben Personenbuchstab
   assert.match(buildEpcPayload(next.invoices[0], state.settings, invoiceTotalCents(next.invoices[0]) / 100), /2026-0001-a/)
   assert.equal('duoGroups' in next, false)
 })
+
 

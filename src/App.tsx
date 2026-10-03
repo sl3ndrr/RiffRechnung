@@ -193,9 +193,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         studentIds: invoice.studentIds,
         recipientStrategy: invoice.recipientStrategy,
         items: structuredClone(invoice.items),
-        introText: invoice.introText,
         freeText: invoice.freeText,
-        legalText: invoice.legalText,
       },
     })
   }
@@ -586,3 +584,4 @@ function ShieldDot() {
 }
 
 export default App
+

@@ -11,7 +11,10 @@ import { prepareInvoiceCopy, saveInvoiceState } from '../src/lib/commands'
 import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { captureLegacyDocuments, inspectImport } from '../src/lib/importState'
 import { selectInvoice } from '../src/lib/documents'
-import { buildEpcPayload, invoiceTotal, nextInvoiceAllocation, outputItemTotal, outputUnitPrice } from '../src/lib/utils'
+import { buildEpcPayload } from '../src/lib/utils'
+import { invoiceTotal } from '../src/lib/utils'
+import { nextInvoiceAllocation } from '../src/lib/utils'
+import { outputItemTotal, outputUnitPrice } from '../src/lib/utils'
 import { validateBackupState } from '../src/lib/validation'
 import { requireSuccess } from '../src/lib/result'
 import { serializeBackup, StorageSession, STORAGE_KEY } from '../src/lib/storage'
@@ -97,7 +100,7 @@ test('P05/P08: Schema 4 → 7 bewahrt Originale; Entwürfe zeigen Änderungen, I
   const preview = requireSuccess(inspectImport(raw))
   assert.equal(preview.rawData, raw)
   assert.equal(preview.report?.fromSchema, 4)
-  assert.equal(preview.report?.toSchema, 14)
+  assert.equal(preview.report?.toSchema, 15)
   assert.ok(preview.report?.changes.some((change) => change.path.endsWith('amountReview') && change.before === 757 && change.after === 758))
   assert.deepEqual(preview.state.documentVersions, expectedConsolidatedVersions(normalizeLegacyRecipients(old).documentVersions))
   assert.equal(invoiceTotal(selectInvoice(preview.state, preview.state.invoices[0])), 7.57)
@@ -118,7 +121,7 @@ test('P05/P08: Schema 4 → 7 bewahrt Originale; Entwürfe zeigen Änderungen, I
   assert.equal(requireSuccess(inspectImport(storage.getItem(STORAGE_KEY)!)).report, null)
   assert.equal(requireSuccess(inspectImport(serializeBackup(accepted))).report, null)
   validateBackupState(JSON.parse(JSON.stringify(accepted)))
-  const future = JSON.stringify({ ...old, schemaVersion: 15 })
+  const future = JSON.stringify({ ...old, schemaVersion: 16 })
   assert.equal(inspectImport(future).ok, false)
   storage.setItem(STORAGE_KEY, future)
   await assert.rejects(() => new StorageSession({ storage, lock }).restore(serializeBackup(accepted)), /neuere|schreibgeschützt/)
@@ -189,4 +192,5 @@ test('P05: Europe/Berlin und UTC – Mitternacht, Sommerzeit, Zahlungstag, Kopie
     }
   } finally { if (previous === undefined) delete process.env.TZ; else process.env.TZ = previous }
 })
+
 

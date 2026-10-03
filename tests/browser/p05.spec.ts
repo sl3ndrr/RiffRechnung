@@ -24,7 +24,7 @@ test('P05 Browser: kontrollierter Umstieg bereinigt Kopien; ein Namensfeld erhä
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
   await page.reload()
   const migrated = parseBackup((await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY))!)
-  expect(migrated.schemaVersion).toBe(14)
+  expect(migrated.schemaVersion).toBe(15)
   expect(migrated.invoices[0].snapshot?.recipients.map((person) => person.street)).toEqual(['Testweg 2', 'Testweg 3'])
   expect(migrated.documentVersions[0].outputSnapshot.iban).toBe(issued.documentVersions[0].outputSnapshot.iban)
   const copies = await page.evaluate(() => Object.keys(localStorage).map((key) => localStorage.getItem(key)).join('\n'))
@@ -45,4 +45,5 @@ test('P05 Browser: kontrollierter Umstieg bereinigt Kopien; ein Namensfeld erhä
   expect(changed.documentVersions).toEqual(migrated.documentVersions)
   expect(changed.invoices).toEqual(migrated.invoices)
 })
+
 

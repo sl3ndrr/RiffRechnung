@@ -4,7 +4,8 @@ import { canonical } from '../src/lib/canonical'
 import { allocatePayment, createCorrectionDraft, openCents, selectInvoice } from '../src/lib/documents'
 import { saveInvoiceDraft, changeInvoiceStatus } from '../src/lib/invoiceActions'
 import { inspectImport, parseBackup } from '../src/lib/importState'
-import { effectiveStatus, nextInvoiceAllocation } from '../src/lib/utils'
+import { effectiveStatus } from '../src/lib/utils'
+import { nextInvoiceAllocation } from '../src/lib/utils'
 import { validateBackupState } from '../src/lib/validation'
 import { assertOriginalsPreserved } from '../src/lib/safety'
 import { serializeBackup, StorageSession, STORAGE_KEY } from '../src/lib/storage'
@@ -100,7 +101,7 @@ test('P08: Schema 13→14 bewahrt Originale und Rohstatus; unbekannter historisc
   old.payments[0].paidAt = null; old.payments[0].paymentDayStatus = 'unknown'
   // The old raw calendar day is valid evidence, but never a confirmed bank day.
   const raw = JSON.stringify(old), preview = requireSuccess(inspectImport(raw))
-  assert.equal(preview.report?.fromSchema, 13); assert.equal(preview.report?.toSchema, 14)
+  assert.equal(preview.report?.fromSchema, 13); assert.equal(preview.report?.toSchema, 15)
   assert.equal(JSON.stringify(old), raw)
   assert.deepEqual({ ...preview.state, schemaVersion: 13 }, old)
   const state = preview.state
@@ -124,7 +125,7 @@ test('P08: Schema 13→14 bewahrt Originale und Rohstatus; unbekannter historisc
   assert.deepEqual(parseBackup(session.export()), state)
   const invalid = structuredClone(old); invalid.payments = []
   assert.equal(inspectImport(JSON.stringify(invalid)).ok, false, 'Schema 13 wird vor Migration streng geprüft')
-  assert.equal(inspectImport(JSON.stringify({ ...old, schemaVersion: 15 })).ok, false)
+  assert.equal(inspectImport(JSON.stringify({ ...old, schemaVersion: 16 })).ok, false)
 })
 
 test('P08: historisch manuelles Überfällig ist Nachweis; aktuelle Anzeige folgt der tatsächlichen Fälligkeit', () => {
@@ -177,3 +178,4 @@ test('P08: Teilzahlungen, Überzahlung, Korrekturzuordnung und unbekannte Tage w
   assert.equal(selectInvoice(state, low).paidAt, undefined)
   assertDerived(state)
 })
+

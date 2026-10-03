@@ -11,22 +11,13 @@ export const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency
 export const number = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 })
 export const dateLong = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })
 export const dateShort = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })
-export const MAX_FOOTER_TEXT_LENGTH = 120
 const germanCollator = new Intl.Collator('de-DE', { numeric: true, sensitivity: 'base' })
 
 export type SortDirection = 'asc' | 'desc'
 export type PeopleSortMode = 'name-asc' | 'name-desc' | 'created-desc' | 'created-asc'
 export type InvoiceSortKey = 'date' | 'number' | 'family' | 'period' | 'status' | 'amount'
 
-export function isFooterTextWithinLimit(value: string): boolean {
-  return value.length <= MAX_FOOTER_TEXT_LENGTH
-}
-
-export function limitFooterText(value: string): string {
-  return value.slice(0, MAX_FOOTER_TEXT_LENGTH)
-}
-
-type InvoiceFinalizationCandidate = Pick<Invoice, 'recipients' | 'studentIds' | 'invoiceDate' | 'dueDate' | 'items' | 'legalText'> & Partial<Pick<Invoice, 'recipientStrategy' | 'correction'>>
+type InvoiceFinalizationCandidate = Pick<Invoice, 'recipients' | 'studentIds' | 'invoiceDate' | 'dueDate' | 'items'> & Partial<Pick<Invoice, 'recipientStrategy' | 'correction'>>
 
 export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 'students' | 'settings'>, invoice: InvoiceFinalizationCandidate): string[] {
   const errors: string[] = [...moneyErrors(invoice)]
@@ -58,13 +49,7 @@ export function invoiceFinalizationErrors(state: Pick<AppState, 'guardians' | 's
   if (invoice.items.some((item) => !studentIds.has(item.studentId) || !selectedStudentIds.has(item.studentId))) {
     errors.push('Alle Positionen müssen einem ausgewählten Lernenden aus den aktuellen Stammdaten zugeordnet sein.')
   }
-  if (!isFooterTextWithinLimit(invoice.legalText)) errors.push(`Der Fußzeilen-/Rechtstext darf höchstens ${MAX_FOOTER_TEXT_LENGTH} Zeichen lang sein.`)
   return errors
-}
-
-/** Historical legal text is output verbatim; only the editor limits new input explicitly. */
-export function footerTextForPrint(value: string): string {
-  return value.replace(/\r\n?/g, '\n').trim()
 }
 
 function cssContentString(value: string): string {
@@ -78,7 +63,7 @@ function cssContentString(value: string): string {
   return `"${escaped}"`
 }
 
-export function buildInvoicePrintPageStyle(_footerText: string, invoiceNumber: string | null): string {
+export function buildInvoicePrintPageStyle(invoiceNumber: string | null): string {
   const invoiceReference = invoiceNumber ? cssContentString(`Rechnung ${invoiceNumber}`) : '""'
   // Margin boxes are only an enhancement. Essential legal and reference text is
   // also present in the ordinary document flow in InvoicePrint.
@@ -456,4 +441,5 @@ export function outputUnitPrice(invoice: Invoice, item: InvoiceItem): string {
   const [whole, fraction = ''] = decimalInputText(item.unitPrice).split('.')
   return `${new Intl.NumberFormat('de-DE').format(BigInt(whole))},${fraction.padEnd(2, '0')}\u00a0€`
 }
+
 

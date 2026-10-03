@@ -80,7 +80,7 @@ export function prepareInvoiceCopy(state: AppState, invoiceId: string, targetDat
       invoiceDate, dueDate: calculateDueDate(invoiceDate, state.settings.paymentTermDays),
       studentIds: [...invoice.studentIds],
       recipients: structuredClone(recipientRefs(invoice)),
-      recipientStrategy: invoice.recipientStrategy, items, introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText,
+      recipientStrategy: invoice.recipientStrategy, items, freeText: invoice.freeText,
     }
     // Verify the actual prospective persistent result without mutating state.
     saveInvoiceDraft(state, draft, false, targetDate.toISOString())
@@ -92,14 +92,14 @@ export function saveInvoiceState(state: AppState, draft: InvoiceDraft, finalize:
   return commandResult(() => saveInvoiceDraft(state, draft, finalize, at))
 }
 
-export const LEGACY_REVIEW_FIELDS = ['Empfänger', 'Lernende', 'Positionen', 'Einleitung', 'Freitext'] as const
+export const LEGACY_REVIEW_FIELDS = ['Empfänger', 'Lernende', 'Positionen', 'Freitext'] as const
 
 export function convertLegacyDraftState(state: AppState, sourceId: string, reviewed: readonly string[], guardianIds: string[], edited: InvoiceDraft, at?: string): CommandResult<AppState> {
   return commandResult(() => {
     validateBackupState(state)
     const source = state.invoices.find((invoice) => invoice.id === sourceId)
     if (!source || source.status !== 'draft' || source.recipientStrategy !== 'separate' || source.correction || source.number || source.versionId) throw new Error('Nur ein offener historischer Aufteilungsentwurf kann umgewandelt werden.')
-    if (!LEGACY_REVIEW_FIELDS.every((field) => reviewed.includes(field))) throw new Error('Bitte Empfänger, Lernende, Positionen, Einleitung und Freitext einzeln sichtbar prüfen und bestätigen.')
+    if (!LEGACY_REVIEW_FIELDS.every((field) => reviewed.includes(field))) throw new Error('Bitte Empfänger, Lernende, Positionen und Freitext einzeln sichtbar prüfen und bestätigen.')
     if (guardianIdsFor(source.recipients).length === 1 && (guardianIds.length !== 1 || guardianIds[0] !== guardianIdsFor(source.recipients)[0])) throw new Error('Der einzelne Altentwurf wird nur mit seinem bisherigen Empfänger übernommen.')
     if (!guardianIds.length || new Set(guardianIds).size !== guardianIds.length || guardianIds.some((id) => !state.guardians.some((guardian) => guardian.id === id))) throw new Error('Bitte die empfangenden Personen ausdrücklich auswählen.')
     if (edited.id !== sourceId || edited.correction || edited.recipientStrategy !== 'separate') throw new Error('Der zu prüfende Altentwurf hat sich geändert. Bitte neu laden.')
@@ -164,3 +164,4 @@ export function resetUnissuedState(state: AppState): CommandResult<AppState> {
     return next
   })
 }
+

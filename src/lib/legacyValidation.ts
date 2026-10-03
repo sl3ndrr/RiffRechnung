@@ -1,3 +1,4 @@
+import { cleanInvoiceTexts } from './legacyInvoiceTexts'
 import { cleanLegacyContacts } from './legacyContactsRecipients'
 import { detachLegacyDuoGroups } from './legacyDuoV8V9'
 import { validateLegacyStructure } from './validation'
@@ -5,50 +6,55 @@ import { stripLegacyTaxFields } from './legacyTaxFields'
 
 /** Removed tax values are discarded; non-tax fields and invariants stay strict. */
 export function validateLegacyV2Structure(value: unknown): void {
-  validateLegacyStructure(cleanLegacyContacts(stripLegacyTaxFields(value).value), 2)
+  validateLegacyStructure(cleanInvoiceTexts(cleanLegacyContacts(stripLegacyTaxFields(value).value)), 2)
 }
 
 export function validateLegacyV3Structure(value: unknown): void {
-  validateLegacyStructure(cleanLegacyContacts(stripLegacyTaxFields(value).value), 3)
+  validateLegacyStructure(cleanInvoiceTexts(cleanLegacyContacts(stripLegacyTaxFields(value).value)), 3)
 }
 
 export function validateLegacyV4Structure(value: unknown): void {
-  validateLegacyStructure(cleanLegacyContacts(stripLegacyTaxFields(value).value), 4)
+  validateLegacyStructure(cleanInvoiceTexts(cleanLegacyContacts(stripLegacyTaxFields(value).value)), 4)
 }
 
 export function validateLegacyV5Structure(value: unknown): void {
-  validateLegacyStructure(cleanLegacyContacts(stripLegacyTaxFields(value).value), 5)
+  validateLegacyStructure(cleanInvoiceTexts(cleanLegacyContacts(stripLegacyTaxFields(value).value)), 5)
 }
 
 export function validateLegacyV6Structure(value: unknown): void {
-  validateLegacyStructure(cleanLegacyContacts(stripLegacyTaxFields(value).value), 6)
+  validateLegacyStructure(cleanInvoiceTexts(cleanLegacyContacts(stripLegacyTaxFields(value).value)), 6)
 }
 
 export function validateLegacyV7Structure(value: unknown): void {
-  validateLegacyStructure(cleanLegacyContacts(stripLegacyTaxFields(value).value), 7)
+  validateLegacyStructure(cleanInvoiceTexts(cleanLegacyContacts(stripLegacyTaxFields(value).value)), 7)
 }
 
 export function validateLegacyV8Structure(value: unknown): void {
-  validateLegacyStructure(cleanLegacyContacts(detachLegacyDuoGroups(stripLegacyTaxFields(value).value)), 8)
+  validateLegacyStructure(cleanInvoiceTexts(cleanLegacyContacts(detachLegacyDuoGroups(stripLegacyTaxFields(value).value))), 8)
 }
 
 export function validateLegacyV9Structure(value: unknown): void {
-  validateLegacyStructure(cleanLegacyContacts(detachLegacyDuoGroups(value)), 9)
+  validateLegacyStructure(cleanInvoiceTexts(cleanLegacyContacts(detachLegacyDuoGroups(value))), 9)
 }
 
 export function validateLegacyV10Structure(value: unknown): void {
-  validateLegacyStructure(cleanLegacyContacts(value), 10)
+  validateLegacyStructure(cleanInvoiceTexts(cleanLegacyContacts(value)), 10)
 }
 
 
 export function validateLegacyV11Structure(value: unknown): void {
-  validateLegacyStructure(value, 11)
+  validateLegacyStructure(cleanInvoiceTexts(value), 11)
 }
 
 export function validateLegacyV12Structure(value: unknown): void {
-  validateLegacyStructure(value, 12)
+  validateLegacyStructure(cleanInvoiceTexts(value), 12)
 }
 
 export function validateLegacyV13Structure(value: unknown): void {
-  validateLegacyStructure(value, 13)
+  validateLegacyStructure(cleanInvoiceTexts(value), 13)
+}
+
+
+export function validateLegacyV14Structure(value: unknown): void {
+  validateLegacyStructure(cleanInvoiceTexts(value), 14)
 }

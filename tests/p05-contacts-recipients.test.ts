@@ -43,9 +43,9 @@ function onlyRecipients(state: AppState) {
 test('P05: Schema 10→11 entfernt ausschließlich Kontaktfelder und bewahrt den sichtbaren Namen und eingefrorene Konten', () => {
   const old = oldStock(), raw = JSON.stringify(old), frozen = structuredClone(old.invoices[0].snapshot)
   const preview = requireSuccess(inspectImport(raw))
-  assert.equal(preview.state.schemaVersion, 14)
+  assert.equal(preview.state.schemaVersion, 15)
   assert.equal(preview.report?.fromSchema, 10)
-  assert.equal(preview.report?.toSchema, 14)
+  assert.equal(preview.report?.toSchema, 15)
   assert.equal(preview.state.guardians[0].name, 'Familie Müller, Dr. Anna')
   assert.equal(JSON.stringify(old), raw, 'Die Vorschau verändert keinen Eingang')
   assert.deepEqual(preview.state.students[0].guardianIds, ['g-a', 'g-b'])
@@ -213,4 +213,5 @@ test('P05: widersprüchliche eingefrorene Entwürfe ohne Klärungshistorie werde
   if (!result.ok) assert.match(result.errors[0].message, /Widersprüchliche eingefrorene Empfänger/)
   assert.equal(JSON.stringify(old), raw)
 })
+
 

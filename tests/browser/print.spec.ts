@@ -5,7 +5,8 @@ import type { AppState, InvoiceDraft } from '../../src/types'
 import { documentAt, documentDraft, documentFamily } from '../documentFixtures'
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
 import { serializeBackup } from '../../src/lib/storage'
-import { buildEpcPayload, invoiceTotal } from '../../src/lib/utils'
+import { buildEpcPayload } from '../../src/lib/utils'
+import { invoiceTotal } from '../../src/lib/utils'
 
 async function seed(page: Page, state: AppState) {
   await page.goto('/')
@@ -17,7 +18,7 @@ async function seed(page: Page, state: AppState) {
   await page.reload()
 }
 
-function printableState(itemCount: number, freeText = '', legalText = 'Rechtstext für die vollständige PDF-Ausgabe'): AppState {
+function printableState(itemCount: number, freeText = ''): AppState {
   const state = documentFamily()
   state.guardians[0] = {
     ...state.guardians[0],
@@ -33,9 +34,7 @@ function printableState(itemCount: number, freeText = '', legalText = 'Rechtstex
   const base = documentDraft()
   const draft: InvoiceDraft = {
     ...base,
-    legalText,
     freeText,
-    introText: 'Diese Einleitung enthält bewusst mehrere Zeilen.\nSie muss vollständig gedruckt werden.',
     items: Array.from({ length: itemCount }, (_, index) => ({
       ...base.items[0],
       id: `print-item-${index}`,
@@ -93,7 +92,7 @@ test('P09 Browser/PDF: ein-, zwei- und mehrseitige Rechnungen behalten Text, Was
     expect(pdf.text).toContain(invoice.number!)
     expect(pdf.text).toContain('Synthetisches Studio')
     expect(pdf.text).toContain('DE02 1203 0000 0000 2020 51')
-    expect(pdf.text).toContain('Rechtstext für die vollständige PDF-Ausgabe')
+    expect(pdf.text.replace(/\s+/g, ' ')).toContain('Hiermit stelle ich die folgenden Leistungen in Rechnung.')
     expect(pdf.text).toContain('Unterrichtsposition 1')
     expect(normalizedPdfText).toContain(example.freeText.split('\n').at(-1)!)
     if (example.label === 'p09-eine-seite') expect(pdf.text).toMatch(/Hinweis Zeile 1\s*\n\s*Hinweis Zeile 2/)
@@ -110,7 +109,7 @@ test('P09 Browser/PDF: ein-, zwei- und mehrseitige Rechnungen behalten Text, Was
 
 test('P01 Browser/PDF: genau eine Privatzeile auf der Seite der Endsumme, auch mehrseitig', async ({ page }, testInfo) => {
   for (const count of [1, 108]) {
-    const issued = printableState(count, '', 'Unveränderter freier Rechtstext')
+    const issued = printableState(count, 'Unveränderter freier Rechtstext')
     const pdf = await createPdf(page, issued, issued.invoices[0].id, `p01-privat-${count}`, testInfo)
     const pages = pdf.text.split('\f').filter((text) => text.trim())
     const finalPage = pages.findIndex((text) => /\bSumme\b/.test(text))
@@ -138,7 +137,7 @@ test('P01 Browser/PDF: Entwurf und Abschluss ohne Anschriften haben dieselbe Pri
   }
 })
 
-test('P01 Browser: Steuerwahl entfällt; freier Rechtstext wird unverändert gespeichert', async ({ page }) => {
+test('P09 Browser: nur ein optionaler Rechnungshinweis wird unverändert gespeichert', async ({ page }) => {
   const saved = saveInvoiceDraft(documentFamily(), documentDraft(), false, documentAt)
   await seed(page, saved)
   await page.getByRole('button', { name: /^Rechnungen/ }).first().click()
@@ -147,10 +146,13 @@ test('P01 Browser: Steuerwahl entfällt; freier Rechtstext wird unverändert ges
   const editor = page.getByRole('dialog', { name: 'Entwurf bearbeiten' })
   await expect(editor.getByRole('combobox', { name: 'Rechnungsart' })).toHaveCount(0)
   await expect(editor.getByRole('group', { name: 'Steuerangaben im Druck' })).toHaveCount(0)
-  await editor.getByRole('textbox', { name: /Fußzeile \/ Rechtstext/ }).fill('Eigener Hinweis zu § 19')
+  await expect(editor.getByRole('textbox', { name: /Fußzeile \/ Rechtstext/ })).toHaveCount(0)
+  await expect(editor.getByLabel('Einleitung', { exact: true })).toHaveCount(0)
+  await editor.getByLabel('Freitext / Hinweis', { exact: true }).fill('Eigener Hinweis zu § 19')
   await editor.getByRole('button', { name: 'Als Entwurf speichern', exact: true }).click()
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('riffrechnung-state-v4')!).data.invoices[0])
-  expect(persisted.legalText).toBe('Eigener Hinweis zu § 19')
+  expect(Object.hasOwn(persisted, 'legalText')).toBe(false)
+  expect(persisted.freeText).toBe('Eigener Hinweis zu § 19')
   expect(persisted).not.toHaveProperty('taxPresentation')
   expect(persisted).not.toHaveProperty('invoiceKind')
 })
@@ -216,3 +218,4 @@ test('P09 Browser: ungültige historische BIC bietet den bewussten Druck ohne Gi
   await expect(page.locator('.print-root .invoice-qr img')).toHaveCount(0)
   await expect(page.locator('.print-root')).toContainText('DE02 1203 0000 0000 2020 51')
 })
+

@@ -1,3 +1,4 @@
+import './p09-invoice-texts.test'
 import './p08-derived-invoice-state.test'
 import './p07-document-output.test'
 import './p06-invoice-numbering.test'
@@ -37,7 +38,15 @@ import { selectedInvoices } from '../src/lib/documents'
 import { createDemoState, defaultSettings, emptyState } from '../src/lib/defaults'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, runInvoiceMenuAction } from '../src/lib/invoiceMenu'
 import { loadLastBackupAt, StorageSession, loadState, parseBackup, recordBackupExport, serializeBackup } from '../src/lib/storage'
-import { applyLessonType, billingPeriodFromItems, buildEpcPayload, buildInvoicePrintPageStyle, calculateDueDate, createLessonItem, effectiveStatus, footerTextForPrint, formatDateLong, formatInvoiceNumber, invoiceFinalizationErrors, invoicePdfTitle, invoiceTotal, isFooterTextWithinLimit, isInvoiceSetupComplete, isValidIban, itemTotal, limitFooterText, MAX_FOOTER_TEXT_LENGTH, nextInvoiceAllocation, sortInvoices, sortPeople, studentCodeForIndex } from '../src/lib/utils'
+import { applyLessonType, createLessonItem } from '../src/lib/utils'
+import { billingPeriodFromItems, buildInvoicePrintPageStyle, effectiveStatus, invoicePdfTitle, sortInvoices } from '../src/lib/utils'
+import { buildEpcPayload, isValidIban } from '../src/lib/utils'
+import { calculateDueDate } from '../src/lib/utils'
+import { formatDateLong, sortPeople } from '../src/lib/utils'
+import { formatInvoiceNumber, nextInvoiceAllocation, studentCodeForIndex } from '../src/lib/utils'
+import { invoiceFinalizationErrors } from '../src/lib/utils'
+import { invoiceTotal, itemTotal } from '../src/lib/utils'
+import { isInvoiceSetupComplete } from '../src/lib/utils'
 import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { assertOriginalsPreserved } from '../src/lib/safety'
 import { applyStandardRateInput, updateSettings } from '../src/lib/settings'
@@ -66,9 +75,7 @@ const invoice = (overrides: Partial<Invoice> = {}): Invoice => ({
   studentIds: ['student-a'],
   recipientStrategy: 'joint',
   items: [],
-  introText: '',
   freeText: '',
-  legalText: '',
   createdAt: '2026-08-01T10:00:00.000Z',
   updatedAt: '2026-08-01T10:00:00.000Z',
   ...overrides,
@@ -121,7 +128,7 @@ function validImportState() {
     items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-a')],
   }))
   const current = captureLegacyDocuments(legacyFixture(state))
-  current.schemaVersion = 14
+  current.schemaVersion = 15
   current.settings = {
     ...current.settings,
     issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', email: 'studio@example.de', phone: '' },
@@ -187,8 +194,7 @@ test('historisch verbrauchte Nummern bleiben reserviert', () => {
       iban: '',
       bic: '',
       bankName: '',
-      legalText: defaultSettings.defaultLegalText,
-    },
+      },
   })]
   assert.equal(nextInvoiceAllocation(state, '2026-08-21', ['student-a']).number, '2026-0002-a')
 
@@ -335,28 +341,23 @@ test('PDF-Titel enthält Rechnungsnummer und dateisicheren Kindesnamen', () => {
   assert.equal(invoicePdfTitle(testInvoice, [student('student-a', 'Lina / Winter', 'a')]), 'Rechnung 2026-b-0002 - Lina - Winter')
 })
 
-test('P09: Rechtstext und mehrzeiliger Freitext bleiben im Dokumentfluss vollständig erhalten', () => {
-  assert.equal(MAX_FOOTER_TEXT_LENGTH, 120)
-  assert.equal(isFooterTextWithinLimit('x'.repeat(MAX_FOOTER_TEXT_LENGTH)), true)
-  assert.equal(isFooterTextWithinLimit('x'.repeat(MAX_FOOTER_TEXT_LENGTH + 1)), false)
-  assert.equal(limitFooterText('x'.repeat(MAX_FOOTER_TEXT_LENGTH + 1)).length, MAX_FOOTER_TEXT_LENGTH)
-  assert.equal(footerTextForPrint('  Rechtstext\n  zweite Zeile  '), 'Rechtstext\n  zweite Zeile')
+test('P09: Feste Einleitung, Privatzeile und unveränderter mehrzeiliger Hinweis', () => {
 
   const longFreeText = ['Erste wichtige Zeile', 'Zweite wichtige Zeile', 'Eine sehr lange ungetrennte Kontoreferenz '.repeat(8)].join('\n')
   const markup = renderToStaticMarkup(createElement(InvoicePrint, {
-    invoice: invoice({ freeText: longFreeText, legalText: 'Rechtstext\nzweite Zeile' }),
+    invoice: invoice({ freeText: longFreeText, }),
     guardians: [],
     students: [student('student-a', 'Anna', 'a')],
     settings: defaultSettings,
     includeGiroCode: false,
   }))
+  assert.match(markup, /Hiermit stelle ich die folgenden Leistungen in Rechnung/); assert.match(markup, /Privatrechnung/)
   assert.match(markup, /Erste wichtige Zeile/)
   assert.match(markup, /Zweite wichtige Zeile/)
-  assert.match(markup, /Rechtstext\nzweite Zeile/)
   assert.match(markup, /class="invoice-footer"/)
   assert.match(markup, /Seitenzahl im Seitenrand/)
 
-  const pageStyle = buildInvoicePrintPageStyle('Rechtstext mit "Anführungszeichen" und </style>', '2026-a-0001')
+  const pageStyle = buildInvoicePrintPageStyle('2026-a-0001')
   assert.match(pageStyle, /@bottom-right \{[\s\S]*Seite " counter\(page\) " von " counter\(pages\)/)
   assert.match(pageStyle, /@top-right \{[\s\S]*Rechnung 2026-a-0001/)
   assert.doesNotMatch(pageStyle, /@bottom-left/)
@@ -473,8 +474,7 @@ test('vollständiges Backup lässt sich wiederherstellen', () => {
     iban: '',
     bic: '',
     bankName: '',
-    legalText: '',
-  }
+    }
   state.audit.push({
     id: 'event-snapshot-correction',
     at: '2026-08-20T12:30:00.000Z',
@@ -487,7 +487,7 @@ test('vollständiges Backup lässt sich wiederherstellen', () => {
     },
   })
   const restored = parseBackup(serializeBackup(state))
-  assert.equal(restored.schemaVersion, 14)
+  assert.equal(restored.schemaVersion, 15)
   assert.equal(restored.settings.issuer.name, 'Test Unterricht')
   assert.equal(restored.students[0]?.billingCode, 'a')
   assert.equal(restored.voidedInvoiceNumbers[0]?.number, '2026-a-0004')
@@ -558,8 +558,7 @@ test('finalisierte Historie darf gelöschte Stammdaten über den Snapshot refere
     iban: state.settings.iban,
     bic: state.settings.bic,
     bankName: state.settings.bankName,
-    legalText: state.settings.defaultLegalText,
-  }
+    }
   state.guardians = []
   state.students = []
 
@@ -683,10 +682,8 @@ test('Editor-Finalisierung wird vor Nummern- und Snapshot-Vergabe zentral validi
     studentIds: ['student-a'],
     recipientStrategy: 'joint',
     items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-editor-finalization')],
-    introText: '',
     freeText: '',
-    legalText: '',
-  }
+    }
   const unlinkedGuardian: Guardian = {
     ...state.guardians[0],
     id: 'guardian-unlinked',
@@ -704,7 +701,7 @@ test('Editor-Finalisierung wird vor Nummern- und Snapshot-Vergabe zentral validi
 
   assert.deepEqual(invoiceFinalizationErrors(state, validDraft), [])
   scenarios.forEach(({ name, draft, expected, guardians = state.guardians }) => {
-    assert.match(invoiceFinalizationErrors({ guardians, students: state.students, settings: state.settings }, draft).join(' '), expected, name)
+    assert.match(invoiceFinalizationErrors({ ...state, guardians }, draft).join(' '), expected, name)
   })
 
   state.settings.iban = 'DE02120300000000202051'
@@ -806,4 +803,5 @@ test('Zeitpunkt des letzten Backup-Exports wird persistiert', () => {
 test('nicht unterstütztes Backup wird abgelehnt', () => {
   assert.throws(() => parseBackup('{"schemaVersion":99}'), /unterstütztes Backup-Format/)
 })
+
 

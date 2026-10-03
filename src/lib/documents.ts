@@ -22,7 +22,7 @@ export function snapshotFor(state: Pick<AppState, 'guardians' | 'students' | 'se
       return student ? [{ id, name: student.name }] : []
     }),
     accountHolder: state.settings.accountHolder, iban: state.settings.iban,
-    bic: state.settings.bic, bankName: state.settings.bankName, legalText: invoice.legalText,
+    bic: state.settings.bic, bankName: state.settings.bankName,
   }
 }
 
@@ -41,7 +41,6 @@ export function captureDocument(state: AppState, invoice: Invoice, id: string, h
     provenance: historical ? 'oldest-available' : 'issued', sourceUpdatedAt: invoice.updatedAt,
     content: documentContent(invoice), outputSnapshot: snapshot,
     outputPeriod: billingPeriodFromItems(invoice.items, invoice.invoiceDate),
-    outputLegalText: historical ? invoice.legalText || invoice.snapshot?.legalText || state.settings.defaultLegalText : invoice.legalText,
     amounts: { itemCents, totalCents, legacyCalculatedTotalCents, source: historical ? registerEntries.length ? 'number-register' : 'legacy-output' : 'decimal-output', calculation: historical ? 'legacy-v1' : 'decimal-v1' },
     conflicts: [], snapshotHistory: structuredClone(state.historicalSnapshotCorrections.filter((event) => event.entityType === 'invoice' && event.entityId === invoice.id && event.snapshotCorrection)),
     registerEntries: structuredClone(registerEntries),
@@ -50,7 +49,6 @@ export function captureDocument(state: AppState, invoice: Invoice, id: string, h
   if (!invoice.snapshot) conflict('snapshot', 'Kein historischer Snapshot vorhanden. Nur der jetzt verfügbare Ausgabestand konnte gesichert werden.', null, snapshot)
   if (canonical(invoice.recipients) !== canonical(snapshot.recipients.map(({ type, id }) => ({ type, id })))) conflict('recipients', 'Zuordnung und Snapshot-Empfänger widersprechen sich. Die Ausgabe verwendet den gesicherten Snapshot.', invoice.recipients, snapshot.recipients)
   if (canonical(invoice.studentIds) !== canonical(snapshot.students.map((student) => student.id))) conflict('studentIds', 'Zuordnung und Lernenden-Snapshot widersprechen sich.', invoice.studentIds, snapshot.students)
-  if (invoice.snapshot && invoice.legalText !== invoice.snapshot.legalText) conflict('legalText', 'Rechnung und Snapshot enthalten verschiedene Rechtstexte.', invoice.legalText, invoice.snapshot.legalText)
   if (totalCents !== legacyCalculatedTotalCents) conflict('amounts', 'Historischer Registerbetrag und bisherige Rechnungsausgabe weichen ab. Beide Beträge bleiben erhalten; Registerbetrag hat Vorrang.', totalCents, legacyCalculatedTotalCents)
   if (historical && invoice.period !== version.outputPeriod) conflict('period', 'Gespeicherter Zeitraum und bisherige Druckausgabe weichen ab. Beide Angaben bleiben erhalten.', invoice.period, version.outputPeriod)
   for (const entry of registerEntries) {
@@ -73,7 +71,7 @@ export function selectInvoice(state: AppState, invoice: Invoice): Invoice {
     ...structuredClone(version.content), year: invoiceYear(version.content), status: paymentStatus(state, version.id), updatedAt: invoice.updatedAt,
     paidAt: confirmedPaymentDay(state, version.id), sentAt: invoice.sentAt, versionId: version.id, correction: invoice.correction,
     openAmountCents: openCents(state, invoice),
-    snapshot: structuredClone(version.outputSnapshot), period: version.outputPeriod, legalText: version.outputLegalText,
+    snapshot: structuredClone(version.outputSnapshot), period: version.outputPeriod,
     issuedAmounts: structuredClone(version.amounts), claimState: isActiveClaim(state, invoice) ? 'active' : 'replaced',
     archived: state.invoiceAdministration.find((admin) => admin.versionId === version.id)?.archived ?? false,
   })
@@ -139,7 +137,7 @@ export function createCorrectionDraft(state: AppState, invoiceId: string, reason
   if (state.invoices.some((entry) => entry.status === 'draft' && entry.correction?.replacesId === parent.id)) throw new Error('Für diesen Beleg gibt es bereits einen Korrekturentwurf.')
   const draft: Invoice = {
     ...structuredClone(parent.content), id: freshId('invoice', new Set(state.invoices.map((entry) => entry.id)), uid),
-    number: null, sequence: null, stateModel: 'derived-v1', status: 'draft', legalText: parent.outputLegalText, draftPrintSnapshot: structuredClone(parent.outputSnapshot),
+    number: null, sequence: null, stateModel: 'derived-v1', status: 'draft', draftPrintSnapshot: structuredClone(parent.outputSnapshot),
     items: copyItemsWithFreshIds(parent.content.items, new Set(state.invoices.flatMap((entry) => entry.items.map((item) => item.id))), uid),
     correction: { replacesId: parent.id, reason: reason.trim() }, createdAt: at, updatedAt: at,
   }
@@ -220,3 +218,4 @@ export function unknownPaymentDayLabel(payment: InvoicePayment): string {
     ? `Zahlungsdatum unbekannt (bisheriger unbestätigter Wert: ${payment.legacyPaymentDay})`
     : 'Zahlungsdatum unbekannt'
 }
+

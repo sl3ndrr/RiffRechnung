@@ -72,7 +72,6 @@ export interface InvoiceSnapshot {
   iban: string
   bic: string
   bankName: string
-  legalText: string
 }
 
 export interface Invoice {
@@ -92,9 +91,7 @@ export interface Invoice {
   studentIds: string[]
   recipientStrategy: RecipientStrategy
   items: InvoiceItem[]
-  introText: string
   freeText: string
-  legalText: string
   snapshot?: InvoiceSnapshot
   /** Frozen print data of a saved draft; distinct from an issued original. */
   draftPrintSnapshot?: InvoiceSnapshot
@@ -121,7 +118,7 @@ export interface DocumentAmounts {
   calculation: 'legacy-v1' | 'decimal-v1'
 }
 
-export type DocumentContent = Omit<Invoice, 'status' | 'paidAt' | 'sentAt' | 'updatedAt' | 'versionId' | 'correction' | 'issuedAmounts' | 'claimState' | 'archived' | 'openAmountCents' | 'snapshot' | 'draftPrintSnapshot' | 'period' | 'legalText'>
+export type DocumentContent = Omit<Invoice, 'status' | 'paidAt' | 'sentAt' | 'updatedAt' | 'versionId' | 'correction' | 'issuedAmounts' | 'claimState' | 'archived' | 'openAmountCents' | 'snapshot' | 'draftPrintSnapshot' | 'period'>
 
 export interface DocumentConflict {
   path: string
@@ -143,7 +140,6 @@ export interface DocumentVersion {
   content: DocumentContent
   outputSnapshot: InvoiceSnapshot
   outputPeriod: string
-  outputLegalText: string
   amounts: DocumentAmounts
   conflicts: DocumentConflict[]
   snapshotHistory: AuditEvent[]
@@ -181,7 +177,6 @@ export interface Settings {
   privateRate: number
   duoRate: number
   paymentTermDays: number
-  defaultLegalText: string
   theme: ThemeMode
   reducedMotion: boolean
 }
@@ -210,7 +205,7 @@ export interface VoidedInvoiceNumber {
 }
 
 export interface AppState {
-  schemaVersion: 14
+  schemaVersion: 15
   guardians: Guardian[]
   students: Student[]
   invoices: Invoice[]
@@ -243,8 +238,7 @@ export interface InvoiceDraft {
   studentIds: string[]
   recipientStrategy: RecipientStrategy
   items: InvoiceItem[]
-  introText: string
   freeText: string
-  legalText: string
 }
+
 

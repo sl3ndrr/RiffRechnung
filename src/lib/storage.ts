@@ -1,3 +1,4 @@
+import { cleanRecoveryInvoiceTexts } from './legacyInvoiceTexts'
 import { cleanRecoveryFields } from './recoveryContactCleanup'
 import type { AppState } from '../types'
 import { createDemoState, emptyState } from './defaults'
@@ -25,7 +26,7 @@ export type WriteLock = <T>(action: () => Promise<T>) => Promise<T>
 export function newerFormat(raw: string): boolean {
   try {
     const root = JSON.parse(raw)
-    return root.storageVersion > 4 || root.schemaVersion > 14 || root.data?.schemaVersion > 14
+    return root.storageVersion > 4 || root.schemaVersion > 15 || root.data?.schemaVersion > 15
   } catch { return false }
 }
 
@@ -124,7 +125,7 @@ export class StorageSession {
     const maxRevision = Math.max(previous?.revision ?? 0, source?.revision ?? 0)
     if (!Number.isSafeInteger(maxRevision + 1)) throw new Error('Revisionszähler ausgeschöpft. Der Bestand bleibt unverändert.')
     const envelope: StorageEnvelope = {
-      app: 'riffrechnung', storageVersion: 4, schemaVersion: 14,
+      app: 'riffrechnung', storageVersion: 4, schemaVersion: 15,
       datasetId: base?.datasetId ?? crypto.randomUUID(), commitId: crypto.randomUUID(), revision: maxRevision + 1,
       savedAt: new Date().toISOString(), operation,
       ancestors: base ? [...base.ancestors, await reference(base)] : [],
@@ -228,7 +229,7 @@ export class StorageSession {
       const key = this.storage.key(index)
       if (key?.startsWith(`${STORAGE_KEY}-recovery-`)) recoveries.push({ key, raw: this.storage.getItem(key) })
     }
-    return JSON.stringify({ version: 1, previousRaw: this.previousRaw(), recoveries }, null, 2)
+    return cleanRecoveryInvoiceTexts(JSON.stringify({ version: 1, previousRaw: this.previousRaw(), recoveries }, null, 2))
   }
 
   export(): string {
@@ -250,4 +251,5 @@ export function recordBackupExport(at = new Date()): string {
   localStorage.setItem(LAST_BACKUP_AT_KEY, value)
   return value
 }
+
 
