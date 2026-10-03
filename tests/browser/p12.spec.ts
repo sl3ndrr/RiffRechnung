@@ -148,6 +148,7 @@ for (const width of [320, 390, 1280]) {
       const visible = page.locator('.invoice-list-table .status-chip:visible')
       await expect(visible).toHaveText(['Bezahlt', 'Überfällig', width < 640 ? 'Offen' : 'Versendet'])
       await textContrast(visible)
+      expect(await page.locator('.invoice-list-table th:visible').evaluateAll((headers) => headers.every((header) => header.scrollWidth <= header.clientWidth + 1))).toBe(true)
       expect(await page.locator('.invoice-list-table').evaluate((element) => element.scrollWidth <= element.parentElement!.clientWidth + 1)).toBe(true)
       await page.screenshot({ path: testInfo.outputPath(`liste-${width}-${theme}.png`) })
     }

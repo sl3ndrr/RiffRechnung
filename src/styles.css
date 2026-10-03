@@ -600,6 +600,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .filter-bar .select-field select { width: 100%; }
   .invoice-list-table th:nth-child(3), .invoice-list-table td:nth-child(3), .invoice-list-table th:nth-child(4), .invoice-list-table td:nth-child(4) { display: none; }
   .invoice-list-table { table-layout: fixed; }
+  .invoice-list-table th { white-space: normal; letter-spacing: 0; }
   .invoice-list-table th:first-child { width: 34%; }
   .invoice-list-table th:nth-child(2) { width: 28%; }
   .invoice-list-table th:nth-child(5) { width: auto; }
