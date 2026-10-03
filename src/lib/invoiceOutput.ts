@@ -93,7 +93,7 @@ function cssContentString(value: string): string {
 
 export function buildInvoicePrintPageStyle(invoiceNumber: string | null): string {
   const invoiceReference = invoiceNumber ? cssContentString(`Rechnung ${invoiceNumber}`) : '""'
-  // Margin boxes are only an enhancement. Essential legal and reference text is
+  // Margin boxes are only an enhancement. The private line and invoice reference are
   // also present in the ordinary document flow in InvoicePrint.
   return `
 @page {
@@ -103,7 +103,7 @@ export function buildInvoicePrintPageStyle(invoiceNumber: string | null): string
     width: 32mm;
     height: 15.5mm;
     padding: 3pt 0 7mm;
-    border-top: .5pt solid rgb(30 90 160);
+    border-top: .5pt solid #999;
     color: #666;
     font-family: 'Inter Variable', Inter, Arial, sans-serif;
     font-size: 6.8pt;
@@ -129,16 +129,6 @@ export function buildInvoicePrintPageStyle(invoiceNumber: string | null): string
 `
 }
 
-export function groupItemsByStudent(items: InvoiceItem[], studentIds: string[]): Array<[string, InvoiceItem[]]> {
-  const known = new Set(studentIds)
-  const groups = new Map<string, InvoiceItem[]>()
-  for (const item of items) {
-    const key = known.has(item.studentId) ? item.studentId : studentIds[0] ?? ''
-    groups.set(key, [...(groups.get(key) ?? []), item])
-  }
-  return [...groups.entries()]
-}
-
 export function outputItemTotal(invoice: Invoice, item: InvoiceItem): number {
   return outputItemCents(invoice, item) / 100
 }
@@ -155,5 +145,6 @@ export function outputUnitPrice(invoice: Invoice, item: InvoiceItem): string {
   const [whole, fraction = ''] = decimalInputText(item.unitPrice).split('.')
   return `${new Intl.NumberFormat('de-DE').format(BigInt(whole))},${fraction.padEnd(2, '0')}\u00a0€`
 }
+
 
 

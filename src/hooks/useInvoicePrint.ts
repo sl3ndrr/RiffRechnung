@@ -67,7 +67,7 @@ export function useInvoicePrint(stateRef: RefObject<AppState>, toast: (message: 
       action: () => {
         const pending = printRequestRef.current
         if (!isCurrentPrintRequest(pending, requestId, invoiceId)) return
-        const fallback = { ...pending, includeGiroCode: false, giroCodeFallbackReason: message }
+        const fallback = { ...pending, includeGiroCode: false }
         printRequestRef.current = fallback
         setPrintRequest(fallback)
       },
@@ -76,3 +76,4 @@ export function useInvoicePrint(stateRef: RefObject<AppState>, toast: (message: 
 
   return { print, printRequest, handlePrintReady, handlePrintError }
 }
+
