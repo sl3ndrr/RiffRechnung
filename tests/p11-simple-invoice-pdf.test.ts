@@ -74,3 +74,12 @@ test('P11: historische leere Kontodaten bleiben leer; vorhandene BIC und Bank we
   assert.doesNotMatch(print(state), /Kontoinhaber:|IBAN:|BIC:|Bank:|AKTUELLE|DE89|>–</)
   assert.equal(resolveGiroCode(selectInvoice(state, state.invoices[0]), state.settings, true).kind, 'unavailable')
 })
+
+test('P11: lückenhafte historische Lernendennamen erzeugen keine leere Zeile und keine heutige Ergänzung', () => {
+  const state = p11State('zwei-anschriften')
+  state.documentVersions[0].outputSnapshot.students = [state.documentVersions[0].outputSnapshot.students[0]]
+  state.students[1].name = 'HEUTIGE ERGÄNZUNG'
+  const output = print(state)
+  assert.match(output, /class="invoice-item-student">Testkind A<\/span>/)
+  assert.doesNotMatch(output, /HEUTIGE ERGÄNZUNG|class="invoice-item-student"><\/span>|Unterricht für:/)
+})

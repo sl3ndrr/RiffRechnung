@@ -47,7 +47,11 @@ export function mountDocumentRace(state: AppState, firstInvoiceId: string, secon
   document.body.append(root)
   const reactRoot = createRoot(root)
   let resolveFirst: (value: string) => void = () => {}
-  const delayedEncoder: GiroCodeEncoder = () => new Promise((resolve) => { resolveFirst = resolve })
+  const delayedEncoder: GiroCodeEncoder = () => new Promise((resolve) => {
+    resolveFirst = resolve
+    document.documentElement.dataset.firstEncoderStarted = 'yes'
+    window.setTimeout(renderSecond, 0)
+  })
 
   reactRoot.render(
     <InvoicePrint
@@ -64,7 +68,7 @@ export function mountDocumentRace(state: AppState, firstInvoiceId: string, secon
       qrEncoder={delayedEncoder}
     />,
   )
-  window.setTimeout(() => {
+  function renderSecond() {
     reactRoot.render(
       <InvoicePrint
         invoice={second}
@@ -79,6 +83,9 @@ export function mountDocumentRace(state: AppState, firstInvoiceId: string, secon
         onPrintError={(_request, _invoice, message) => { document.documentElement.dataset.documentError = message }}
       />,
     )
-    resolveFirst('data:image/png;base64,old')
-  }, 0)
+    window.setTimeout(() => {
+      resolveFirst('data:image/png;base64,old')
+      document.documentElement.dataset.firstEncoderReleased = 'yes'
+    }, 200)
+  }
 }

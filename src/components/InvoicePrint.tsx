@@ -116,6 +116,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
     && qrCode.payload === giroCode.payload
     ? qrCode
     : null
+  const showStudentPerItem = invoice.studentIds.length > 1 || studentList.length > 1
   return (
     <article className="invoice-paper" aria-label={`Rechnung ${invoice.number ?? 'Entwurf'}`}>
       <style data-invoice-page-style>{pageStyle}</style>
@@ -151,7 +152,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
 
         <section className="invoice-intro">
           <p>Hiermit stelle ich die folgenden Leistungen in Rechnung.</p>
-          {studentList.length === 1 && <p><strong>Unterricht für:</strong> {studentList[0].name}</p>}
+          {!showStudentPerItem && studentList.length === 1 && <p><strong>Unterricht für:</strong> {studentList[0].name}</p>}
         </section>
 
         <table className="invoice-table">
@@ -160,15 +161,18 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
             <tr><th>Datum</th><th>Leistung</th><th>Menge</th><th>Einzelpreis</th><th>Betrag</th></tr>
           </thead>
           <tbody>
-            {invoice.items.map((item) => (
-              <tr className="invoice-item-row" key={item.id}>
-                <td>{item.serviceDate && new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' }).format(parseDate(item.serviceDate))}</td>
-                <td>{studentList.length > 1 && <span className="invoice-item-student">{studentList.find((student) => student.id === item.studentId)?.name}</span>}{item.description}</td>
-                <td>{number.format(item.quantity)} {item.unit}</td>
-                <td>{outputUnitPrice(invoice, item)}</td>
-                <td>{euro.format(outputItemTotal(invoice, item))}</td>
-              </tr>
-            ))}
+            {invoice.items.map((item) => {
+              const studentName = studentList.find((student) => student.id === item.studentId)?.name
+              return (
+                <tr className="invoice-item-row" key={item.id}>
+                  <td>{item.serviceDate && new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' }).format(parseDate(item.serviceDate))}</td>
+                  <td>{showStudentPerItem && studentName && <span className="invoice-item-student">{studentName}</span>}{item.description}</td>
+                  <td>{number.format(item.quantity)} {item.unit}</td>
+                  <td>{outputUnitPrice(invoice, item)}</td>
+                  <td>{euro.format(outputItemTotal(invoice, item))}</td>
+                </tr>
+              )
+            })}
           </tbody>
           <tbody className="invoice-final-rows">
             <tr className="invoice-total-row"><td colSpan={4}>Summe</td><td>{euro.format(total)}</td></tr>
