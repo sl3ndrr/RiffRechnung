@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { BookUser, Menu, ReceiptText, Settings as SettingsIcon, X } from 'lucide-react'
-import type { PageKey, Settings } from '../types'
+import type { PageKey, Settings, ThemeMode } from '../types'
 import { APP_VERSION } from '../version'
+import { ThemeSwitch } from './ThemeSwitch'
 
 const navItems: Array<{ key: PageKey; label: string; icon: typeof ReceiptText }> = [
   { key: 'invoices', label: 'Rechnungen', icon: ReceiptText },
@@ -15,15 +16,17 @@ interface WorkspaceShellProps {
   children: ReactNode
   page: PageKey
   settings: Settings
+  mode: 'real' | 'demo'
   draftCount: number
   lastBackupAt: string | null
   saveStateLabel: 'saved' | 'saving' | 'error'
   saveStatus: string
   mainContentRef: RefObject<HTMLElement | null>
   onNavigate: (next: PageKey, afterNavigation?: () => void) => void
+  onThemeChange: (theme: ThemeMode) => void
 }
 
-export function WorkspaceShell({ children, page, settings, draftCount, lastBackupAt, saveStateLabel, saveStatus, mainContentRef, onNavigate }: WorkspaceShellProps) {
+export function WorkspaceShell({ children, page, settings, mode, draftCount, lastBackupAt, saveStateLabel, saveStatus, mainContentRef, onNavigate, onThemeChange }: WorkspaceShellProps) {
   const [mobileNav, setMobileNav] = useState(false)
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 820px)').matches)
   const mobileMenuButtonRef = useRef<HTMLButtonElement | null>(null)
@@ -39,7 +42,7 @@ export function WorkspaceShell({ children, page, settings, draftCount, lastBacku
     return () => media.removeEventListener('change', update)
   }, [])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.documentElement
     const apply = () => {
       const dark = settings.theme === 'dark' || (settings.theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
@@ -53,6 +56,12 @@ export function WorkspaceShell({ children, page, settings, draftCount, lastBacku
     root.classList.toggle('reduce-motion', settings.reducedMotion)
     return () => media.removeEventListener('change', apply)
   }, [settings.reducedMotion, settings.theme])
+
+  useEffect(() => {
+    if (mode !== 'real') return
+    try { localStorage.setItem('riffrechnung-theme-hint', settings.theme) }
+    catch { /* The hint is optional; the confirmed settings remain authoritative. */ }
+  }, [mode, settings.theme])
 
   const navigate = (next: PageKey) => onNavigate(next, () => {
     setMobileNav(false)
@@ -90,7 +99,7 @@ export function WorkspaceShell({ children, page, settings, draftCount, lastBacku
       <div className="app-main" inert={isMobile && mobileNav}>
         <header className="topbar">
           <button ref={mobileMenuButtonRef} className="icon-button mobile-only" onClick={openMobileNav} aria-label="Navigation öffnen" aria-controls="mobile-sidebar" aria-expanded={mobileNav}><Menu aria-hidden="true" /></button>
-          <div className="topbar__end"><div className="topbar__storage-status" role="status" aria-live="polite"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : saveStateLabel === 'error' ? 'is-error' : ''}`}><i />{saveStatus}</span><span className="backup-indicator">{backupStatusLabel}</span></div></div>
+          <div className="topbar__end"><div className="topbar__storage-status" role="status" aria-live="polite"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : saveStateLabel === 'error' ? 'is-error' : ''}`}><i />{saveStatus}</span><span className="backup-indicator">{backupStatusLabel}</span></div><ThemeSwitch theme={settings.theme} onChange={onThemeChange} /></div>
         </header>
 
         {children}

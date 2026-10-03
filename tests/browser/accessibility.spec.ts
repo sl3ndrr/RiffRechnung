@@ -214,17 +214,27 @@ test('P10 Browser: mobile Navigation ist geschlossen inert und stellt Fokus wied
 test('P10 Browser: relevante Textkontraste erreichen in beiden Themes AA', async ({ page }, testInfo) => {
   const state = saveInvoiceDraft(documentFamily(), documentDraft(), false, documentAt)
   await seed(page, state)
-  for (const theme of ['light', 'dark']) {
-    await page.evaluate((nextTheme) => { document.documentElement.dataset.theme = nextTheme }, theme)
+  for (const theme of ['light', 'dark'] as const) {
+    const group = page.locator('.topbar').getByRole('radiogroup', { name: 'Farbschema' })
+    await group.getByRole('radio', { name: theme === 'dark' ? 'Dunkel' : 'Hell', exact: true }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
     const pairs = await page.evaluate(() => {
       const style = getComputedStyle(document.documentElement)
       return [
         [style.getPropertyValue('--on-error'), style.getPropertyValue('--error')],
         [style.getPropertyValue('--on-surface-variant'), style.getPropertyValue('--surface-container-low')],
         [style.getPropertyValue('--on-surface-variant'), style.getPropertyValue('--surface')],
+        [style.getPropertyValue('--on-primary'), style.getPropertyValue('--primary')],
+        [style.getPropertyValue('--on-surface-variant'), style.getPropertyValue('--surface-container')],
       ]
     })
     for (const [foreground, background] of pairs) expect(contrast(foreground, background)).toBeGreaterThanOrEqual(4.5)
+    const controlColors = await group.locator('label').evaluateAll((labels) => labels.map((label) => {
+      const style = getComputedStyle(label)
+      const root = getComputedStyle(document.documentElement)
+      return [style.color, root.getPropertyValue(label.classList.contains('is-selected') ? '--primary' : '--surface-container')]
+    }))
+    for (const [foreground, background] of controlColors) expect(contrast(foreground, background)).toBeGreaterThanOrEqual(4.5)
     await finishAnimations(page)
     await page.screenshot({ path: testInfo.outputPath(`kontrast-${theme}-kleine-texte.png`), fullPage: false })
     await invoices(page)
@@ -251,8 +261,13 @@ test('P10 Browser: Datei-, Chip- und Theme-Eingaben markieren das sichtbare Bedi
   const outline = async (locator: Locator) => locator.evaluate((element) => getComputedStyle(element).outlineStyle !== 'none' && Number.parseFloat(getComputedStyle(element).outlineWidth) >= 3)
   const state = saveInvoiceDraft(documentFamily(), documentDraft(), false, documentAt)
   await seed(page, state)
+  const topbarInput = page.locator('.theme-switch').getByRole('radio', { checked: true })
+  await tabTo(page, topbarInput)
+  expect(await outline(topbarInput.locator('xpath=..'))).toBe(true)
+  await page.keyboard.press('Tab')
+  expect(await page.locator('.theme-switch').evaluate((element) => element.contains(document.activeElement))).toBe(false)
   await page.getByRole('button', { name: 'Einstellungen', exact: true }).click()
-  const themeInput = page.getByRole('radio', { checked: true })
+  const themeInput = page.locator('.theme-picker').getByRole('radio', { checked: true })
   await tabTo(page, themeInput)
   const themeControl = themeInput.locator('xpath=..')
   await themeControl.scrollIntoViewIfNeeded()

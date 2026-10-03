@@ -4,6 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#1e5aa0" />
+    <script>
+      (() => {
+        let theme = 'system'
+        try {
+          const hint = localStorage.getItem('riffrechnung-theme-hint')
+          if (['light', 'dark', 'system'].includes(hint)) theme = hint
+        } catch { /* Storage may be unavailable. */ }
+        const dark = theme === 'dark' || (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#151618' : '#f7f7f8')
+      })()
+    </script>
     <meta name="application-name" content="RiffRechnung" />
     <meta name="description" content="RiffRechnung – lokale Rechnungsverwaltung für Gitarrenunterricht" />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%A7%BE%3C/text%3E%3C/svg%3E" />

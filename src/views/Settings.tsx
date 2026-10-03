@@ -2,21 +2,24 @@ import { decimalInputText } from '../lib/money'
 import { mailboxError } from '../lib/mailbox'
 import { parsePaymentTermInput } from '../lib/values'
 import { useLayoutEffect, useRef, useState } from 'react'
-import { ArchiveRestore, CheckCircle2, Download, FileJson, HardDrive, History, Moon, Palette, Save, ShieldCheck, Sun, Upload } from 'lucide-react'
+import { ArchiveRestore, CheckCircle2, Download, FileJson, HardDrive, History, Monitor, Moon, Palette, Save, ShieldCheck, Sun, Upload } from 'lucide-react'
 import type { AppState, Settings as SettingsType, ThemeMode } from '../types'
 import { formatInvoiceNumber } from '../lib/invoiceNumbering'
 import { formatIban, germanIbanError } from '../lib/paymentData'
 
-import { applyStandardRateInput, parseStandardRate, settingsChangeErrors, STANDARD_RATE_ERROR } from '../lib/settings'
+import { parseStandardRate, settingsChangeErrors, STANDARD_RATE_ERROR } from '../lib/settings'
 import { isFinalizedInvoice } from '../lib/safety'
 
 import { canonical } from '../lib/envelope'
 import { invoiceSetupErrors } from '../lib/invoiceSetup'
 import { bicError } from '../lib/paymentData'
 
+type SettingsForm = Omit<SettingsType, 'theme'>
+
 interface SettingsProps {
   state: AppState
-  onSave: (settings: SettingsType) => Promise<boolean>
+  onSave: (settings: SettingsForm) => Promise<boolean>
+  onThemeChange: (theme: ThemeMode) => void
   onDirty: (dirty: boolean) => void
   onExport: () => void
   onImport: (file: File) => void
@@ -25,11 +28,15 @@ interface SettingsProps {
   onArchive: () => void
 }
 
-export function Settings({ state, onSave, onDirty, onExport, onImport, onReset, onPrevious, onArchive }: SettingsProps) {
-  const [form, setForm] = useState<SettingsType>(state.settings)
+export function Settings({ state, onSave, onThemeChange, onDirty, onExport, onImport, onReset, onPrevious, onArchive }: SettingsProps) {
+  const [form, setForm] = useState<SettingsForm>(() => {
+    const editable = { ...state.settings }
+    Reflect.deleteProperty(editable, 'theme')
+    return editable
+  })
   const [rateInputs, setRateInputs] = useState({ privateRate: decimalInputText(state.settings.privateRate), duoRate: decimalInputText(state.settings.duoRate) })
   const [paymentTermInput, setPaymentTermInput] = useState(String(state.settings.paymentTermDays))
-  const [confirmed, setConfirmed] = useState(state.settings)
+  const [confirmed, setConfirmed] = useState(form)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const pendingSave = useRef(false)
@@ -40,14 +47,16 @@ export function Settings({ state, onSave, onDirty, onExport, onImport, onReset, 
   const emailError = mailboxError(form.issuer.email)
   const paymentTermError = parsePaymentTermInput(paymentTermInput) === null
   const invalidRateInput = Object.values(rateInputs).some((raw) => parseStandardRate(raw) === null)
-  const setupErrors = invoiceSetupErrors(form)
+  const settings = { ...form, theme: state.settings.theme }
+  const setupErrors = invoiceSetupErrors(settings)
 
   const setRate = (field: 'privateRate' | 'duoRate', raw: string) => {
     setRateInputs((current) => ({ ...current, [field]: raw }))
-    setForm((current) => applyStandardRateInput(current, field, raw))
+    const value = parseStandardRate(raw)
+    if (value !== null) setForm((current) => ({ ...current, [field]: value }))
   }
 
-  const valid = !invalidRateInput && !paymentTermError && !emailError && !settingsChangeErrors(confirmed, form).length
+  const valid = !invalidRateInput && !paymentTermError && !emailError && !settingsChangeErrors({ ...confirmed, theme: state.settings.theme }, settings).length
   const dirty = !valid || canonical(form) !== canonical(confirmed)
 
   useLayoutEffect(() => { onDirty(dirty) }, [dirty, onDirty])
@@ -67,12 +76,10 @@ export function Settings({ state, onSave, onDirty, onExport, onImport, onReset, 
     } finally { pendingSave.current = false; setSaving(false) }
   }
 
-  const setTheme = (theme: ThemeMode) => setForm({ ...form, theme })
-
   return (
     <div className="page settings-page">
       <header className="page-header">
-        <div><p className="eyebrow">Konfiguration</p><h1>Einstellungen</h1><p>Absender, Konto, Nummernkreis, Darstellung und Datensicherung. Änderungen mit „Jetzt speichern“ bestätigen.</p></div>
+        <div><p className="eyebrow">Konfiguration</p><h1>Einstellungen</h1><p>Absender, Konto, Nummernkreis, Darstellung und Datensicherung. Änderungen mit „Jetzt speichern“ bestätigen; das Farbschema wird sofort gespeichert.</p></div>
         <button className={`button ${!dirty && !saveError ? 'button--success' : 'button--primary'} button--large`} onClick={() => void persist()} disabled={saving || (!dirty && !saveError)} aria-live="polite">{!dirty && !saveError ? <CheckCircle2 aria-hidden="true" /> : <Save aria-hidden="true" />}{saving ? 'Speichern …' : !valid ? 'Eingabe prüfen' : dirty || saveError ? 'Jetzt speichern' : 'Lokal gespeichert'}</button>
       </header>
 
@@ -117,7 +124,7 @@ export function Settings({ state, onSave, onDirty, onExport, onImport, onReset, 
 
           <section id="appearance" className="surface settings-section">
             <div className="settings-section__heading"><span><Palette aria-hidden="true" /></span><div><h2>Darstellung</h2><p>Das Rechnungs-PDF bleibt unabhängig davon immer hell.</p></div></div>
-            <fieldset className="theme-picker"><legend>Farbschema</legend>{([['system', Palette, 'System'], ['light', Sun, 'Hell'], ['dark', Moon, 'Dunkel']] as const).map(([value, Icon, label]) => <label className={form.theme === value ? 'is-selected' : ''} key={value}><input type="radio" name="theme" checked={form.theme === value} onChange={() => setTheme(value)} /><Icon aria-hidden="true" /><span>{label}</span></label>)}</fieldset>
+            <fieldset className="theme-picker"><legend>Farbschema</legend>{([['light', Sun, 'Hell'], ['system', Monitor, 'System'], ['dark', Moon, 'Dunkel']] as const).map(([value, Icon, label]) => <label className={state.settings.theme === value ? 'is-selected' : ''} key={value}><input type="radio" name="theme" checked={state.settings.theme === value} onChange={() => onThemeChange(value)} /><Icon aria-hidden="true" /><span>{label}</span></label>)}</fieldset>
             <label className="switch-row"><span><strong>Bewegungen reduzieren</strong><small>Bewegungspräferenz für die Darstellung speichern</small></span><input type="checkbox" checked={form.reducedMotion} onChange={(event) => setForm({ ...form, reducedMotion: event.target.checked })} /><i /></label>
           </section>
 
@@ -145,4 +152,3 @@ export function Settings({ state, onSave, onDirty, onExport, onImport, onReset, 
     </div>
   )
 }
-

@@ -16,6 +16,10 @@ React 19, TypeScript 5.7 und Vite 6; Inter, Lucide und `qrcode` bleiben die vorh
 Vor jedem Schreiben werden aktuelle Speicher-/Legacy-Tokens geprüft. Ein anderer Tab oder alter Anwendungscode darf nicht unbemerkt überschrieben werden. Der vorhandene Batch-Schreiber stellt bei einem Schreibfehler die vorherigen Werte wieder her. Unbekannte neuere Formate bleiben schreibgeschützt.
 Einstellungen werden ausdrücklich gespeichert. Export enthält ausschließlich gespeicherte Daten; Import benötigt Prüfung und Bestätigung.
 
+Das Farbschema ist eine sofort gespeicherte Ausnahme: Topbar und Einstellungsauswahl verwenden denselben Handler und `changeThemeState` über `commit`. Der Command verändert ausschließlich `settings.theme`, ohne Kontodaten zu normalisieren oder eine unvollständige IBAN als neue Bankverbindung zu prüfen; Bestandsvalidierung und Originalschutz bleiben aktiv. Der Audit-Eintrag lautet „Farbschema geändert“. Das Einstellungsformular hält keine Theme-Kopie, und sein Speichern übernimmt das aktuelle Theme innerhalb der Speicher-Queue. Im Demo-Modus wird nichts in den echten Bestand geschrieben.
+
+`riffrechnung-theme-hint` enthält nur `light`, `dark` oder `system` und wird ausschließlich aus bestätigten Einstellungen im echten Modus aktualisiert. Ein kleines Inline-Skript nutzt ihn vor dem App-Bundle; fehlende, ungültige oder nicht lesbare Hinweise bedeuten `system`. Er ist kein Bestandsdatum und keine Quelle der Wahrheit. `WorkspaceShell` wendet nach dem synchronen Laden vor dem ersten React-Paint die bestätigte Auswahl an, folgt Systemwechseln und synchronisiert `theme-color`. Nur der Daumen des Schalters erhält eine lokale Transform-Transition; die vorhandenen Bewegungs-Overrides gelten weiter.
+
 ## Belegdaten, Nummern und Zahlungen
 
 `DocumentVersion` ist die geschützte Quelle finaler Belege. Ausgabe-Snapshot, Ausgabezeitraum und gesicherte Centbeträge liegen jeweils einmal in der Belegversion; `selectInvoice` leitet die Ausgabesicht daraus ab. `content` speichert keine zweite Kopie dieser Ausgabeinformationen.
