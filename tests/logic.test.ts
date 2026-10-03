@@ -291,38 +291,21 @@ test('Abrechnungszeitraum und Fälligkeit werden aus Positions- und Rechnungsdat
   assert.equal(calculateDueDate('2026-08-01', 14), '2026-08-15')
 })
 
-test('Familien- und Rechnungslisten werden stabil nach der gewählten Spalte sortiert', () => {
+test('P10: Personen A–Z und Rechnungsdatum neueste zuerst, mit stabilen bestehenden Schlüsseln', () => {
   const anna = { ...student('student-a', 'Anna', 'a'), createdAt: '2026-08-02T10:00:00.000Z' }
-  const ben = { ...student('student-b', 'Ben', 'b'), createdAt: '2026-08-01T10:00:00.000Z' }
-  assert.deepEqual(sortPeople([ben, anna], 'name-asc').map((entry) => entry.name), ['Anna', 'Ben'])
-  assert.deepEqual(sortPeople([ben, anna], 'created-desc').map((entry) => entry.name), ['Anna', 'Ben'])
-
-  const guardians: Guardian[] = [
-    { id: 'guardian-a', name: 'Anna Familie', email: '', phone: '',   address: { street: '', postalCode: '', city: '' }, createdAt: anna.createdAt, updatedAt: anna.updatedAt },
-    { id: 'guardian-b', name: 'Zora Familie', email: '', phone: '',   address: { street: '', postalCode: '', city: '' }, createdAt: ben.createdAt, updatedAt: ben.updatedAt },
-  ]
-  const first = invoice({
-    id: 'invoice-first',
-    number: '2026-a-0010',
-    recipients: (['guardian-a']).map((id) => ({ type: 'guardian' as const, id })),
-    studentIds: ['student-a'],
-    status: 'paid',
-    items: [{ ...createLessonItem('student-a', '2026-09-01', defaultSettings, 'item-first'), unitPrice: 50 }],
-  })
-  const second = invoice({
-    id: 'invoice-second',
-    number: '2026-a-0002',
-    recipients: (['guardian-b']).map((id) => ({ type: 'guardian' as const, id })),
-    studentIds: ['student-b'],
-    status: 'draft',
-    items: [{ ...createLessonItem('student-b', '2026-07-01', defaultSettings, 'item-second'), unitPrice: 10 }],
-  })
-  const ids = (key: Parameters<typeof sortInvoices>[1]) => sortInvoices([first, second], key, 'asc', guardians, [anna, ben]).map((entry) => entry.id)
-  assert.deepEqual(ids('number'), ['invoice-second', 'invoice-first'])
-  assert.deepEqual(ids('family'), ['invoice-first', 'invoice-second'])
-  assert.deepEqual(ids('period'), ['invoice-second', 'invoice-first'])
-  assert.deepEqual(ids('status'), ['invoice-second', 'invoice-first'])
-  assert.deepEqual(ids('amount'), ['invoice-second', 'invoice-first'])
+  const olderAnna = { ...anna, id: 'student-old', createdAt: '2026-08-01T10:00:00.000Z' }
+  const ben = student('student-b', 'Ben', 'b')
+  const people = [ben, anna, olderAnna]
+  assert.deepEqual(sortPeople(people).map((entry) => entry.id), ['student-old', 'student-a', 'student-b'])
+  assert.equal(people[0], ben)
+  assert.deepEqual(sortPeople([{ ...anna, id: 'z' }, { ...anna, id: 'a' }]).map((entry) => entry.id), ['a', 'z'])
+  const first = invoice({ id: 'new-date', invoiceDate: '2026-09-02', createdAt: '2026-08-01T10:00:00.000Z' })
+  const second = invoice({ id: 'new-created', invoiceDate: '2026-09-01', createdAt: '2026-08-03T10:00:00.000Z' })
+  const third = invoice({ id: 'old-created', invoiceDate: '2026-09-01', createdAt: '2026-08-02T10:00:00.000Z' })
+  const source = [third, first, second]
+  assert.deepEqual(sortInvoices(source).map((entry) => entry.id), ['new-date', 'new-created', 'old-created'])
+  assert.equal(source[0], third)
+  assert.deepEqual(sortInvoices([{ ...first, id: 'z' }, { ...first, id: 'a' }]).map((entry) => entry.id), ['a', 'z'])
 })
 
 

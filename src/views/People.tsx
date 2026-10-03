@@ -1,11 +1,11 @@
 import { mailboxError, MAILBOX_ERROR } from '../lib/mailbox'
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Mail, MapPin, Pencil, Plus, Search, Trash2, UserRound, Users } from 'lucide-react'
+import { ChevronRight, Mail, MapPin, Pencil, Plus, Search, Trash2, UserRound, Users } from 'lucide-react'
 import type { AppState, Guardian, Student } from '../types'
 import { contactNameError } from '../lib/contactName'
 import { EmptyState } from '../components/EmptyState'
 import { Modal } from '../components/Modal'
-import { sortPeople, type PeopleSortMode } from '../lib/utils'
+import { sortPeople } from '../lib/utils'
 import { studentCodeForIndex } from '../lib/invoiceNumbering'
 import { uid } from '../lib/identities'
 
@@ -38,14 +38,13 @@ export function People({ state, onSaveGuardian, onSaveStudent, onDeleteGuardian,
   const [guardianForm, setGuardianForm] = useState<Guardian | null>(null)
   const [studentForm, setStudentForm] = useState<Student | null>(null)
   const [onlyActiveStudents, setOnlyActiveStudents] = useState(true)
-  const [peopleSort, setPeopleSort] = useState<PeopleSortMode>('name-asc')
   const [error, setError] = useState('')
   const needle = search.toLocaleLowerCase('de-DE').trim()
   const students = useMemo(() => sortPeople(state.students.filter((student) => (
     (!onlyActiveStudents || student.active)
     && (!needle || `${student.name} ${student.contact?.email ?? ''} ${student.contact?.address.city ?? ''} ${student.guardianIds.map((id) => state.guardians.find((guardian) => guardian.id === id)?.name).join(' ')}`.toLocaleLowerCase('de-DE').includes(needle))
-  )), peopleSort), [needle, onlyActiveStudents, peopleSort, state.guardians, state.students])
-  const guardians = useMemo(() => sortPeople(state.guardians.filter((guardian) => !needle || `${guardian.name} ${guardian.email} ${guardian.address.city}`.toLocaleLowerCase('de-DE').includes(needle)), peopleSort), [needle, peopleSort, state.guardians])
+  ))), [needle, onlyActiveStudents, state.guardians, state.students])
+  const guardians = useMemo(() => sortPeople(state.guardians.filter((guardian) => !needle || `${guardian.name} ${guardian.email} ${guardian.address.city}`.toLocaleLowerCase('de-DE').includes(needle))), [needle, state.guardians])
 
   const closeGuardianForm = () => { setGuardianForm(null); setError('') }
   const closeStudentForm = () => { setStudentForm(null); setError('') }
@@ -80,15 +79,14 @@ export function People({ state, onSaveGuardian, onSaveStudent, onDeleteGuardian,
       <div className="people-toolbar">
         <label className="search-field people-search"><Search aria-hidden="true" /><span className="sr-only">Personen durchsuchen</span><input type="search" placeholder="Nach Name, E-Mail oder Ort suchen …" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
         <label className="switch-row switch-row--compact people-active-filter"><span className="people-active-filter__copy"><strong>Nur aktive Lernende anzeigen</strong><small>{state.students.filter((student) => student.active).length} aktiv · {state.students.length} insgesamt</small></span><input type="checkbox" checked={onlyActiveStudents} onChange={(event) => setOnlyActiveStudents(event.target.checked)} /><i /></label>
-        <label className="select-field people-sort"><span className="sr-only">Personenlisten sortieren</span><select value={peopleSort} onChange={(event) => setPeopleSort(event.target.value as PeopleSortMode)}><option value="name-asc">Name A–Z</option><option value="name-desc">Name Z–A</option><option value="created-desc">Neueste zuerst</option><option value="created-asc">Älteste zuerst</option></select><ChevronDown aria-hidden="true" /></label>
       </div>
 
       {!state.students.length && !state.guardians.length ? (
-        <section className="surface"><EmptyState icon={Users} title="Noch keine Person angelegt" description="Lege eine lernende Person an und wähle, wer die Rechnung erhält." action={<button className="button button--primary" onClick={() => setStudentForm(blankStudent())}><Plus aria-hidden="true" /> Lernende Person anlegen</button>} /></section>
+        <section className="surface"><EmptyState icon={Users} title="Noch keine Person angelegt" description="Lege eine lernende Person an und wähle, wer die Rechnung erhält." /></section>
       ) : (
         <div className="people-layout">
           <section className="people-section">
-            <div className="section-heading"><div><p className="eyebrow">Unterricht</p><h2>{students.length} Lernende</h2></div><button className="icon-button" onClick={() => setStudentForm(blankStudent())} aria-label="Lernende Person hinzufügen"><Plus aria-hidden="true" /></button></div>
+            <div className="section-heading"><div><p className="eyebrow">Unterricht</p><h2>{students.length} Lernende</h2></div></div>
             <div className="student-grid">
               {students.map((student, index) => {
                 const linked = student.guardianIds.flatMap((id) => state.guardians.filter((guardian) => guardian.id === id))
@@ -107,7 +105,7 @@ export function People({ state, onSaveGuardian, onSaveStudent, onDeleteGuardian,
           </section>
 
           <section className="surface guardian-section">
-            <div className="section-heading"><div><p className="eyebrow">Rechnungsempfänger</p><h2>{guardians.length} Erziehungsberechtigte</h2></div><button className="icon-button" onClick={() => setGuardianForm(blankGuardian())} aria-label="Erziehungsberechtigte Person hinzufügen"><Plus aria-hidden="true" /></button></div>
+            <div className="section-heading"><div><p className="eyebrow">Rechnungsempfänger</p><h2>{guardians.length} Erziehungsberechtigte</h2></div></div>
             <div className="guardian-list">
               {guardians.map((guardian) => {
                 const linkedStudents = state.students.filter((student) => student.guardianIds.includes(guardian.id))

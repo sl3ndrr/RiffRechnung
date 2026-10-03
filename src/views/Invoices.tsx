@@ -6,11 +6,11 @@ import { needsHistoricalSplitReview } from '../lib/historicalSplit'
 import { FINALIZED_INVOICE_BLOCKED, isFinalizedInvoice } from '../lib/safety'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, ArrowUp, ArrowUpDown, CalendarDays, ChevronDown, Copy, Edit3, FilePlus2, MoreVertical, Printer, Search, Send, Trash2 } from 'lucide-react'
+import { CalendarDays, ChevronDown, Copy, Edit3, FilePlus2, MoreVertical, Printer, Search, Send, Trash2 } from 'lucide-react'
 import type { AppState, Invoice, InvoiceStatus, PageKey } from '../types'
 import { EmptyState } from '../components/EmptyState'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, type InvoiceMenuPosition, runInvoiceMenuAction } from '../lib/invoiceMenu'
-import { billingPeriodFromItems, effectiveStatus, guardianName, sortInvoices, statusLabel, studentName, type InvoiceSortKey, type SortDirection } from '../lib/invoiceOutput'
+import { billingPeriodFromItems, effectiveStatus, guardianName, sortInvoices, statusLabel, studentName } from '../lib/invoiceOutput'
 import { isInvoiceSetupComplete } from '../lib/invoiceSetup'
 import { euro, formatDate, formatDateLong } from '../lib/utils'
 import { invoiceTotal } from '../lib/money'
@@ -35,7 +35,6 @@ export function Invoices({ state, onNavigate, onLoadDemo, selectedId, onSelect, 
   const invoices = useMemo(() => selectedInvoices(state), [state])
   const [status, setStatus] = useState<'all' | InvoiceStatus>('all')
   const [year, setYear] = useState('all')
-  const [sort, setSort] = useState<{ key: InvoiceSortKey; direction: SortDirection }>({ key: 'date', direction: 'desc' })
   const [menu, setMenu] = useState<{ invoiceId: string; trigger: HTMLButtonElement } | null>(null)
   const [menuPosition, setMenuPosition] = useState<InvoiceMenuPosition | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -56,13 +55,8 @@ export function Invoices({ state, onNavigate, onLoadDemo, selectedId, onSelect, 
         const haystack = [invoice.number, billingPeriodFromItems(invoice.items, invoice.invoiceDate), guardianName(invoice, state.guardians, state.students), studentName(invoice, state.students), ...invoice.items.map((item) => item.description)].join(' ').toLocaleLowerCase('de-DE')
         return haystack.includes(needle)
       })
-    return sortInvoices(matches, sort.key, sort.direction, state.guardians, state.students)
-  }, [search, sort.direction, sort.key, state, invoices, status, year, showArchived])
-
-  const toggleSort = (key: InvoiceSortKey) => setSort((current) => ({
-    key,
-    direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
-  }))
+    return sortInvoices(matches)
+  }, [search, state, invoices, status, year, showArchived])
 
   const updateMenuPosition = useCallback(() => {
     if (!menu || !menuRef.current) return
@@ -177,7 +171,7 @@ export function Invoices({ state, onNavigate, onLoadDemo, selectedId, onSelect, 
             <div className="invoice-list-summary"><span>{filtered.length} Ergebnisse</span>{(search || status !== 'all' || year !== 'all') && <button className="button button--text" onClick={() => { setSearch(''); setStatus('all'); setYear('all') }}>Filter zurücksetzen</button>}</div>
             <div className="table-scroll">
               <table className="data-table invoice-list-table">
-                <thead><tr><SortableHeader label="Rechnung" sortKey="number" sort={sort} onSort={toggleSort} /><SortableHeader label="Empfänger / Lernende" sortKey="family" sort={sort} onSort={toggleSort} /><SortableHeader label="Zeitraum" sortKey="period" sort={sort} onSort={toggleSort} /><SortableHeader label="Status" sortKey="status" sort={sort} onSort={toggleSort} /><SortableHeader label="Betrag" sortKey="amount" sort={sort} onSort={toggleSort} alignRight /><th><span className="sr-only">Aktion</span></th></tr></thead>
+                <thead><tr><th>Rechnung <span className="sr-only">(Rechnungsdatum, neueste zuerst)</span></th><th>Empfänger / Lernende</th><th>Zeitraum</th><th>Status</th><th className="align-right">Betrag</th><th><span className="sr-only">Aktion</span></th></tr></thead>
                 <tbody>{filtered.map((invoice) => {
                   const actualStatus = effectiveStatus(invoice)
                   const period = invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate)
@@ -237,23 +231,6 @@ export function Invoices({ state, onNavigate, onLoadDemo, selectedId, onSelect, 
         document.body,
       )}
     </div>
-  )
-}
-
-function SortableHeader({ label, sortKey, sort, onSort, alignRight = false }: {
-  label: string
-  sortKey: InvoiceSortKey
-  sort: { key: InvoiceSortKey; direction: SortDirection }
-  onSort: (key: InvoiceSortKey) => void
-  alignRight?: boolean
-}) {
-  const active = sort.key === sortKey
-  const Icon = !active ? ArrowUpDown : sort.direction === 'asc' ? ArrowUp : ArrowDown
-  const nextDirection = active && sort.direction === 'asc' ? 'absteigend' : 'aufsteigend'
-  return (
-    <th className={alignRight ? 'align-right' : undefined} aria-sort={active ? sort.direction === 'asc' ? 'ascending' : 'descending' : 'none'}>
-      <button className={`sort-button ${active ? 'is-active' : ''} ${alignRight ? 'sort-button--right' : ''}`} type="button" onClick={() => onSort(sortKey)} aria-label={`${label}: ${nextDirection} sortieren`}><span>{label}</span><Icon aria-hidden="true" /></button>
-    </th>
   )
 }
 
