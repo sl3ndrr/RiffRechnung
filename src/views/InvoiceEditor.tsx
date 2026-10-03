@@ -1,5 +1,5 @@
 import { decimalInputText, draftAmountChange, previewCents } from '../lib/money'
-import { correctionErrors, reassignCorrectionStudent } from '../lib/documents'
+import { reassignCorrectionStudent } from '../lib/documents'
 import { LEGACY_REVIEW_FIELDS } from '../lib/commands'
 import { applyItemNumberInput, itemNumberInput, adjustQuantity as adjustedQuantity, MIN_QUANTITY, MAX_QUANTITY, QUANTITY_INCREMENT } from '../lib/values'
 import { invoiceDraftErrors } from '../lib/invoiceActions'
@@ -57,7 +57,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
   const change = draftAmountChange(draft)
   const calculatedPeriod = billingPeriodFromItems(form.items, form.invoiceDate)
   const dirty = JSON.stringify(form) !== JSON.stringify(draft)
-  const correctionBlockers = form.correction && !finalized ? [...correctionErrors(state, form), ...invoiceFinalizationErrors(state, form)] : []
+  const correctionBlockers = form.correction && !finalized ? invoiceFinalizationErrors(state, form) : []
 
   useEffect(() => { setReviewed([]) }, [form, conversionRecipients])
   useEffect(() => { onDirtyChange(open && !finalized && dirty) }, [dirty, finalized, onDirtyChange, open])
@@ -139,12 +139,8 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
 
   const submit = (finalize: boolean) => {
     const invalidNumbers = form.items.some((item) => (['quantity', 'unitPrice'] as const).some((field) => itemNumberInput(numberInputs[item.id]?.[field] ?? decimalInputText(item[field]), field) === null))
-    const nextErrors = finalized ? [FINALIZED_INVOICE_BLOCKED] : invoiceDraftErrors(state, form)
+    const nextErrors = finalized ? [FINALIZED_INVOICE_BLOCKED] : invoiceDraftErrors(state, form, finalize)
     if (invalidNumbers) nextErrors.push('Bitte die Preise und Mengen vervollständigen. Ungültige Zwischenwerte werden nicht gespeichert.')
-    if (finalize) {
-      nextErrors.push(...correctionErrors(state, form))
-      nextErrors.push(...invoiceFinalizationErrors({ guardians, students, settings }, form))
-    }
     setErrors(nextErrors)
     if (!nextErrors.length) {
       onSave(form, finalize)

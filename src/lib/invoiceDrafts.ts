@@ -17,16 +17,16 @@ export function createEmptyInvoiceDraft(settings: Settings, reference = new Date
   })
 }
 
-export const lessonTypeLabel: Record<LessonType, string> = {
+const lessonTypeLabel: Record<LessonType, string> = {
   solo: 'Solo',
   duo: 'Duo',
 }
 
-export function lessonRate(settings: Pick<Settings, 'privateRate' | 'duoRate'>, lessonType: LessonType): number {
+function lessonRate(settings: Pick<Settings, 'privateRate' | 'duoRate'>, lessonType: LessonType): number {
   return lessonType === 'duo' ? settings.duoRate : settings.privateRate
 }
 
-export function lessonDescription(description: string, lessonType: LessonType): string {
+function lessonDescription(description: string, lessonType: LessonType): string {
   const base = description.replace(/\s*\((?:solo|duo|einzel)\)\s*$/iu, '').trim() || 'Gitarrenunterricht'
   return `${base} (${lessonTypeLabel[lessonType]})`
 }

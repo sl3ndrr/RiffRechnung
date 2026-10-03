@@ -15,7 +15,7 @@ import { prepareInvoiceCopy, prepareNewInvoice, saveGuardianState, saveInvoiceSt
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { ToastRegion } from './components/ToastRegion'
 import { InvoicePrint } from './components/InvoicePrint'
-import { createEmptyInvoiceDraft } from './lib/invoiceDrafts'
+import { createEmptyInvoiceDraft, invoiceDraftFields } from './lib/invoiceDrafts'
 import { loadLastBackupAt, StorageSession, StorageConflict, recordBackupExport, STORAGE_KEY, LEGACY_STORAGE_KEY, type StorageRecoveryState } from './lib/storage'
 import { downloadText } from './lib/downloads'
 import { invoicePdfTitle, statusLabel } from './lib/invoiceOutput'
@@ -189,13 +189,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       draft: {
         id: invoice.id,
         correction: invoice.correction,
-        invoiceDate: invoice.invoiceDate,
-        dueDate: invoice.dueDate,
-        recipients: structuredClone(invoice.recipients),
-        studentIds: invoice.studentIds,
-        recipientStrategy: invoice.recipientStrategy,
-        items: structuredClone(invoice.items),
-        freeText: invoice.freeText,
+        ...invoiceDraftFields(invoice),
       },
     })
   }

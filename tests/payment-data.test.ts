@@ -1,8 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { buildEpcPayload } from '../src/lib/paymentData'
-import { bicError, isValidGermanIban, normalizeBic, paymentDataErrors, paymentDataForInvoice } from '../src/lib/paymentData'
-import { cleanIban, germanIbanError } from '../src/lib/paymentData'
+import { bicError, cleanIban, germanIbanError, isValidGermanIban, normalizeBic, paymentDataErrors, paymentDataForInvoice } from '../src/lib/paymentData'
 import { defaultSettings } from '../src/lib/defaults'
 import type { Invoice, InvoiceSnapshot } from '../src/types'
 

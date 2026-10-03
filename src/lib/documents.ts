@@ -1,3 +1,4 @@
+import { invoiceDraftFields } from './invoiceDrafts'
 import { assertOriginalsPreserved } from './safety'
 import { documentContent } from './documentProjection'
 export { documentContent } from './documentProjection'
@@ -117,17 +118,6 @@ export function openCents(state: AppState, invoice: Invoice): number {
   return Math.max(0, (versionFor(state, invoice)?.amounts.totalCents ?? 0) - allocatedCents(state, invoice.versionId!))
 }
 
-export function correctionErrors(state: AppState, draft: InvoiceDraft): string[] {
-  if (!draft.correction) return []
-  const parent = state.documentVersions.find((version) => version.id === draft.correction?.replacesId)
-  if (!parent) return ['Der Originalbeleg der Korrektur fehlt.']
-  const errors = []
-  if (!draft.correction.reason.trim()) errors.push('Bitte einen Korrekturgrund angeben.')
-  if (state.documentVersions.some((version) => version.replacesId === parent.id || version.cancelsId === parent.id)) errors.push('Dieser Beleg ist bereits ersetzt. Bitte die neueste Version korrigieren.')
-  if (parent.conflicts.length && !state.invoiceAdministration.find((admin) => admin.versionId === parent.id)?.resolutions.length) errors.push('Die historischen Abweichungen müssen zuerst mit einer Begründung geklärt werden.')
-  return errors
-}
-
 export function createCorrectionDraft(state: AppState, invoiceId: string, reason: string, at = new Date().toISOString()): AppState {
   validateBackupState(state)
   const invoice = state.invoices.find((entry) => entry.id === invoiceId)
@@ -137,8 +127,8 @@ export function createCorrectionDraft(state: AppState, invoiceId: string, reason
   if (!isActiveClaim(state, invoice)) throw new Error('Bitte die neueste Version korrigieren.')
   if (state.invoices.some((entry) => entry.status === 'draft' && entry.correction?.replacesId === parent.id)) throw new Error('Für diesen Beleg gibt es bereits einen Korrekturentwurf.')
   const draft: Invoice = {
-    ...structuredClone(parent.content), id: freshId('invoice', new Set(state.invoices.map((entry) => entry.id)), uid),
-    number: null, sequence: null, stateModel: 'derived-v1', status: 'draft', draftPrintSnapshot: structuredClone(parent.outputSnapshot),
+    ...invoiceDraftFields(parent.content), id: freshId('invoice', new Set(state.invoices.map((entry) => entry.id)), uid),
+    number: null, sequence: null, stateModel: 'derived-v1', status: 'draft', calculation: parent.content.calculation, draftPrintSnapshot: structuredClone(parent.outputSnapshot),
     items: copyItemsWithFreshIds(parent.content.items, new Set(state.invoices.flatMap((entry) => entry.items.map((item) => item.id))), uid),
     correction: { replacesId: parent.id, reason: reason.trim() }, createdAt: at, updatedAt: at,
   }

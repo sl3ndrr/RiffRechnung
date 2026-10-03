@@ -1,3 +1,4 @@
+import './p09-drafts-rules.test'
 import './p09-invoice-texts.test'
 import './p08-derived-invoice-state.test'
 import './p07-document-output.test'

@@ -1,7 +1,7 @@
 export const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
 export const number = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 })
-export const dateLong = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })
-export const dateShort = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })
+const dateLong = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })
+const dateShort = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })
 const germanCollator = new Intl.Collator('de-DE', { numeric: true, sensitivity: 'base' })
 
 export type PeopleSortMode = 'name-asc' | 'name-desc' | 'created-desc' | 'created-asc'

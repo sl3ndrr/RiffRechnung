@@ -1,16 +1,14 @@
 import { calendarParts } from './calendar'
-import { draftAmountChange, moneyErrors } from './money'
-import { allocatedCents, captureDocument, correctionErrors, snapshotFor, persistentInvoice, paymentStatus, recordPaymentChange } from './documents'
-import { validId } from './values'
+import { draftAmountChange } from './money'
+import { allocatedCents, captureDocument, snapshotFor, persistentInvoice, paymentStatus, recordPaymentChange } from './documents'
 import { freshId } from './identities'
 import { commandResult } from './result'
 import type { AppState, Invoice, InvoiceDraft, InvoiceStatus } from '../types'
-import { assertInvoiceEditable, assertOriginalsPreserved } from './safety'
+import { assertOriginalsPreserved } from './safety'
 import { validateBackupState } from './validation'
-import { invoiceFinalizationErrors } from './invoiceRules'
+import { invoiceFinalizationErrors, invoiceSaveErrors } from './invoiceRules'
 import { nextInvoiceAllocation } from './invoiceNumbering'
 import { uid } from './identities'
-import { recipientCanBillStudent, recipientRefs } from './recipients'
 
 function requiredPaymentDay(value: string | undefined): string {
   if (!value) throw new Error('Bitte den tatsächlichen Zahlungstag eingeben.')
@@ -25,12 +23,6 @@ function paymentForFullClaim(state: AppState, versionId: string): { id: string; 
 }
 
 function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatus, at: string, createId: (prefix: string) => string, paymentDay?: string): AppState {
-  if (invoice.recipientStrategy === 'separate' && (!invoice.correction ||
-    state.documentVersions.find((version) => version.id === invoice.correction?.replacesId)?.content.recipientStrategy !== 'separate')) {
-    throw new Error('Historische getrennte Entwürfe dürfen nicht finalisiert werden. Bitte ausdrücklich in einen gemeinsamen Entwurf umwandeln.')
-  }
-  const errors = [...invoiceFinalizationErrors(state, invoice), ...correctionErrors(state, invoice)]
-  if (errors.length) throw new Error(`Finalisieren nicht möglich: ${errors.join(' ')}`)
   if (status === 'paid' && invoice.correction && state.payments.some((payment) => state.documentVersions.find((entry) => entry.id === payment.sourceVersionId)?.originalId === state.documentVersions.find((entry) => entry.id === invoice.correction?.replacesId)?.originalId)) throw new Error('Vorhandene Zahlungen müssen nach der Korrektur manuell zugeordnet werden; eine neue Vollzahlung wird nicht erzeugt.')
   if (!invoice.calculation && draftAmountChange(invoice).changed) throw new Error('Die Betragsberechnung hat sich geändert. Bitte den Entwurf im Editor prüfen und speichern.')
   const confirmedPaymentDay = status === 'paid' ? requiredPaymentDay(paymentDay) : undefined
@@ -59,17 +51,9 @@ function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatu
 
 export function saveInvoiceDraft(state: AppState, draft: InvoiceDraft, finalize: boolean, at = new Date().toISOString(), createId: (prefix: string) => string = uid): AppState {
   validateBackupState(state)
-  if (draft.id !== undefined && !validId(draft.id)) throw new Error('Der Entwurf hat eine ungültige ID.')
-  const existing = draft.id ? state.invoices.find((invoice) => invoice.id === draft.id) : undefined
-  if (draft.id && !existing) throw new Error('Der Entwurf ist nicht mehr vorhanden. Bitte neu laden.')
-  assertInvoiceEditable(existing)
-  if (existing?.correction?.replacesId !== draft.correction?.replacesId && existing) throw new Error('Der Korrekturverweis eines gespeicherten Entwurfs bleibt erhalten.')
-  if (draft.recipientStrategy === 'separate' && (!existing?.correction || !draft.correction ||
-    state.documentVersions.find((version) => version.id === draft.correction?.replacesId)?.content.recipientStrategy !== 'separate')) {
-    throw new Error('Getrennte Rechnungen sind nur als Korrektur eines historischen aufgeteilten Belegs zulässig. Bitte den Altentwurf ausdrücklich in einen gemeinsamen Entwurf umwandeln.')
-  }
-  const errors = [...moneyErrors(draft), ...(finalize ? invoiceFinalizationErrors(state, draft) : draftAudienceErrors(state, draft))]
+  const errors = invoiceSaveErrors(state, draft, finalize)
   if (errors.length) throw new Error(errors.join(' '))
+  const existing = draft.id ? state.invoices.find((invoice) => invoice.id === draft.id) : undefined
   const saved: Invoice = {
     ...structuredClone(draft), id: existing?.id ?? freshId('invoice', new Set(state.invoices.map((invoice) => invoice.id)), createId), number: null, sequence: null,
     stateModel: 'derived-v1',
@@ -82,7 +66,6 @@ export function saveInvoiceDraft(state: AppState, draft: InvoiceDraft, finalize:
     ? snapshotFor(state, saved)
     : existing?.draftPrintSnapshot
   let next = { ...state, invoices: [...state.invoices.filter((invoice) => invoice.id !== saved.id), persistentInvoice(saved)] }
-  validateBackupState(next)
   if (finalize) next = finalizeInvoice(next, saved, 'sent', at, createId)
   validateBackupState(next)
   return next
@@ -95,7 +78,11 @@ export function changeInvoiceStatus(state: AppState, invoiceId: string, status: 
   if (status === 'overdue') throw new Error('Überfälligkeit wird aus Fälligkeit, aktivem Anspruch und offenem Betrag berechnet.')
   if (status === 'draft') throw new Error('Bitte einen Korrekturentwurf mit Korrekturgrund anlegen. Der Originalbeleg bleibt erhalten.')
   let next: AppState
-  if (invoice.status === 'draft') next = finalizeInvoice(state, invoice, status, at, uid, paymentDay)
+  if (invoice.status === 'draft') {
+    const errors = invoiceFinalizationErrors(state, invoice)
+    if (errors.length) throw new Error(`Finalisieren nicht möglich: ${errors.join(' ')}`)
+    next = finalizeInvoice(state, invoice, status, at, uid, paymentDay)
+  }
   else {
     const versionId = invoice.versionId!
     const version = state.documentVersions.find((entry) => entry.id === versionId)!
@@ -141,19 +128,8 @@ export function changeInvoiceStatus(state: AppState, invoiceId: string, status: 
   return next
 }
 
-function draftAudienceErrors(state: AppState, draft: InvoiceDraft): string[] {
-  if (draft.studentIds.length && recipientRefs(draft).some((ref) => {
-    if (draft.correction && !state[ref.type === 'guardian' ? 'guardians' : 'students'].some((person) => person.id === ref.id)) return false
-    return draft.studentIds.some((id) => {
-      const student = state.students.find((entry) => entry.id === id)
-      return student && !recipientCanBillStudent(ref, student)
-    })
-  })) return ['Alle empfangenden Personen müssen jedem ausgewählten Lernenden zugeordnet sein.']
-  return []
-}
-
-export function invoiceDraftErrors(state: AppState, draft: InvoiceDraft): string[] {
-  const result = commandResult(() => saveInvoiceDraft(state, draft, false))
-  return result.ok ? [] : result.errors.map((error) => error.message)
+export function invoiceDraftErrors(state: AppState, draft: InvoiceDraft, finalize = false): string[] {
+  const result = commandResult(() => invoiceSaveErrors(state, draft, finalize))
+  return result.ok ? result.value : result.errors.map((error) => error.message)
 }
 
