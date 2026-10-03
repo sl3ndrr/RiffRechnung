@@ -189,7 +189,6 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         correction: invoice.correction,
         invoiceDate: invoice.invoiceDate,
         dueDate: invoice.dueDate,
-        period: invoice.period,
         recipients: structuredClone(invoice.recipients),
         studentIds: invoice.studentIds,
         recipientStrategy: invoice.recipientStrategy,

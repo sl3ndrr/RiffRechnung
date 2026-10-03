@@ -26,7 +26,7 @@ export const defaultSettings: Settings = {
 
 export function emptyState(): AppState {
   return {
-    schemaVersion: 13,
+    schemaVersion: 14,
     documentVersions: [], invoiceAdministration: [], payments: [], historicalSnapshotCorrections: [],
     guardians: [],
     students: [],
@@ -47,12 +47,10 @@ function isoDate(date: Date): string {
 
 export function createEmptyInvoiceDraft(settings: Settings, reference = new Date()): InvoiceDraft {
   const invoiceDate = reference
-  const monthName = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' }).format(invoiceDate)
 
   return {
     invoiceDate: localToday(invoiceDate),
     dueDate: calculateDueDate(localToday(invoiceDate), settings.paymentTermDays),
-    period: monthName,
     recipients: [],
     studentIds: [],
     recipientStrategy: 'joint',
@@ -272,11 +270,6 @@ export function createDemoState(referenceDate = new Date()): AppState {
     const { legacyPaymentDay, ...rest } = payment
     return legacyPaymentDay ? { ...rest, paidAt: paymentDay(legacyPaymentDay), paymentDayStatus: 'confirmed' as const } : payment
   })
-  demo.invoices = demo.invoices.map((invoice) => {
-    const payment = demo.payments.find((entry) => entry.allocations.at(-1)?.versionId === invoice.versionId && entry.paymentDayStatus === 'confirmed')
-    return payment?.paidAt ? { ...invoice, paidAt: payment.paidAt } : invoice
-  })
-  demo.schemaVersion = 13
   return demo
 }
 

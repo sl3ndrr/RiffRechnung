@@ -204,7 +204,7 @@ export function itemTotal(item: InvoiceItem): number {
 }
 
 export function effectiveStatus(invoice: Invoice, reference = new Date()): InvoiceStatus {
-  if (invoice.status === 'sent' && invoice.dueDate) {
+  if (invoice.status === 'sent' && invoice.claimState !== 'replaced' && invoice.openAmountCents !== 0 && invoice.dueDate) {
     const dueDate = parseDate(invoice.dueDate)
     if (!Number.isNaN(dueDate.getTime()) && localToday(dueDate) < localToday(reference)) return 'overdue'
   }
@@ -334,7 +334,7 @@ export function nextInvoiceAllocation(state: AppState, invoiceDate: string, stud
   let sequence = Math.max(1, state.counters[counterKey] ?? 1, state.counters[`${year}:*`] ?? 1)
   const documents = [...state.invoices, ...state.documentVersions.map((version) => version.content)]
   for (const invoice of documents) {
-    if (invoice.number && invoice.year === year && invoiceStudentCode(state, invoice.studentIds) === studentCode) {
+    if (invoice.number && (invoice.year ?? Number(invoice.invoiceDate.slice(0, 4))) === year && invoiceStudentCode(state, invoice.studentIds) === studentCode) {
       sequence = Math.max(sequence, (invoice.sequence ?? 0) + 1)
     }
   }

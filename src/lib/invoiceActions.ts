@@ -1,13 +1,13 @@
 import { calendarParts } from './calendar'
 import { draftAmountChange, moneyErrors } from './money'
-import { allocatedCents, captureDocument, correctionErrors, snapshotFor, persistentInvoice } from './documents'
+import { allocatedCents, captureDocument, correctionErrors, snapshotFor, persistentInvoice, paymentStatus, recordPaymentChange } from './documents'
 import { validId } from './values'
 import { freshId } from './identities'
 import { commandResult } from './result'
 import type { AppState, Invoice, InvoiceDraft, InvoiceStatus } from '../types'
 import { assertInvoiceEditable, assertOriginalsPreserved } from './safety'
 import { validateBackupState } from './validation'
-import { billingPeriodFromItems, invoiceFinalizationErrors, nextInvoiceAllocation, parseDate, uid } from './utils'
+import { invoiceFinalizationErrors, nextInvoiceAllocation, uid } from './utils'
 import { recipientCanBillStudent, recipientRefs } from './recipients'
 
 function requiredPaymentDay(value: string | undefined): string {
@@ -18,8 +18,8 @@ function requiredPaymentDay(value: string | undefined): string {
 
 function paymentForFullClaim(state: AppState, versionId: string): { id: string; amountCents: number } | null {
   const version = state.documentVersions.find((entry) => entry.id === versionId)
-  const candidates = state.payments.filter((payment) => payment.allocations.at(-1)?.versionId === versionId && payment.amountCents === version?.amounts.totalCents)
-  return candidates.length === 1 ? candidates[0] : null
+  const candidates = state.payments.filter((payment) => payment.allocations.at(-1)?.versionId === versionId)
+  return candidates.length === 1 && candidates[0].amountCents === version?.amounts.totalCents ? candidates[0] : null
 }
 
 function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatus, at: string, createId: (prefix: string) => string, paymentDay?: string): AppState {
@@ -33,11 +33,11 @@ function finalizeInvoice(state: AppState, invoice: Invoice, status: InvoiceStatu
   if (!invoice.calculation && draftAmountChange(invoice).changed) throw new Error('Die Betragsberechnung hat sich geändert. Bitte den Entwurf im Editor prüfen und speichern.')
   const confirmedPaymentDay = status === 'paid' ? requiredPaymentDay(paymentDay) : undefined
   const allocation = nextInvoiceAllocation(state, invoice.invoiceDate, invoice.studentIds)
-  const finalized: Invoice = {
-    ...invoice, calculation: 'decimal-v1', number: allocation.number, sequence: allocation.sequence, status,
+  const finalized: Invoice = persistentInvoice({
+    ...invoice, stateModel: 'derived-v1', calculation: 'decimal-v1', number: allocation.number, sequence: allocation.sequence, status: 'sent',
     sentAt: at, updatedAt: at,
-    ...(confirmedPaymentDay ? { paidAt: confirmedPaymentDay } : {}),
-  }
+  })
+  for (const field of ['year', 'period', 'paidAt']) Reflect.deleteProperty(finalized, field)
   finalized.snapshot = snapshotFor(state, finalized)
   Reflect.deleteProperty(finalized, 'draftPrintSnapshot')
   const version = captureDocument(state, finalized, freshId('version', new Set(state.documentVersions.map((entry) => entry.id)), createId), false)
@@ -70,12 +70,12 @@ export function saveInvoiceDraft(state: AppState, draft: InvoiceDraft, finalize:
   if (errors.length) throw new Error(errors.join(' '))
   const saved: Invoice = {
     ...structuredClone(draft), id: existing?.id ?? freshId('invoice', new Set(state.invoices.map((invoice) => invoice.id)), createId), number: null, sequence: null,
-    year: parseDate(draft.invoiceDate).getFullYear(), period: billingPeriodFromItems(draft.items, draft.invoiceDate),
+    stateModel: 'derived-v1',
     status: 'draft', calculation: 'decimal-v1', createdAt: existing?.createdAt ?? at, updatedAt: at,
   }
   // A saved draft freezes its print data at this save, including deliberately empty address lines.
   // A correction with missing live contacts keeps its earlier captured evidence until reassigned.
-  Reflect.deleteProperty(saved, 'snapshot')
+  for (const field of ['snapshot', 'year', 'period', 'paidAt', 'openAmountCents', 'claimState', 'archived', 'issuedAmounts', 'versionId', 'sentAt']) Reflect.deleteProperty(saved, field)
   saved.draftPrintSnapshot = saved.recipients.every((ref) => state[ref.type === 'guardian' ? 'guardians' : 'students'].some((person) => person.id === ref.id))
     ? snapshotFor(state, saved)
     : existing?.draftPrintSnapshot
@@ -90,6 +90,7 @@ export function changeInvoiceStatus(state: AppState, invoiceId: string, status: 
   validateBackupState(state)
   const invoice = state.invoices.find((entry) => entry.id === invoiceId)
   if (!invoice) throw new Error('Die Rechnung ist nicht mehr vorhanden. Bitte neu laden.')
+  if (status === 'overdue') throw new Error('Überfälligkeit wird aus Fälligkeit, aktivem Anspruch und offenem Betrag berechnet.')
   if (status === 'draft') throw new Error('Bitte einen Korrekturentwurf mit Korrekturgrund anlegen. Der Originalbeleg bleibt erhalten.')
   let next: AppState
   if (invoice.status === 'draft') next = finalizeInvoice(state, invoice, status, at, uid, paymentDay)
@@ -97,16 +98,17 @@ export function changeInvoiceStatus(state: AppState, invoiceId: string, status: 
     const versionId = invoice.versionId!
     const version = state.documentVersions.find((entry) => entry.id === versionId)!
     let payments = state.payments
-    if (invoice.status === status) {
+    const currentStatus = paymentStatus(state, versionId)
+    if (currentStatus === status) {
       if (status !== 'paid' || paymentDay === undefined) return state
       const confirmedPaymentDay = requiredPaymentDay(paymentDay)
       const payment = paymentForFullClaim(state, versionId)
-      if (!payment) throw new Error('Der Zahlungstag kann nur für eine einzelne Vollzahlung korrigiert werden. Teilzahlungen folgen in Paket 14.')
+      if (!payment) throw new Error('Der Zahlungstag kann nur für eine einzelne Vollzahlung korrigiert werden. Vorhandene Teilzahlungen bleiben unverändert.')
       payments = payments.map((entry) => entry.id === payment.id ? { ...entry, paidAt: confirmedPaymentDay, paymentDayStatus: 'confirmed' as const } : entry)
       next = {
         ...state,
         payments,
-        invoices: state.invoices.map((entry) => entry.id === invoiceId ? persistentInvoice({ ...entry, paidAt: confirmedPaymentDay, updatedAt: at }) : entry),
+        invoices: state.invoices.map((entry) => entry.id === invoiceId ? persistentInvoice({ ...entry, updatedAt: at }) : entry),
         invoiceAdministration: state.invoiceAdministration.map((admin) => admin.versionId === versionId ? { ...admin, events: [...admin.events, { at, status: 'paid', kind: 'status', reason: 'Tatsächlichen Zahlungstag nachgepflegt oder korrigiert.' }] } : admin),
       }
       assertOriginalsPreserved(state, next)
@@ -117,7 +119,7 @@ export function changeInvoiceStatus(state: AppState, invoiceId: string, status: 
       const related = payments.filter((payment) => state.documentVersions.find((entry) => entry.id === payment.sourceVersionId)?.originalId === version.originalId)
       const confirmedPaymentDay = requiredPaymentDay(paymentDay)
       const reusable = related.filter((payment) => payment.allocations.at(-1)?.versionId === null && payment.amountCents === version.amounts.totalCents)
-      if (related.length && allocatedCents(state, versionId) < version.amounts.totalCents && reusable.length !== 1) throw new Error('Es gibt bereits Zahlungen zu diesem Vorgang. Bitte diese ausdrücklich zuordnen und eine Betragsdifferenz prüfen; es wird keine Zahlung kopiert.')
+      if (related.length && allocatedCents(state, versionId) < version.amounts.totalCents && (related.length !== 1 || reusable.length !== 1)) throw new Error('Es gibt bereits Zahlungen zu diesem Vorgang. Bitte diese ausdrücklich zuordnen und eine Betragsdifferenz prüfen; es wird keine Zahlung kopiert.')
       if (reusable.length === 1) {
         payments = payments.map((payment) => payment.id === reusable[0].id ? {
           ...payment, paidAt: confirmedPaymentDay, paymentDayStatus: 'confirmed' as const,
@@ -127,14 +129,10 @@ export function changeInvoiceStatus(state: AppState, invoiceId: string, status: 
         id: freshId('payment', new Set(payments.map((entry) => entry.id)), uid), sourceVersionId: versionId, amountCents: version.amounts.totalCents,
         paidAt: confirmedPaymentDay, paymentDayStatus: 'confirmed', recordedAt: at, provenance: 'recorded', allocations: [{ versionId, at, reason: 'Vollzahlung ausdrücklich mit tatsächlichem Zahlungstag erfasst.' }],
       }]
-    } else if (invoice.status === 'paid') {
+    } else if (currentStatus === 'paid') {
       payments = payments.map((payment) => payment.allocations.at(-1)?.versionId === versionId ? { ...payment, allocations: [...payment.allocations, { versionId: null, at, reason: 'Zahlungsstatus ausdrücklich zurückgenommen; Zahlung zur manuellen Klärung erhalten.' }] } : payment)
     }
-    next = {
-      ...state, payments,
-      invoices: state.invoices.map((entry) => entry.id === invoiceId ? persistentInvoice({ ...entry, status, paidAt: status === 'paid' ? payments.find((payment) => payment.allocations.at(-1)?.versionId === versionId && payment.paymentDayStatus === 'confirmed')?.paidAt ?? undefined : undefined, sentAt: entry.sentAt ?? at, updatedAt: at }) : entry),
-      invoiceAdministration: state.invoiceAdministration.map((admin) => admin.versionId === versionId ? { ...admin, events: [...admin.events, { at, status, kind: 'status', reason: 'Verwaltungsstatus ausdrücklich geändert.' }] } : admin),
-    }
+    next = recordPaymentChange({ ...state, payments }, versionId, at, 'Zahlungszuordnung ausdrücklich geändert.')
   }
   assertOriginalsPreserved(state, next)
   validateBackupState(next)

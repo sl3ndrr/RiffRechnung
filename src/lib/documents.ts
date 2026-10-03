@@ -1,3 +1,4 @@
+import { assertOriginalsPreserved } from './safety'
 import { documentContent } from './documentProjection'
 export { documentContent } from './documentProjection'
 import { invoiceTotalCents, itemTotalCents, legacyItemCents } from './money'
@@ -67,14 +68,15 @@ export function versionFor(state: AppState, invoice: Invoice): DocumentVersion |
 /** One projection for view, print and EPC. Empty snapshot values are authoritative. */
 export function selectInvoice(state: AppState, invoice: Invoice): Invoice {
   const version = versionFor(state, invoice)
-  if (!version) return invoice
-  return {
-    ...structuredClone(version.content), status: invoice.status, updatedAt: invoice.updatedAt,
-    paidAt: invoice.paidAt, sentAt: invoice.sentAt, versionId: version.id, correction: invoice.correction,
+  if (!version) return { ...invoice, year: invoiceYear(invoice), period: billingPeriodFromItems(invoice.items, invoice.invoiceDate) }
+  return persistentInvoice({
+    ...structuredClone(version.content), year: invoiceYear(version.content), status: paymentStatus(state, version.id), updatedAt: invoice.updatedAt,
+    paidAt: confirmedPaymentDay(state, version.id), sentAt: invoice.sentAt, versionId: version.id, correction: invoice.correction,
+    openAmountCents: openCents(state, invoice),
     snapshot: structuredClone(version.outputSnapshot), period: version.outputPeriod, legalText: version.outputLegalText,
     issuedAmounts: structuredClone(version.amounts), claimState: isActiveClaim(state, invoice) ? 'active' : 'replaced',
     archived: state.invoiceAdministration.find((admin) => admin.versionId === version.id)?.archived ?? false,
-  }
+  })
 }
 
 export function selectedInvoices(state: AppState): Invoice[] {
@@ -87,6 +89,24 @@ export function isActiveClaim(state: AppState, invoice: Invoice): boolean {
 
 export function activeInvoices(state: AppState): Invoice[] {
   return selectedInvoices(state).filter((invoice) => isActiveClaim(state, invoice))
+}
+
+/** An old stored year remains evidence; new records use the invoice calendar day. */
+export function invoiceYear(invoice: Pick<Invoice, 'year' | 'invoiceDate'>): number {
+  return invoice.year ?? Number(invoice.invoiceDate.slice(0, 4))
+}
+
+export function paymentStatus(state: AppState, versionId: string): 'paid' | 'sent' {
+  const version = state.documentVersions.find((entry) => entry.id === versionId)!
+  return allocatedCents(state, versionId) >= version.amounts.totalCents ? 'paid' : 'sent'
+}
+
+/** No settlement day is inferred while any allocated payment has an unknown day. */
+export function confirmedPaymentDay(state: AppState, versionId: string): string | undefined {
+  const payments = state.payments.filter((payment) => payment.allocations.at(-1)?.versionId === versionId)
+  if (!payments.length || paymentStatus(state, versionId) !== 'paid'
+    || payments.some((payment) => payment.paymentDayStatus !== 'confirmed' || !payment.paidAt)) return undefined
+  return payments.map((payment) => payment.paidAt!).sort().at(-1)
 }
 
 export function allocatedCents(state: AppState, versionId: string): number {
@@ -119,10 +139,11 @@ export function createCorrectionDraft(state: AppState, invoiceId: string, reason
   if (state.invoices.some((entry) => entry.status === 'draft' && entry.correction?.replacesId === parent.id)) throw new Error('Für diesen Beleg gibt es bereits einen Korrekturentwurf.')
   const draft: Invoice = {
     ...structuredClone(parent.content), id: freshId('invoice', new Set(state.invoices.map((entry) => entry.id)), uid),
-    number: null, sequence: null, status: 'draft', period: parent.outputPeriod, legalText: parent.outputLegalText, draftPrintSnapshot: structuredClone(parent.outputSnapshot),
+    number: null, sequence: null, stateModel: 'derived-v1', status: 'draft', legalText: parent.outputLegalText, draftPrintSnapshot: structuredClone(parent.outputSnapshot),
     items: copyItemsWithFreshIds(parent.content.items, new Set(state.invoices.flatMap((entry) => entry.items.map((item) => item.id))), uid),
     correction: { replacesId: parent.id, reason: reason.trim() }, createdAt: at, updatedAt: at,
   }
+  for (const field of ['year', 'period', 'paidAt']) Reflect.deleteProperty(draft, field)
   const next = { ...state, invoices: [...state.invoices, persistentInvoice(draft)] }
   validateBackupState(next)
   return next
@@ -152,14 +173,12 @@ export function resolveDocumentConflicts(state: AppState, versionId: string, rea
   return next
 }
 
-export function syncPaymentStatus(state: AppState, versionId: string, at: string, reason: string): AppState {
-  const version = state.documentVersions.find((entry) => entry.id === versionId)!
-  const paid = allocatedCents(state, versionId) >= version.amounts.totalCents
-  const payment = state.payments.find((entry) => entry.allocations.at(-1)?.versionId === versionId && entry.paymentDayStatus === 'confirmed')
-  const status = paid ? 'paid' as const : 'sent' as const
+/** Keep the administration trail; the current payment state is always projected. */
+export function recordPaymentChange(state: AppState, versionId: string, at: string, reason: string): AppState {
+  const status = paymentStatus(state, versionId)
   return {
     ...state,
-    invoices: state.invoices.map((invoice) => invoice.versionId === versionId ? persistentInvoice({ ...invoice, status, paidAt: paid ? payment?.paidAt ?? undefined : undefined, updatedAt: at }) : invoice),
+    invoices: state.invoices.map((invoice) => invoice.versionId === versionId ? { ...invoice, updatedAt: at } : invoice),
     invoiceAdministration: state.invoiceAdministration.map((admin) => admin.versionId === versionId ? { ...admin, events: [...admin.events, { at, kind: 'status', status, reason }] } : admin),
   }
 }
@@ -173,7 +192,8 @@ export function allocatePayment(state: AppState, paymentId: string, versionId: s
   if (versionId && (!target || target.originalId !== source.originalId)) throw new Error('Zahlungen dürfen nur innerhalb derselben Korrekturbeziehung zugeordnet werden.')
   const previousId = payment.allocations.at(-1)?.versionId
   let next = { ...state, payments: state.payments.map((entry) => entry.id === paymentId ? { ...entry, allocations: [...entry.allocations, { versionId, at, reason: reason.trim() }] } : entry) }
-  for (const id of new Set([previousId, versionId])) if (id) next = syncPaymentStatus(next, id, at, reason)
+  for (const id of new Set([previousId, versionId])) if (id) next = recordPaymentChange(next, id, at, reason)
+  assertOriginalsPreserved(state, next)
   validateBackupState(next)
   return next
 }
