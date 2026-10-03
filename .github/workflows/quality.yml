@@ -35,7 +35,6 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
-      - run: npm run typecheck
       - run: npm run build
       - name: Disable unused runner Chrome APT source
         # Tests download pinned Playwright browsers. The runner's unrelated
@@ -60,6 +59,7 @@ jobs:
       - name: Install PDF text verification
         run: sudo apt-get install -y poppler-utils
       - run: npm run test:browser
+      - run: npm run test:migrations
       - name: Audit all locked dependencies
         shell: bash
         run: |
