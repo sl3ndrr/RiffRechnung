@@ -9,9 +9,10 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc -b",
-    "test": "npm run test:bundle && node --test .test-dist/logic.test.mjs",
-    "test:bundle": "esbuild tests/logic.test.ts --bundle --platform=node --format=esm --packages=external --jsx=automatic --outfile=.test-dist/logic.test.mjs",
-    "test:browser": "node scripts/browser-tests.mjs"
+    "test": "npm run test:bundle && node --test .test-dist/unit/*.test.mjs",
+    "test:bundle": "node scripts/bundle-tests.mjs",
+    "test:browser": "playwright test",
+    "test:migrations": "node scripts/migration-tests.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
