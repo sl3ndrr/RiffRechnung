@@ -1,3 +1,4 @@
+import { expectedTextless } from '../documentFixtures'
 import { expectedConsolidatedVersions, historicalOutputFixture } from '../documentFixtures'
 import { cleanLegacyContacts, normalizeLegacyRecipients } from '../../src/lib/legacyContactsRecipients'
 import { stripLegacyTaxFields } from '../../src/lib/legacyTaxFields'
@@ -54,7 +55,7 @@ test('AP6 Browser/PDF: eingefrorene Schema-7-Belege bewahren Nichtsteuerdaten na
     }, JSON.stringify(original))
     await page.reload()
     const after = await stateOf(page)
-    const expected = normalizeLegacyRecipients(cleanLegacyContacts(stripLegacyTaxFields(original).value))
+    const expected = expectedTextless(normalizeLegacyRecipients(cleanLegacyContacts(stripLegacyTaxFields(original).value)))
     expected.documentVersions = expectedConsolidatedVersions(expected.documentVersions)
     const retainedSettings = { ...expected.settings }; Reflect.deleteProperty(retainedSettings, 'numberPattern'); Reflect.deleteProperty(retainedSettings, 'resetNumberAnnually')
     expect({ ...after, schemaVersion: 7, counters: expected.counters, settings: retainedSettings }).toEqual({ ...expected, settings: retainedSettings })
@@ -168,7 +169,7 @@ test('P04 Browser: Zahlungen manuell zuordnen, archivieren und vollständiges Ba
   await page.getByLabel('Korrekturgrund', { exact: true }).fill('Textkorrektur nach Zahlung')
   await page.getByRole('button', { name: 'Korrekturentwurf erzeugen', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Korrekturentwurf bearbeiten' })
-  await dialog.getByLabel('Einleitung', { exact: true }).fill('Präzisierte Einleitung')
+  await dialog.getByLabel('Freitext / Hinweis', { exact: true }).fill('Präzisierte Einleitung')
   await dialog.getByLabel('Rechnungsdatum', { exact: true }).fill('2027-01-02')
   await dialog.getByRole('button', { name: 'Finalisieren', exact: true }).click()
   await expect(dialog).not.toBeVisible()
@@ -262,8 +263,8 @@ test('AP1 Browser: ein offener Altentwurf verlangt sichtbare Prüfung und ausdr�
   await expect(dialog.getByRole('textbox', { name: 'Beschreibung' })).toHaveValue('Originaler Unterricht')
   await expect(dialog.getByText('Nach Empfänger:innen aufteilen')).toHaveCount(0)
   await dialog.getByRole('button', { name: 'Als gemeinsamen Entwurf übernehmen' }).click()
-  await expect(dialog.getByRole('alert')).toContainText('alle fünf Angaben')
-  for (const field of ['Empfänger', 'Lernende', 'Positionen', 'Einleitung', 'Freitext']) await dialog.getByRole('checkbox', { name: `${field} geprüft` }).check()
+  await expect(dialog.getByRole('alert')).toContainText('alle Angaben')
+  for (const field of ['Empfänger', 'Lernende', 'Positionen', 'Freitext']) await dialog.getByRole('checkbox', { name: `${field} geprüft` }).check()
   await dialog.getByRole('button', { name: 'Als gemeinsamen Entwurf übernehmen' }).click()
   await expect(dialog).not.toBeVisible()
   const converted = await stateOf(page)
@@ -288,7 +289,7 @@ test('AP1 Browser: importierter Altentwurf mit mehreren Empfängern braucht neue
   const chooser = dialog.getByRole('group', { name: 'Empfänger für den neuen gemeinsamen Entwurf ausdrücklich wählen' })
   await chooser.getByText('Empfaenger A').click()
   await chooser.getByText('Empfaenger B').click()
-  for (const field of ['Empfänger', 'Lernende', 'Positionen', 'Einleitung', 'Freitext']) await dialog.getByRole('checkbox', { name: `${field} geprüft` }).check()
+  for (const field of ['Empfänger', 'Lernende', 'Positionen', 'Freitext']) await dialog.getByRole('checkbox', { name: `${field} geprüft` }).check()
   await dialog.getByRole('button', { name: 'Als gemeinsamen Entwurf übernehmen' }).click()
   await expect(dialog).not.toBeVisible()
   const converted = await stateOf(page)
@@ -317,7 +318,7 @@ test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unverändert
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
   await page.reload()
   const state = await stateOf(page)
-  expect(state.schemaVersion).toBe(14)
+  expect(state.schemaVersion).toBe(15)
   expect(state.documentVersions[0].provenance).toBe('oldest-available')
   await invoices(page)
   await page.getByRole('button', { name: '2026-0001-a', exact: true }).click()
@@ -357,8 +358,10 @@ test('P05 Browser: Altentwurf prüfen; Editor, Liste, EPC und PDF auf Cent', asy
   await expect(page.locator('.invoice-detail__amount')).toContainText('7,58')
   const saved = await stateOf(page)
   const epc = await page.evaluate(async (state) => {
-    const utilsPath = '/src/lib/utils.ts', docsPath = '/src/lib/documents.ts'
-    const { buildEpcPayload, invoiceTotal } = await import(utilsPath)
+    const docsPath = '/src/lib/documents.ts'
+    const paymentPath = '/src/lib/paymentData.ts', moneyPath = '/src/lib/money.ts'
+    const { buildEpcPayload } = await import(paymentPath)
+    const { invoiceTotal } = await import(moneyPath)
     const { selectInvoice } = await import(docsPath)
     const invoice = selectInvoice(state, state.invoices[0])
     return buildEpcPayload(invoice, state.settings, invoiceTotal(invoice))
@@ -493,8 +496,8 @@ test('P07 Browser/PDF: Schema-12-Konflikte behalten dieselbe Ansicht, Druckausga
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
   await page.reload()
   const migrated = await stateOf(page)
-  expect(migrated.schemaVersion).toBe(14)
-  expect(migrated.invoices).toEqual(old.invoices)
+  expect(migrated.schemaVersion).toBe(15)
+  expect(migrated.invoices).toEqual(expectedTextless(old.invoices))
   expect(migrated.documentVersions).toEqual(expectedConsolidatedVersions(old.documentVersions))
   await invoices(page)
   await page.getByRole('button', { name: migrated.invoices[0].number!, exact: true }).click()

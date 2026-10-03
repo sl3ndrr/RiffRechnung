@@ -4,7 +4,8 @@ import { parsePaymentTermInput } from '../lib/values'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { ArchiveRestore, CheckCircle2, Download, FileJson, HardDrive, History, Moon, Palette, Save, ShieldCheck, Sun, Upload } from 'lucide-react'
 import type { AppState, Settings as SettingsType, ThemeMode } from '../types'
-import { formatInvoiceNumber, formatIban, isFooterTextWithinLimit, germanIbanError, MAX_FOOTER_TEXT_LENGTH } from '../lib/utils'
+import { formatInvoiceNumber } from '../lib/invoiceNumbering'
+import { formatIban, germanIbanError } from '../lib/paymentData'
 
 import { applyStandardRateInput, parseStandardRate, settingsChangeErrors, STANDARD_RATE_ERROR } from '../lib/settings'
 import { isFinalizedInvoice } from '../lib/safety'
@@ -32,8 +33,6 @@ export function Settings({ state, onSave, onDirty, onExport, onImport, onReset, 
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const pendingSave = useRef(false)
-  const footerTextValid = isFooterTextWithinLimit(form.defaultLegalText)
-  const footerTextLimitReached = form.defaultLegalText.length >= MAX_FOOTER_TEXT_LENGTH
 
   const ibanError = form.iban.trim() ? germanIbanError(form.iban) : null
   const currentBicError = form.bic.trim() ? bicError(form.bic) : null
@@ -48,7 +47,7 @@ export function Settings({ state, onSave, onDirty, onExport, onImport, onReset, 
     setForm((current) => applyStandardRateInput(current, field, raw))
   }
 
-  const valid = !invalidRateInput && !paymentTermError && !emailError && footerTextValid && !settingsChangeErrors(confirmed, form).length
+  const valid = !invalidRateInput && !paymentTermError && !emailError && !settingsChangeErrors(confirmed, form).length
   const dirty = !valid || canonical(form) !== canonical(confirmed)
 
   useLayoutEffect(() => { onDirty(dirty) }, [dirty, onDirty])
@@ -112,7 +111,6 @@ export function Settings({ state, onSave, onDirty, onExport, onImport, onReset, 
               <div className="number-preview"><span>Vorschau · Kennzeichen a</span><strong>{formatInvoiceNumber(23, new Date().getFullYear(), 'a')}</strong></div>
               <label className="field"><span>Standardpreis Solo</span><div className="input-with-suffix"><input type="text" inputMode="decimal" value={rateInputs.privateRate} onChange={(event) => setRate('privateRate', event.target.value)} aria-invalid={parseStandardRate(rateInputs.privateRate) === null} aria-describedby="privateRate-error" /><span>€</span></div><small>Je Einheit/Stunde für neue Positionen</small>{parseStandardRate(rateInputs.privateRate) === null && <small id="privateRate-error" className="field-error" role="alert">{STANDARD_RATE_ERROR}</small>}</label>
               <label className="field"><span>Standardpreis Duo</span><div className="input-with-suffix"><input type="text" inputMode="decimal" value={rateInputs.duoRate} onChange={(event) => setRate('duoRate', event.target.value)} aria-invalid={parseStandardRate(rateInputs.duoRate) === null} aria-describedby="duoRate-error" /><span>€</span></div><small>Je Einheit/Stunde für neue Positionen</small>{parseStandardRate(rateInputs.duoRate) === null && <small id="duoRate-error" className="field-error" role="alert">{STANDARD_RATE_ERROR}</small>}</label>
-              <label className="field field--full"><span>Standard-Fußzeile / Rechtstext</span><textarea rows={3} maxLength={MAX_FOOTER_TEXT_LENGTH} value={form.defaultLegalText} onChange={(event) => setForm({ ...form, defaultLegalText: event.target.value })} aria-invalid={!footerTextValid} aria-describedby="footer-text-help footer-text-count" /><small id="footer-text-help">Der Text wird zusätzlich im Dokument selbst gedruckt und darf höchstens zwei Zeilen umfassen. Änderungen über dieser Grenze werden nicht gespeichert oder gekürzt; nutze für längere Hinweise den Freitext der Rechnung.</small><small className="field-counter" id="footer-text-count">{form.defaultLegalText.length} / {MAX_FOOTER_TEXT_LENGTH} Zeichen</small>{footerTextLimitReached && <small className="field-warning" role="status">Zeichenlimit erreicht. Für längere oder individuelle Texte nutze in der Rechnung das Feld „Freitext / Hinweis“.</small>}</label>
             </div>
             <div className="info-banner"><FileJson aria-hidden="true" /><p>Die erste angelegte lernende Person erhält <strong>a</strong>, die zweite <strong>b</strong> usw. Bei einer gemeinsamen Rechnung für diese Lernenden werden die Kennzeichen segmentiert kombiniert, zum Beispiel <strong>a+b</strong>. <strong>ab</strong> kann dagegen das Kennzeichen einer einzelnen später angelegten Person sein. Das Kennzeichen wird beim Löschen oder Bearbeiten nicht verschoben.</p></div>
           </section>
@@ -147,4 +145,5 @@ export function Settings({ state, onSave, onDirty, onExport, onImport, onReset, 
     </div>
   )
 }
+
 

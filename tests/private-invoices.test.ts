@@ -28,7 +28,7 @@ function assertProtectedValues(before: unknown, after: unknown, path = ''): void
     for (const [key, count] of Object.entries(before as Record<string, number>)) assert.ok((after as Record<string, number>)[key] >= count, key)
     return
   }
-  if (path === 'schemaVersion') { assert.equal(after, 14); return }
+  if (path === 'schemaVersion') { assert.equal(after, 15); return }
   if (Array.isArray(before)) {
     assert.ok(Array.isArray(after), path)
     const entries = path.endsWith('.conflicts') ? before.filter((entry) => entry.path !== 'snapshot.taxIdentifier') : before
@@ -41,7 +41,7 @@ function assertProtectedValues(before: unknown, after: unknown, path = ''): void
     const old = { ...before } as Record<string, unknown>, next = after as Record<string, unknown>
     if (Array.isArray(old.guardianIds) && !path.startsWith('students[')) { assert.deepEqual(next.recipients, old.guardianIds.map((id) => ({ type: 'guardian', id })), path); old.recipients = old.guardianIds.map((id) => ({ type: 'guardian', id })); delete old.guardianIds }
     if (Array.isArray(old.guardians) && !('schemaVersion' in old)) { old.recipients = old.guardians.map((person) => ({ ...(person as Record<string, unknown>), type: 'guardian' })); delete old.guardians }
-    const retired = [...(/^documentVersions\[\d+\]\.content$/.test(path) ? ['snapshot', 'draftPrintSnapshot', 'period', 'legalText'] : []), ...(path === 'settings' ? ['numberPattern', 'resetNumberAnnually'] : []), 'invoiceProfile', 'taxIdentifier', 'invoiceKind', 'taxPresentation', 'taxOutput', ...(path.startsWith('guardians[') ? ['iban', 'paymentNote', 'firstName', 'lastName'] : []), ...(path.startsWith('students[') ? ['note'] : [])]
+    const retired = [...(/^documentVersions\[\d+\]\.content$/.test(path) ? ['snapshot', 'draftPrintSnapshot', 'period', 'legalText'] : []), ...(path === 'settings' ? ['numberPattern', 'resetNumberAnnually'] : []), 'introText', 'legalText', 'defaultLegalText', 'outputLegalText', 'invoiceProfile', 'taxIdentifier', 'invoiceKind', 'taxPresentation', 'taxOutput', ...(path.startsWith('guardians[') ? ['iban', 'paymentNote', 'firstName', 'lastName'] : []), ...(path.startsWith('students[') ? ['note'] : [])]
     assert.deepEqual(Object.keys(next).sort(), Object.keys(old).filter((key) => !retired.includes(key)).sort(), path)
     for (const key of Object.keys(next)) assertProtectedValues(old[key], next[key], path ? `${path}.${key}` : key)
     return
@@ -94,7 +94,7 @@ test('P01: unter, bei und über 250 Euro ohne Anschriften derselbe Abschluss; ge
     const state = documentFamily()
     state.settings.issuer.street = ''; state.settings.issuer.postalCode = ''; state.settings.issuer.city = ''
     state.guardians.forEach((guardian) => { guardian.address = { street: '', postalCode: '', city: '' } })
-    const draft = { ...documentDraft(), legalText: '', items: documentDraft().items.map((item) => ({ ...item, quantity: 1, unitPrice: price })) }
+    const draft = { ...documentDraft(), items: documentDraft().items.map((item) => ({ ...item, quantity: 1, unitPrice: price })) }
     for (const finalize of [false, true]) {
       const result = saveInvoiceDraft(state, draft, finalize, documentAt)
       validateBackupState(result)
@@ -120,7 +120,7 @@ test('P01: beide gemeinsamen Empfängeranschriften, GiroCode-Daten und Namen ble
 test('P01: 8→9 entfernt nur benannte Steuerfelder und Steuer-Konfliktbelege; Quelle und Freitexte bleiben gleich', () => {
   const old = oldTaxStock(), raw = JSON.stringify(old)
   const preview = requireSuccess(inspectImport(raw))
-  assert.equal(preview.report?.fromSchema, 8); assert.equal(preview.report?.toSchema, 14)
+  assert.equal(preview.report?.fromSchema, 8); assert.equal(preview.report?.toSchema, 15)
   assertProtectedValues(old, preview.state)
   assert.equal(JSON.stringify(old), raw)
   assert.equal(preview.rawData, raw)
@@ -182,7 +182,7 @@ test('P01: erfolgreiche Übernahme bereinigt Hauptbestand, Vorgänger, Legacy-Sc
   await session.restore(raw)
   for (const [key, value] of storage.entries) assert.doesNotMatch(value, /SYNTHETIC-TAX-SECRET|SYNTHETIC-TAX-NOTICE/, key)
   assert.doesNotMatch(session.exportRecoveryArchive(), /SYNTHETIC-TAX-SECRET|SYNTHETIC-TAX-NOTICE/)
-  assert.equal(new StorageSession({ storage, lock: sharedLock() }).state.schemaVersion, 14)
+  assert.equal(new StorageSession({ storage, lock: sharedLock() }).state.schemaVersion, 15)
 })
 
 test('P01: fehlgeschlagene Speicherung und unlesbare Nebenstruktur lassen alle Ausgangsschlüssel unverändert', async () => {
@@ -201,4 +201,5 @@ test('P01: fehlgeschlagene Speicherung und unlesbare Nebenstruktur lassen alle A
   await assert.rejects(new StorageSession({ storage, lock: sharedLock() }).restore(raw), /nicht lesbar/)
   assert.deepEqual([...storage.entries], before)
 })
+
 

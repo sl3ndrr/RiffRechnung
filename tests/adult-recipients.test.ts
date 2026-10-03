@@ -8,7 +8,8 @@ import { prepareInvoiceCopy, saveStudentState } from '../src/lib/commands'
 import { requireSuccess } from '../src/lib/result'
 import { saveInvoiceDraft, changeInvoiceStatus } from '../src/lib/invoiceActions'
 import { createCorrectionDraft, selectInvoice } from '../src/lib/documents'
-import { invoiceFinalizationErrors, nextInvoiceAllocation } from '../src/lib/utils'
+import { invoiceFinalizationErrors } from '../src/lib/invoiceRules'
+import { nextInvoiceAllocation } from '../src/lib/invoiceNumbering'
 import { inspectImport, parseBackup, serializeMigrationReport } from '../src/lib/importState'
 import { InvoicePrint } from '../src/components/InvoicePrint'
 import { StorageSession, serializeBackup, loadState } from '../src/lib/storage'
@@ -143,21 +144,22 @@ test('AP5: Schema 7→11 normalisiert Empfänger, idempotent, berichtet und arch
   const raw = JSON.stringify(old)
   const preview = requireSuccess(inspectImport(raw))
   assert.equal(preview.report?.fromSchema, 7)
-  assert.equal(preview.report?.toSchema, 14)
+  assert.equal(preview.report?.toSchema, 15)
   const expected = legacyVersionedFixture(state, 13)
   assert.deepEqual(preview.state.documentVersions, expectedConsolidatedVersions(expected.documentVersions))
   assert.deepEqual(preview.state.invoices[0].snapshot, state.invoices[0].snapshot)
   assert.deepEqual(preview.state.invoices[0].recipients, [{ type: 'guardian', id: 'g-a' }])
-  assert.match(serializeMigrationReport(preview), /riffrechnung-to-v14/)
+  assert.match(serializeMigrationReport(preview), /riffrechnung-to-v15/)
   const repeat = requireSuccess(inspectImport(serializeBackup(preview.state)))
   assert.equal(repeat.report, null)
   const storage = memoryStorage()
   const session = new StorageSession({ storage, lock: sharedLock() })
   await session.restore(raw)
-  assert.match(session.exportRecoveryArchive(), /riffrechnung-to-v14/)
+  assert.match(session.exportRecoveryArchive(), /riffrechnung-to-v15/)
   assert.match(session.exportRecoveryArchive(), /schemaVersion/)
   assert.equal(loadState(storage).status, 'ready')
   assert.equal(inspectImport(JSON.stringify({ ...old, recipients: [] })).ok, false)
   assert.equal(inspectImport(JSON.stringify({ ...old, schemaVersion: 15 })).ok, false)
 })
+
 

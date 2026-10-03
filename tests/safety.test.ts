@@ -12,7 +12,10 @@ import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions
 import { assertOriginalsPreserved, assertReplacementAllowed } from '../src/lib/safety'
 import { applyStandardRateInput, parseStandardRate, updateSettings } from '../src/lib/settings'
 import { StorageSession, loadState, parseBackup, serializeBackup, STORAGE_KEY, validateBackupState } from '../src/lib/storage'
-import { createLessonItem, germanIbanError, invoiceTotal, nextInvoiceAllocation } from '../src/lib/utils'
+import { createLessonItem } from '../src/lib/invoiceDrafts'
+import { germanIbanError } from '../src/lib/paymentData'
+import { invoiceTotal } from '../src/lib/money'
+import { nextInvoiceAllocation } from '../src/lib/invoiceNumbering'
 
 const at = '2026-08-20T12:00:00.000Z'
 function families(count = 2): AppState {
@@ -34,8 +37,7 @@ function draftFor(state: AppState, ids = ['s0']): InvoiceDraft {
     recipients: ([...new Set(ids.flatMap((id) => state.students.find((student) => student.id === id)!.guardianIds))]).map((id) => ({ type: 'guardian' as const, id })),
     studentIds: ids, recipientStrategy: 'joint',
     items: ids.map((id) => createLessonItem(id, '2026-08-05', state.settings, `item-${id}`)),
-    introText: '', freeText: '', legalText: '',
-  }
+    freeText: '', }
 }
 
 async function withStorage(run: () => void | Promise<void>): Promise<void> {
@@ -217,4 +219,5 @@ test('P01: nur deutsche Konten für Änderungen und Finalisierung; fremde histor
   const paid = roundTrip(changeInvoiceStatus(historical, historical.invoices[0].id, 'paid', at, '2026-09-05'))
   assert.deepEqual(paid.invoices[0].snapshot, historical.invoices[0].snapshot)
 }))
+
 

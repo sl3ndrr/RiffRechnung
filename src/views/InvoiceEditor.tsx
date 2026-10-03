@@ -1,5 +1,5 @@
 import { decimalInputText, draftAmountChange, previewCents } from '../lib/money'
-import { correctionErrors, reassignCorrectionStudent } from '../lib/documents'
+import { reassignCorrectionStudent } from '../lib/documents'
 import { LEGACY_REVIEW_FIELDS } from '../lib/commands'
 import { applyItemNumberInput, itemNumberInput, adjustQuantity as adjustedQuantity, MIN_QUANTITY, MAX_QUANTITY, QUANTITY_INCREMENT } from '../lib/values'
 import { invoiceDraftErrors } from '../lib/invoiceActions'
@@ -8,7 +8,12 @@ import { Calendar, CircleDollarSign, FileCheck2, Minus, Plus, Save, Send, Trash2
 import type { AppState, Guardian, InvoiceDraft, LessonType, RecipientRef, Settings, Student } from '../types'
 import { FINALIZED_INVOICE_BLOCKED } from '../lib/safety'
 import { Modal } from '../components/Modal'
-import { applyLessonType, billingPeriodFromItems, calculateDueDate, createLessonItem, euro, invoiceFinalizationErrors, isFooterTextWithinLimit, itemTotal, MAX_FOOTER_TEXT_LENGTH } from '../lib/utils'
+import { applyLessonType, createLessonItem } from '../lib/invoiceDrafts'
+import { billingPeriodFromItems } from '../lib/invoiceOutput'
+import { calculateDueDate } from '../lib/calendar'
+import { euro } from '../lib/utils'
+import { invoiceFinalizationErrors } from '../lib/invoiceRules'
+import { itemTotal } from '../lib/money'
 import { guardianIdsFor, recipientCanBillStudent, recipientKey, recipientRefs } from '../lib/recipients'
 
 const INVOICE_EDITOR_FORM_ID = 'invoice-editor-form'
@@ -51,9 +56,8 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
   const total = cents === null ? null : cents / 100
   const change = draftAmountChange(draft)
   const calculatedPeriod = billingPeriodFromItems(form.items, form.invoiceDate)
-  const footerTextValid = isFooterTextWithinLimit(form.legalText)
   const dirty = JSON.stringify(form) !== JSON.stringify(draft)
-  const correctionBlockers = form.correction && !finalized ? [...correctionErrors(state, form), ...invoiceFinalizationErrors(state, form)] : []
+  const correctionBlockers = form.correction && !finalized ? invoiceFinalizationErrors(state, form) : []
 
   useEffect(() => { setReviewed([]) }, [form, conversionRecipients])
   useEffect(() => { onDirtyChange(open && !finalized && dirty) }, [dirty, finalized, onDirtyChange, open])
@@ -135,12 +139,8 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
 
   const submit = (finalize: boolean) => {
     const invalidNumbers = form.items.some((item) => (['quantity', 'unitPrice'] as const).some((field) => itemNumberInput(numberInputs[item.id]?.[field] ?? decimalInputText(item[field]), field) === null))
-    const nextErrors = finalized ? [FINALIZED_INVOICE_BLOCKED] : invoiceDraftErrors(state, form)
+    const nextErrors = finalized ? [FINALIZED_INVOICE_BLOCKED] : invoiceDraftErrors(state, form, finalize)
     if (invalidNumbers) nextErrors.push('Bitte die Preise und Mengen vervollständigen. Ungültige Zwischenwerte werden nicht gespeichert.')
-    if (finalize) {
-      nextErrors.push(...correctionErrors(state, form))
-      nextErrors.push(...invoiceFinalizationErrors({ guardians, students, settings }, form))
-    }
     setErrors(nextErrors)
     if (!nextErrors.length) {
       onSave(form, finalize)
@@ -151,7 +151,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
   const convert = () => {
     if (!form.id) { setErrors(['Der historische Entwurf muss vor der Umwandlung gespeichert sein.']); return }
     if (form.items.some((item) => (['quantity', 'unitPrice'] as const).some((field) => itemNumberInput(numberInputs[item.id]?.[field] ?? decimalInputText(item[field]), field) === null))) { setErrors(['Bitte Preise und Mengen vor der Übernahme vervollständigen.']); return }
-    if (!LEGACY_REVIEW_FIELDS.every((field) => reviewed.includes(field))) { setErrors(['Bitte alle fünf Angaben einzeln prüfen und bestätigen.']); return }
+    if (!LEGACY_REVIEW_FIELDS.every((field) => reviewed.includes(field))) { setErrors(['Bitte alle Angaben einzeln prüfen und bestätigen.']); return }
     onConvert(form.id, reviewed, conversionRecipients, form)
   }
 
@@ -186,7 +186,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
 
         {legacyDraft && <section className="form-section" aria-label="Historischen Entwurf prüfen">
           <h3>Historischer Aufteilungsentwurf</h3>
-          <p>Dieser Entwurf bleibt bis zur bestätigten Umwandlung unverändert. Prüfe die unten sichtbaren Lernenden, Positionen, Einleitung und den Freitext. Teilbeträge und gemeinsame Texte können Angaben zu anderen Personen enthalten. Eine neue Rechnungsnummer entsteht erst bei einer späteren Finalisierung.</p>
+          <p>Dieser Entwurf bleibt bis zur bestätigten Umwandlung unverändert. Prüfe die unten sichtbaren Lernenden, Positionen und den Rechnungshinweis. Teilbeträge und gemeinsame Texte können Angaben zu anderen Personen enthalten. Eine neue Rechnungsnummer entsteht erst bei einer späteren Finalisierung.</p>
           <p>Ursprüngliche Empfänger: {guardianIdsFor(draft.recipients).map((id) => guardians.find((guardian) => guardian.id === id)?.name ?? `Gelöschte Person (${id})`).join(', ')}</p>
           {guardianIdsFor(form.recipients).length > 1 && <fieldset className="chip-fieldset"><legend>Empfänger für den neuen gemeinsamen Entwurf ausdrücklich wählen</legend>{eligibleGuardians.map((guardian) => <label key={guardian.id} className="choice-chip"><input type="checkbox" checked={conversionRecipients.includes(guardian.id)} onChange={() => setConversionRecipients((current) => current.includes(guardian.id) ? current.filter((id) => id !== guardian.id) : [...current, guardian.id])} />{guardian.name}</label>)}</fieldset>}
           <fieldset><legend>Prüfung bestätigen</legend>{LEGACY_REVIEW_FIELDS.map((field) => <label key={field} className="field"><input type="checkbox" checked={reviewed.includes(field)} onChange={() => setReviewed((current) => current.includes(field) ? current.filter((entry) => entry !== field) : [...current, field])} />{field} geprüft</label>)}</fieldset>
@@ -238,14 +238,13 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
         </section>
 
         <section className="form-section">
-          <div className="form-section__heading"><span>4</span><div><h3>Textbausteine</h3><p>Individuelle Hinweise für diese Rechnung.</p></div></div>
+          <div className="form-section__heading"><span>4</span><div><h3>Rechnungshinweis</h3><p>Individuelle Hinweise für diese Rechnung.</p></div></div>
           <div className="form-grid form-grid--2">
-            <label className="field"><span id="invoice-intro-label">Einleitung</span><textarea aria-labelledby="invoice-intro-label" rows={4} value={form.introText} onChange={(event) => setForm({ ...form, introText: event.target.value })} /></label>
             <label className="field"><span id="invoice-note-label">Freitext / Hinweis</span><textarea aria-labelledby="invoice-note-label" rows={4} value={form.freeText} onChange={(event) => setForm({ ...form, freeText: event.target.value })} placeholder="Optional" /></label>
-            <label className="field field--full"><span>Fußzeile / Rechtstext</span><textarea rows={2} maxLength={MAX_FOOTER_TEXT_LENGTH} value={form.legalText} onChange={(event) => setForm({ ...form, legalText: event.target.value })} aria-invalid={!footerTextValid} /><small className="field-counter">{form.legalText.length} / {MAX_FOOTER_TEXT_LENGTH} Zeichen</small>{form.legalText.length >= MAX_FOOTER_TEXT_LENGTH && <small className="field-warning" role="status">Zeichenlimit erreicht. Nutze für längere rechnungsspezifische Angaben das Feld „Freitext / Hinweis“.</small>}</label>
           </div>
         </section>
       </form>
     </Modal>
   )
 }
+

@@ -1,7 +1,7 @@
-import { localToday, paymentDay } from './calendar'
-import { calculateDueDate, formatInvoiceNumber } from './utils'
+import { paymentDay } from './calendar'
+import { formatInvoiceNumber } from './invoiceNumbering'
 import { captureLegacyDocuments } from './importState'
-import type { AppState, Guardian, Invoice, InvoiceDraft, InvoiceItem, LessonType, Settings, Student } from '../types'
+import type { AppState, Guardian, Invoice, InvoiceItem, LessonType, Settings, Student } from '../types'
 
 export const defaultSettings: Settings = {
   issuer: {
@@ -19,14 +19,13 @@ export const defaultSettings: Settings = {
   privateRate: 30,
   duoRate: 20,
   paymentTermDays: 14,
-  defaultLegalText: '',
   theme: 'system',
   reducedMotion: false,
 }
 
 export function emptyState(): AppState {
   return {
-    schemaVersion: 14,
+    schemaVersion: 15,
     documentVersions: [], invoiceAdministration: [], payments: [], historicalSnapshotCorrections: [],
     guardians: [],
     students: [],
@@ -43,22 +42,6 @@ export function emptyState(): AppState {
 // Synthetic demo dates were explicitly created in UTC.
 function isoDate(date: Date): string {
   return date.toISOString().slice(0, 10)
-}
-
-export function createEmptyInvoiceDraft(settings: Settings, reference = new Date()): InvoiceDraft {
-  const invoiceDate = reference
-
-  return {
-    invoiceDate: localToday(invoiceDate),
-    dueDate: calculateDueDate(localToday(invoiceDate), settings.paymentTermDays),
-    recipients: [],
-    studentIds: [],
-    recipientStrategy: 'joint',
-    items: [],
-    introText: 'Hiermit stelle ich die Unterrichtseinheiten im Fach Gitarre für den genannten Zeitraum in Rechnung.',
-    freeText: '',
-    legalText: settings.defaultLegalText,
-  }
 }
 
 export function createDemoState(referenceDate = new Date()): AppState {
@@ -211,9 +194,7 @@ export function createDemoState(referenceDate = new Date()): AppState {
       studentIds: family.studentIds,
       recipientStrategy: 'joint',
       items: lessonItemsFor(family, year, month),
-      introText: 'Hiermit stelle ich die Unterrichtseinheiten im Fach Gitarre für den genannten Zeitraum in Rechnung.',
       freeText: status === 'draft' ? 'Entwurf: Termine und Zuordnung sind vorbereitet und können vor der Finalisierung angepasst werden.' : '',
-      legalText: settings.defaultLegalText,
       ...(finalized ? {
         snapshot: {
           issuer: structuredClone(settings.issuer),
@@ -229,7 +210,6 @@ export function createDemoState(referenceDate = new Date()): AppState {
           iban: settings.iban,
           bic: settings.bic,
           bankName: settings.bankName,
-          legalText: settings.defaultLegalText,
         },
         sentAt,
       } : {}),
@@ -272,4 +252,5 @@ export function createDemoState(referenceDate = new Date()): AppState {
   })
   return demo
 }
+
 

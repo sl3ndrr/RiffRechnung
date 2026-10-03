@@ -1,14 +1,17 @@
-import { localToday, shiftCalendarMonths } from './calendar'
+import { calculateDueDate, localToday, shiftCalendarMonths } from './calendar'
 import { contactNameError } from './contactName'
 import type { AppState, Guardian, InvoiceDraft, Settings, Student } from '../types'
-import { createEmptyInvoiceDraft, emptyState } from './defaults'
+import { emptyState } from './defaults'
+import { createEmptyInvoiceDraft, invoiceDraftFields } from './invoiceDrafts'
 import { assertInvoiceEditable, assertReplacementAllowed } from './safety'
-import { saveInvoiceDraft } from './invoiceActions'
+import { invoiceDraftErrors, saveInvoiceDraft } from './invoiceActions'
 import { copyItemsWithFreshIds } from './identities'
 import { commandResult, type CommandResult } from './result'
 import { validateBackupState } from './validation'
 import { updateSettings } from './settings'
-import { calculateDueDate, parseDate, studentCodeForIndex, uid } from './utils'
+import { parseDate } from './utils'
+import { studentCodeForIndex } from './invoiceNumbering'
+import { uid } from './identities'
 import { recipientRefs, guardianIdsFor } from './recipients'
 
 export function saveSettingsState(state: AppState, settings: Settings): CommandResult<AppState> {
@@ -75,15 +78,13 @@ export function prepareInvoiceCopy(state: AppState, invoiceId: string, targetDat
     const items = copyItemsWithFreshIds(invoice.items, new Set(state.invoices.flatMap((entry) => entry.items.map((item) => item.id))), createId).map((item) => {
       return { ...item, serviceDate: shiftCalendarMonths(item.serviceDate, monthDelta) }
     })
-    const invoiceDate = localToday(targetDate)
     const draft: InvoiceDraft = {
-      invoiceDate, dueDate: calculateDueDate(invoiceDate, state.settings.paymentTermDays),
-      studentIds: [...invoice.studentIds],
-      recipients: structuredClone(recipientRefs(invoice)),
-      recipientStrategy: invoice.recipientStrategy, items, introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText,
+      ...invoiceDraftFields(invoice), invoiceDate: localToday(targetDate), dueDate: calculateDueDate(localToday(targetDate), state.settings.paymentTermDays),
+      items,
     }
-    // Verify the actual prospective persistent result without mutating state.
-    saveInvoiceDraft(state, draft, false, targetDate.toISOString())
+    // Preview uses the same draft rules; no generated invoice ID or full stock write.
+    const errors = invoiceDraftErrors(state, draft)
+    if (errors.length) throw new Error(errors.join(' '))
     return draft
   })
 }
@@ -92,14 +93,14 @@ export function saveInvoiceState(state: AppState, draft: InvoiceDraft, finalize:
   return commandResult(() => saveInvoiceDraft(state, draft, finalize, at))
 }
 
-export const LEGACY_REVIEW_FIELDS = ['Empfänger', 'Lernende', 'Positionen', 'Einleitung', 'Freitext'] as const
+export const LEGACY_REVIEW_FIELDS = ['Empfänger', 'Lernende', 'Positionen', 'Freitext'] as const
 
 export function convertLegacyDraftState(state: AppState, sourceId: string, reviewed: readonly string[], guardianIds: string[], edited: InvoiceDraft, at?: string): CommandResult<AppState> {
   return commandResult(() => {
     validateBackupState(state)
     const source = state.invoices.find((invoice) => invoice.id === sourceId)
     if (!source || source.status !== 'draft' || source.recipientStrategy !== 'separate' || source.correction || source.number || source.versionId) throw new Error('Nur ein offener historischer Aufteilungsentwurf kann umgewandelt werden.')
-    if (!LEGACY_REVIEW_FIELDS.every((field) => reviewed.includes(field))) throw new Error('Bitte Empfänger, Lernende, Positionen, Einleitung und Freitext einzeln sichtbar prüfen und bestätigen.')
+    if (!LEGACY_REVIEW_FIELDS.every((field) => reviewed.includes(field))) throw new Error('Bitte Empfänger, Lernende, Positionen und Freitext einzeln sichtbar prüfen und bestätigen.')
     if (guardianIdsFor(source.recipients).length === 1 && (guardianIds.length !== 1 || guardianIds[0] !== guardianIdsFor(source.recipients)[0])) throw new Error('Der einzelne Altentwurf wird nur mit seinem bisherigen Empfänger übernommen.')
     if (!guardianIds.length || new Set(guardianIds).size !== guardianIds.length || guardianIds.some((id) => !state.guardians.some((guardian) => guardian.id === id))) throw new Error('Bitte die empfangenden Personen ausdrücklich auswählen.')
     if (edited.id !== sourceId || edited.correction || edited.recipientStrategy !== 'separate') throw new Error('Der zu prüfende Altentwurf hat sich geändert. Bitte neu laden.')

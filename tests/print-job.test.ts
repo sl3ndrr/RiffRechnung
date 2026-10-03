@@ -25,9 +25,7 @@ function invoice(overrides: Partial<Invoice> = {}): Invoice {
     studentIds: [],
     recipientStrategy: 'joint',
     items: [{ id: 'item-a', studentId: '', serviceDate: '2026-09-01', lessonType: 'solo', description: 'Synthetischer Unterricht', quantity: 1, unit: 'Std.', unitPrice: 42 }],
-    introText: '',
     freeText: '',
-    legalText: '',
     createdAt: '2026-09-01T12:00:00.000Z',
     updatedAt: '2026-09-01T12:00:00.000Z',
     ...overrides,
@@ -80,3 +78,4 @@ test('P09: verspätete Resultate dürfen nur den gleichen Druckauftrag freigeben
   assert.equal(isCurrentPrintRequest(second, 'print-second', 'invoice-first'), false)
   assert.equal(isCurrentPrintRequest(second, 'print-second', 'invoice-second'), true)
 })
+

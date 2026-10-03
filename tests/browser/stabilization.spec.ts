@@ -98,10 +98,12 @@ test('P12 Browser: ausländisches Konto abweisen, DE speichern und leere Origina
   expect((await stateOf(page)).documentVersions[0]).toEqual(original)
   expect((await stateOf(page)).settings.iban).toBe('DE89370400440532013000')
   const payload = await page.evaluate(async () => {
-    const storagePath = '/src/lib/storage.ts', documentPath = '/src/lib/documents.ts', utilsPath = '/src/lib/utils.ts'
+    const storagePath = '/src/lib/storage.ts', documentPath = '/src/lib/documents.ts'
     const { StorageSession } = await import(storagePath)
     const { selectInvoice } = await import(documentPath)
-    const { buildEpcPayload, invoiceTotal } = await import(utilsPath)
+    const paymentPath = '/src/lib/paymentData.ts', moneyPath = '/src/lib/money.ts'
+    const { buildEpcPayload } = await import(paymentPath)
+    const { invoiceTotal } = await import(moneyPath)
     const state = new StorageSession().state
     const invoice = selectInvoice(state, state.invoices[0])
     return buildEpcPayload(invoice, state.settings, invoiceTotal(invoice))
@@ -234,4 +236,5 @@ test('P12 Browser: lokale Mitternacht in Berlin erzeugt den richtigen Rechnungst
     await expect(page.getByRole('dialog').getByLabel('Rechnungsdatum', { exact: true })).toHaveValue('2026-09-01')
   } finally { await context.close() }
 })
+
 

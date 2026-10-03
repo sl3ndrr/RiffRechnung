@@ -13,7 +13,7 @@ import { seedState, memoryStorage } from './storageHarness'
 import { requireSuccess } from '../src/lib/result'
 import type { AppState, Invoice, InvoiceDraft } from '../src/types'
 
-const resultDraft = (): InvoiceDraft => ({ ...documentDraft(), recipientStrategy: 'separate', introText: 'Gemeinsame Einleitung', freeText: 'Text aus Aufteilung', items: [{ ...documentDraft().items[0], description: 'Unterricht (bestätigter Teilbetrag 5,00 € von 10,00 €)', quantity: 1, unit: 'Pauschale', unitPrice: 5 }] })
+const resultDraft = (): InvoiceDraft => ({ ...documentDraft(), recipientStrategy: 'separate', freeText: 'Text aus Aufteilung', items: [{ ...documentDraft().items[0], description: 'Unterricht (bestätigter Teilbetrag 5,00 € von 10,00 €)', quantity: 1, unit: 'Pauschale', unitPrice: 5 }] })
 const legacy = (draft: InvoiceDraft, id: string): Invoice => ({ ...draft, id, number: null, sequence: null, year: 2026, status: 'draft', calculation: 'decimal-v1', createdAt: documentAt, updatedAt: documentAt })
 function reload(state: AppState) {
   const imported = parseBackup(serializeBackup(state))
@@ -98,7 +98,7 @@ test('AP1: beide Altentwurfsformen bleiben bis zur bestätigten atomaren Umwandl
     assert.deepEqual(result.invoices[0].recipients.map((ref) => ref.id), guardians)
     assert.equal(result.invoices[0].number, null)
     assert.deepEqual(result.counters, state.counters)
-    assert.equal(result.invoices[0].introText, draft.introText)
+    assert.equal(Object.hasOwn(result.invoices[0], 'introText'), false)
     assert.equal(result.invoices[0].freeText, draft.freeText)
     assert.equal(result.invoices[0].items[0].description, draft.items[0].description)
     if (guardians.length > 1) assert.notEqual(result.invoices[0].id, id)
@@ -119,4 +119,5 @@ test('AP1: Kopie eines historischen aufgeteilten Belegs ist gesperrt', () => {
   assert.equal(result.ok, false)
   if (!result.ok) assert.match(result.errors[0].message, /Teilbetragspositionen/)
 })
+
 

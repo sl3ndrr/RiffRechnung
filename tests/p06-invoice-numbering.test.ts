@@ -11,7 +11,9 @@ import { StorageSession, STORAGE_KEY, loadState, serializeBackup } from '../src/
 import { memoryStorage, sharedLock } from './storageHarness'
 import { requireSuccess } from '../src/lib/result'
 import { assertOriginalsPreserved } from '../src/lib/safety'
-import { buildEpcPayload, formatInvoiceNumber, invoiceStudentCode, nextInvoiceAllocation, sortPeople } from '../src/lib/utils'
+import { buildEpcPayload } from '../src/lib/paymentData'
+import { formatInvoiceNumber, invoiceStudentCode, nextInvoiceAllocation } from '../src/lib/invoiceNumbering'
+import { sortPeople } from '../src/lib/utils'
 import { migrateInvoiceNumbering } from '../src/lib/legacyInvoiceNumbering'
 import type { AppState } from '../src/types'
 
@@ -65,8 +67,8 @@ test('P06: Schema 11 migriert geschützt, behält Originale und Reservierungen e
   old.voidedInvoiceNumbers.push({ number: '2026-a-0011', sequence: 11, year: 2026, invoiceDate: '2026-09-01', deletedAt: documentAt, amount: 30, recipient: 'Synthetisch' })
   const raw = JSON.stringify(old), before = structuredClone(old)
   const preview = requireSuccess(inspectImport(raw))
-  assert.equal(preview.report?.fromSchema, 11); assert.equal(preview.report?.toSchema, 14)
-  assert.equal(preview.state.schemaVersion, 14)
+  assert.equal(preview.report?.fromSchema, 11); assert.equal(preview.report?.toSchema, 15)
+  assert.equal(preview.state.schemaVersion, 15)
   assert.deepEqual(preview.state.documentVersions, expectedConsolidatedVersions(before.documentVersions))
   assert.deepEqual(preview.state.invoices, before.invoices)
   assert.deepEqual(preview.state.voidedInvoiceNumbers, before.voidedInvoiceNumbers)
@@ -178,3 +180,4 @@ test('P06: gesicherte Originale ohne heutige Stammdaten schützen erkennbare ode
   assert.equal(unclear.counters['2026:*'], 18)
   assert.deepEqual(unclear.documentVersions, expectedConsolidatedVersions(old.documentVersions))
 })
+

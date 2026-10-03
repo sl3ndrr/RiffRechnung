@@ -16,7 +16,9 @@ import { requireSuccess } from '../src/lib/result'
 import { applyStandardRateInput, parseStandardRate } from '../src/lib/settings'
 import { applyItemNumberInput, adjustQuantity, itemNumberInput, MAX_PRICE, parsePaymentTermInput, validId } from '../src/lib/values'
 import { StorageSession, loadState, parseBackup, serializeBackup, STORAGE_KEY, validateBackupState } from '../src/lib/storage'
-import { createLessonItem, invoiceTotal, nextInvoiceAllocation } from '../src/lib/utils'
+import { createLessonItem } from '../src/lib/invoiceDrafts'
+import { invoiceTotal } from '../src/lib/money'
+import { nextInvoiceAllocation } from '../src/lib/invoiceNumbering'
 import { ImportReviewContent } from '../src/views/ImportReview'
 
 const at = '2026-09-06T12:00:00.000Z'
@@ -32,7 +34,7 @@ function family(count = 1): AppState {
 }
 
 function draft(state: AppState): InvoiceDraft {
-  return { invoiceDate: '2026-08-15', dueDate: '2026-08-29', period: 'August 2026', recipients: (['g0']).map((id) => ({ type: 'guardian' as const, id })), studentIds: ['s0'], recipientStrategy: 'joint', items: [createLessonItem('s0', '2026-08-05', state.settings, 'original-item')], introText: 'Einleitung', freeText: 'Hinweis\nZweite Zeile', legalText: 'Historischer Text' }
+  return { invoiceDate: '2026-08-15', dueDate: '2026-08-29', period: 'August 2026', recipients: (['g0']).map((id) => ({ type: 'guardian' as const, id })), studentIds: ['s0'], recipientStrategy: 'joint', items: [createLessonItem('s0', '2026-08-05', state.settings, 'original-item')], freeText: 'Hinweis\nZweite Zeile', }
 }
 
 async function withStorage(run: (entries: Map<string, string>) => void | Promise<void>): Promise<void> {
@@ -122,7 +124,6 @@ test('P02: Kopierbefehl erhält Inhalte und Originale mit neuen global eindeutig
     const copied = requireSuccess(prepareInvoiceCopy(state, original.id, new Date('2026-09-15T12:00:00.000Z')))
     assert.equal(copied.items[0].serviceDate, '2026-09-05')
     assert.equal(copied.freeText, original.freeText)
-    assert.equal(copied.legalText, original.legalText)
     assert.equal(invoiceTotal(copied), invoiceTotal(original))
     state = roundTrip(requireSuccess(saveInvoiceState(state, copied, false, at)))
   }
@@ -378,4 +379,5 @@ test('P02: ältere, beschädigte und unbekannte neuere lokale Daten können auch
     assert.equal(entries.get(STORAGE_KEY), raw)
   }
 }))
+
 

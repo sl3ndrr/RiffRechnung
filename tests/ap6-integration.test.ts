@@ -1,3 +1,4 @@
+import { expectedTextless } from './documentFixtures'
 import { expectedConsolidatedVersions } from './documentFixtures'
 import { cleanLegacyContacts, normalizeLegacyRecipients } from '../src/lib/legacyContactsRecipients'
 import { cleanRecoveryFields } from '../src/lib/recoveryContactCleanup'
@@ -34,10 +35,10 @@ test('AP6: eingefrorene Schema-7-Originale und Verwaltungsdaten bleiben bei 7→
   for (const original of [fixture.issuedCorrected, fixture.oldestSeparate]) {
     const { preview } = migrated(original)
     assert.equal(preview.report?.fromSchema, 7)
-    assert.equal(preview.report?.toSchema, 14)
+    assert.equal(preview.report?.toSchema, 15)
     assert.ok(preview.report?.changes.some((entry) => entry.path === 'schemaVersion'))
-    assert.equal(preview.state.schemaVersion, 14)
-    const expected = normalizeLegacyRecipients(cleanLegacyContacts(stripLegacyTaxFields(original).value))
+    assert.equal(preview.state.schemaVersion, 15)
+    const expected = expectedTextless(normalizeLegacyRecipients(cleanLegacyContacts(stripLegacyTaxFields(original).value)))
     expected.documentVersions = expectedConsolidatedVersions(expected.documentVersions)
     const { schemaVersion: _oldSchema, counters: oldCounters, settings: oldSettings, ...oldContent } = expected
     const { schemaVersion: _newSchema, counters: newCounters, settings: newSettings, ...newContent } = preview.state
@@ -78,7 +79,7 @@ test('AP6: Vorschau, bereinigtes Archiv, Import und Reload erhalten beide Goldbe
     const session = new StorageSession({ storage, lock: sharedLock() })
     const { raw, preview } = migrated(original)
     assert.equal(storage.length, 0, 'Vorschau darf noch nicht schreiben')
-    assert.match(serializeMigrationReport(preview), /riffrechnung-to-v14/)
+    assert.match(serializeMigrationReport(preview), /riffrechnung-to-v15/)
     const next = await session.restore(raw)
     assert.deepEqual(next, preview.state)
     const archive = JSON.parse(session.exportRecoveryArchive()) as { recoveries: Array<{ raw: string }> }
@@ -141,4 +142,5 @@ test('AP6: Datenschutzsperre gilt nach Migration und Import; historische separat
     assert.deepEqual(loadState(storage).status, 'ready')
   }
 })
+
 

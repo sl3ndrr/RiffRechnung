@@ -1,5 +1,5 @@
 import { invoiceTotalCents, sumCents } from '../lib/money'
-import { outputItemTotal } from '../lib/utils'
+import { outputItemTotal } from '../lib/invoiceOutput'
 import { DocumentHistory, HistoricalSnapshotEvidence, type DocumentHistoryActions } from '../components/DocumentHistory'
 import { activeInvoices, isActiveClaim, selectedInvoices } from '../lib/documents'
 import { needsHistoricalSplitReview } from '../lib/historicalSplit'
@@ -10,7 +10,10 @@ import { ArrowDown, ArrowUp, ArrowUpDown, CalendarDays, ChevronDown, Copy, Edit3
 import type { AppState, Invoice, InvoiceStatus, PageKey } from '../types'
 import { EmptyState } from '../components/EmptyState'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, type InvoiceMenuPosition, runInvoiceMenuAction } from '../lib/invoiceMenu'
-import { billingPeriodFromItems, isInvoiceSetupComplete, effectiveStatus, euro, formatDate, formatDateLong, guardianName, invoiceTotal, sortInvoices, statusLabel, studentName, type InvoiceSortKey, type SortDirection } from '../lib/utils'
+import { billingPeriodFromItems, effectiveStatus, guardianName, sortInvoices, statusLabel, studentName, type InvoiceSortKey, type SortDirection } from '../lib/invoiceOutput'
+import { isInvoiceSetupComplete } from '../lib/invoiceSetup'
+import { euro, formatDate, formatDateLong } from '../lib/utils'
+import { invoiceTotal } from '../lib/money'
 
 interface InvoicesProps extends DocumentHistoryActions {
   state: AppState
@@ -332,3 +335,4 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
     </aside>
   )
 }
+

@@ -1,6 +1,6 @@
 import type { AppState, Settings } from '../types'
 import { localToday } from './calendar'
-import { compareStudentCodes, invoiceStudentCode } from './utils'
+import { compareStudentCodes, invoiceStudentCode } from './invoiceNumbering'
 
 /** Input-only configuration; schema 12 never persists or executes a pattern. */
 export type LegacyNumberSettings = Settings & { numberPattern: string; resetNumberAnnually: boolean }
@@ -95,3 +95,4 @@ export function migrateInvoiceNumbering(value: AppState, changes: Change[] = [],
   changes.push({ path: 'schemaVersion', before: 11, after: 12, reason: `Feste jährliche Nummerierung; konservatives Umstiegsjahr ${migrationYear}. Nummern, Kennungen und Reservierungsbelege bleiben unverändert.` })
   return state
 }
+

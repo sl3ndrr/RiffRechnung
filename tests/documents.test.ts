@@ -13,7 +13,10 @@ import { requireSuccess } from '../src/lib/result'
 import { assertOriginalsPreserved } from '../src/lib/safety'
 import { StorageSession, STORAGE_KEY, loadState, serializeBackup } from '../src/lib/storage'
 import { validateBackupState } from '../src/lib/validation'
-import { buildEpcPayload, guardianName, invoiceTotal, nextInvoiceAllocation, outputItemTotal } from '../src/lib/utils'
+import { buildEpcPayload } from '../src/lib/paymentData'
+import { guardianName, outputItemTotal } from '../src/lib/invoiceOutput'
+import { invoiceTotal } from '../src/lib/money'
+import { nextInvoiceAllocation } from '../src/lib/invoiceNumbering'
 import { documentAt as at, documentDraft, documentFamily, editable, legacyFixture } from './documentFixtures'
 import { memoryStorage, sharedLock } from './storageHarness'
 import type { AppState, Invoice } from '../src/types'
@@ -67,7 +70,7 @@ function issuedFromOriginal(state: AppState): AppState {
 
 test('P04: Betrag, Datum, Texte und Empfaenger dürfen keine ausgestellte Version überschreiben', () => {
   const state = issued(); const original = state.invoices[0]
-  for (const field of [{ freeText: 'geändert' }, { introText: '' }, { invoiceDate: '2026-10-01' }, { recipients: (['g-b']).map((id) => ({ type: 'guardian' as const, id })) }, { items: [{ ...original.items[0], unitPrice: 99 }] }]) {
+  for (const field of [{ freeText: 'geändert' }, { invoiceDate: '2026-10-01' }, { recipients: (['g-b']).map((id) => ({ type: 'guardian' as const, id })) }, { items: [{ ...original.items[0], unitPrice: 99 }] }]) {
     assert.throws(() => saveInvoiceDraft(state, { ...editable(original), ...field }, false, at), /Finalisierte/)
     assert.throws(() => assertOriginalsPreserved(state, { ...state, invoices: [{ ...original, ...field }] }), /Finalisierte/)
   }
@@ -81,7 +84,7 @@ test('P04: Empfaenger A/B und leere historische Kontofelder sind für alle Ausga
   const raw = legacyFixture(issued())
   raw.invoices[0].guardianIds = ['g-b']
   Object.assign(raw.invoices[0].snapshot!, { accountHolder: 'HISTORISCHES KONTO', iban: 'DE02120300000000202051', bic: '', bankName: '' })
-  raw.settings.bic = 'MARKDEF1100'; raw.settings.accountHolder = 'HEUTIGES KONTO'; raw.settings.defaultLegalText = 'HEUTIGER RECHTSTEXT'
+  raw.settings.bic = 'MARKDEF1100'; raw.settings.accountHolder = 'HEUTIGES KONTO'
   let state = requireSuccess(inspectImport(JSON.stringify(raw))).state
   const version = state.documentVersions[0]
   assert.ok(version.conflicts.some((conflict) => conflict.path === 'recipients'))
@@ -133,9 +136,9 @@ test('P04: kontrollierte Migration eines Protokoll-4/Schema-3-Bestands bewahrt R
   assert.equal(session.revision!.datasetId, old.datasetId)
   const archive = JSON.parse(JSON.parse(session.exportRecoveryArchive()).recoveries[0].raw)
   assert.equal(archive.previousRaw, raw); assert.equal(archive.sourceRaw, raw)
-  assert.equal(archive.report.toSchema, 14)
+  assert.equal(archive.report.toSchema, 15)
   assert.equal(new StorageSession({ storage, lock: sharedLock() }).initial.status, 'ready')
-  const future = JSON.stringify({ ...old, schemaVersion: 15, data: { ...old.data, schemaVersion: 15 } })
+  const future = JSON.stringify({ ...old, schemaVersion: 16, data: { ...old.data, schemaVersion: 16 } })
   storage.setItem(STORAGE_KEY, future)
   await assert.rejects(new StorageSession({ storage, lock: sharedLock() }).restore(session.export()), /neuere Formate/)
   assert.equal(storage.getItem(STORAGE_KEY), future)
@@ -169,7 +172,7 @@ test('P04: bezahlte Korrekturen zählen genau einmal; Zahlungen werden nur manue
   state = changeInvoiceStatus(state, first.id, 'paid', at, '2026-09-05')
   const originalPayment = structuredClone(state.payments[0])
   state = createCorrectionDraft(state, first.id, 'Textkorrektur nach Zahlung', at)
-  state = saveInvoiceDraft(state, { ...editable(state.invoices.at(-1)!), introText: 'Korrigiert' }, true, at)
+  state = saveInvoiceDraft(state, { ...editable(state.invoices.at(-1)!), }, true, at)
   const replacement = state.invoices.at(-1)!
   assert.equal(state.payments.length, 1)
   assert.deepEqual(state.payments[0], originalPayment)
@@ -310,4 +313,5 @@ test('P04: Snapshot-Differenzen gelöschter Altrechnungen bleiben sichtbar, ohne
   assert.match(markup, /nicht rekonstruiert/)
   assert.throws(() => assertOriginalsPreserved(state, { ...state, historicalSnapshotCorrections: [] }), /Snapshot-Differenzen/)
 })
+
 

@@ -3,7 +3,7 @@ import type { AppState } from '../src/types'
 import type { LegacyState } from '../src/lib/importState'
 import { documentAt, documentDraft, documentFamily } from './documentFixtures'
 import { saveInvoiceDraft, changeInvoiceStatus } from '../src/lib/invoiceActions'
-import { studentCodeIndex } from '../src/lib/utils'
+import { studentCodeIndex } from '../src/lib/invoiceNumbering'
 
 export const duoLesson = { serviceDate: '2026-09-25', description: 'Rhythmusarbeit (Duo)', quantity: .75, unit: 'Std.' as const }
 export const households = [
@@ -27,8 +27,7 @@ export function duoDrafts(): AppState {
   households.forEach((household, index) => {
     const studentId = index === 0 ? 's-a' : 's-b'
     state = saveInvoiceDraft(state, { ...documentDraft(), recipients: ([index === 0 ? 'g-a' : 'g-b']).map((id) => ({ type: 'guardian' as const, id })), studentIds: [studentId],
-      introText: household.intro, freeText: household.free, legalText: household.legal,
-      items: [{ ...duoLesson, id: `duo-item-${index}`, studentId, lessonType: 'duo', unitPrice: index === 0 ? 10.10 : 20.02 }],
+      freeText: household.free, items: [{ ...duoLesson, id: `duo-item-${index}`, studentId, lessonType: 'duo', unitPrice: index === 0 ? 10.10 : 20.02 }],
     }, false, documentAt, () => `duo-invoice-${index}`)
   })
   return state
@@ -49,3 +48,4 @@ export function legacyDuoState(schemaVersion: 8 | 9 = 9, issued = false) {
     id: string; targets: { invoiceId: string; itemId: string }[]; lesson: typeof duoLesson; totalCents: number
   }[] }
 }
+

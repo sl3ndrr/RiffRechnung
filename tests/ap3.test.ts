@@ -20,7 +20,7 @@ function family(): AppState {
   return state
 }
 function draft(price: number): InvoiceDraft {
-  return { invoiceDate: '2026-09-25', dueDate: '2026-10-09', period: 'September 2026', recipients: (['contact']).map((id) => ({ type: 'guardian' as const, id })), studentIds: ['child'], recipientStrategy: 'joint', items: [{ id: 'item-1', studentId: 'child', serviceDate: '2026-09-25', lessonType: 'solo', description: 'Unterricht', quantity: 1, unit: 'Std.', unitPrice: price }], introText: 'Unterricht', freeText: '', legalText: 'Steuerbefreiung für Kleinunternehmer (§ 19 UStG).' }
+  return { invoiceDate: '2026-09-25', dueDate: '2026-10-09', period: 'September 2026', recipients: (['contact']).map((id) => ({ type: 'guardian' as const, id })), studentIds: ['child'], recipientStrategy: 'joint', items: [{ id: 'item-1', studentId: 'child', serviceDate: '2026-09-25', lessonType: 'solo', description: 'Unterricht', quantity: 1, unit: 'Std.', unitPrice: price }], freeText: '', }
 }
 function print(state: AppState): string {
   return renderToStaticMarkup(createElement(InvoicePrint, { invoice: state.invoices[0], guardians: state.guardians, students: state.students, settings: state.settings }))
@@ -44,7 +44,7 @@ test('AP3: fünf mehrteilige Altnamen bleiben nach 7→9, Export und Import unve
   const before = JSON.stringify(legacy)
   const preview = requireSuccess(inspectImport(before))
   assert.equal(preview.report?.fromSchema, 7)
-  assert.equal(preview.report?.toSchema, 14)
+  assert.equal(preview.report?.toSchema, 15)
   assert.deepEqual(preview.state.guardians.map(({ name }) => name), names)
   assert.deepEqual(requireSuccess(inspectImport(JSON.stringify(preview.state))).state.guardians, preview.state.guardians)
   assert.equal(preview.rawData, before)
@@ -70,11 +70,10 @@ test('AP3: Altentwurf ohne damals gesicherte Druckdaten übernimmt keine heutige
   delete state.invoices[0].draftPrintSnapshot
   state.guardians[0].name = 'Heutiger Kontakt'
   state.settings.issuer.name = 'Heutiger Aussteller'
-  state.settings.defaultLegalText = 'Heutiger Rechtstext'
-  state.invoices[0].legalText = ''
   const output = print(state)
   assert.match(output, /ENTWURF/)
   assert.doesNotMatch(output, /Heutiger Kontakt|Heutiger Aussteller|Heutiger Rechtstext/)
   assert.doesNotMatch(output, /<dt>Straße:<\/dt>|<dt>PLZ\/Ort:<\/dt>|<p class="invoice-senderline"><\/p>/)
 })
+
 

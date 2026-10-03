@@ -1,3 +1,4 @@
+import { cleanInvoiceTexts } from './legacyInvoiceTexts'
 import type { AppState, Invoice } from '../types'
 
 export const FINALIZED_INVOICE_BLOCKED = 'Finalisierte Belege bleiben unverändert erhalten. Inhaltliche Änderungen benötigen einen verknüpften Korrekturentwurf mit Grund. Zahlungs- und Versanddaten werden getrennt verwaltet.'
@@ -24,6 +25,8 @@ function originalContent(invoice: Invoice): string {
 }
 
 export function assertOriginalsPreserved(current: AppState, next: AppState): void {
+  // P09 permits deletion of these text fields only; every other original value stays protected.
+  if ((current as { schemaVersion: number }).schemaVersion < 15) current = cleanInvoiceTexts(current)
   for (const evidence of current.historicalSnapshotCorrections) {
     if (!next.historicalSnapshotCorrections.some((entry) => entry.id === evidence.id && canonical(entry) === canonical(evidence))) throw new Error('Historische Snapshot-Differenzen müssen unverändert erhalten bleiben.')
   }
@@ -60,3 +63,4 @@ export function assertReplacementAllowed(state: AppState): void {
     throw new Error('Zurücksetzen ist für Bestände mit ausgestellten Belegen, historischer Dokumentation oder reservierten Nummern nicht verfügbar. Nutze Archivierung oder eine geprüfte Wiederherstellung; Originale und Nummern bleiben erhalten.')
   }
 }
+

@@ -5,7 +5,9 @@ import type { AppState, Guardian, Student } from '../types'
 import { contactNameError } from '../lib/contactName'
 import { EmptyState } from '../components/EmptyState'
 import { Modal } from '../components/Modal'
-import { sortPeople, studentCodeForIndex, uid, type PeopleSortMode } from '../lib/utils'
+import { sortPeople, type PeopleSortMode } from '../lib/utils'
+import { studentCodeForIndex } from '../lib/invoiceNumbering'
+import { uid } from '../lib/identities'
 
 const GUARDIAN_FORM_ID = 'guardian-entry-form'
 const STUDENT_FORM_ID = 'student-entry-form'
@@ -151,3 +153,4 @@ export function People({ state, onSaveGuardian, onSaveStudent, onDeleteGuardian,
     </div>
   )
 }
+

@@ -24,13 +24,15 @@ test('P06 Browser: geschützter Schema-11-Umstieg, festes Format, gemeinsame Emp
   await expect(page.getByText(/Platzhalter:/)).toHaveCount(0)
   await expect(page.locator('.number-preview')).toContainText('-0023-a')
   const result = await page.evaluate(async () => {
-    const storagePath = '/src/lib/storage.ts', actionsPath = '/src/lib/invoiceActions.ts', utilsPath = '/src/lib/utils.ts'
+    const storagePath = '/src/lib/storage.ts', actionsPath = '/src/lib/invoiceActions.ts'
     const { StorageSession } = await import(storagePath)
     const { saveInvoiceDraft } = await import(actionsPath)
-    const { nextInvoiceAllocation, buildEpcPayload } = await import(utilsPath)
+    const paymentPath = '/src/lib/paymentData.ts', numberingPath = '/src/lib/invoiceNumbering.ts'
+    const { buildEpcPayload } = await import(paymentPath)
+    const { nextInvoiceAllocation } = await import(numberingPath)
     const session = new StorageSession()
     const base = session.state.invoices[0]
-    const draft = { invoiceDate: base.invoiceDate, dueDate: base.dueDate, period: base.period, studentIds: base.studentIds, recipientStrategy: 'joint', introText: base.introText, freeText: base.freeText, legalText: base.legalText, recipients: [{ type: 'guardian', id: 'g-a' }, { type: 'guardian', id: 'g-b' }], items: base.items.map((item: { id: string }) => ({ ...item, id: 'p06-single-item' })) }
+    const draft = { invoiceDate: base.invoiceDate, dueDate: base.dueDate, period: base.period, studentIds: base.studentIds, recipientStrategy: 'joint', freeText: base.freeText, recipients: [{ type: 'guardian', id: 'g-a' }, { type: 'guardian', id: 'g-b' }], items: base.items.map((item: { id: string }) => ({ ...item, id: 'p06-single-item' })) }
     await session.change((state: Parameters<typeof saveInvoiceDraft>[0]) => saveInvoiceDraft(state, draft, true))
     const single = session.state.invoices.at(-1)
     const reverse = nextInvoiceAllocation(session.state, base.invoiceDate, ['s-b', 's-a'])
@@ -47,8 +49,9 @@ test('P06 Browser: geschützter Schema-11-Umstieg, festes Format, gemeinsame Emp
   expect(result.payload).toContain('Rechnung 2026-0003-a+b')
   await page.reload()
   const state = parseBackup((await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY))!)
-  expect(state.schemaVersion).toBe(14)
+  expect(state.schemaVersion).toBe(15)
   expect(state.invoices[0]).toEqual(legacyVersionedFixture(issued, 13).invoices[0])
   expect(state.documentVersions[0]).toEqual(legacyVersionedFixture(issued, 13).documentVersions[0])
   expect(state.students.map((person) => person.billingCode)).toEqual(['a', 'b'])
 })
+
