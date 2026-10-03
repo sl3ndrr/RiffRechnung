@@ -1,4 +1,5 @@
 import './p09-drafts-rules.test'
+import './p11-simple-invoice-pdf.test'
 import './p09-invoice-texts.test'
 import './p08-derived-invoice-state.test'
 import './p07-document-output.test'
@@ -339,7 +340,7 @@ test('P09: Feste Einleitung, Privatzeile und unveränderter mehrzeiliger Hinweis
   assert.match(markup, /Erste wichtige Zeile/)
   assert.match(markup, /Zweite wichtige Zeile/)
   assert.match(markup, /class="invoice-footer"/)
-  assert.match(markup, /Seitenzahl im Seitenrand/)
+  assert.doesNotMatch(markup, /Seitenzahl im Seitenrand|GiroCode gedruckt|Kein GiroCode/)
 
   const pageStyle = buildInvoicePrintPageStyle('2026-a-0001')
   assert.match(pageStyle, /@bottom-right \{[\s\S]*Seite " counter\(page\) " von " counter\(pages\)/)
