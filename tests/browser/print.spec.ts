@@ -7,6 +7,9 @@ import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
 import { serializeBackup } from '../../src/lib/storage'
 import { buildEpcPayload } from '../../src/lib/paymentData'
 import { invoiceTotal } from '../../src/lib/money'
+import { selectInvoice } from '../../src/lib/documents'
+import { euro } from '../../src/lib/utils'
+import { p11Cases, p11State } from '../p11PrintFixtures'
 
 async function seed(page: Page, state: AppState) {
   await page.goto('/')
@@ -45,7 +48,7 @@ function printableState(itemCount: number, freeText = ''): AppState {
   return saveInvoiceDraft(state, draft, true, documentAt)
 }
 
-async function createPdf(page: Page, state: AppState, invoiceId: string, label: string, testInfo: TestInfo): Promise<{ pages: number; text: string }> {
+async function createPdf(page: Page, state: AppState, invoiceId: string, label: string, testInfo: TestInfo): Promise<{ pages: number; text: string; flowText: string; payload: string }> {
   const rendering = await page.context().newPage()
   try {
     await rendering.goto('/')
@@ -62,6 +65,7 @@ async function createPdf(page: Page, state: AppState, invoiceId: string, label: 
     const info = execFileSync('pdfinfo', [path], { encoding: 'utf8' })
     const pages = Number(info.match(/^Pages:\s+(\d+)$/m)?.[1] ?? 0)
     const text = execFileSync('pdftotext', ['-layout', path, '-'], { encoding: 'utf8' })
+    const flowText = execFileSync('pdftotext', ['-raw', path, '-'], { encoding: 'utf8' })
     const prefix = testInfo.outputPath(`${label}-page`)
     execFileSync('pdftoppm', ['-png', '-f', '1', '-l', String(Math.max(1, pages)), path, prefix])
     const images = (await readdir(testInfo.outputDir)).filter((name) => name.startsWith(`${label}-page-`) && name.endsWith('.png')).sort()
@@ -69,7 +73,8 @@ async function createPdf(page: Page, state: AppState, invoiceId: string, label: 
       await testInfo.attach(image, { path: testInfo.outputPath(image), contentType: 'image/png' })
     }
     await testInfo.attach(`${label}.pdf`, { body: pdf, contentType: 'application/pdf' })
-    return { pages, text }
+    const payload = await rendering.evaluate(() => document.documentElement.dataset.giroPayload ?? '')
+    return { pages, text, flowText, payload }
   } finally {
     await rendering.close()
   }
@@ -107,6 +112,84 @@ test('P09 Browser/PDF: ein-, zwei- und mehrseitige Rechnungen behalten Text, Was
   expect(draftPdf.text).toContain('ENTWURF')
 })
 
+for (const example of p11Cases) test(`P11 Browser/PDF: ${example}, eingefrorene Anschriften und Beträge`, async ({ page }, testInfo) => {
+  const state = p11State(example)
+  const invoice = selectInvoice(state, state.invoices[0])
+  const snapshot = state.documentVersions[0].outputSnapshot
+  const expectedPayload = buildEpcPayload(invoice, state.settings, invoiceTotal(invoice))
+  // Re-output must survive later changes in every current master-data source.
+  state.guardians.forEach((person) => { person.name = 'HEUTIGER EMPFÄNGER'; person.address.street = 'HEUTIGE ANSCHRIFT' })
+  state.students.forEach((person) => { person.name = 'HEUTIGE LERNENDE' })
+  state.settings.issuer.name = 'HEUTIGER ABSENDER'
+  Object.assign(state.settings, { accountHolder: 'HEUTIGES KONTO', iban: 'DE89370400440532013000', bic: 'COBADEFFXXX', bankName: 'HEUTIGE BANK', defaultLegalText: 'ALTER RECHTSTEXT' })
+  const pdf = await createPdf(page, state, invoice.id, `p11-${example}`, testInfo)
+  const normalized = pdf.text.replace(/\s+/g, ' ').trim()
+  // Layout extraction interleaves the adjacent metadata into wrapped addresses.
+  // Preserve the whole-name assertion using the PDF's ordinary text flow.
+  const recipientText = pdf.flowText.replace(/\s+/g, ' ').trim()
+  for (const recipient of snapshot.recipients) {
+    expect(recipientText).toContain(recipient.name)
+    if (recipient.street) expect(recipientText).toContain(recipient.street)
+    const place = [recipient.postalCode, recipient.city].filter(Boolean).join(' ')
+    if (place) expect(recipientText).toContain(place)
+  }
+  if (example === 'identische-anschriften') expect(normalized.split('Testweg 2')).toHaveLength(3)
+  expect(normalized).toContain(invoice.number!)
+  expect(normalized).toContain(euro.format(invoiceTotal(invoice)).replace(/\s+/g, ' '))
+  expect(normalized).toContain('DE02 1203 0000 0000 2020 51')
+  expect(pdf.payload).toBe(expectedPayload)
+  expect(pdf.text).not.toMatch(/HEUTIG|ALTER RECHTSTEXT|Zwischensumme|Seitenzahl im Seitenrand|Kein GiroCode|Ohne GiroCode|BIC:|Bank:|–/)
+  const pages = pdf.text.split('\f').filter((text) => text.trim())
+  const sumPage = pages.findIndex((text) => /\bSumme\b/.test(text))
+  expect(pages.flatMap((text, i) => text.includes('Privatrechnung') ? [i] : [])).toEqual([sumPage])
+  expect(normalized.split('Privatrechnung')).toHaveLength(2)
+  expect(normalized).toMatch(/Summe [\d.,]+ € Privatrechnung/)
+  expect(normalized.split(snapshot.issuer.name)).toHaveLength(2)
+  expect(normalized).toContain(invoice.freeText.split('\n').at(-1)!)
+  if (example === 'mehrseitig' || example === 'zwei-anschriften') {
+    expect(normalized).toMatch(/Testkind A .*?P11 Position 1:/)
+    expect(normalized).toMatch(/Testkind B .*?P11 Position 2:/)
+    expect(normalized).toContain('0,75 Std.')
+    expect(normalized).toContain('2 Pauschale')
+    expect(normalized).toContain('3 Stück')
+    expect(normalized).toContain(`P11 Position ${invoice.items.length}:`)
+  }
+  if (example === 'mehrseitig') expect(pdf.pages).toBeGreaterThanOrEqual(5)
+  if (example === 'langer-hinweis') expect(pdf.pages).toBeGreaterThanOrEqual(2)
+  for (let i = 1; i <= pdf.pages; i++) expect(pdf.text).toContain(`Seite ${i} von ${pdf.pages}`)
+  // Word boxes verify that ordinary text stays inside the content area and
+  // cannot overlap the page-number footer. Images are reviewed separately.
+  const bbox = execFileSync('pdftotext', ['-bbox', testInfo.outputPath(`p11-${example}.pdf`), '-'], { encoding: 'utf8' })
+  const boxPages = [...bbox.matchAll(/<page width="([\d.]+)" height="([\d.]+)">([\s\S]*?)<\/page>/g)]
+  expect(boxPages).toHaveLength(pdf.pages)
+  for (const match of boxPages) {
+    const width = Number(match[1]), height = Number(match[2]), margin = 20 * 72 / 25.4, bottom = height - 22 * 72 / 25.4
+    const words = [...match[3].matchAll(/<word xMin="(-?[\d.]+)" yMin="(-?[\d.]+)" xMax="(-?[\d.]+)" yMax="(-?[\d.]+)">([^<]*)<\/word>/g)]
+    expect(words.length).toBeGreaterThan(0)
+    for (const word of words) {
+      const [xMin, yMin, xMax, yMax] = word.slice(1, 5).map(Number)
+      expect(xMin, word[5]).toBeGreaterThanOrEqual(margin - 2)
+      expect(xMax, word[5]).toBeLessThanOrEqual(width - margin + 2)
+      expect(yMin, word[5]).toBeGreaterThanOrEqual(0)
+      if (yMin >= bottom) expect(word[5]).toMatch(/^(Seite|von|\d+)$/)
+      else expect(yMax, word[5]).toBeLessThanOrEqual(bottom + 2)
+    }
+  }
+  await testInfo.attach(`p11-${example}-checks.json`, { body: Buffer.from(JSON.stringify({ recipients: snapshot.recipients, number: invoice.number, totalCents: state.documentVersions[0].amounts.totalCents, payload: pdf.payload, pages: pdf.pages }, null, 2)), contentType: 'application/json' })
+})
+
+test('P11 Browser/PDF: fehlendes historisches Konto bleibt leer trotz aktueller Zahlungsdaten', async ({ page }, testInfo) => {
+  const state = p11State('zwei-anschriften')
+  Object.assign(state.documentVersions[0].outputSnapshot, { accountHolder: '', iban: '', bic: '', bankName: '' })
+  Object.assign(state.settings, { accountHolder: 'AKTUELLES KONTO', iban: 'DE89370400440532013000', bic: 'COBADEFFXXX', bankName: 'AKTUELLE BANK' })
+  const pdf = await createPdf(page, state, state.invoices[0].id, 'p11-historisch-ohne-konto', testInfo)
+  expect(pdf.payload).toBe('')
+  expect(pdf.text).not.toMatch(/AKTUELLE|DE89|Kontoinhaber:|IBAN:|BIC:|Bank:|Kein GiroCode|–/)
+  expect(pdf.text).toContain('Empfaenger A')
+  expect(pdf.text).toContain('Empfaenger B')
+  expect(pdf.text).toContain('38,58')
+})
+
 test('P01 Browser/PDF: genau eine Privatzeile auf der Seite der Endsumme, auch mehrseitig', async ({ page }, testInfo) => {
   for (const count of [1, 108]) {
     const issued = printableState(count, 'Unveränderter freier Rechtstext')
@@ -115,7 +198,7 @@ test('P01 Browser/PDF: genau eine Privatzeile auf der Seite der Endsumme, auch m
     const finalPage = pages.findIndex((text) => /\bSumme\b/.test(text))
     expect(pages.flatMap((text, i) => text.includes('Privatrechnung') ? [i] : [])).toEqual([finalPage])
     expect(pdf.text.split('Privatrechnung')).toHaveLength(2)
-    expect(pdf.text.replace(/\s+/g, ' ')).toMatch(/Summe .*?Privatrechnung Bitte überweisen Sie/)
+    expect(pdf.text.replace(/\s+/g, ' ')).toMatch(/Summe .*?Privatrechnung Zahlbar bis/)
     expect(pdf.text).not.toMatch(/Steuernummer:|Steuerbefreiung|Kleinbetragsrechnung/)
     expect(pdf.text).toContain('Unveränderter freier Rechtstext')
   }
@@ -192,6 +275,8 @@ test('P09 Browser: abgelehnte QR-Erzeugung und ein verspäteter früherer Auftra
       const { mountDocumentRace } = await import(harnessModule)
       mountDocumentRace(state, firstId, secondId)
     }, { state: pair, firstId: pair.invoices[0].id, secondId: second.id })
+    await expect.poll(() => race.evaluate(() => document.documentElement.dataset.firstEncoderStarted)).toBe('yes')
+    await expect.poll(() => race.evaluate(() => document.documentElement.dataset.firstEncoderReleased)).toBe('yes')
     await expect.poll(() => race.evaluate(() => document.documentElement.dataset.documentReady)).toBe(second.id)
     expect(await race.evaluate(() => document.documentElement.dataset.giroPayload)).toBe(expectedPayload)
     await expect(race.locator('.invoice-paper')).toContainText(second.number!)
@@ -202,20 +287,30 @@ test('P09 Browser: abgelehnte QR-Erzeugung und ein verspäteter früherer Auftra
   }
 })
 
-test('P09 Browser: ungültige historische BIC bietet den bewussten Druck ohne GiroCode', async ({ page }) => {
+test('P09 Browser: ungültige historische BIC bietet den bewussten Druck ohne GiroCode', async ({ page }, testInfo) => {
   const state = printableState(2)
   state.invoices[0].snapshot!.bic = 'UNGÜLTIG!'
   state.documentVersions[0].outputSnapshot.bic = 'UNGÜLTIG!'
   await seed(page, state)
-  await page.evaluate(() => { window.print = () => undefined })
+  await page.evaluate(() => { window.print = () => { document.documentElement.dataset.printCalls = String(Number(document.documentElement.dataset.printCalls ?? '0') + 1) } })
   await page.getByRole('button', { name: /^Rechnungen/ }).first().click()
   await page.getByRole('button', { name: state.invoices[0].number!, exact: true }).click()
   await page.getByRole('button', { name: 'PDF / Drucken', exact: true }).click()
   const dialog = page.getByRole('alertdialog', { name: 'GiroCode nicht verfügbar' })
   await expect(dialog).toContainText('BIC')
+  expect(await page.evaluate(() => document.documentElement.dataset.printCalls)).toBeUndefined()
   await dialog.getByRole('button', { name: 'Ohne GiroCode drucken', exact: true }).click()
-  await expect(page.locator('.print-root .invoice-girocode-notice')).toContainText('Ohne GiroCode gedruckt')
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.printCalls)).toBe('1')
+  await expect(page.locator('.print-root')).not.toContainText(/Ohne GiroCode gedruckt|GiroCode nicht verfügbar|Seitenzahl im Seitenrand/)
   await expect(page.locator('.print-root .invoice-qr img')).toHaveCount(0)
   await expect(page.locator('.print-root')).toContainText('DE02 1203 0000 0000 2020 51')
+  const pdf = await page.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true })
+  const path = testInfo.outputPath('p11-qr-fallback.pdf')
+  await writeFile(path, pdf)
+  const text = execFileSync('pdftotext', ['-layout', path, '-'], { encoding: 'utf8' })
+  expect(text).not.toMatch(/Ohne GiroCode|GiroCode nicht verfügbar|Seitenzahl im Seitenrand|Mit Banking-App scannen/)
+  expect(text).toContain('DE02 1203 0000 0000 2020 51')
+  expect(text).toContain(state.invoices[0].number!)
+  execFileSync('pdftoppm', ['-png', path, testInfo.outputPath('p11-qr-fallback-page')])
+  await testInfo.attach('p11-qr-fallback.pdf', { body: pdf, contentType: 'application/pdf' })
 })
-

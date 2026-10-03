@@ -10,7 +10,6 @@ export interface PrintRequest {
   students: Student[]
   settings: Settings
   includeGiroCode: boolean
-  giroCodeFallbackReason?: string
 }
 
 export type GiroCodeResolution =
@@ -77,4 +76,5 @@ export function resolveGiroCode(
 export function isCurrentPrintRequest(request: PrintRequest | null, requestId: string, invoiceId: string): request is PrintRequest {
   return Boolean(request && request.id === requestId && request.invoice.id === invoiceId)
 }
+
 
