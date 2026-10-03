@@ -80,8 +80,7 @@ export function prepareInvoiceCopy(state: AppState, invoiceId: string, targetDat
     })
     const draft: InvoiceDraft = {
       ...invoiceDraftFields(invoice), invoiceDate: localToday(targetDate), dueDate: calculateDueDate(localToday(targetDate), state.settings.paymentTermDays),
-      studentIds: [...invoice.studentIds], recipients: structuredClone(recipientRefs(invoice)),
-      recipientStrategy: invoice.recipientStrategy, items, freeText: invoice.freeText,
+      items,
     }
     // Preview uses the same draft rules; no generated invoice ID or full stock write.
     const errors = invoiceDraftErrors(state, draft)
@@ -166,4 +165,3 @@ export function resetUnissuedState(state: AppState): CommandResult<AppState> {
     return next
   })
 }
-
