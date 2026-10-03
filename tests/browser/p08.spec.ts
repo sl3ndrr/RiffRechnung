@@ -1,3 +1,4 @@
+import { navigateToInvoices } from './navigation'
 import { test, expect, type Page } from '@playwright/test'
 import type { AppState } from '../../src/types'
 import { documentAt, documentDraft, documentFamily, legacyVersionedFixture } from '../documentFixtures'
@@ -19,6 +20,7 @@ async function seed(page: Page, state: AppState | string) {
 }
 const detail = (page: Page) => page.locator('.invoice-detail')
 async function open(page: Page, number = '2026-0001-a') {
+  await navigateToInvoices(page)
   await page.getByRole('button', { name: number, exact: true }).click()
   await expect(detail(page)).toBeVisible()
 }

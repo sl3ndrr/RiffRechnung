@@ -4,8 +4,65 @@ import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
 import { serializeBackup, STORAGE_KEY } from '../../src/lib/storage'
 import type { AppState } from '../../src/types'
 import { readFileSync } from 'node:fs'
+import { dashboardFixture, dashboardNow } from '../dashboardFixtures'
 
 const { version } = JSON.parse(readFileSync('package.json', 'utf8')) as { version: string }
+
+for (const width of [320, 390, 1280]) {
+  for (const theme of ['light', 'dark'] as const) {
+    test(`3.AP3 Accessibility: Dashboard bei ${width}px in ${theme}`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height: 900 })
+      await page.clock.setFixedTime(dashboardNow)
+      const state = dashboardFixture()
+      state.settings.theme = theme
+      await seed(page, state)
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Guten Morgen, Anna')
+      const navigation = page.locator(width <= 820 ? '.mobile-bottom-nav' : '.sidebar nav')
+      await expect(navigation.getByRole('button')).toHaveCount(4)
+      await expect(navigation.getByRole('button', { name: 'Dashboard', exact: true })).toHaveAttribute('aria-current', 'page')
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+      if (width <= 820) {
+        const fit = await navigation.getByRole('button').evaluateAll((buttons) => buttons.every((button) => {
+          const rect = button.getBoundingClientRect(), label = button.querySelector('span')!.getBoundingClientRect()
+          return rect.width >= 44 && rect.height >= 44 && label.left >= rect.left && label.right <= rect.right && rect.right <= window.innerWidth
+        }))
+        expect(fit).toBe(true)
+      }
+      const colors = await page.locator('.dashboard-page h1, .dashboard-page h2, .dashboard-stat__value, .dashboard-stat p, .dashboard-open-row span, .dashboard-open-row strong, .dashboard-open-row small, .dashboard-chart__value').evaluateAll((elements) => elements.map((element) => {
+        let ancestor: Element | null = element
+        let background = 'rgba(0, 0, 0, 0)'
+        while (ancestor && (background === 'rgba(0, 0, 0, 0)' || background === 'transparent')) {
+          background = getComputedStyle(ancestor).backgroundColor
+          ancestor = ancestor.parentElement
+        }
+        return [getComputedStyle(element).color, background]
+      }))
+      for (const [foreground, background] of colors) expect(contrast(foreground, background)).toBeGreaterThanOrEqual(4.5)
+      const row = page.locator('.dashboard-open-row').first()
+      await tabTo(page, row)
+      const focus = await row.evaluate((element) => {
+        const style = getComputedStyle(element)
+        return { width: Number.parseFloat(style.outlineWidth), style: style.outlineStyle, color: style.outlineColor, background: getComputedStyle(element.closest('.surface')!).backgroundColor }
+      })
+      expect(focus.width).toBeGreaterThanOrEqual(3)
+      expect(focus.style).not.toBe('none')
+      expect(contrast(focus.color, focus.background)).toBeGreaterThanOrEqual(3)
+      await row.scrollIntoViewIfNeeded()
+      await testInfo.attach(`dashboard-${width}-${theme}.png`, { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
+      const year = page.getByRole('combobox', { name: 'Jahr für Zahlungseingang', exact: true })
+      await tabTo(page, year)
+      await year.selectOption('2025')
+      const table = page.getByRole('table', { name: /Zahlungseingang pro Monat 2025/ })
+      await expect(table.locator('tbody tr')).toHaveCount(12)
+      await expect(table.getByRole('row', { name: /Dezember/ })).toContainText('50,00')
+      const chart = page.getByRole('group', { name: /Monatsdiagramm/ })
+      await tabTo(page, chart)
+      await page.keyboard.press('ArrowRight')
+      if (width <= 820) await expect.poll(() => chart.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0)
+    })
+  }
+}
 
 async function seed(page: Page, state: AppState) {
   await page.goto('/')
@@ -291,12 +348,14 @@ test('P10 Browser: Datei-, Chip- und Theme-Eingaben markieren das sichtbare Bedi
 })
 
 for (const width of [390, 1280]) {
-  test(`P02 Browser: Rechnungen starten direkt, Navigation, Suche und Statusfilter bleiben bei ${width} Pixeln`, async ({ page }) => {
+  test(`P02/3.AP3 Browser: Dashboard startet, Navigation, Suche und Statusfilter bleiben bei ${width} Pixeln`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await seed(page, saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt))
+    await expect(page.locator('.dashboard-page')).toBeVisible()
+    await invoices(page, width === 390)
     await expect(page.getByRole('heading', { name: 'Rechnungen', exact: true })).toBeVisible()
     const navigation = page.locator(width === 390 ? '.mobile-bottom-nav' : '.sidebar nav')
-    await expect(navigation.getByRole('button')).toHaveCount(3)
+    await expect(navigation.getByRole('button')).toHaveCount(4)
     await expect(navigation.getByRole('button', { name: 'Rechnungen', exact: true })).toHaveAttribute('aria-current', 'page')
     await navigation.getByRole('button', { name: 'Personen', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Personen', exact: true })).toBeVisible()
@@ -322,7 +381,7 @@ for (const width of [390, 1280]) {
 
 test('P02 Browser: kompakte Einrichtung, ein isolierter Demo-Einstieg und Info-Link', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Rechnungen', exact: true })).toBeVisible()
+  await expect(page.locator('.dashboard-page')).toBeVisible()
   await expect(page.getByRole('region', { name: 'Einrichtung', exact: true })).toBeVisible()
   const demo = page.getByRole('button', { name: 'Mit Beispieldaten testen', exact: true })
   await expect(demo).toHaveCount(1)
