@@ -1,8 +1,10 @@
 # RiffRechnung
 
 RiffRechnung verwaltet Privatrechnungen für Unterricht lokal im Browser.
-Die Arbeitsoberfläche besteht aus **Rechnungen**, **Personen** und **Einstellungen**.
+Die Arbeitsoberfläche startet im **Dashboard** und bietet **Rechnungen**, **Personen** und **Einstellungen**.
 Der Demo-Einstieg arbeitet mit Beispieldaten getrennt vom echten Bestand.
+
+Das Dashboard zeigt Zahlungseingänge im gewählten Jahr, offene Restbeträge, Entwürfe und Personenzahlen. Die Monatsansicht verwendet bestätigte Zahlungstage; Zahlungen ohne bestätigten Tag erscheinen als gesonderter Hinweis. Offene Rechnungen stehen mit überfälligen zuerst und lassen sich direkt öffnen. Bei mehr als acht Einträgen führt **Alle in Rechnungen anzeigen** zur vollständigen Liste mit dem Filter **Noch nicht gezahlt**. Eine dezente Erinnerung bietet den JSON-Export an, wenn Rechnungen vorhanden sind und das letzte Backup mehr als 30 Tage zurückliegt oder fehlt.
 
 ## Einrichten und Personen anlegen
 

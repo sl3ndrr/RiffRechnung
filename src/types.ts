@@ -1,5 +1,5 @@
 export type ThemeMode = 'system' | 'light' | 'dark'
-export type PageKey = 'invoices' | 'people' | 'settings'
+export type PageKey = 'dashboard' | 'invoices' | 'people' | 'settings'
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue'
 export type RecipientStrategy = 'joint' | 'separate'
 export type LessonType = 'solo' | 'duo'
@@ -240,4 +240,3 @@ export interface InvoiceDraft {
   items: InvoiceItem[]
   freeText: string
 }
-

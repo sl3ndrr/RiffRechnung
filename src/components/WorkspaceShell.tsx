@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { BookUser, Menu, ReceiptText, Settings as SettingsIcon, X } from 'lucide-react'
+import { BookUser, LayoutDashboard, Menu, ReceiptText, Settings as SettingsIcon, X } from 'lucide-react'
 import type { PageKey, Settings, ThemeMode } from '../types'
 import { APP_VERSION } from '../version'
 import { ThemeSwitch } from './ThemeSwitch'
 
 const navItems: Array<{ key: PageKey; label: string; icon: typeof ReceiptText }> = [
+  { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { key: 'invoices', label: 'Rechnungen', icon: ReceiptText },
   { key: 'people', label: 'Personen', icon: BookUser },
   { key: 'settings', label: 'Einstellungen', icon: SettingsIcon },

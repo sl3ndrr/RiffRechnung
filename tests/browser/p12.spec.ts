@@ -1,3 +1,4 @@
+import { navigateToInvoices } from './navigation'
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import type { AppState } from '../../src/types'
 import { documentAt, documentDraft, documentFamily } from '../documentFixtures'
@@ -12,6 +13,7 @@ async function seed(page: Page, state: AppState) {
     await new StorageSession().restore(raw)
   }, serializeBackup(state))
   await page.reload()
+  await navigateToInvoices(page)
 }
 
 async function tabTo(page: Page, target: Locator) {
