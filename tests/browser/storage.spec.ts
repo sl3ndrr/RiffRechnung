@@ -1,14 +1,14 @@
 import { test, expect, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { emptyState } from '../../src/lib/defaults'
-import { expectedTextless } from '../documentFixtures'
-import { serializeBackup, STORAGE_KEY, LEGACY_STORAGE_KEY } from '../../src/lib/storage'
+import { serializeBackup, STORAGE_KEY } from '../../src/lib/storage'
 
 async function settings(page: Page) {
   await page.getByRole('button', { name: 'Einstellungen', exact: true }).click()
 }
 async function save(page: Page) { await page.getByRole('button', { name: 'Jetzt speichern', exact: true }).click(); await expect(page.getByRole('button', { name: 'Lokal gespeichert', exact: true })).toBeDisabled() }
 async function stored(page: Page) { return page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY) }
+
 
 test('echter Browser: Einstellung, sofortiger Ansichtswechsel, Schließen und erneutes Öffnen', async ({ page, context, browser }) => {
   console.log(`Browser: ${browser.version()}; Node: ${process.version}; Plattform: ${process.platform}`)
@@ -32,6 +32,7 @@ test('echter Browser: Einstellung, sofortiger Ansichtswechsel, Schließen und er
   expect(await stored(reopened)).toBe(raw)
 })
 
+
 test('zwei echte Tabs: native Web Locks verhindern das Überschreiben durch einen veralteten Tab', async ({ page, context }) => {
   await page.goto('/')
   await settings(page)
@@ -54,6 +55,7 @@ test('zwei echte Tabs: native Web Locks verhindern das Überschreiben durch eine
   await settings(second)
   await expect(second.getByLabel('Name / Geschäftsbezeichnung', { exact: true })).toHaveValue('Erster Tab gewinnt')
 })
+
 
 test('echter Browser: beschädigte Rohdaten exportieren, Backup bestätigen, persistieren und neu laden', async ({ page }) => {
   await page.goto('/')
@@ -79,6 +81,7 @@ test('echter Browser: beschädigte Rohdaten exportieren, Backup bestätigen, per
   const archives = await page.evaluate(() => Object.keys(localStorage).filter((key) => key.includes('-recovery-')).map((key) => JSON.parse(localStorage.getItem(key)!)))
   expect(archives[0].previousRaw).toBe(corrupt)
 })
+
 
 test('echter Browser: isolierte Demo mit realem OPFS-Handle und IndexedDB erhält Echtbestand und Dateien', async ({ playwright }, testInfo) => {
   // Chromium 153 crashes when deserializing OPFS handles in an incognito context.
@@ -161,6 +164,7 @@ test('echter Browser: isolierte Demo mit realem OPFS-Handle und IndexedDB erhäl
   } finally { await context.close() }
 })
 
+
 test('mobil: wesentlicher Speicherstatus bleibt bei 390 Pixeln sichtbar', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
@@ -170,6 +174,7 @@ test('mobil: wesentlicher Speicherstatus bleibt bei 390 Pixeln sichtbar', async 
   expect(box).not.toBeNull()
   expect(box!.x + box!.width).toBeLessThanOrEqual(390)
 })
+
 
 
 test('zwei echte Tabs: zeitgleich gestartete Einstellungen erzeugen nur einen gültigen Folgestand', async ({ page, context }) => {
@@ -193,45 +198,6 @@ test('zwei echte Tabs: zeitgleich gestartete Einstellungen erzeugen nur einen g�
   expect(await stored(second)).toBe(await stored(page))
 })
 
-test('tatsächlich geöffnete Altversion: kontrollierter Umstieg schützt den neuen Schlüssel auch nach Reload', async ({ page, context }) => {
-  await page.goto('/legacy/index.html')
-  await settings(page)
-  await expect(page.getByRole('button', { name: 'Automatisch gespeichert', exact: true })).toBeVisible()
-  await page.getByLabel('Name / Geschäftsbezeichnung', { exact: true }).fill('Historischer synthetischer Bestand')
-  await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '{}').settings?.issuer?.name, LEGACY_STORAGE_KEY)).toBe('Historischer synthetischer Bestand')
-  const original = await page.evaluate((key) => localStorage.getItem(key), LEGACY_STORAGE_KEY)
-  const current = await context.newPage()
-  await current.goto('/')
-  await current.getByRole('button', { name: 'Altformat und Reparatur prüfen', exact: true }).click()
-  await current.getByRole('button', { name: 'Wiederherstellung vorbereiten', exact: true }).click()
-  await current.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
-  await expect(current.locator('.save-indicator')).toContainText('Lokal gespeichert')
-  const migrated = await stored(current)
-  expect(await page.evaluate((key) => localStorage.getItem(key), LEGACY_STORAGE_KEY)).toBe(JSON.stringify(expectedTextless(JSON.parse(original!))))
-  // P09 removes retired fields from internal copies. The genuine historical
-  // app rejects autosave against that incomplete old schema; its explicit
-  // recovery import can still write the old key and must be detected.
-  await page.getByLabel('Name / Geschäftsbezeichnung', { exact: true }).fill('Alter Tab schreibt nach Umstieg')
-  await expect(page.locator('.persistence-error')).toBeVisible()
-  expect(await stored(current)).toBe(migrated)
-  await page.reload()
-  await expect(page.getByRole('heading', { name: 'Lokale Daten benötigen Wiederherstellung' })).toBeVisible()
-  const restoredLegacy = JSON.parse(original!)
-  restoredLegacy.settings.issuer.name = 'Alter Tab schreibt nach Umstieg'
-  await page.locator('input[type=file]').setInputFiles({ name: 'historische-sicherung.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(restoredLegacy)) })
-  await page.getByRole('button', { name: 'Daten ersetzen', exact: true }).click()
-  await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).settings.issuer.name, LEGACY_STORAGE_KEY)).toBe('Alter Tab schreibt nach Umstieg')
-  await expect(current.locator('.external-update')).toBeVisible()
-  expect(await stored(current)).toBe(migrated)
-  await current.reload()
-  await expect(current.locator('.external-update')).toBeVisible()
-  await settings(current)
-  await current.getByLabel('Name / Geschäftsbezeichnung', { exact: true }).fill('Darf keinen der Stände überschreiben')
-  await current.getByRole('button', { name: 'Jetzt speichern', exact: true }).click()
-  await expect(current.locator('.persistence-error')).toContainText('alte Anwendungsversion')
-  expect(await stored(current)).toBe(migrated)
-  expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).settings.issuer.name, LEGACY_STORAGE_KEY)).toBe('Alter Tab schreibt nach Umstieg')
-})
 
 test('P04: Verwerfen speichert nichts; Darstellung und Demo-Wechsel respektieren ungespeicherte Einstellungen', async ({ page }) => {
   await page.goto('/')
@@ -253,6 +219,7 @@ test('P04: Verwerfen speichert nichts; Darstellung und Demo-Wechsel respektieren
   await expect(page.getByLabel('Name / Geschäftsbezeichnung', { exact: true })).not.toHaveValue('Nicht speichern')
   await expect(page.getByRole('radio', { name: 'System', exact: true })).toBeChecked()
 })
+
 
 test('P04: weder Echtmodus noch Demo benutzen Picker, IndexedDB oder Datei-APIs', async ({ page }) => {
   await page.addInitScript(() => {
@@ -278,6 +245,7 @@ test('P04: weder Echtmodus noch Demo benutzen Picker, IndexedDB oder Datei-APIs'
   expect(await stored(page)).toBe(before)
   expect(errors).toEqual([])
 })
+
 
 test('P04: genau ein ausdrücklicher Speicherversuch; Änderungen während einer laufenden Speicherung bleiben offen', async ({ page }) => {
   await page.goto('/')

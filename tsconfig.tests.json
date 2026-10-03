@@ -10,6 +10,7 @@
   "include": [
     "src",
     "tests",
-    "playwright.config.ts"
+    "playwright.config.ts",
+    "playwright.migrations.config.ts"
   ]
 }

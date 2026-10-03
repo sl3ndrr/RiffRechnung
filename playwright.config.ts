@@ -8,7 +8,7 @@ export default defineConfig({
   reporter: [['list'], ['json', { outputFile: 'test-results/browser-results.json' }]],
   use: { baseURL: 'http://127.0.0.1:4173', trace: 'retain-on-failure', screenshot: 'only-on-failure' },
   projects: [
-    { name: 'chromium', testIgnore: '**/fallback.spec.ts', use: { browserName: 'chromium', channel: 'chromium' } },
+    { name: 'chromium', testIgnore: ['**/fallback.spec.ts', '**/historical-migration.spec.ts'], use: { browserName: 'chromium', channel: 'chromium' } },
     { name: 'chromium-json', testMatch: '**/fallback.spec.ts', use: { browserName: 'chromium', channel: 'chromium' } },
     { name: 'firefox-json', testMatch: '**/fallback.spec.ts', use: { browserName: 'firefox' } },
     // Fixture setup consumed ~24s of the former 30s budget in CI 34385945859.
