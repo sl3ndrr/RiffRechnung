@@ -21,7 +21,7 @@ export interface DashboardOpenItem {
 export interface DashboardStats {
   paid: { yearCents: number; allTimeCents: number; withoutConfirmedDay: { count: number; cents: number } }
   open: { count: number; totalCents: number; overdueCount: number; overdueCents: number; items: DashboardOpenItem[] }
-  /** Uncalculable drafts contribute only to uncalculableCount. */
+  /** count and totalCents include calculable drafts; totalCount includes all drafts. */
   drafts: { count: number; totalCount: number; totalCents: number; uncalculableCount: number }
   people: { guardians: number; students: number; activeStudents: number }
   monthly: { year: number; months: { month: number; cents: number; paymentCount: number }[]; availableYears: number[] }

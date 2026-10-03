@@ -9,11 +9,12 @@ test('3.AP3: Begrüßung an allen lokalen Tageszeitgrenzen', () => {
   assert.equal(dashboardGreeting(' \t\n ', new Date('2026-09-16T09:00:00')), 'Guten Morgen')
 })
 
-test('3.AP3: Backup-Erinnerung fehlt erst nach mehr als 30 lokalen Kalendertagen', () => {
-  const now = new Date('2026-04-01T12:00:00')
+test('3.AP3: Backup-Erinnerung erscheint erst nach mehr als 30 Tagen seit dem Exportzeitpunkt', () => {
+  const now = new Date('2026-04-01T12:00:00Z')
+  const boundary = now.getTime() - 30 * 24 * 60 * 60 * 1000
   assert.equal(dashboardBackupDue(null, now), true)
   assert.equal(dashboardBackupDue('ungültig', now), true)
-  assert.equal(dashboardBackupDue(new Date('2026-03-02T00:00:00').toISOString(), now), false)
-  assert.equal(dashboardBackupDue(new Date('2026-03-01T23:59:00').toISOString(), now), true)
+  assert.equal(dashboardBackupDue(new Date(boundary).toISOString(), now), false)
+  assert.equal(dashboardBackupDue(new Date(boundary - 1).toISOString(), now), true)
   assert.equal(dashboardBackupDue(new Date('2026-04-02T00:00:00').toISOString(), now), false)
 })

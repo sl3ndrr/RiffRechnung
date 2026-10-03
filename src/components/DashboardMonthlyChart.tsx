@@ -24,6 +24,6 @@ export function DashboardMonthlyChart({ monthly, onYearChange }: { monthly: Dash
         })}
       </ol>
     </div>
-    <table className="sr-only"><caption>Zahlungseingang pro Monat {monthly.year}, nur bestätigte Zahlungstage</caption><thead><tr><th scope="col">Monat</th><th scope="col">Betrag</th></tr></thead><tbody>{monthly.months.map(({ month, cents }) => <tr key={month}><th scope="row">{monthNames[month - 1]}</th><td>{euro.format(cents / 100)}</td></tr>)}</tbody></table>
+    <div className="sr-only"><table><caption>Zahlungseingang pro Monat {monthly.year}, nur bestätigte Zahlungstage</caption><thead><tr><th scope="col">Monat</th><th scope="col">Betrag</th></tr></thead><tbody>{monthly.months.map(({ month, cents }) => <tr key={month}><th scope="row">{monthNames[month - 1]}</th><td>{euro.format(cents / 100)}</td></tr>)}</tbody></table></div>
   </section>
 }

@@ -32,7 +32,7 @@ test('3.AP3: Startseite begrüßt den gespeicherten Vornamen und zeigt exakte Fi
   await expect(amount(page, 'Eltern')).toHaveText('2')
   await expect(amount(page, 'Kinder')).toHaveText('2')
   await expect(page.getByRole('article', { name: 'Kinder', exact: true })).toContainText('davon aktiv: 1')
-  await expect(page.getByRole('article', { name: 'Bezahlt', exact: true })).toContainText('1 Zahlungen ohne bestätigten Zahlungstag: 5,00')
+  await expect(page.getByRole('article', { name: 'Bezahlt', exact: true })).toContainText('1 Zahlung ohne bestätigten Zahlungstag: 5,00')
   await expect(page.getByRole('article', { name: 'Offen', exact: true })).toContainText('davon überfällig: 30,00')
   await expect(page.getByRole('heading', { name: 'Noch nicht gezahlt (2)', exact: true })).toBeVisible()
   await expect(page.locator('.dashboard-open-row__person > strong')).toHaveText(['2026-0001-a', '2026-0002-a'])
@@ -40,6 +40,9 @@ test('3.AP3: Startseite begrüßt den gespeicherten Vornamen und zeigt exakte Fi
   await expect(page.locator('.dashboard-open-row').first()).toContainText('seit 15 Tagen offen')
   await expect(page.locator('.dashboard-open-row').last()).toContainText('fällig in 4 Tagen')
   await expect(page.getByRole('button', { name: 'Neue Rechnung', exact: true })).toHaveCount(1)
+  await page.getByRole('button', { name: 'Neue Rechnung', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Neue Rechnung', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
 })
 
 test('3.AP3: offene Rechnung öffnet per Enter die ausgewählte Rechnungsansicht', async ({ page }) => {
@@ -78,6 +81,9 @@ test('3.AP3: leerer Einstieg, Namenshinweis und Person anlegen sind bedienbar', 
   await expect(page.getByRole('combobox', { name: 'Jahr für Zahlungseingang', exact: true }).locator('option')).toHaveText(['2026'])
   await expect(page.locator('.dashboard-chart__month--empty')).toHaveCount(12)
   await expect(page.locator('.dashboard-backup')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Neue Rechnung', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Neue Rechnung', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
   await page.locator('.dashboard-name-hint').getByRole('button', { name: 'Namen in den Einstellungen hinterlegen', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Einstellungen', exact: true })).toBeVisible()
   await navigation(page).getByRole('button', { name: 'Dashboard', exact: true }).click()

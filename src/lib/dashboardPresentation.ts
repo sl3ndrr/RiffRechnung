@@ -1,5 +1,3 @@
-import { calendarDaysBetween, localToday } from './calendar'
-
 /** Local hours: morning 05–10, day 11–17, evening 18–04. */
 export function dashboardGreeting(name: string, now: Date): string {
   const hour = now.getHours()
@@ -10,6 +8,6 @@ export function dashboardGreeting(name: string, now: Date): string {
 
 export function dashboardBackupDue(lastBackupAt: string | null, now: Date): boolean {
   if (!lastBackupAt) return true
-  const backupAt = new Date(lastBackupAt)
-  return Number.isNaN(backupAt.getTime()) || calendarDaysBetween(localToday(backupAt), localToday(now)) > 30
+  const backupAt = Date.parse(lastBackupAt)
+  return Number.isNaN(backupAt) || now.getTime() - backupAt > 30 * 24 * 60 * 60 * 1000
 }
