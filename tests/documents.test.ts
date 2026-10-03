@@ -148,7 +148,7 @@ test('P04: mehr als 200 Aktivitäten, Archivierung und Export–Import erhalten 
   let state = issued()
   const original = state.invoices[0]
   state = createCorrectionDraft(state, original.id, 'Text präzisieren', at)
-  state = saveInvoiceDraft(state, { ...editable(state.invoices.at(-1)!), freeText: '=CSV Test' }, true, at)
+  state = saveInvoiceDraft(state, { ...editable(state.invoices.at(-1)!), freeText: '=Hinweis Test' }, true, at)
   const savedVersions = canonical(state.documentVersions)
   const savedCounters = canonical(state.counters)
   const storage = memoryStorage(); const session = new StorageSession({ storage, lock: sharedLock() })
@@ -313,5 +313,4 @@ test('P04: Snapshot-Differenzen gelöschter Altrechnungen bleiben sichtbar, ohne
   assert.match(markup, /nicht rekonstruiert/)
   assert.throws(() => assertOriginalsPreserved(state, { ...state, historicalSnapshotCorrections: [] }), /Snapshot-Differenzen/)
 })
-
 
