@@ -8,7 +8,7 @@ import { copyItemsWithFreshIds } from './identities'
 import { commandResult, type CommandResult } from './result'
 import { validateBackupState } from './validation'
 import { updateSettings } from './settings'
-import { billingPeriodFromItems, calculateDueDate, parseDate, studentCodeForIndex, uid } from './utils'
+import { calculateDueDate, parseDate, studentCodeForIndex, uid } from './utils'
 import { recipientRefs, guardianIdsFor } from './recipients'
 
 export function saveSettingsState(state: AppState, settings: Settings): CommandResult<AppState> {
@@ -78,7 +78,7 @@ export function prepareInvoiceCopy(state: AppState, invoiceId: string, targetDat
     const invoiceDate = localToday(targetDate)
     const draft: InvoiceDraft = {
       invoiceDate, dueDate: calculateDueDate(invoiceDate, state.settings.paymentTermDays),
-      period: billingPeriodFromItems(items, invoiceDate), studentIds: [...invoice.studentIds],
+      studentIds: [...invoice.studentIds],
       recipients: structuredClone(recipientRefs(invoice)),
       recipientStrategy: invoice.recipientStrategy, items, introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText,
     }

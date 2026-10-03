@@ -1,3 +1,4 @@
+import { selectInvoice } from '../src/lib/documents'
 import { documentContent } from '../src/lib/documentProjection'
 import type { AppState, Invoice, InvoiceDraft, InvoiceSnapshot, AuditEvent } from '../src/types'
 import { emptyState } from '../src/lib/defaults'
@@ -36,6 +37,21 @@ export function legacyFixture(state: AppState): LegacyState {
 export function legacyVersionedFixture(state: AppState, schemaVersion: number) {
   const copy = JSON.parse(JSON.stringify(state))
   copy.schemaVersion = schemaVersion
+  if (schemaVersion < 14) {
+    for (const raw of copy.invoices) {
+      const selected = selectInvoice(state, state.invoices.find((entry) => entry.id === raw.id)!)
+      raw.year ??= selected.year
+      raw.period ??= selected.period
+      raw.status = selected.status
+      if (selected.paidAt) raw.paidAt = selected.paidAt
+      Reflect.deleteProperty(raw, 'stateModel')
+    }
+    for (const version of copy.documentVersions) {
+      const raw = copy.invoices.find((entry: Invoice) => entry.id === version.invoiceId)
+      version.content.year = raw.year
+      Reflect.deleteProperty(version.content, 'stateModel')
+    }
+  }
   if (schemaVersion < 13) for (const version of copy.documentVersions) {
     const raw = copy.invoices.find((entry: Invoice) => entry.id === version.invoiceId)
     for (const field of ['snapshot', 'draftPrintSnapshot', 'period', 'legalText']) if (Object.hasOwn(raw, field)) version.content[field] = structuredClone(raw[field])

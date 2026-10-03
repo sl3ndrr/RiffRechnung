@@ -80,10 +80,13 @@ export interface Invoice {
   id: string
   number: string | null
   sequence: number | null
-  year: number
+  /** Absent on historical records; new working values are derived. */
+  stateModel?: 'derived-v1'
+  /** Historical evidence or read-only projection, never new working values. */
+  year?: number
   invoiceDate: string
   dueDate: string
-  period: string
+  period?: string
   status: InvoiceStatus
   recipients: RecipientRef[]
   studentIds: string[]
@@ -95,6 +98,7 @@ export interface Invoice {
   snapshot?: InvoiceSnapshot
   /** Frozen print data of a saved draft; distinct from an issued original. */
   draftPrintSnapshot?: InvoiceSnapshot
+  /** Historical evidence or projection of confirmed allocated payments. */
   paidAt?: string
   sentAt?: string
   createdAt: string
@@ -104,6 +108,8 @@ export interface Invoice {
   /** Output projection only; never accepted in persisted invoices. */
   issuedAmounts?: DocumentAmounts
   claimState?: 'active' | 'replaced'
+  /** Read-only projection of the active claim; never persisted. */
+  openAmountCents?: number
   archived?: boolean
 }
 
@@ -115,7 +121,7 @@ export interface DocumentAmounts {
   calculation: 'legacy-v1' | 'decimal-v1'
 }
 
-export type DocumentContent = Omit<Invoice, 'status' | 'paidAt' | 'sentAt' | 'updatedAt' | 'versionId' | 'correction' | 'issuedAmounts' | 'claimState' | 'archived' | 'snapshot' | 'draftPrintSnapshot' | 'period' | 'legalText'>
+export type DocumentContent = Omit<Invoice, 'status' | 'paidAt' | 'sentAt' | 'updatedAt' | 'versionId' | 'correction' | 'issuedAmounts' | 'claimState' | 'archived' | 'openAmountCents' | 'snapshot' | 'draftPrintSnapshot' | 'period' | 'legalText'>
 
 export interface DocumentConflict {
   path: string
@@ -204,7 +210,7 @@ export interface VoidedInvoiceNumber {
 }
 
 export interface AppState {
-  schemaVersion: 13
+  schemaVersion: 14
   guardians: Guardian[]
   students: Student[]
   invoices: Invoice[]
@@ -231,7 +237,8 @@ export interface InvoiceDraft {
   correction?: { replacesId: string; reason: string }
   invoiceDate: string
   dueDate: string
-  period: string
+  /** Accepted only for historical editor inputs; saves derive the period. */
+  period?: string
   recipients: RecipientRef[]
   studentIds: string[]
   recipientStrategy: RecipientStrategy

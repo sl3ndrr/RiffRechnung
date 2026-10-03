@@ -19,9 +19,8 @@ function canonical(value: unknown): string {
 
 function originalContent(invoice: Invoice): string {
   const content = { ...invoice }
-  delete content.paidAt
   delete content.sentAt
-  return canonical({ ...content, status: null, updatedAt: null })
+  return canonical({ ...content, updatedAt: null })
 }
 
 export function assertOriginalsPreserved(current: AppState, next: AppState): void {

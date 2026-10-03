@@ -1,3 +1,4 @@
+import './p08-derived-invoice-state.test'
 import './p07-document-output.test'
 import './p06-invoice-numbering.test'
 import './p05-contacts-recipients.test'
@@ -32,6 +33,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { Guardian, Invoice, InvoiceDraft, Student } from '../src/types'
 import { InvoicePrint } from '../src/components/InvoicePrint'
+import { selectedInvoices } from '../src/lib/documents'
 import { createDemoState, defaultSettings, emptyState } from '../src/lib/defaults'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, runInvoiceMenuAction } from '../src/lib/invoiceMenu'
 import { loadLastBackupAt, StorageSession, loadState, parseBackup, recordBackupExport, serializeBackup } from '../src/lib/storage'
@@ -119,7 +121,7 @@ function validImportState() {
     items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-a')],
   }))
   const current = captureLegacyDocuments(legacyFixture(state))
-  current.schemaVersion = 13
+  current.schemaVersion = 14
   current.settings = {
     ...current.settings,
     issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', email: 'studio@example.de', phone: '' },
@@ -434,7 +436,7 @@ test('Demo-Daten bilden Familien, Unterricht und Rechnungen seit Januar 2025 vol
   }
   assert.deepEqual([...new Set(demo.invoices.map((entry) => entry.invoiceDate.slice(0, 7)))].sort(), expectedMonths)
 
-  const historical = demo.invoices.filter((entry) => entry.invoiceDate.slice(0, 7) < '2026-08')
+  const historical = selectedInvoices(demo).filter((entry) => entry.invoiceDate.slice(0, 7) < '2026-08')
   assert.equal(historical.length, 19 * 7)
   assert.ok(historical.every((entry) => entry.status === 'paid' && entry.number && entry.paidAt && entry.paidAt.slice(0, 10) <= entry.dueDate))
 
@@ -485,7 +487,7 @@ test('vollständiges Backup lässt sich wiederherstellen', () => {
     },
   })
   const restored = parseBackup(serializeBackup(state))
-  assert.equal(restored.schemaVersion, 13)
+  assert.equal(restored.schemaVersion, 14)
   assert.equal(restored.settings.issuer.name, 'Test Unterricht')
   assert.equal(restored.students[0]?.billingCode, 'a')
   assert.equal(restored.voidedInvoiceNumbers[0]?.number, '2026-a-0004')

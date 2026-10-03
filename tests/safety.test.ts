@@ -1,3 +1,4 @@
+import { selectInvoice } from '../src/lib/documents'
 import { legacyFixture } from './documentFixtures'
 import { validateLegacyV3Structure } from '../src/lib/legacyValidation'
 import { captureLegacyDocuments } from '../src/lib/importState'
@@ -153,9 +154,9 @@ test('P01: historische Belege ohne Stammdaten bleiben samt Betrag, Snapshot und 
   assert.throws(() => assertOriginalsPreserved(state, { ...state, invoices: [] }), /Finalisierte Belege/)
   assert.throws(() => assertReplacementAllowed(state), /Zurücksetzen.*nicht verfügbar/)
   assert.deepEqual(state, original)
-  for (const status of ['paid', 'sent', 'overdue'] as const) {
+  for (const status of ['paid', 'sent'] as const) {
     state = roundTrip(changeInvoiceStatus(state, invoice.id, status, at, status === 'paid' ? '2026-09-05' : undefined))
-    assert.equal(state.invoices[0].status, status)
+    assert.equal(selectInvoice(state, state.invoices[0]).status, status)
     assert.equal(state.invoices[0].number, invoice.number)
     assert.deepEqual(state.invoices[0].items, invoice.items)
     assert.deepEqual(state.invoices[0].snapshot, invoice.snapshot)

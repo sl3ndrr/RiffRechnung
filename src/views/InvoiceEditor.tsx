@@ -74,7 +74,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
       const items = isSelected && !current.correction
         ? current.items.filter((item) => item.studentId !== student.id)
         : current.items.length ? current.items : [createLessonItem(student.id, current.invoiceDate, settings)]
-      return { ...current, studentIds, recipients, items, period: billingPeriodFromItems(items, current.invoiceDate) }
+      return { ...current, studentIds, recipients, items }
     })
   }
 
@@ -101,7 +101,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
   const updateServiceDate = (id: string, serviceDate: string) => {
     setForm((current) => {
       const items = current.items.map((item) => item.id === id ? { ...item, serviceDate } : item)
-      return { ...current, items, period: billingPeriodFromItems(items, current.invoiceDate) }
+      return { ...current, items }
     })
   }
 
@@ -118,7 +118,6 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
       ...current,
       invoiceDate,
       dueDate: calculateDueDate(invoiceDate, settings.paymentTermDays),
-      period: billingPeriodFromItems(current.items, invoiceDate),
     }))
   }
 
@@ -130,7 +129,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
     }
     setForm((current) => {
       const items = [...current.items, createLessonItem(studentId, current.invoiceDate, settings)]
-      return { ...current, items, period: billingPeriodFromItems(items, current.invoiceDate) }
+      return { ...current, items }
     })
   }
 
@@ -144,8 +143,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
     }
     setErrors(nextErrors)
     if (!nextErrors.length) {
-      const normalized = { ...form, period: calculatedPeriod, legalText: form.legalText }
-      onSave(normalized, finalize)
+      onSave(form, finalize)
     }
   }
 
@@ -232,7 +230,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
                 <label className="field field--unit"><span>Einheit</span><select value={item.unit} onChange={(event) => updateItem(item.id, 'unit', event.target.value)}><option>Std.</option><option>Pauschale</option><option>Stück</option></select></label>
                 <label className="field field--price"><span>Einzelpreis</span><div className="input-with-suffix"><input type="text" inputMode="decimal" aria-invalid={itemNumberInput(numberInputs[item.id]?.unitPrice ?? decimalInputText(item.unitPrice), 'unitPrice') === null} value={numberInputs[item.id]?.unitPrice ?? decimalInputText(item.unitPrice)} onChange={(event) => updateNumber(item.id, 'unitPrice', event.target.value)} /><span>€</span></div></label>
                 <div className="editor-item__total"><span>Betrag</span><strong>{previewCents({ items: [item] }) === null ? 'Ungültiger Betrag' : euro.format(itemTotal(item))}</strong></div>
-                <button className="icon-button icon-button--small editor-item__delete" type="button" onClick={() => setForm((current) => { const items = current.items.filter((candidate) => candidate.id !== item.id); return { ...current, items, period: billingPeriodFromItems(items, current.invoiceDate) } })} aria-label={`Position ${index + 1} löschen`}><Trash2 aria-hidden="true" /></button>
+                <button className="icon-button icon-button--small editor-item__delete" type="button" onClick={() => setForm((current) => { const items = current.items.filter((candidate) => candidate.id !== item.id); return { ...current, items } })} aria-label={`Position ${index + 1} löschen`}><Trash2 aria-hidden="true" /></button>
               </div>
             ))}
             {!form.items.length && <button className="add-position-placeholder" type="button" onClick={addItem}><CircleDollarSign aria-hidden="true" /><strong>Erste Position ergänzen</strong><span>Datum, Thema, Menge und Preis erfassen</span></button>}

@@ -39,7 +39,7 @@ export function Invoices({ state, onNavigate, onLoadDemo, selectedId, onSelect, 
   const detailTriggerRef = useRef<HTMLElement | null>(null)
   const selected = invoices.find((invoice) => invoice.id === selectedId) ?? null
   const menuInvoice = menu ? invoices.find((invoice) => invoice.id === menu.invoiceId) ?? null : null
-  const years = [...new Set(state.invoices.map((invoice) => String(invoice.year)))].sort().reverse()
+  const years = [...new Set(invoices.map((invoice) => String(invoice.year)))].sort().reverse()
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase('de-DE')
@@ -303,8 +303,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
         {invoice.status !== 'draft' && <div className="status-editor">
           <span className="status-editor__label" id={`invoice-status-${invoice.id}`}>Forderungsstatus</span>
           <div className="status-editor__choices" role="group" aria-labelledby={`invoice-status-${invoice.id}`}>
-            <button className="button button--tonal" type="button" aria-pressed={status === 'sent'} onClick={() => onSetStatus('sent')}>Versendet / offen</button>
-            <button className="button button--tonal" type="button" aria-pressed={status === 'overdue'} onClick={() => onSetStatus('overdue')}>Überfällig</button>
+            <button className="button button--tonal" type="button" aria-pressed={status === 'sent' || status === 'overdue'} onClick={() => onSetStatus('sent')}>Versendet / offen</button>
           </div>
           <div className="payment-day-editor">
             <label htmlFor={`payment-day-${invoice.id}`}>Tatsächlicher Zahlungstag</label>

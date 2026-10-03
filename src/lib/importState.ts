@@ -5,10 +5,11 @@ import { detachLegacyDuoGroups } from './legacyDuoV8V9'
 import { draftAmountChange, legacyItemCents, itemTotalCents } from './money'
 import { captureDocument } from './documents'
 import { validateEnvelope, type StorageEnvelope } from './envelope'
+import { migrateDerivedInvoiceState } from './legacyInvoiceState'
 import type { AppState, AuditEvent, Invoice, InvoiceItem, Student } from '../types'
 import { commandResult, requireSuccess, type CommandResult } from './result'
 import { backupArray, backupEnum, backupObject, backupTimestamp, knownKeys, validateBackupState } from './validation'
-import { validateLegacyV2Structure, validateLegacyV3Structure, validateLegacyV4Structure, validateLegacyV5Structure, validateLegacyV6Structure, validateLegacyV7Structure, validateLegacyV8Structure, validateLegacyV9Structure, validateLegacyV10Structure, validateLegacyV11Structure, validateLegacyV12Structure } from './legacyValidation'
+import { validateLegacyV2Structure, validateLegacyV3Structure, validateLegacyV4Structure, validateLegacyV5Structure, validateLegacyV6Structure, validateLegacyV7Structure, validateLegacyV8Structure, validateLegacyV9Structure, validateLegacyV10Structure, validateLegacyV11Structure, validateLegacyV12Structure, validateLegacyV13Structure } from './legacyValidation'
 import { invoiceStudentCode, studentCodeForIndex, studentCodeIndex } from './utils'
 import { mailboxError } from './mailbox'
 import { stripLegacyTaxFields } from './legacyTaxFields'
@@ -16,10 +17,10 @@ import { stripLegacyTaxFields } from './legacyTaxFields'
 interface MigrationChange { path: string; before: unknown; after: unknown; reason: string }
 export interface IdMapping { invoiceId: string; itemIndex: number; oldId: string; newId: string }
 export interface MigrationReport {
-  migration: 'riffrechnung-to-v13'
+  migration: 'riffrechnung-to-v14'
   version: 1
-  fromSchema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12
-  toSchema: 13
+  fromSchema: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13
+  toSchema: 14
   source: 'local-state' | 'riffrechnung' | 'gitarrenrechnungen'
   changes: MigrationChange[]
   idMappings: IdMapping[]
@@ -143,7 +144,7 @@ function migrateV2(data: unknown, source: MigrationReport['source']): { state: L
   // Shape has been checked, including references and ALL numeric values.
   // Only the following documented optional v2 fields may still be absent.
   const state = cleanLegacyContacts(stripLegacyTaxFields(data).value) as LegacyState
-  const report: MigrationReport = { migration: 'riffrechnung-to-v13', version: 1, fromSchema: 2, toSchema: 13, source, changes: [], idMappings: [] }
+  const report: MigrationReport = { migration: 'riffrechnung-to-v14', version: 1, fromSchema: 2, toSchema: 14, source, changes: [], idMappings: [] }
   repairCopiedItemIds(state, report)
   const record = (path: string, before: unknown, after: unknown, reason: string) => {
     if (canonical(before) !== canonical(after)) report.changes.push({ path, before: before ?? null, after, reason })
@@ -224,60 +225,65 @@ export function inspectImport(rawData: string): CommandResult<ImportPreview> {
       if (root.schemaVersion !== backupObject(data, 'data').schemaVersion) throw new Error('Backup-Umschlag und Daten haben unterschiedliche Formatversionen.')
     }
     const version = backupObject(data, 'data').schemaVersion
-    if (version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== 6 && version !== 7 && version !== 8 && version !== 9 && version !== 10 && version !== 11 && version !== 12 && version !== 13) throw new Error('Die Datei hat kein unterstütztes Backup-Format. Neuere oder unbekannte Formate bleiben unverändert.')
+    if (version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== 6 && version !== 7 && version !== 8 && version !== 9 && version !== 10 && version !== 11 && version !== 12 && version !== 13 && version !== 14) throw new Error('Die Datei hat kein unterstütztes Backup-Format. Neuere oder unbekannte Formate bleiben unverändert.')
     let report: MigrationReport | null = null
     let state: AppState
-    if (version === 13) { validateBackupState(data); state = structuredClone(data) }
+    if (version === 14) { validateBackupState(data); state = structuredClone(data) }
+    else if (version === 13) {
+      validateLegacyV13Structure(data)
+      report = { migration: 'riffrechnung-to-v14', version: 1, fromSchema: 13, toSchema: 14, source, changes: [], idMappings: [] }
+      state = structuredClone(data as AppState)
+    }
     else if (version === 12) {
       validateLegacyV12Structure(data)
-      report = { migration: 'riffrechnung-to-v13', version: 1, fromSchema: 12, toSchema: 13, source, changes: [], idMappings: [] }
+      report = { migration: 'riffrechnung-to-v14', version: 1, fromSchema: 12, toSchema: 14, source, changes: [], idMappings: [] }
       state = structuredClone(data as AppState)
     }
     else if (version === 11) {
       validateLegacyV11Structure(data)
-      report = { migration: 'riffrechnung-to-v13', version: 1, fromSchema: 11, toSchema: 13, source, changes: [], idMappings: [] }
+      report = { migration: 'riffrechnung-to-v14', version: 1, fromSchema: 11, toSchema: 14, source, changes: [], idMappings: [] }
       state = structuredClone(data as AppState)
     }
     else if (version === 10) {
       validateLegacyV10Structure(data)
-      report = { migration: 'riffrechnung-to-v13', version: 1, fromSchema: 10, toSchema: 13, source, changes: [], idMappings: [] }
+      report = { migration: 'riffrechnung-to-v14', version: 1, fromSchema: 10, toSchema: 14, source, changes: [], idMappings: [] }
       state = cleanLegacyContacts(data) as AppState
     }
     else if (version === 9) {
       validateLegacyV9Structure(data)
-      report = { migration: 'riffrechnung-to-v13', version: 1, fromSchema: 9, toSchema: 13, source, changes: [], idMappings: [] }
+      report = { migration: 'riffrechnung-to-v14', version: 1, fromSchema: 9, toSchema: 14, source, changes: [], idMappings: [] }
       state = cleanLegacyContacts(data) as AppState
     }
     else if (version === 8) {
       validateLegacyV8Structure(data)
-      report = { migration: 'riffrechnung-to-v13', version: 1, fromSchema: 8, toSchema: 13, source, changes: [], idMappings: [] }
+      report = { migration: 'riffrechnung-to-v14', version: 1, fromSchema: 8, toSchema: 14, source, changes: [], idMappings: [] }
       state = cleanLegacyContacts(stripLegacyTaxFields(data).value) as AppState
     }
     else if (version === 7) {
       validateLegacyV7Structure(data)
-      report = { migration: 'riffrechnung-to-v13', version: 1, fromSchema: 7, toSchema: 13, source, changes: [], idMappings: [] }
+      report = { migration: 'riffrechnung-to-v14', version: 1, fromSchema: 7, toSchema: 14, source, changes: [], idMappings: [] }
       state = cleanLegacyContacts(stripLegacyTaxFields(data).value) as AppState
     }
     else if (version === 6) {
       validateLegacyV6Structure(data)
-      report = { migration: 'riffrechnung-to-v13', version: 1, fromSchema: 6, toSchema: 13, source, changes: [], idMappings: [] }
+      report = { migration: 'riffrechnung-to-v14', version: 1, fromSchema: 6, toSchema: 14, source, changes: [], idMappings: [] }
       state = upgradeToV7(data, report)
     }
     else if (version === 5) {
       validateLegacyV5Structure(data)
-      report = { migration: 'riffrechnung-to-v13', version: 1, fromSchema: 5, toSchema: 13, source, changes: [], idMappings: [] }
+      report = { migration: 'riffrechnung-to-v14', version: 1, fromSchema: 5, toSchema: 14, source, changes: [], idMappings: [] }
       state = upgradeToV7(upgradeToV6(data), report)
     }
     else if (version === 4) {
       validateLegacyV4Structure(data)
-      report = { migration: 'riffrechnung-to-v13', version: 1, fromSchema: 4, toSchema: 13, source, changes: [], idMappings: [] }
+      report = { migration: 'riffrechnung-to-v14', version: 1, fromSchema: 4, toSchema: 14, source, changes: [], idMappings: [] }
       state = upgradeToV7(upgradeToV6({ ...structuredClone(data as AppState), schemaVersion: 5 }), report)
     }
     else {
       let legacy: LegacyState
       if (version === 2) ({ state: legacy, report } = migrateV2(data, source))
       else { validateLegacyV3Structure(data); legacy = cleanLegacyContacts(stripLegacyTaxFields(data).value) as LegacyState }
-      report ??= { migration: 'riffrechnung-to-v13', version: 1, fromSchema: 3, toSchema: 13, source, changes: [], idMappings: [] }
+      report ??= { migration: 'riffrechnung-to-v14', version: 1, fromSchema: 3, toSchema: 14, source, changes: [], idMappings: [] }
       state = captureLegacyDocumentsV7(legacy)
       report.changes.push({ path: 'schemaVersion', before: version, after: 7, reason: 'Vollständige älteste verfügbare Belegstände, getrennte Verwaltung und unbekannte historische Zahlungstage sichern; frühere Inhalte bleiben unbekannt' })
       for (const document of state.documentVersions) report.changes.push({ path: `documentVersions.${document.id}`, before: null, after: document, reason: 'Jetzt verfügbarer historischer Inhalt, alte Ausgabebeträge und Snapshot-/Registerbelege; keine Wiederherstellung verlorener Originale' })
@@ -314,7 +320,8 @@ export function inspectImport(rawData: string): CommandResult<ImportPreview> {
     }
     if (report) {
       if (version < 12) state = migrateInvoiceNumbering(state, report.changes)
-      state = consolidateDocumentOutput(state, report.changes)
+      if (version < 13) state = consolidateDocumentOutput(state, report.changes)
+      state = migrateDerivedInvoiceState(state, report.changes)
       validateBackupState(state)
     }
     return { rawData, state, report, envelope, warnings: [...historicalEmailWarnings(state), ...state.documentVersions.flatMap((version) => version.conflicts.map((conflict) => `${version.content.number}: ${conflict.message}`))] }
@@ -339,6 +346,8 @@ export function serializeMigrationReport(preview: ImportPreview): string {
 type LegacySnapshot = Omit<NonNullable<Invoice['snapshot']>, 'recipients'> & { guardians: import('../types').GuardianSnapshot[]; recipients?: NonNullable<Invoice['snapshot']>['recipients'] }
 type LegacyAuditEvent = Omit<AuditEvent, 'snapshotCorrection'> & { snapshotCorrection?: { oldValue: LegacySnapshot | null; newValue: LegacySnapshot } }
 interface LegacyInvoice extends Omit<Invoice, 'recipients' | 'snapshot'> {
+  year: number
+  period: string
   guardianIds: string[]
   recipients?: Invoice['recipients']
   snapshot?: LegacySnapshot
@@ -369,6 +378,6 @@ function captureLegacyDocumentsV7(legacy: LegacyState | UnversionedState): AppSt
 }
 
 export function captureLegacyDocuments(legacy: LegacyState | UnversionedState): AppState {
-  return consolidateDocumentOutput(migrateInvoiceNumbering(migrateContactsRecipients(upgradeToV10(captureLegacyDocumentsV7(legacy)))))
+  return migrateDerivedInvoiceState(consolidateDocumentOutput(migrateInvoiceNumbering(migrateContactsRecipients(upgradeToV10(captureLegacyDocumentsV7(legacy))))))
 }
 

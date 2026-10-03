@@ -50,7 +50,7 @@ export function migrateInvoiceNumbering(value: AppState, changes: Change[] = [],
   const nonAnnual = settings.resetNumberAnnually === false
   const documents = [...state.invoices, ...state.documentVersions.map((version) => version.content)]
   const reservations = [...state.voidedInvoiceNumbers, ...state.documentVersions.flatMap((version) => version.registerEntries)]
-  const years = [...new Set([migrationYear, ...documents.map((entry) => entry.year), ...reservations.map((entry) => entry.year),
+  const years = [...new Set([migrationYear, ...documents.map((entry) => entry.year ?? Number(entry.invoiceDate.slice(0, 4))), ...reservations.map((entry) => entry.year),
     ...Object.keys(state.counters).flatMap((key) => { const match = /^(\d{4})(?:[:-]|$)/.exec(key); return match ? [Number(match[1])] : [] })])]
   const codes = state.students.map((student) => student.billingCode).sort(compareStudentCodes)
   const reserve = (year: number, code: string, next: number, reason: string) => {
@@ -76,7 +76,7 @@ export function migrateInvoiceNumbering(value: AppState, changes: Change[] = [],
     const sequence = Math.max(document.sequence ?? 0, evidence.sequence ?? 0)
     const liveCodesComplete = document.studentIds.length > 0 && document.studentIds.every((id) => state.students.some((student) => student.id === id))
     const circles = liveCodesComplete ? [invoiceStudentCode(state, document.studentIds)] : evidence.code ? legacyCircles(evidence.code, codes) : ['*']
-    if (sequence) for (const year of nonAnnual ? years : [document.year]) for (const code of circles) reserve(year, code, sequence + 1,
+    if (sequence) for (const year of nonAnnual ? years : [document.year ?? Number(document.invoiceDate.slice(0, 4))]) for (const code of circles) reserve(year, code, sequence + 1,
       nonAnnual ? 'Nichtjährliche bekannte Belegfolge auch ohne globalen Altzähler im Umstiegsjahr und bekannten Jahren fortsetzen.' : 'Vergebene Belegfolge unverändert schützen, auch bei niedrigerem gespeichertem Zähler.')
   }
   for (const entry of reservations) {
