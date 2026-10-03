@@ -88,11 +88,11 @@ export function People({ state, onSaveGuardian, onSaveStudent, onDeleteGuardian,
           <section className="people-section">
             <div className="section-heading"><div><p className="eyebrow">Unterricht</p><h2>{students.length} Lernende</h2></div></div>
             <div className="student-grid">
-              {students.map((student, index) => {
+              {students.map((student) => {
                 const linked = student.guardianIds.flatMap((id) => state.guardians.filter((guardian) => guardian.id === id))
                 return (
-                  <article className="student-card" key={student.id} style={{ '--delay': `${Math.min(index, 8) * 28}ms` } as React.CSSProperties}>
-                    <header><span className={`avatar avatar--large avatar--tone-${index % 4}`}>{student.name.slice(0, 1)}</span><span className="student-card__meta"><span className="student-code" title="Kennzeichen im Rechnungsnummernkreis">{student.billingCode}</span><span className={`active-dot ${student.active ? '' : 'active-dot--muted'}`} title={student.active ? 'Aktiv' : 'Inaktiv'} /></span></header>
+                  <article className="student-card" key={student.id}>
+                    <header><span className="avatar avatar--large">{student.name.slice(0, 1)}</span><span className="student-card__meta"><span className="student-code" title="Kennzeichen im Rechnungsnummernkreis">{student.billingCode}</span><span className={`active-dot ${student.active ? '' : 'active-dot--muted'}`} title={student.active ? 'Aktiv' : 'Inaktiv'} /></span></header>
                     <h3>{student.name}</h3>
                     <p>Gitarrenunterricht</p>
                     <div className="student-card__guardians">{student.selfPayer ? <span><UserRound aria-hidden="true" />Zahlt selbst</span> : linked.map((guardian) => <span key={guardian.id}><UserRound aria-hidden="true" />{guardian.name}</span>)}</div>
