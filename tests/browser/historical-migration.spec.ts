@@ -99,4 +99,3 @@ test('P12 Browser: unabhängige Originaldatei kehrt mit echtem alten Code in get
     await expect(rollback.locator('.invoice-list-table')).toContainText(originalData.invoices[0].number!)
   } finally { await isolated.close() }
 })
-
