@@ -1,282 +1,62 @@
-# RiffRechnung – lokale Rechnungsverwaltung
+# RiffRechnung
 
-Eine vollständig clientseitige Web-App für Rechnungen rund um Gitarrenunterricht. Sie läuft als statische Vite-App auf GitHub Pages; es gibt weder Server noch Datenbank, Benutzerkonto, Tracking oder externe API-Aufrufe.
+RiffRechnung verwaltet Privatrechnungen für Unterricht lokal im Browser.
+Die Arbeitsoberfläche besteht aus **Rechnungen**, **Personen** und **Einstellungen**.
+Der Demo-Einstieg arbeitet mit Beispieldaten getrennt vom echten Bestand.
 
-## Funktionsumfang
+## Einrichten und Personen anlegen
 
-- Lernende mit optionalen Erziehungsberechtigten verwalten; Erwachsene können mit einem Datensatz selbst Rechnungsempfänger sein
-- gemeinsame Rechnungen an eine oder mehrere berechtigte Personen erstellen; historische getrennte Belege und Korrekturen weiterhin lesen
-- Duo-Unterricht und Duo-Preis in gewöhnlichen Rechnungen wählen; bei Bedarf jede Rechnung unabhängig erstellen und abschließen
-- mehrere Lernende und automatisch berechnete Zwischensummen auf einer gemeinsamen Rechnung
-- frei definierbare Positionen, Zahlungsziel und Textbausteine
-- Kleinunternehmerprofil mit vollständiger Ausstelleranschrift; typisierte Steuerkennung bei Standardrechnungen verpflichtend, bei ausdrücklich gewählten Kleinbetragsrechnungen bis 250,00 € ausblendbar; Empfängeranschrift nur bei Standardrechnungen
-- Befreiungshinweis je Rechnung im Steuerblock oder in einer Fußzeile an der Endsumme; finale Belege sichern Kennungsentscheidung, Hinweistext und Position
-- Empfängerkontakte mit einem Feld „Name“; Kontaktangaben und Anschriften optional, bisherige Anzeigenamen bleiben erhalten
-- Entwurf, versendet, bezahlt und automatisch erkanntes „überfällig“; verknüpfte Korrekturentwürfe erhalten den vollständigen Originalbeleg
-- feste jährliche Rechnungsnummer `YYYY-NNNN-Kennung` mit dauerhaftem Kennzeichen je lernender Person (`a`, `b`, `c` …); Kombinationen zählen getrennt und Nummern werden erst bei Finalisierung vergeben
-- unveränderliche vollständige Belegversionen mit damaligen Positionen, Beträgen, Personen, Konto und Texten; einsehbare Korrekturgründe und Snapshot-Differenzen
-- A4-Druckansicht mit Entwurfswasserzeichen, gemeinsamer Rechtstext-/Seitenzahl-Fußzeile und Rechnungsnummer auf Folgeseiten
-- clientseitig erzeugter EPC-GiroCode (EPC069-12 / Version 002) für SEPA-Überweisungen
-- Dashboard, Volltextsuche, Filter, sortierbare Rechnungslisten, Zahlungserinnerung per `mailto:`, Duplizieren wiederkehrender Rechnungen und CSV-Jahresübersicht
-- System-/Light-/Dark-Mode, responsive Desktop-/Tablet-/Smartphone-Oberfläche und reduzierte Bewegung
-- ausdrückliches lokales Speichern gültiger Einstellungen; Warnung vor Verwerfen offener Eingaben
-- manueller JSON-Export/-Import und lokale Wiederherstellung im Backup-Bereich der Einstellungen
+1. Unter **Einstellungen** den Rechnungsstellernamen, Kontoinhaber und eine gültige deutsche IBAN eintragen. Anschrift, Kontaktangaben, Bankname und BIC sind optional; eine eingetragene BIC muss gültig sein. Standardpreise und Zahlungsziel nach Bedarf setzen.
+2. Änderungen mit **Jetzt speichern** bestätigen. Rechnungsdaten bleiben im selben Browserprofil und unter derselben Webadresse. Das Gerät und Browserprofil selbst müssen geschützt werden; die Speicherung ist keine Verschlüsselung.
+3. Unter **Personen** Erziehungsberechtigte mit einem Namen anlegen, dann Lernende zuordnen. Für eine gemeinsame Rechnung können beispielsweise ein oder zwei gemeinsame Erziehungsberechtigte ausgewählt werden. Erwachsene Lernende können **Zahlt selbst** verwenden und eigene Kontaktangaben hinterlegen.
 
-## Tech-Stack
+Anschriften sind optional, auch unvollständige Angaben werden verwendet.
+Personen stehen fest A–Z; Suche und der Filter für aktive Lernende bleiben verfügbar.
+Jede lernende Person erhält eine bleibende Kennung in Anlagereihenfolge: `a`, `b`, …, `z`, `aa`, `ab`, … . Umbenennen oder Deaktivieren verschiebt sie nicht.
 
-**Vite + React + TypeScript** ist hier bewusst schlanker als ein Full-Stack-Framework: GitHub Pages liefert ausschließlich statische Dateien aus, React eignet sich gut für den zustandsreichen Rechnungseditor, und TypeScript schützt das Daten- und Backup-Format. Die Inter-Schrift (`@fontsource-variable/inter`), Lucide-Symbole und die QR-Bibliothek werden beim Build lokal gebündelt. Zur Laufzeit werden keine CDN-Ressourcen geladen.
+## Rechnung erstellen und Nummern verstehen
 
-Die Daten liegen im `localStorage` des verwendeten Browserprofils. Frühere gespeicherte Ordner-Handles bleiben ungenutzt; die App liest oder bereinigt sie nicht. Die App selbst sendet keine personenbezogenen Daten an einen Dienst. Das ist keine Verschlüsselung: Wer Zugriff auf das Gerät oder Browserprofil hat, kann auch auf diese Daten zugreifen.
+Unter **Rechnungen → Neue Rechnung** Lernende und berechtigte Rechnungsempfänger auswählen.
+Jeder ausgewählte Empfänger muss allen ausgewählten Lernenden zugeordnet sein.
+Datum, Fälligkeit und Positionen mit Leistungsdatum, Beschreibung, Menge, Einheit und Einzelpreis prüfen. Solo-/Duo-Unterricht wählt den passenden Standardpreis; Positionen bleiben einzeln bearbeitbar.
 
-## Lokal starten
+Ein **Rechnungshinweis** ist optional. Die Ausgabe enthält fest „Hiermit stelle ich die folgenden Leistungen in Rechnung.“ und die kurze Zeile „Privatrechnung“.
+**Als Entwurf speichern** hält den bearbeitbaren Stand fest. **Finalisieren** prüft die Angaben, vergibt die Nummer und sichert den Beleg mit Beträgen, Empfängern, Anschriften, Konto und Leistungsdaten.
+Neue Positionsbeträge werden einzeln exakt dezimal und kaufmännisch auf Cent gerundet; die Summe entsteht aus diesen Centbeträgen. Der Leistungszeitraum folgt den Positionsdaten.
 
-Voraussetzung: Node.js 22 gemäß `.nvmrc` (mit dem zugehörigen npm).
+Nummern haben das feste Format **Jahr–Folge–Personenkennung**, zum Beispiel:
 
-```bash
-npm ci
-npm run dev
-```
+| Kreis | Beispiel | Bedeutung |
+| --- | --- | --- |
+| Person a | `2026-0001-a` | erste Folge für a im Rechnungsjahr 2026 |
+| Person b | `2026-0001-b` | eigener jährlicher Zähler für b |
+| Kombination a+b | `2026-0001-a+b` | eigener jährlicher Zähler für diese Kombination |
 
-Produktionsprüfung:
+Auswahlreihenfolge und Zahl der Empfänger ändern die Kennung nicht. `ab` bezeichnet eine einzelne später angelegte Person, `a+b` eine Kombination. Neue Jahreskreise beginnen regulär bei 1; übernommene Mindeststände und reservierte Nummern können die Folge erhöhen. Bestehende historische Nummern werden nicht umgeschrieben oder erneut vergeben.
 
-```bash
-npm run lint
-npm test
-npm run build
-npx playwright install --with-deps chromium firefox webkit
-npm run test:browser
-npm run test:migrations
-npm audit --json
-npm run preview
-```
+## PDF und GiroCode
 
-Die PDF-Regressionsprüfung benötigt zusätzlich `pdftotext` aus Poppler. Der
-Ubuntu-CI-Job installiert es mit `sudo apt-get install -y poppler-utils`.
-`npm run build` enthält die vollständige Typprüfung; `npm run typecheck` bleibt
-als eigenständige Prüfung ohne Vite-Build verfügbar. `npm test` bündelt und führt
-alle `tests/*.test.ts` direkt aus, ohne Registrierungshub.
+In den Rechnungsdetails **PDF / Drucken** wählen und im Browser als PDF speichern oder drucken. Entwürfe haben eine Vorschau mit Wasserzeichen.
+Bei zwei ausgewählten Empfängern erscheinen beide Namen und jeweils die eigene vorhandene Anschrift, auch bei identischen Anschriften. Fehlende Anschriftteile entfallen. Die gemeinsame Rechnung hat einen Gesamtbetrag.
 
-## Auf GitHub Pages veröffentlichen
+Finale Ausgaben und GiroCode verwenden die gesicherten Belegdaten. Spätere Änderungen an Stammdaten oder Einstellungen verändern das Original nicht. Historische Lücken werden nicht mit heutigen Konten oder Anschriften gefüllt.
+Der GiroCode enthält Empfängerkonto, Betrag und Rechnungsnummer. Bei einem QR-Fehler bietet der bestehende Druckablauf einen ausdrücklich zu bestätigenden Druck ohne GiroCode an. Eine Banking-App muss die gescannten Angaben vor einer Überweisung prüfen.
+Die automatisierten PDF-Prüfungen laufen in Chromium; weitere Druckgrenzen stehen in der [Technikdokumentation](docs/technical.md).
 
-1. Änderungen als Pull Request gegen `main` prüfen lassen und erst nach Freigabe übernehmen.
-2. Im Repository unter **Settings → Pages → Build and deployment** als Quelle **GitHub Actions** wählen.
-3. `.github/workflows/quality.yml` prüft den konkreten PR-Head mit Node 22, `npm ci`, Lint, Tests, Typecheck einschließlich Testdateien, Build, echte Chromium-Abläufe, JSON-Fallbacks in Firefox/WebKit und ein vollständiges Dependency-Audit.
-4. `.github/workflows/deploy.yml` verwendet bei Push auf `main` dieselben Prüfungen. Erst nach deren Erfolg wird das in demselben Lauf erzeugte Artefakt veröffentlicht. Manuelle Läufe anderer Branches veröffentlichen nichts.
+## Zahlung und Korrektur
 
-Die verpflichtenden Statuschecks müssen zusätzlich in den Branch-Regeln eingerichtet werden; eine Workflow-Datei erzwingt sie nicht. Nachweise, geprüfte Action-Versionen und offene administrative Einstellungen stehen in [docs/quality-gates.md](docs/quality-gates.md); Paketfolge und Produktregeln in [docs/implementation-status.md](docs/implementation-status.md) und [docs/product-decisions.md](docs/product-decisions.md).
+Rechnung öffnen, den **Tatsächlichen Zahlungstag** eintragen und **Vollzahlung erfassen** wählen.
+Bei einer bereits erfassten Zahlung lässt sich der bestätigte Tag über **Zahlungstag korrigieren** ändern. Ein unbekannter historischer Zahlungstag bleibt unbekannt, bis er ausdrücklich bestätigt wird.
+Offen/bezahlt wird aus den Zahlungszuordnungen abgeleitet; überfällig aus Fälligkeit und offenem Anspruch. Die Liste steht fest nach Rechnungsdatum, neueste zuerst; Suche und Statusfilter bleiben.
 
-Vite verwendet für den Produktions-Build relative Asset-Pfade. Dadurch funktioniert die App sowohl unter `username.github.io/repository/` als auch mit einer eigenen Domain, ohne den Repository-Namen im Code einzutragen.
+Für Änderungen an finalen Belegen **Korrektur** mit Begründung anlegen, den neuen Entwurf prüfen und finalisieren. Original und ursprüngliche Nummer bleiben erhalten; die Korrektur erhält einen neuen Beleg und eine neue Nummer. Bestehende Zahlungen werden nicht automatisch auf eine Korrektur übertragen. Historie, Klärung und Zahlungszuordnung liegen unter **Details**.
 
-## PDF / Drucken
+## JSON sichern und wiederherstellen
 
-„PDF / Drucken“ öffnet den nativen Druckdialog des Browsers. Dort **Als PDF speichern** wählen. Das Druck-CSS setzt A4 mit **16 mm oben, 20 mm links/rechts und 22 mm unten**, Inter-Typografie, Briefkopf, Tabellenfarben und Bankdaten um. Entwürfe tragen ein Wasserzeichen. Rechtstext, Rechnungsreferenz und Hinweise stehen zusätzlich im normalen Dokumentfluss: Selbst wenn ein Browser die optionalen `@page`-Randbereiche nicht unterstützt, bleiben die wesentlichen Angaben im PDF erhalten. In Chromium ergänzen die Randbereiche auf jeder Seite Rechnungsreferenz und „Seite x von y“. Lange Namen, Anschriften, Kontoangaben und mehrzeilige Freitexte bleiben umbruchfähig statt abgeschnitten zu werden.
+Unter **Einstellungen → Backup & Import → JSON exportieren** den zuletzt gespeicherten Stand herunterladen. Ungespeicherte Formulareingaben gehören nicht dazu. Backups sind Klartextdateien mit Personen, Rechnungshinweisen, Belegen, Einstellungen, Zahlungen und Historie; bewahre sie geschützt und außerhalb des Browserprofils auf. Es gibt keinen automatischen Dateibackup-Ablauf.
 
-Die Fußzeilenoption stellt Rechtstext und Befreiungshinweis als eigene Zeilen direkt an die Endsumme; dadurch bleiben beide auch bei mehrseitigen Rechnungen auf deren Seite. Die spätere Schlusszeile enthält dann nur noch die Belegreferenz. Der frei eingegebene Rechtstext wird nicht automatisch gekürzt oder auf mögliche Dopplungen hin verändert; Editor und Rechnungsdetail weisen auf „§ 19“ oder „Kleinunternehmer“ darin hin. Neue Standardeinstellungen enthalten keinen zusätzlichen Befreiungstext. Bereits gespeicherte Rechtstexte bleiben erhalten.
+**JSON importieren** prüft die Datei zunächst ohne Übernahme. Vorschau und Meldungen lesen, dann die Wiederherstellung vorbereiten und ausdrücklich bestätigen. Bekannte Originale, Zahlungen, Kennungen und Nummernreservierungen bleiben geschützt; ein Backup ist kein freies Zusammenführen widersprüchlicher Bestände. Alte Tabs vor einem Umstieg schließen. Ein fehlgeschlagener Import verändert den Ausgangsbestand nicht.
 
-Der GiroCode füllt Empfänger, deutsche IBAN, optional eingegebene BIC, Betrag und Rechnungsnummer aus derselben gebundenen Belegversion in unterstützten Banking-Apps aus. Bei einer fehlerhaften EPC-Payload oder abgelehnter QR-Erzeugung erklärt die App den Grund und bietet ausdrücklich **„Ohne GiroCode drucken“** an; das fehlerhafte Bild wird nicht übernommen. Das ändert weder die Finalisierungsprüfung noch Rechnungsdaten. Für neue Verwendung werden ausschließlich deutsche Empfänger-IBANs unterstützt. IBAN-Prüfsumme und BIC-Format bestätigen weder Kontoinhaber noch Erreichbarkeit. Der EPC-Standard selbst kann keine Echtzeitüberweisung erzwingen; diese Option wird – sofern verfügbar – in der Banking-App ausgewählt.
+Bei Speicher-/Tabkonflikten die Meldung befolgen und den aktuellen Stand neu laden. Im Wiederherstellungsmodus lassen sich Rohdaten sichern und ein vorhandener vorheriger Stand prüfen. **Wiederherstellungsarchiv exportieren** ist ein separater technischer Nachweisexport; bekannte Bereinigungslücken dieses Altpfads sind in der [Migrationsdokumentation](docs/technical.md#bekannte-bereinigungslücken) genannt.
 
-Automatisch geprüft ist **Chromium 153.0.8010.12 unter Ubuntu 24.04** in CI, einschließlich echter PDF-Erzeugung und Textprüfung. Native Druckdialoge und die visuelle Druckabnahme bleiben offen. Der normale Dokumentfluss ist der vorgesehene Druckfallback für Firefox/Safari; deren PDF-Ausgabe und dynamische `@page`-Seitenzahlen wurden nicht abgenommen. Chrome und Edge werden nicht als eigene Versionen freigegeben. Banking-App-Scans bleiben manuell: eine synthetische finale PDF öffnen bzw. den QR-Code scannen und Empfänger, DE-IBAN, optionale BIC, Betrag sowie Rechnungsnummer gegen den Bankblock prüfen, ohne eine Überweisung auszulösen. Die [Freigabematrix](docs/release-readiness.md) hält Versionen und offene Prüfungen fest.
-
-## Originale, Korrekturen und Zahlungen
-
-Neue Rechnungen verwenden beispielsweise `2026-0007-a` oder `2026-0003-a+b`.
-Die Folge hat mindestens vier Stellen und zählt jährlich je Person bzw. Kombination.
-`a+b` und `b+a` nutzen denselben Kreis; gemeinsame Erziehungsberechtigte ändern
-die Personenkennung nicht. Schema 12 entfernt Mustereditor und Reset-Konfiguration.
-Alte Nummern und Reservierungen bleiben unverändert; alte globale oder mehrdeutige
-Zähler werden beim kontrollierten Umstieg konservativ übernommen. Einzelheiten
-stehen im [P06-Abschlussbericht](docs/p06-invoice-numbering.md).
-
-Duo-Unterricht nutzt den normalen Rechnungseditor und den hinterlegten Duo-Preis.
-Zwei berechtigte Erziehungsberechtigte können gemeinsam eine Rechnung empfangen;
-dabei entstehen ein Beleg, eine Nummer und eine Forderung. Weitere Rechnungen
-werden unabhängig erstellt, bearbeitet und abgeschlossen.
-
-Schema 10 entfernt die Duo-Gruppenverwaltung. Bestehende Schema-8/9-Entwürfe
-werden nach Prüfung im vorhandenen Wiederherstellungsmodus mit unveränderten
-Positionen, Einzelpreisen und Empfängern übernommen. Historische finale Belege
-bleiben gleich. Alte Gruppenmetadaten bleiben ausschließlich im Migrationsbericht
-und Wiederherstellungsarchiv. Fehlende Partner werden nicht rekonstruiert;
-unklare Bestände bleiben mit Originaldaten zur Klärung erhalten.
-Die Prüfgrenzen stehen im [P03-Abschlussbericht](docs/p03-remove-duo-workflow.md).
-
-Schema 11 entfernt Zahler-IBAN und interne Personen-/Zahlungsnotizen auch aus
-bestehenden Stammdaten und internen Wiederherstellungskopien. Nach erfolgreicher
-Übernahme bleiben diese Felder in Speicherung und neuen Exporten entfernt.
-Fehler beim Umstieg lassen den Ausgangsbestand unverändert. Ein vorhandener
-Kontaktname hat Vorrang; nur ohne Namen werden vorhandene Vor-/Nachnamenswerte
-zusammengesetzt. Namen werden nicht zerlegt. Rechnungen und Snapshots verwenden
-nur noch `recipients`; alte Projektionen liest ausschließlich der Altimport.
-`Student.guardianIds`, Ausstellerkonten, GiroCode und `freeText` bleiben erhalten.
-Die Prüfgrenzen stehen im [P05-Abschlussbericht](docs/p05-contacts-recipients.md).
-
-Unter **Personen** kann eine erwachsene lernende Person **Zahlt selbst** wählen und
-optionale E-Mail- und Anschriftdaten hinterlegen. Name und Kontaktdaten werden
-nicht als zweiter Elternteil erfasst. Anschriften sind optional. Bei Minderjährigen
-können ein oder zwei Erziehungsberechtigte Empfänger einer einzigen Rechnung sein.
-Beide vorhandenen Anschriften bleiben im Snapshot eingefroren. Jeder ausgewählte
-Empfänger muss zum Empfang der Angaben aller ausgewählten Lernenden berechtigt sein;
-sonst ist die neue Rechnung gesperrt. Das Kennzeichen einer lernenden Person bleibt beim Zahlmoduswechsel
-gleich; ausgestellte Belege behalten ihren damaligen Empfänger-Snapshot.
-
-Finalisieren sichert den vollständigen Beleg. Spätere Änderungen an Stammdaten,
-Konten oder Textbausteinen verändern ihn nicht. Ansicht, Druck, Erinnerung und
-Export verwenden dieselbe ausgewählte Version, auch bei leeren historischen
-Kontofeldern. Bereits gesicherte Beträge bleiben bei der Rechenumstellung erhalten;
-ältere Formate ohne Belegversion sichern zunächst ihren bisherigen Ausgabestand.
-
-In den Rechnungsdetails einen **Korrekturgrund** eingeben und **Korrekturentwurf
-erzeugen** wählen. Der Entwurf übernimmt sämtliche Positionen. Gelöschte Lernende
-und empfangende Personen ausdrücklich neu zuordnen; bis dahin lässt sich der
-Entwurf speichern, aber nicht finalisieren. Historische Abweichungen zuerst mit
-dem Ergebnis der Klärung dokumentieren. Die Finalisierung vergibt eine neue Nummer
-und ersetzt die aktive Forderung. Das Original bleibt auswählbar und druckbar.
-
-Vorhandene Zahlungen bleiben zunächst beim ursprünglichen Beleg. Unter
-**Zahlungszuordnung** den korrigierten Beleg wählen und die Zuordnung begründen.
-Die Zahlung wird weder kopiert noch gelöscht; Herkunft, Datum und bisherige
-Zuordnungen bleiben sichtbar. Abweichende Beträge erscheinen als Restforderung
-oder Überzahlung. Vollzahlungen haben einen bestätigten Zahlungstag; neue
-Teilzahlungen und Erstattungen bleiben optionales Paket 14. Bei ungeklärten Zuordnungen oder
-Restbeträgen ist die bisherige Erinnerung über den vollen Betrag gesperrt.
-
-Finalisierte Belege lassen sich **archivieren** und über **Archivierte anzeigen**
-wieder aufrufen. Archivierung ändert keine Forderung und gibt keine Nummer frei.
-Nur echte Entwürfe können gelöscht werden. Die Aktivitätsliste ist auf 200 Einträge
-begrenzt; vollständige Versionen, Zahlungszuordnungen und vorhandene historische
-Snapshot-Differenzen werden unabhängig davon aufbewahrt. JSON-Backups enthalten
-alle Versionen; CSV kennzeichnet ersetzte und archivierte Belege ausdrücklich.
-Komplett-Zurücksetzen ist nur ohne ausgestellte Belege, historische Dokumentation
-und reservierte Nummern verfügbar; dies ist bewusster Produktumfang.
-
-## Backup und Restore
-
-Unter **Einstellungen → Backup & Import** sind JSON-Export, Wiederherstellung,
-vorheriger lokaler Stand und Wiederherstellungsarchiv erreichbar. Der Export
-enthält den zuletzt bestätigten Stand. Eine Wiederherstellung wird nach Vorschau
-bestätigt, bewahrt Originaldaten/Berichte und wird als neue Revision gespeichert.
-Bekannte ausgestellte Belege und reservierte Nummern bleiben geschützt.
-
-Einstellungen werden ausschließlich mit **Jetzt speichern** gespeichert. Validierungs-
-oder Speicherfehler erhalten die Eingaben; eine Wiederholung erfolgt mit demselben
-Knopf. Während eines laufenden Versuchs ergänzte Eingaben bleiben ungespeichert.
-Ansichts- und Demo-Wechsel warnen vor offenen Änderungen und bieten Weiterbearbeiten
-oder ausdrückliches Verwerfen. Darstellung und reduzierte Bewegung gehören ebenfalls
-zu diesem Speichermodell; das Farbschema-Symbol öffnet die Darstellungseinstellungen.
-Der JSON-Export enthält immer den zuletzt bestätigten Stand, keine offenen Eingaben.
-
-Es gibt keine Ordnerauswahl, Berechtigungsabfrage oder automatische Dateisicherung.
-Vorhandene externe Backups und alte lokal gespeicherte Handles bleiben unberührt.
-Die Anzeige unterscheidet offene Änderungen, lokalen Schreibabschluss, Tabkonflikte,
-Speicherfehler und den letzten manuell gestarteten JSON-Export – auch mobil.
-Ohne Web Locks bleibt lokales Schreiben gesperrt. Locks koordinieren Tabs im selben
-Browserprofil; mehrere Geräte oder Profile teilen keinen Schreibdienst.
-
-Die **Demo** läuft ausschließlich im Arbeitsspeicher einer eigenen Sitzung und
-benutzt weder realen Speicher noch Datei-/Handle-APIs. Ungespeicherte Einstellungen
-sind auch beim Verlassen geschützt; Demo-Änderungen gehen danach verloren.
-
-JSON-Export, Import in ein leeres Profil und Reload werden in
-Chromium 153.0.8010.12, Firefox 155.0 und Playwright-WebKit 26.6 unter Linux
-geprüft. WebKit/Linux ist kein Nachweis für Safari auf macOS/iOS. Der dort
-vorgesehene JSON-Fallback bleibt eine offene native Abnahme.
-
-Vor einem Formatumstieg eine unabhängige Originaldatei geschützt sichern. Rückkehr zu früherem Code nur mit dieser passenden alten
-Datei in einem getrennten Profil; neue Formate werden nicht zurückkonvertiert.
-Die geprüfte [Umstiegs- und Rückkehranleitung](docs/release-readiness.md#umstieg-und-rückkehr)
-beschreibt Migration, Wiederholung nach Fehlern und Kontrolle nach Reload.
-
-## Datenschutz und Grenzen
-
-- Rechnungen, Einstellungen und Historie liegen im verwendeten Browserprofil. Ein Geräteschutz, ein gesperrtes Benutzerkonto und ein geschütztes Browserprofil sind deshalb Teil des Schutzmodells. Inkognito-Modus, das Löschen von Website-Daten oder ein Geräteverlust können lokale Daten entfernen.
-- Browser-Speicher ist an den **Origin** (Schema, Host und Port), nicht an den Repository-Unterpfad gebunden. Die konfigurierte GitHub-Pages-Auslieferung hat ohne `CNAME` den Origin `https://sl3ndrr.github.io`; RiffRechnung liegt darunter unter `/RiffRechnung/`. Andere dort ausgelieferte Projekte teilen den Origin und sind kein getrenntes Speicher-Sicherheitsgebiet. Die im Eigentümerkonto vorhandenen weiteren Repositories belegen nicht, dass sie auch dort ausgeliefert werden; das konnte aus der Repository-Konfiguration nicht abschließend festgestellt werden. Wenn nicht vertrauenswürdige Anwendungen unter diesem Origin betrieben werden sollen, ist ein separater Origin eine Betriebsoption.
-- JSON-Exports sind normale Klartextdateien. Sie enthalten Personen-/Kontaktangaben, Rechnungen, Einstellungen, Rechnungshinweise, vollständige Belegversionen sowie Änderungs- und Zahlungszuordnungshistorie. Sicherungen nur geschützt ablegen und vor dem Weitergeben prüfen.
-- Die App nutzt keine Cloud-API. Wird eine exportierte Datei in einem synchronisierten Ordner abgelegt, kann dessen installierte Desktop-Synchronisation die Klartextdatei an den jeweiligen Dienst übertragen; dessen Datenschutz- und Freigaberegeln gelten zusätzlich.
-- Rechnungsnummern sind innerhalb jedes Lernendenkennzeichens monoton und eindeutig. Die erste angelegte lernende Person erhält `a`, die zweite `b`; eine gemeinsame Rechnung für beide verwendet `a+b`. `ab` kann dagegen das Kennzeichen einer einzelnen später angelegten Person sein. Parallel genutzte Browserprofile/Geräte teilen keinen Nummernkreis; für einen lückenlosen gemeinsamen Nummernkreis darf nur ein führender Datenbestand verwendet werden.
-- Finalisierte Rechnungen bleiben erhalten; inhaltliche Änderungen erzeugen Korrekturen. Archivierung und Zahlungs-/Versandverwaltung ändern den gesicherten Inhalt nicht. Originalnummern und frühere Registereinträge bleiben dauerhaft reserviert.
-- Ein migrierter Beleg ist nur der älteste verfügbare Stand. Fehlende frühere Versionen werden nicht rekonstruiert. Lokale Versionierung garantiert weder Manipulationssicherheit noch automatische GoBD-Konformität.
-- Für neue Rechnungen ist nach ausdrücklicher Produktentscheidung das Kleinunternehmerprofil nach § 19 UStG vorgesehen. Vor Finalisierung sind vollständige Aussteller-/Empfängeranschriften und eine ausdrücklich typisierte Steuerkennung erforderlich. Andere Steuerprofile oder Ausnahmen werden nicht automatisch angenommen. Die App ersetzt keine Steuer- oder Rechtsberatung.
-
-## Bewusst nicht enthalten
-
-- kein automatischer E-Mail-Versand und keine Zugangsdaten in der App; Erinnerungen werden nur an das lokale E-Mail-Programm übergeben
-- keine Mehrsprachigkeit, da der aktuelle Einsatz deutschsprachig ist und ein schlankes, zuverlässiges Rechnungs-Template Vorrang hat
-- keine Mehrgeräte-Synchronisation oder kollaborative Bearbeitung, da dies ohne Backend nicht konfliktfrei und sicher möglich wäre
-
-
-### Datenprüfung und kontrollierter Formatumstieg
-
-Das Datenschema ist Format 8; die Speicherung verwendet weiterhin den versionierten
-Umschlag aus Paket 03 (Speicherprotokoll 4). Entwürfe können unvollständig sein; ungültige
-Preise, Mengen, IDs oder Referenzen werden nicht gespeichert. Nur deutsche IBANs
-sind für neue/geänderte Kontoeinstellungen und neue Finalisierungen zugelassen.
-
-Beim Import und im Wiederherstellungsmodus lassen sich Formate 2 bis 7 prüfen. Bekannte
-Empfängerkopien mit doppelten Positions-IDs erhalten eine Reparaturvorschau,
-separate Exporte und einen Bericht mit Originaldaten. Die bestätigte Übernahme
-verwendet denselben abgesicherten Schreibdienst wie normale Änderungen.
-Der Migrationsbericht dokumentiert die jetzt gesicherten Belegstände, Betragsquellen,
-Abweichungen und übernommenen Verwaltungs-/Zahlungsangaben. Vorhandene Registerbeträge
-haben Vorrang; die abweichende bisherige Rechnungssumme bleibt ebenfalls erhalten.
-
-Beim Umstieg **alle alten Tabs schließen**, Original exportieren und die Vorschau
-bestätigen. Die Speicher-Schlüssel bleiben erhalten; die frühere Handle-Datenbank
-wird seit P04 nicht mehr verwendet. Alte Rohtexte bleiben im Wiederherstellungsarchiv erhalten. Ändert ein alter
-Tab ihn später, erscheint ein Konflikt; beide Stände separat exportieren und in
-einem getrennten aktuellen Profil prüfen. Unbekannte neuere Formate bleiben
-schreibgeschützt. Für alten Anwendungscode nur die Originaldatei in einem eigenen
-Profil verwenden. Andere Schäden werden nicht automatisch korrigiert.
-
-Die unterstützte E-Mail-Regel und die genauen Format-/Reparaturgrenzen stehen in
-[Produktentscheidungen](docs/product-decisions.md#paket-02--speicherbare-zustände-und-reparaturen).
-
-
-Die Browserprüfung nutzt ausschließlich synthetische Daten. `npm run test:browser`
-prüft UI/PDF in Chromium und JSON-Fallbacks in Chromium, Firefox und WebKit ohne
-historischen Git-Fetch oder App-Build. Nur `npm run test:migrations` baut den
-unveränderten Commit `ba7857fd9180fa392c42a0235643e478e5077ee5` als temporäre
-Testseite unter derselben Origin. Dieser getrennte Pfad prüft einen wirklich
-geöffneten alten Tab und die Rückkehr einer unabhängigen Originaldatei mit altem
-Code. Er benötigt Git, tar und bei fehlendem Commit lesenden GitHub-Zugriff.
-Die Testseite wird anschließend entfernt und nicht ausgeliefert.
-Ein isoliertes dauerhaftes Chromium-Profil enthält synthetische alte OPFS-Dateien
-und IndexedDB-Handles. Die Browserprüfung kontrolliert, dass die App sie ungenutzt
-und unverändert lässt; aktive Ordnerdialoge und Dateischreibrechte entfallen.
-Paket 04 prüft zusätzlich echte Chromium-PDFs anhand ihres Textinhalts. Synthetische
-PDFs und Browsernachweise stehen sieben Tage als CI-Artefakt `browser-evidence`
-bereit. Native Druckdialoge, Drucklayout-Matrix und Banking-App-Scans sind separate
-Abnahmen; die automatisierte PDF-Prüfung ersetzt sie nicht.
-
-
-### Dezimalbeträge und Kalenderdaten (Paket 05)
-
-Neue Positionen werden vor der Multiplikation dezimal exakt ausgewertet,
-positionsweise kaufmännisch auf Cent gerundet und als Centbeträge addiert.
-Mengen erlauben 0,01–99,99 mit zwei Nachkommastellen; Untercentpreise bleiben
-verlustfrei erhalten. Neue Rechnungen sind auf 999.999.999,99 EUR begrenzt.
-Schema 5 bewahrt bereits gesicherte Originalbeträge. Geänderte Altentwurfsbeträge
-werden beim Umstieg und im Editor angezeigt. Vor Übernahme bleibt das Original
-mit Migrationsbericht im Wiederherstellungsarchiv; alte Tabs vorher schließen.
-Rechnungs- und Leistungstage verwenden lokale Kalenderdaten; Monatskopien
-begrenzen etwa den 31. Januar auf den 28./29. Februar. Details und Nachweise:
-[Produktentscheidungen](docs/product-decisions.md), [Umsetzungsstatus](docs/implementation-status.md).
-
-
-### Rechnungsprofil und deutsche IBAN (Paket 07)
-
-Der folgende Paket-07-Abschnitt beschreibt den damaligen Stand. Aktuell gelten
-die oben beschriebenen AP3/AP4-Regeln: Bei ausdrücklich gewählten
-Kleinbetragsrechnungen bis 250,00 € sind Empfängeranschrift und ausgegebene
-Steuerkennung entbehrlich; der Befreiungshinweis bleibt Pflicht.
-
-Unvollständige Einstellungen und Rechnungsentwürfe sind speicherbar. Finalisieren
-ist erst mit vollständigem Kleinunternehmerprofil, Aussteller- und
-Empfängeranschriften, einer als Steuernummer, USt-IdNr. oder
-Kleinunternehmer-Identifikationsnummer ausgewählten Angabe sowie gültigen
-deutschen Zahlungsdaten möglich. Fehlende Angaben werden feldbezogen angezeigt.
-
-Schema 6 ergänzt Profil und Steuerkennung in den aktuellen Einstellungen und in
-neuen Snapshots. Bei der Migration aus Format 2–5 bleibt die Steuerkennung leer
-und sperrt neue Finalisierungen bis zur bewussten Eingabe. Historische Snapshots
-werden nicht ergänzt; auch eine dort leere BIC bleibt leer. Grundlagen und
-Produktannahmen stehen in [Produktentscheidungen](docs/product-decisions.md).
+[Technik, Migration und Prüfungen](docs/technical.md) · [Historische Nachweise](docs/evidence.md) · [Kurze Release-Notizen](docs/releases.md)
