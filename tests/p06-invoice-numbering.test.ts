@@ -45,7 +45,7 @@ test('P06: mehrstellige Kennungen behalten Vergabereihenfolge unabhängig von Na
   state.students[0].billingCode = 'z'; state.students[1].billingCode = 'aa'; state.nextStudentCodeIndex = 27
   const renamed = requireSuccess(saveStudentState(state, { ...state.students[0], name: 'Anderer Name', active: false, billingCode: 'b', guardianIds: ['g-b'] }))
   assert.equal(renamed.students[0].billingCode, 'z')
-  state = { ...renamed, students: sortPeople(renamed.students, 'name-desc') }
+  state = { ...renamed, students: sortPeople(renamed.students).reverse() }
   assert.equal(invoiceStudentCode(state, ['s-b', 's-a']), 'z+aa')
   const long = structuredClone(state)
   const firstCode = 'a'.repeat(20) + 'b', secondCode = 'a'.repeat(20) + 'c'

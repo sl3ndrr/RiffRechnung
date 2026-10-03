@@ -4,7 +4,7 @@ import { LEGACY_REVIEW_FIELDS } from '../lib/commands'
 import { applyItemNumberInput, itemNumberInput, adjustQuantity as adjustedQuantity, MIN_QUANTITY, MAX_QUANTITY, QUANTITY_INCREMENT } from '../lib/values'
 import { invoiceDraftErrors } from '../lib/invoiceActions'
 import { useEffect, useMemo, useState } from 'react'
-import { Calendar, CircleDollarSign, FileCheck2, Minus, Plus, Save, Send, Trash2 } from 'lucide-react'
+import { Calendar, CircleDollarSign, Minus, Plus, Send, Trash2 } from 'lucide-react'
 import type { AppState, Guardian, InvoiceDraft, LessonType, RecipientRef, Settings, Student } from '../types'
 import { FINALIZED_INVOICE_BLOCKED } from '../lib/safety'
 import { Modal } from '../components/Modal'
@@ -25,15 +25,13 @@ interface InvoiceEditorProps {
   students: Student[]
   settings: Settings
   editing: boolean
-  finalized: boolean
-  invoiceNumber?: string | null
   onClose: () => void
   onDirtyChange: (dirty: boolean) => void
   onSave: (draft: InvoiceDraft, finalize: boolean) => void
   onConvert: (sourceId: string, reviewed: string[], guardianIds: string[], edited: InvoiceDraft) => void
 }
 
-export function InvoiceEditor({ state, open, draft, guardians, students, settings, editing, finalized, invoiceNumber, onClose, onDirtyChange, onSave, onConvert }: InvoiceEditorProps) {
+export function InvoiceEditor({ state, open, draft, guardians, students, settings, editing, onClose, onDirtyChange, onSave, onConvert }: InvoiceEditorProps) {
   const [form, setForm] = useState<InvoiceDraft>(draft)
   const [numberInputs, setNumberInputs] = useState<Record<string, Partial<Record<'quantity' | 'unitPrice', string>>>>({})
   const [errors, setErrors] = useState<string[]>([])
@@ -57,10 +55,10 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
   const change = draftAmountChange(draft)
   const calculatedPeriod = billingPeriodFromItems(form.items, form.invoiceDate)
   const dirty = JSON.stringify(form) !== JSON.stringify(draft)
-  const correctionBlockers = form.correction && !finalized ? invoiceFinalizationErrors(state, form) : []
+  const correctionBlockers = form.correction ? invoiceFinalizationErrors(state, form) : []
 
   useEffect(() => { setReviewed([]) }, [form, conversionRecipients])
-  useEffect(() => { onDirtyChange(open && !finalized && dirty) }, [dirty, finalized, onDirtyChange, open])
+  useEffect(() => { onDirtyChange(open && dirty) }, [dirty, onDirtyChange, open])
   useEffect(() => () => onDirtyChange(false), [onDirtyChange])
 
   const selectStudent = (student: Student) => {
@@ -139,7 +137,8 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
 
   const submit = (finalize: boolean) => {
     const invalidNumbers = form.items.some((item) => (['quantity', 'unitPrice'] as const).some((field) => itemNumberInput(numberInputs[item.id]?.[field] ?? decimalInputText(item[field]), field) === null))
-    const nextErrors = finalized ? [FINALIZED_INVOICE_BLOCKED] : invoiceDraftErrors(state, form, finalize)
+    const issued = form.id && state.invoices.some((invoice) => invoice.id === form.id && Boolean(invoice.number))
+    const nextErrors = issued ? [FINALIZED_INVOICE_BLOCKED] : invoiceDraftErrors(state, form, finalize)
     if (invalidNumbers) nextErrors.push('Bitte die Preise und Mengen vervollständigen. Ungültige Zwischenwerte werden nicht gespeichert.')
     setErrors(nextErrors)
     if (!nextErrors.length) {
@@ -147,7 +146,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
     }
   }
 
-  const legacyDraft = form.recipientStrategy === 'separate' && !form.correction && !finalized
+  const legacyDraft = form.recipientStrategy === 'separate' && !form.correction
   const convert = () => {
     if (!form.id) { setErrors(['Der historische Entwurf muss vor der Umwandlung gespeichert sein.']); return }
     if (form.items.some((item) => (['quantity', 'unitPrice'] as const).some((field) => itemNumberInput(numberInputs[item.id]?.[field] ?? decimalInputText(item[field]), field) === null))) { setErrors(['Bitte Preise und Mengen vor der Übernahme vervollständigen.']); return }
@@ -159,7 +158,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
     <Modal
       open={open}
       onClose={onClose}
-      title={finalized ? `Rechnung ${invoiceNumber ?? ''} bearbeiten` : form.correction ? 'Korrekturentwurf bearbeiten' : editing ? 'Entwurf bearbeiten' : 'Neue Rechnung'}
+      title={form.correction ? 'Korrekturentwurf bearbeiten' : editing ? 'Entwurf bearbeiten' : 'Neue Rechnung'}
       eyebrow="Rechnungseditor"
       size="large"
       initialFocus="title"
@@ -167,9 +166,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
         <>
           <div className="modal-total"><span>Gesamt</span><strong>{total === null ? 'Ungültiger Betrag' : euro.format(total)}</strong></div>
           <button className="button button--text" type="button" onClick={onClose}>Abbrechen</button>
-          {finalized ? (
-            <button className="button button--primary" type="submit" form={INVOICE_EDITOR_FORM_ID} disabled><Save aria-hidden="true" /> Änderungen speichern</button>
-          ) : legacyDraft ? (
+          {legacyDraft ? (
             <button className="button button--primary" type="button" onClick={convert}>Als gemeinsamen Entwurf übernehmen</button>
           ) : (
             <><button className="button button--tonal" type="submit" form={INVOICE_EDITOR_FORM_ID}>Als Entwurf speichern</button><button className="button button--primary" type="button" disabled={correctionBlockers.length > 0} onClick={() => submit(true)}><Send aria-hidden="true" /> Finalisieren</button></>
@@ -180,7 +177,6 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
       <form className="invoice-form" id={INVOICE_EDITOR_FORM_ID} onSubmit={(event) => { event.preventDefault(); submit(false) }}>
         {editing && !state.invoices.find((invoice) => invoice.id === draft.id)?.calculation && change.changed && <p role="status" className="notice">Dezimalberechnung prüfen: bisher {euro.format(change.before / 100)}, jetzt {change.after === null ? 'ungültiger Betrag' : euro.format(change.after / 100)}. Positionsbeträge werden einzeln kaufmännisch auf Cent gerundet. Speichern oder Finalisieren übernimmt die hier angezeigten neuen Beträge; Originalbelege bleiben erhalten.</p>}
         <p className="muted">Mengen: 0,01–99,99 (bis 2 Nachkommastellen). Preise in EUR je Einheit; gespeicherte Untercentpräzision bleibt erhalten. Gesamt höchstens 999.999.999,99 EUR.</p>
-        {finalized && <div className="revision-banner"><FileCheck2 aria-hidden="true" /><div><strong>Finalisierte Rechnung</strong><p>{FINALIZED_INVOICE_BLOCKED}</p></div></div>}
         {errors.length > 0 && <div className="form-errors" role="alert"><strong>Bitte noch prüfen:</strong><ul>{errors.map((error) => <li key={error}>{error}</li>)}</ul></div>}
         {correctionBlockers.length > 0 && <div className="form-errors" role="status"><strong>Für den Abschluss der Korrektur:</strong><ul>{correctionBlockers.map((error) => <li key={error}>{error}</li>)}</ul></div>}
 
@@ -200,10 +196,9 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
         </section>}
         <section className="form-section">
           <div className="form-section__heading"><span>1</span><div><h3>Für wen?</h3><p>Lernende und Rechnungsempfänger auswählen.</p></div></div>
-          <fieldset className="chip-fieldset" disabled={finalized}><legend>Lernende</legend><div className="choice-chips">{students.filter((student) => student.active || form.studentIds.includes(student.id)).map((student) => <label className={form.studentIds.includes(student.id) ? 'choice-chip is-selected' : 'choice-chip'} key={student.id}><input type="checkbox" checked={form.studentIds.includes(student.id)} onChange={() => selectStudent(student)} /><span className="avatar">{student.name.slice(0, 1)}</span>{student.name}</label>)}</div>{!students.length && <p className="field-hint field-hint--warning">Lege zuerst unter „Personen“ eine lernende Person an.</p>}{finalized && <p className="field-hint">Die Zuordnung bleibt gesperrt, weil sie Bestandteil des Rechnungsnummernkreises ist.</p>}</fieldset>
+          <fieldset className="chip-fieldset"><legend>Lernende</legend><div className="choice-chips">{students.filter((student) => student.active || form.studentIds.includes(student.id)).map((student) => <label className={form.studentIds.includes(student.id) ? 'choice-chip is-selected' : 'choice-chip'} key={student.id}><input type="checkbox" checked={form.studentIds.includes(student.id)} onChange={() => selectStudent(student)} /><span className="avatar">{student.name.slice(0, 1)}</span>{student.name}</label>)}</div>{!students.length && <p className="field-hint field-hint--warning">Lege zuerst unter „Personen“ eine lernende Person an.</p>}</fieldset>
           <fieldset className="chip-fieldset"><legend>Rechnungsempfänger</legend><div className="choice-chips">{eligibleGuardians.map((guardian) => { const ref: RecipientRef = { type: 'guardian', id: guardian.id }; return <label className={selectedRecipients.some((entry) => recipientKey(entry) === recipientKey(ref)) ? 'choice-chip is-selected' : 'choice-chip'} key={recipientKey(ref)}><input type="checkbox" checked={selectedRecipients.some((entry) => recipientKey(entry) === recipientKey(ref))} onChange={() => toggleRecipient(ref)} /><span className="avatar avatar--warm">{guardian.name.slice(0, 1)}</span>{guardian.name}</label> })}{eligibleSelfPayers.map((student) => { const ref: RecipientRef = { type: 'student', id: student.id }; return <label className={selectedRecipients.some((entry) => recipientKey(entry) === recipientKey(ref)) ? 'choice-chip is-selected' : 'choice-chip'} key={recipientKey(ref)}><input type="checkbox" checked={selectedRecipients.some((entry) => recipientKey(entry) === recipientKey(ref))} onChange={() => toggleRecipient(ref)} /><span className="avatar">{student.name.slice(0, 1)}</span>{student.name} · {student.selfPayer ? 'zahlt selbst' : 'früher selbstzahlend'}</label> })}</div></fieldset>
           {form.studentIds.length > 1 && selectedRecipients.length > 1 && <p className="field-hint field-hint--warning">Gemeinsame Rechnung: Alle ausgewählten Rechnungsempfänger sehen die Namen und Positionen aller ausgewählten Lernenden. Bitte die Zusammenstellung und Freitexte prüfen.</p>}
-          {guardianIdsFor(form.recipients).length > 1 && finalized && <p className="field-hint">Die vorhandene Rechnungsnummer bleibt eine gemeinsame Rechnung für die ausgewählten Empfänger:innen.</p>}
         </section>
 
 

@@ -4,8 +4,6 @@ const dateLong = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: 'long
 const dateShort = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })
 const germanCollator = new Intl.Collator('de-DE', { numeric: true, sensitivity: 'base' })
 
-export type PeopleSortMode = 'name-asc' | 'name-desc' | 'created-desc' | 'created-asc'
-
 export function parseDate(value: string): Date {
   return new Date(`${value}T12:00:00`)
 }
@@ -22,13 +20,7 @@ export function formatDateLong(value: string): string {
   return Number.isNaN(parsed.getTime()) ? value : dateLong.format(parsed)
 }
 
-export function sortPeople<T extends { name: string; createdAt: string }>(entries: T[], mode: PeopleSortMode): T[] {
-  const direction = mode.endsWith('-desc') ? -1 : 1
-  return [...entries].sort((a, b) => {
-    const primary = mode.startsWith('name')
-      ? germanCollator.compare(a.name, b.name)
-      : a.createdAt.localeCompare(b.createdAt)
-    return direction * primary || germanCollator.compare(a.name, b.name)
-  })
+export function sortPeople<T extends { id: string; name: string; createdAt: string }>(entries: T[]): T[] {
+  return [...entries].sort((a, b) => germanCollator.compare(a.name, b.name)
+    || a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
 }
-

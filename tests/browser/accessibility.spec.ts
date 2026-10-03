@@ -137,13 +137,11 @@ test('P10 Browser: interne Navigation schützt alle Editorwerte und Verwerfen sp
   await page.getByRole('button', { name: 'Entwurf', exact: true }).press('Enter')
   await page.getByRole('button', { name: 'Bearbeiten', exact: true }).click()
   const editor = page.getByRole('dialog', { name: 'Entwurf bearbeiten' })
-  await editor.getByLabel('Freitext / Hinweis', { exact: true }).fill('Ungespeicherte Einleitung')
   await editor.getByLabel('Freitext / Hinweis', { exact: true }).fill('Ungespeicherter Freitext')
   const overview = page.locator('.sidebar nav button').filter({ hasText: 'Personen' })
   await overview.evaluate((element) => (element as HTMLButtonElement).click())
   const confirmation = page.getByRole('alertdialog', { name: 'Ungespeicherte Rechnungsänderungen verwerfen?' })
   await confirmation.getByRole('button', { name: 'Weiter bearbeiten' }).click()
-  await expect(editor.getByLabel('Freitext / Hinweis', { exact: true })).toHaveValue('Ungespeicherte Einleitung')
   await expect(editor.getByLabel('Freitext / Hinweis', { exact: true })).toHaveValue('Ungespeicherter Freitext')
   await overview.evaluate((element) => (element as HTMLButtonElement).click())
   await confirmation.getByRole('button', { name: 'Verwerfen' }).click()
@@ -153,7 +151,6 @@ test('P10 Browser: interne Navigation schützt alle Editorwerte und Verwerfen sp
   await invoices(page)
   await page.getByRole('button', { name: 'Entwurf', exact: true }).press('Enter')
   await page.getByRole('button', { name: 'Bearbeiten', exact: true }).click()
-  await expect(editor.getByLabel('Freitext / Hinweis', { exact: true })).not.toHaveValue('Ungespeicherte Einleitung')
   await expect(editor.getByLabel('Freitext / Hinweis', { exact: true })).not.toHaveValue('Ungespeicherter Freitext')
 })
 
@@ -319,5 +316,4 @@ test('P02 Browser: kompakte Einrichtung, ein isolierter Demo-Einstieg und Info-L
   await expect(demo).toHaveCount(1)
   await expect(page.getByRole('region', { name: 'Einrichtung', exact: true })).toBeVisible()
 })
-
 

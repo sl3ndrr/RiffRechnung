@@ -1,12 +1,8 @@
 import type { Guardian, Invoice, InvoiceItem, InvoiceStatus, Student } from '../types'
 import { localToday } from './calendar'
-import { decimalInputText, invoiceTotal, itemTotalCents } from './money'
+import { decimalInputText, itemTotalCents } from './money'
 import { euro, parseDate } from './utils'
 import { liveRecipient, recipientRefs, snapshotRecipients } from './recipients'
-
-const germanCollator = new Intl.Collator('de-DE', { numeric: true, sensitivity: 'base' })
-export type SortDirection = 'asc' | 'desc'
-export type InvoiceSortKey = 'date' | 'number' | 'family' | 'period' | 'status' | 'amount'
 
 export function billingPeriodFromItems(items: Array<Pick<InvoiceItem, 'serviceDate'>>, fallbackDate = ''): string {
   const dates = items
@@ -62,32 +58,9 @@ export function studentName(invoice: Invoice, students: Student[]): string {
   return names.join(', ') || 'Ohne Lernende'
 }
 
-function invoicePeriodSortValue(invoice: Invoice): string {
-  return invoice.items
-    .map((item) => item.serviceDate)
-    .filter(Boolean)
-    .sort()[0] ?? invoice.invoiceDate
-}
-
-const invoiceStatusOrder: Record<InvoiceStatus, number> = {
-  draft: 0,
-  sent: 1,
-  overdue: 2,
-  paid: 3,
-}
-
-export function sortInvoices(invoices: Invoice[], key: InvoiceSortKey, direction: SortDirection, guardians: Guardian[], students: Student[]): Invoice[] {
-  const multiplier = direction === 'asc' ? 1 : -1
-  return [...invoices].sort((a, b) => {
-    let primary = 0
-    if (key === 'date') primary = a.invoiceDate.localeCompare(b.invoiceDate) || a.createdAt.localeCompare(b.createdAt)
-    if (key === 'number') primary = germanCollator.compare(a.number ?? 'Entwurf', b.number ?? 'Entwurf')
-    if (key === 'family') primary = germanCollator.compare(`${guardianName(a, guardians, students)} ${studentName(a, students)}`, `${guardianName(b, guardians, students)} ${studentName(b, students)}`)
-    if (key === 'period') primary = invoicePeriodSortValue(a).localeCompare(invoicePeriodSortValue(b))
-    if (key === 'status') primary = invoiceStatusOrder[effectiveStatus(a)] - invoiceStatusOrder[effectiveStatus(b)]
-    if (key === 'amount') primary = invoiceTotal(a) - invoiceTotal(b)
-    return multiplier * primary || b.invoiceDate.localeCompare(a.invoiceDate) || b.createdAt.localeCompare(a.createdAt)
-  })
+export function sortInvoices(invoices: Invoice[]): Invoice[] {
+  return [...invoices].sort((a, b) => b.invoiceDate.localeCompare(a.invoiceDate)
+    || b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id))
 }
 
 function filenamePart(value: string, fallback: string): string {
