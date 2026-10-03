@@ -1,7 +1,7 @@
 import { deleteGuardianState, deleteStudentState, deleteInvoiceDraftState, resetUnissuedState, recordActivity } from './lib/commands'
 import { allocatePayment, archiveInvoice, createCorrectionDraft, resolveDocumentConflicts, selectInvoice } from './lib/documents'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { BookUser, FilePlus2, Menu, Moon, Palette, ReceiptText, Search, Settings as SettingsIcon, Sun, X } from 'lucide-react'
+import { BookUser, Menu, ReceiptText, Settings as SettingsIcon, X } from 'lucide-react'
 import type { AppState, AuditEvent, Guardian, Invoice, InvoiceDraft, InvoiceStatus, PageKey, Settings as SettingsType, Student, ToastMessage } from './types'
 import { Invoices } from './views/Invoices'
 import { InvoiceEditor } from './views/InvoiceEditor'
@@ -46,8 +46,6 @@ interface InvoiceEditorState {
   open: boolean
   draft: InvoiceDraft
   editing: boolean
-  finalized: boolean
-  invoiceNumber: string | null
 }
 
 function App() {
@@ -69,7 +67,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const [mobileNav, setMobileNav] = useState(false)
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 820px)').matches)
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
-  const [editor, setEditor] = useState<InvoiceEditorState>({ open: false, draft: createEmptyInvoiceDraft(state.settings), editing: false, finalized: false, invoiceNumber: null })
+  const [editor, setEditor] = useState<InvoiceEditorState>({ open: false, draft: createEmptyInvoiceDraft(state.settings), editing: false })
   const [editorDirty, setEditorDirty] = useState(false)
   const [printRequest, setPrintRequest] = useState<PrintRequest | null>(null)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
@@ -173,19 +171,17 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const openNewInvoice = useCallback(() => {
     const result = prepareNewInvoice(stateRef.current)
     if (!result.ok) return toast(result.errors.map((error) => error.message).join(' '), 'error')
-    setEditor({ open: true, draft: result.value, editing: false, finalized: false, invoiceNumber: null })
+    setEditor({ open: true, draft: result.value, editing: false })
   }, [toast])
 
   const editInvoice = (invoice: Invoice) => {
     // The editor is available for every draft. A legacy/output snapshot alone
     // must not hide a still editable draft; the domain command remains the
     // final guard against changes to issued documents.
-    if (invoice.status !== 'draft') return toast(FINALIZED_INVOICE_BLOCKED, 'error')
+    if (isFinalizedInvoice(invoice)) return toast(FINALIZED_INVOICE_BLOCKED, 'error')
     setEditor({
       open: true,
       editing: true,
-      finalized: Boolean(invoice.number),
-      invoiceNumber: invoice.number,
       draft: {
         id: invoice.id,
         correction: invoice.correction,
@@ -236,7 +232,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const duplicateInvoice = (invoice: Invoice) => {
     const result = prepareInvoiceCopy(stateRef.current, invoice.id)
     if (!result.ok) return toast(result.errors.map((error) => error.message).join(' '), 'error')
-    setEditor({ open: true, editing: false, finalized: false, invoiceNumber: null, draft: result.value })
+    setEditor({ open: true, editing: false, draft: result.value })
   }
 
   const requestDeleteInvoice = (invoice: Invoice) => {
@@ -519,9 +515,6 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     document.addEventListener('keydown', closeOnEscape)
     return () => document.removeEventListener('keydown', closeOnEscape)
   }, [closeMobileNav, mobileNav])
-  const themeNames = { system: 'System', light: 'Hell', dark: 'Dunkel' } as const
-  const themeToggleLabel = `Farbschema in Einstellungen bearbeiten. Aktuell: ${themeNames[state.settings.theme]}.`
-  const ThemeToggleIcon = state.settings.theme === 'system' ? Palette : state.settings.theme === 'light' ? Sun : Moon
   const backupStatusLabel = lastBackupAt ? `Letzter JSON-Export: ${backupDateFormatter.format(new Date(lastBackupAt))}` : 'Noch kein Backup'
   if (recovery) return (
     <>
@@ -542,16 +535,13 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         <nav aria-label="Hauptnavigation">{navItems.map(({ key, label, icon: Icon }) => <button className={page === key ? 'is-active' : ''} aria-current={page === key ? 'page' : undefined} aria-label={label} key={key} onClick={() => setCurrentPage(key)}><Icon aria-hidden="true" /><span>{label}</span>{key === 'invoices' && state.invoices.filter((invoice) => invoice.status === 'draft').length > 0 && <b>{state.invoices.filter((invoice) => invoice.status === 'draft').length}</b>}</button>)}</nav>
         <div className="sidebar__privacy"><span><ShieldDot /></span><div><strong>Nur auf diesem Gerät</strong><small>Keine automatische Cloud-Übertragung</small></div></div>
         <a className="sidebar__version" href="https://github.com/sl3ndrr/RiffRechnung/blob/main/docs/about.md" target="_blank" rel="noreferrer" aria-label={`Info öffnen (neuer Tab), aktuelle Version ${APP_VERSION}`}>Info · Version {APP_VERSION}</a>
-        <div className="sidebar__secondary-actions">
-        </div>
       </aside>
       {mobileNav && <button className="nav-scrim" aria-label="Navigation schließen" onClick={closeMobileNav} />}
 
       <div className="app-main" inert={isMobile && mobileNav}>
         <header className="topbar">
           <button ref={mobileMenuButtonRef} className="icon-button mobile-only" onClick={openMobileNav} aria-label="Navigation öffnen" aria-controls="mobile-sidebar" aria-expanded={mobileNav}><Menu aria-hidden="true" /></button>
-          <button className="topbar-search" onClick={async () => { await setCurrentPage('invoices'); requestAnimationFrame(() => document.querySelector<HTMLInputElement>('#invoice-search')?.focus()) }}><Search aria-hidden="true" /><span>Rechnungen durchsuchen</span></button>
-          <div className="topbar__end"><div className="topbar__storage-status" role="status" aria-live="polite"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : saveStateLabel === 'error' ? 'is-error' : ''}`}><i />{mode === 'demo' ? 'Demo – nur in dieser Sitzung' : externalChangeDetected ? 'Speicherkonflikt' : settingsDirty || saveStateLabel === 'saving' ? 'Ungespeicherte Änderungen …' : saveStateLabel === 'error' ? 'Lokal nicht gespeichert' : !session.revision ? 'Noch nichts lokal gespeichert' : `Lokal gespeichert ${savedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`}</span><span className="backup-indicator">{backupStatusLabel}</span></div><button className="icon-button" onClick={() => { void setCurrentPage('settings'); requestAnimationFrame(() => document.getElementById('appearance')?.scrollIntoView()) }} aria-label={themeToggleLabel} title={themeToggleLabel}><ThemeToggleIcon aria-hidden="true" /></button><button className="button button--primary topbar-new" onClick={openNewInvoice} aria-label="Neue Rechnung erstellen"><FilePlus2 aria-hidden="true" /><span>Neue Rechnung</span></button></div>
+          <div className="topbar__end"><div className="topbar__storage-status" role="status" aria-live="polite"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : saveStateLabel === 'error' ? 'is-error' : ''}`}><i />{mode === 'demo' ? 'Demo – nur in dieser Sitzung' : externalChangeDetected ? 'Speicherkonflikt' : settingsDirty || saveStateLabel === 'saving' ? 'Ungespeicherte Änderungen …' : saveStateLabel === 'error' ? 'Lokal nicht gespeichert' : !session.revision ? 'Noch nichts lokal gespeichert' : `Lokal gespeichert ${savedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`}</span><span className="backup-indicator">{backupStatusLabel}</span></div></div>
         </header>
 
         {externalChangeDetected && <section className="external-update" role="alert"><div><strong>Änderungen in einem anderen Tab erkannt</strong><p>Dieser Tab zeigt nicht mehr den aktuellen Datenstand. Lade neu, bevor du weiterarbeitest.</p></div><button className="button button--tonal" type="button" onClick={() => window.location.reload()}>Aktuellen Stand neu laden</button></section>}
@@ -567,7 +557,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       <nav className="mobile-bottom-nav" aria-label="Mobile Hauptnavigation" inert={isMobile && mobileNav}>{navItems.slice(0, 4).map(({ key, label, icon: Icon }) => <button className={page === key ? 'is-active' : ''} aria-current={page === key ? 'page' : undefined} aria-label={label} key={key} onClick={() => setCurrentPage(key)}><Icon aria-hidden="true" /><span>{label}</span></button>)}</nav>
 
       <ImportReview review={importReview} onClose={() => setImportReview(null)} onApply={confirmImport} />
-      <InvoiceEditor state={state} open={editor.open} draft={editor.draft} editing={editor.editing} finalized={editor.finalized} invoiceNumber={editor.invoiceNumber} guardians={state.guardians} students={state.students} settings={state.settings} onClose={requestCloseEditor} onDirtyChange={setEditorDirty} onSave={saveInvoice} onConvert={convertLegacyDraft} />
+      <InvoiceEditor state={state} open={editor.open} draft={editor.draft} editing={editor.editing} guardians={state.guardians} students={state.students} settings={state.settings} onClose={requestCloseEditor} onDirtyChange={setEditorDirty} onSave={saveInvoice} onConvert={convertLegacyDraft} />
       <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} cancelLabel={confirmation?.cancelLabel} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />
       <ToastRegion messages={toasts} onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))} />
       <div className="print-root"><InvoicePrint invoice={printRequest?.invoice ?? null} guardians={printRequest?.guardians ?? []} students={printRequest?.students ?? []} settings={printRequest?.settings ?? state.settings} requestId={printRequest?.id} includeGiroCode={printRequest?.includeGiroCode} giroCodeFallbackReason={printRequest?.giroCodeFallbackReason} onPrintReady={handlePrintReady} onPrintError={handlePrintError} /></div>

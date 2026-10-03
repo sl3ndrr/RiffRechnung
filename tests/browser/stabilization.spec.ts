@@ -200,7 +200,7 @@ test('P12 Browser: unabhängige Originaldatei kehrt mit echtem alten Code in get
 test('P12 Browser ergänzt Quellmuster: Footer-Submit, Kindaktivierung und Rechnungsentwurf', async ({ page }) => {
   await seed(page, documentFamily())
   await page.getByRole('button', { name: 'Personen', exact: true }).first().click()
-  await page.getByRole('button', { name: 'Erziehungsberechtigte Person hinzufügen', exact: true }).click()
+  await page.getByRole('button', { name: 'Erziehungsberechtigte Person', exact: true }).click()
   const guardian = page.getByRole('dialog', { name: 'Erziehungsberechtigte Person anlegen', exact: true })
   await guardian.getByLabel('Name *', { exact: true }).fill('Zusätzliche Testperson')
   await guardian.getByRole('button', { name: 'Speichern', exact: true }).click()
@@ -215,7 +215,8 @@ test('P12 Browser ergänzt Quellmuster: Footer-Submit, Kindaktivierung und Rechn
   await expect(page.getByRole('checkbox', { name: /Nur aktive Lernende anzeigen/ })).toBeChecked()
   await page.getByRole('checkbox', { name: /Nur aktive Lernende anzeigen/ }).uncheck()
   await expect(card).toBeVisible()
-  await page.getByRole('button', { name: 'Neue Rechnung erstellen', exact: true }).click()
+  await page.getByRole('button', { name: 'Rechnungen', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Neue Rechnung', exact: true }).click()
   const editor = page.getByRole('dialog', { name: 'Neue Rechnung', exact: true })
   await editor.getByLabel('Freitext / Hinweis', { exact: true }).fill('Zeile eins\nZeile zwei')
   await editor.getByRole('button', { name: 'Als Entwurf speichern', exact: true }).click()
@@ -232,7 +233,7 @@ test('P12 Browser: lokale Mitternacht in Berlin erzeugt den richtigen Rechnungst
     const page = await context.newPage()
     await page.clock.install({ time: new Date('2026-08-31T22:30:00.000Z') })
     await page.goto('/')
-    await page.getByRole('button', { name: 'Neue Rechnung erstellen', exact: true }).click()
+    await page.getByRole('button', { name: 'Neue Rechnung', exact: true }).click()
     await expect(page.getByRole('dialog').getByLabel('Rechnungsdatum', { exact: true })).toHaveValue('2026-09-01')
   } finally { await context.close() }
 })

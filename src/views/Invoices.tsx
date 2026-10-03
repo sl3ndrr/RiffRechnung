@@ -1,7 +1,7 @@
 import { invoiceTotalCents, sumCents } from '../lib/money'
 import { outputItemTotal } from '../lib/invoiceOutput'
-import { DocumentHistory, HistoricalSnapshotEvidence, type DocumentHistoryActions } from '../components/DocumentHistory'
-import { activeInvoices, isActiveClaim, selectedInvoices } from '../lib/documents'
+import { DocumentHistory, InvoiceCorrection, HistoricalSnapshotEvidence, type DocumentHistoryActions } from '../components/DocumentHistory'
+import { activeInvoices, isActiveClaim, selectedInvoices, versionFor } from '../lib/documents'
 import { needsHistoricalSplitReview } from '../lib/historicalSplit'
 import { FINALIZED_INVOICE_BLOCKED, isFinalizedInvoice } from '../lib/safety'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -163,7 +163,7 @@ export function Invoices({ state, onNavigate, onLoadDemo, selectedId, onSelect, 
 
       {!state.invoices.length ? (
         <section className="surface">
-          <EmptyState icon={FilePlus2} title="Die erste Rechnung wartet" description="Sobald eine lernende Person angelegt ist, kannst du Unterrichtspositionen erfassen und die Rechnung finalisieren." action={<button className="button button--primary" onClick={onNew}>Rechnung anlegen</button>} />
+          <EmptyState icon={FilePlus2} title="Die erste Rechnung wartet" description="Sobald eine lernende Person angelegt ist, kannst du Unterrichtspositionen erfassen und die Rechnung finalisieren." />
         </section>
       ) : (
         <div className={`invoice-workspace ${selected ? 'invoice-workspace--detail' : ''}`}>
@@ -223,7 +223,7 @@ export function Invoices({ state, onNavigate, onLoadDemo, selectedId, onSelect, 
             visibility: menuPosition ? 'visible' : 'hidden',
           }}
         >
-          <button type="button" role="menuitem" disabled={isFinalizedInvoice(menuInvoice)} title={isFinalizedInvoice(menuInvoice) ? FINALIZED_INVOICE_BLOCKED : undefined} onClick={() => chooseMenuAction('edit', menuInvoice)}><Edit3 aria-hidden="true" /> Bearbeiten</button>
+          {!isFinalizedInvoice(menuInvoice) && <button type="button" role="menuitem" onClick={() => chooseMenuAction('edit', menuInvoice)}><Edit3 aria-hidden="true" /> Bearbeiten</button>}
           <button type="button" role="menuitem" onClick={() => chooseMenuAction('pdf', menuInvoice)}><Printer aria-hidden="true" /> {menuInvoice.status === 'draft' ? 'Vorschau' : 'PDF generieren'}</button>
           <button type="button" role="menuitem" onClick={() => chooseMenuAction('duplicate', menuInvoice)}><Copy aria-hidden="true" /> Duplizieren</button>
           <button className="is-danger" type="button" role="menuitem" onClick={() => chooseMenuAction('delete', menuInvoice)}><Trash2 aria-hidden="true" /> {isFinalizedInvoice(menuInvoice) ? 'Archivieren / zurückholen' : 'Löschen'}</button>
@@ -247,6 +247,12 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const status = effectiveStatus(invoice)
+  const version = versionFor(state, invoice)
+  const unresolved = Boolean(version?.conflicts.length && !state.invoiceAdministration.find((entry) => entry.versionId === version.id)?.resolutions.length)
+  const unassignedPayments = version && isActiveClaim(state, invoice) && state.payments.some((payment) => (
+    state.documentVersions.some((entry) => entry.id === payment.sourceVersionId && entry.originalId === version.originalId)
+    && payment.allocations.at(-1)?.versionId !== version.id
+  ))
   const period = invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate)
   const payment = state.payments.find((entry) => entry.allocations.at(-1)?.versionId === invoice.versionId && entry.amountCents === invoiceTotalCents(invoice))
   const [paymentDay, setPaymentDay] = useState('')
@@ -275,12 +281,12 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
       </dl>
 
       <div className="detail-actions">
-        {invoice.status === 'draft' ? (
+        {!isFinalizedInvoice(invoice) ? (
           <>{invoice.recipientStrategy === 'separate' && !invoice.correction ? <p className="notice" role="status">Historischer Aufteilungsentwurf: Bitte öffnen, alle Angaben prüfen und ausdrücklich als gemeinsamen Entwurf übernehmen. Eine direkte Finalisierung ist gesperrt.</p> : <button className="button button--primary" type="button" onClick={() => onSetStatus('sent')}><Send aria-hidden="true" /> Finalisieren</button>}<button className="button button--tonal" type="button" onClick={onPrint}><Printer aria-hidden="true" /> Vorschau</button><button className="button button--text" type="button" onClick={onEdit}><Edit3 aria-hidden="true" /> Bearbeiten</button></>
         ) : (
-          <><button className="button button--primary" onClick={onPrint}><Printer aria-hidden="true" /> PDF / Drucken</button><button className="button button--tonal" onClick={onEdit} disabled><Edit3 aria-hidden="true" /> Rechnung bearbeiten</button></>
+          <><button className="button button--primary" onClick={onPrint}><Printer aria-hidden="true" /> PDF / Drucken</button><InvoiceCorrection key={invoice.id} state={state} invoice={invoice} onSelect={onSelect} onCorrection={onCorrection} /></>
         )}
-        {invoice.status !== 'draft' && <div className="status-editor">
+        {isFinalizedInvoice(invoice) && <div className="status-editor">
           <span className="status-editor__label" id={`invoice-status-${invoice.id}`}>Forderungsstatus</span>
           <div className="status-editor__choices" role="group" aria-labelledby={`invoice-status-${invoice.id}`}>
             <button className="button button--tonal" type="button" aria-pressed={status === 'sent' || status === 'overdue'} onClick={() => onSetStatus('sent')}>Versendet / offen</button>
@@ -296,7 +302,13 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
         </div>}
       </div>
 
-      <DocumentHistory key={invoice.id} state={state} invoice={invoice} onSelect={onSelect} onCorrection={onCorrection} onAllocatePayment={onAllocatePayment} onResolveConflicts={onResolveConflicts} />
+      {unresolved && <p className="notice" role="alert">Historische Abweichungen müssen vor der Finalisierung einer Korrektur geklärt werden. Die Angaben und „Ergebnis der Klärung“ stehen unter „Details“.</p>}
+      {unassignedPayments && <p className="notice" role="status">Bestehende Zahlungen sind diesem Beleg nicht zugeordnet. Prüfe die Zahlungszuordnung unter „Details“, bevor du eine weitere Zahlung erfasst.</p>}
+      {version && <details key={invoice.id} open={unresolved}>
+        <summary>Details</summary>
+        <DocumentHistory state={state} invoice={invoice} onSelect={onSelect} onAllocatePayment={onAllocatePayment} onResolveConflicts={onResolveConflicts} />
+      </details>}
+      {invoice.status === 'draft' && invoice.correction && <p>Korrekturentwurf. Das Original und seine Nummer bleiben erhalten. Fehlende Personen bitte im Editor ausdrücklich neu zuordnen.</p>}
       {needsHistoricalSplitReview(state, invoice) && <p className="notice" role="status">Historische Aufteilung ungeklärt: Dieser übernommene Beleg wird nicht automatisch zusammengelegt oder umgeschrieben. Prüfe Empfänger, Lernende, Positionen und Betrag; notwendige Änderungen erfolgen über den Korrekturweg.</p>}
       {isFinalizedInvoice(invoice) && <p className="field-hint" role="status">{FINALIZED_INVOICE_BLOCKED}</p>}
 

@@ -169,9 +169,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 
 .app-main { min-height: 100vh; margin-left: 264px; }
 .topbar { position: sticky; z-index: 20; top: 0; display: flex; height: 76px; align-items: center; gap: 20px; padding: 12px clamp(24px, 3vw, 48px); border-bottom: 1px solid color-mix(in srgb, var(--outline-variant) 70%, transparent); background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(18px); }
-.topbar-search { display: flex; width: min(420px, 40vw); height: 46px; align-items: center; gap: 11px; padding: 0 14px; border: 0; border-radius: var(--radius-full); background: var(--surface-container); color: var(--on-surface-variant); cursor: pointer; transition: background var(--motion-short), box-shadow var(--motion-short); }
-.topbar-search:hover { background: var(--surface-container-high); box-shadow: var(--shadow-1); }
-.topbar-search span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .topbar__end { display: flex; align-items: center; gap: 10px; margin-left: auto; }
 .topbar__storage-status { display: flex; align-items: center; gap: 11px; }
 .save-indicator { display: inline-flex; align-items: center; gap: 7px; color: var(--on-surface-variant); font-size: 11px; white-space: nowrap; }
@@ -229,10 +226,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .table-scroll { overflow-x: auto; }
 .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .data-table th { padding: 11px 14px; border-bottom: 1px solid var(--outline-variant); color: var(--on-surface-variant); font-size: 10px; font-weight: 680; letter-spacing: .075em; text-align: left; text-transform: uppercase; white-space: nowrap; }
-.sort-button { display: inline-flex; align-items: center; gap: 5px; padding: 3px 0; border: 0; background: transparent; color: inherit; font-size: inherit; font-weight: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
-.sort-button:hover, .sort-button.is-active { color: var(--primary); }
-.sort-button svg { width: 13px; height: 13px; stroke-width: 2; }
-.sort-button--right { width: 100%; justify-content: flex-end; }
 .data-table td { padding: 14px; border-bottom: 1px solid color-mix(in srgb, var(--outline-variant) 62%, transparent); vertical-align: middle; }
 .data-table tbody tr { transition: background var(--motion-short), transform var(--motion-short); }
 .data-table tbody tr[tabindex] { cursor: pointer; }
@@ -306,7 +299,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .people-search { width: min(620px, 100%); margin: 0; }
 .people-active-filter.switch-row--compact { min-width: 320px; min-height: 60px; padding: var(--space-2) var(--space-4); border: 1px solid var(--outline-variant); border-radius: var(--radius-full); background: var(--surface-container-lowest); }
 .people-active-filter:hover { border-color: var(--outline); background: var(--surface-container-low); }
-.people-sort select { min-width: 150px; }
 .people-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(360px, .75fr); gap: 26px; align-items: start; }
 .student-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .student-card { display: flex; min-height: 270px; flex-direction: column; padding: 22px; border: 1px solid var(--outline-variant); border-radius: 26px 26px 14px 26px; background: var(--surface-container-lowest); box-shadow: var(--shadow-1); animation: card-in var(--motion-long) var(--ease-emphasized) both; animation-delay: var(--delay, 0ms); transition: transform var(--motion-normal) var(--ease-emphasized), border-radius var(--motion-normal), box-shadow var(--motion-normal); }
@@ -626,7 +618,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .nav-scrim { position: fixed; z-index: 70; inset: 0; border: 0; background: var(--scrim); animation: fade-in var(--motion-normal) both; }
   .app-main { margin-left: 0; }
   .topbar { height: 68px; padding-inline: 14px; }
-  .topbar-search { display: none; }
   .topbar__end { margin-left: auto; }
   .topbar__storage-status { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; max-width: 48vw; }
   .topbar__storage-status .save-indicator, .topbar__storage-status .backup-indicator { white-space: normal; font-size: 11px; }
@@ -650,8 +641,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 }
 
 @media (max-width: 640px) {
-  .topbar-new { width: 42px; min-height: 42px; padding: 0; }
-  .topbar-new span { display: none; }
   .page-header { flex-direction: column; margin-bottom: 25px; }
   .page-header__actions { width: 100%; }
   .page-header__actions .button { flex: 1; }
@@ -663,7 +652,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .invoice-list-table th:nth-child(3), .invoice-list-table td:nth-child(3), .invoice-list-table th:nth-child(4), .invoice-list-table td:nth-child(4) { display: none; }
   .invoice-list-table td { padding-inline: 10px; }
   .people-toolbar { display: grid; grid-template-columns: 1fr; }
-  .people-active-filter, .people-sort, .people-sort select { width: 100%; }
+  .people-active-filter { width: 100%; }
   .people-active-filter { min-width: 0; }
   .student-grid { grid-template-columns: 1fr; }
   .settings-section { padding: 21px; }
