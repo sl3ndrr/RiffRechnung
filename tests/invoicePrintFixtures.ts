@@ -17,7 +17,7 @@ export function monthlyPrintState(twoMonths = true, itemCount = twoMonths ? 4 : 
   draft.invoiceDate = '2026-09-15'; draft.dueDate = '2026-09-29'; draft.freeText = ''
   draft.items = Array.from({ length: itemCount }, (_, i) => ({
     ...draft.items[0], id: `monthly-item-${i}`, studentId: 's-b', lessonType: 'duo',
-    serviceDate: twoMonths && i === 0 ? '2026-08-25' : `2026-09-${String(i % 4 * 7 + 1).padStart(2, '0')}`,
+    serviceDate: twoMonths && i === 0 ? '2026-08-25' : `2026-09-${String((twoMonths ? (i - 1) % 4 : i % 4) * 7 + 1).padStart(2, '0')}`,
     description: 'Gitarrenunterricht (Duo)', quantity: 1, unitPrice: 20,
   }))
   return saveInvoiceDraft(state, draft, true, documentAt)

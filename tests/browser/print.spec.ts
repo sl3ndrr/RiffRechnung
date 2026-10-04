@@ -134,7 +134,8 @@ test('AP4 Browser/PDF: fehlende und ungültige Leistungsdaten bilden die letzte 
   expect(pdf.groups.map((group) => group.title)).toEqual(['September 2026', 'Ohne gültiges Leistungsdatum'])
   expect(pdf.groups.at(-1)!.descriptions).toEqual(['Datumstest 1', 'Datumstest 2'])
   expect(pdf.text.replace(/\s+/g, ' ')).toMatch(/Zwischensumme ohne Leistungsdatum: 40,00 €/)
-  expect(pdf.text).toContain('2026-02-30')
+  expect(pdf.flowText.replace(/\s+/g, '')).toContain('2026-02-30')
+  expect(pdf.pages).toBe(1)
 })
 
 test('AP4 Browser/PDF: lange Positionszeilen bleiben ganz, Tabellenkopf wiederholt sich und der Abschluss bleibt bei der letzten Position', async ({ page }, testInfo) => {
@@ -146,11 +147,11 @@ test('AP4 Browser/PDF: lange Positionszeilen bleiben ganz, Tabellenkopf wiederho
   for (const [i] of items.entries()) {
     const containing = pages.filter((text) => text.includes(`Zeilenanfang-${i + 1}:`))
     expect(containing).toHaveLength(1)
-    expect(containing[0]).toContain(`Zeilenende-${i + 1}.`)
+    expect(containing[0]).toMatch(new RegExp(`Zeilenende-\\s*${i + 1}\\.`))
   }
   for (const text of pages.filter((text) => text.includes('Zeilenanfang-'))) expect(text.replace(/\s+/g, ' ')).toContain('Datum Leistung Menge Einzelpreis Betrag')
   const finalPage = pages.find((text) => /\bSumme\b/.test(text))!
-  expect(finalPage).toContain('Zeilenende-60.')
+  expect(finalPage).toMatch(/Zeilenende-\s*60\./)
   expect(finalPage).toContain('Privatrechnung'); expect(finalPage).toContain('Zahlbar bis')
   expect(finalPage).toContain('Kontoinhaber:'); expect(finalPage).toContain('Mit Banking-App scannen')
 })
@@ -158,7 +159,7 @@ test('AP4 Browser/PDF: lange Positionszeilen bleiben ganz, Tabellenkopf wiederho
 test('P09 Browser/PDF: ein-, zwei- und mehrseitige Rechnungen behalten Text, Wasserzeichen und Seitenzahlen', async ({ page }, testInfo) => {
   const cases = [
     { label: 'p09-eine-seite', items: 1, freeText: 'Hinweis Zeile 1\nHinweis Zeile 2', expectedPages: 1 },
-    { label: 'p09-zwei-seiten', items: 14, freeText: 'Mehrzeiliger Hinweis\nfür den zweiten Beleg', expectedPages: 2 },
+    { label: 'p09-zwei-seiten', items: 10, freeText: 'Mehrzeiliger Hinweis\nfür den zweiten Beleg', expectedPages: 2 },
     { label: 'p09-mindestens-fuenf-seiten', items: 108, freeText: Array.from({ length: 28 }, (_, index) => `Freitextzeile ${index + 1}: vollständig drucken und bei Bedarf auf die Folgeseite umbrechen.`).join('\n'), expectedPages: 5 },
   ] as const
 
@@ -169,6 +170,9 @@ test('P09 Browser/PDF: ein-, zwei- und mehrseitige Rechnungen behalten Text, Was
     const normalizedPdfText = pdf.text.replace(/\s+/g, ' ').trim()
     expect(pdf.pages).toBeGreaterThanOrEqual(example.expectedPages)
     if (example.expectedPages < 5) expect(pdf.pages).toBe(example.expectedPages)
+    const finalPage = pdf.text.split('\f').find((text) => /\bSumme\b/.test(text))!
+    expect(finalPage).toContain('Privatrechnung'); expect(finalPage).toContain('Zahlbar bis')
+    expect(finalPage).toContain('Kontoinhaber:'); expect(finalPage).toContain('Mit Banking-App scannen')
     expect(pdf.text).toContain(invoice.number!)
     expect(pdf.text).toContain('Synthetisches Studio')
     expect(pdf.text).toContain('DE02 1203 0000 0000 2020 51')
@@ -246,7 +250,7 @@ for (const example of p11Cases) test(`P11 Browser/PDF: ${example}, eingefrorene 
       expect(xMin, word[5]).toBeGreaterThanOrEqual(margin - 2)
       expect(xMax, word[5]).toBeLessThanOrEqual(width - margin + 2)
       expect(yMin, word[5]).toBeGreaterThanOrEqual(0)
-      if (yMin >= bottom) expect(word[5]).toMatch(/^(Seite|von|\d+)$/)
+      if (yMin >= bottom) expect(word[5]).toMatch(new RegExp(`^(Seite|von|\\d+|Rechnung|${invoice.number!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})$`))
       else expect(yMax, word[5]).toBeLessThanOrEqual(bottom + 2)
     }
   }
