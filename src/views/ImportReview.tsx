@@ -38,7 +38,7 @@ export function ImportReviewContent({ review, onApply }: { review: ImportReviewD
           {preview.warnings.length > 0 && <div className="form-errors" role="alert"><strong>Historische Angaben prüfen</strong><ul>{preview.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div>}
           {!onApply && <p>Die lokalen Eingangsbytes bleiben geschützt. Du kannst den geprüften Bestand separat exportieren und in einem leeren Browserprofil importieren. Unbekannte neuere lokale Formate bleiben schreibgeschützt.</p>}
         </>}
-        <div className="button-row">
+        <div className="button-row motion-fade page-entry">
           <button className="button button--tonal" onClick={() => downloadBytes('riffrechnung-originaldaten.bin', review.bytes)}>Unveränderte Originaldatei exportieren</button>
           {preview && <>
             <button className="button button--tonal" onClick={() => downloadText('riffrechnung-migrationsbericht.json', serializeMigrationReport(preview))}>Bericht mit bereinigten Daten exportieren</button>
@@ -49,3 +49,4 @@ export function ImportReviewContent({ review, onApply }: { review: ImportReviewD
       </div>
   )
 }
+

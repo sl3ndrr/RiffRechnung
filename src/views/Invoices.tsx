@@ -8,6 +8,9 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from 'react-dom'
 import { CalendarDays, ChevronDown, Copy, Edit3, FilePlus2, MoreVertical, Printer, Search, Send, Trash2 } from 'lucide-react'
 import type { AppState, Invoice, InvoiceStatus, PageKey } from '../types'
+import { StatusChip } from '../components/StatusChip'
+import { usePageEntrance, staggerStyle } from '../hooks/usePageEntrance'
+import { useDetailMotion } from '../hooks/useDetailMotion'
 import { EmptyState } from '../components/EmptyState'
 import { calculateInvoiceMenuPosition, type InvoiceMenuAction, type InvoiceMenuPosition, runInvoiceMenuAction } from '../lib/invoiceMenu'
 import { billingPeriodFromItems, effectiveStatus, guardianName, sortInvoices, statusLabel, studentName } from '../lib/invoiceOutput'
@@ -60,6 +63,8 @@ export function Invoices({ state, initialStatus = 'all', onNavigate, onLoadDemo,
       })
     return sortInvoices(matches)
   }, [search, state, invoices, status, year, showArchived])
+
+  const entrance = usePageEntrance(filtered)
 
   const updateMenuPosition = useCallback(() => {
     if (!menu || !menuRef.current) return
@@ -175,15 +180,15 @@ export function Invoices({ state, initialStatus = 'all', onNavigate, onLoadDemo,
             <div className="table-scroll">
               <table className="data-table invoice-list-table">
                 <thead><tr><th>Rechnung <span className="sr-only">(Rechnungsdatum, neueste zuerst)</span></th><th>Empfänger / Lernende</th><th>Zeitraum</th><th>Status</th><th className="align-right">Betrag</th><th><span className="sr-only">Aktion</span></th></tr></thead>
-                <tbody>{filtered.map((invoice) => {
+                <tbody>{filtered.map((invoice, index) => {
                   const actualStatus = effectiveStatus(invoice)
                   const period = invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate)
                   return (
-                    <tr className={invoice.id === selectedId ? 'is-selected' : ''} key={invoice.id} onClick={() => openDetails(invoice)}>
-                      <td><button ref={(node) => { if (node && invoice.id === selectedId && !detailTriggerRef.current) detailTriggerRef.current = node }} className="button button--text invoice-detail-link" type="button" onClick={(event) => { event.stopPropagation(); openDetails(invoice, event.currentTarget) }}>{invoice.number ?? 'Entwurf'}</button>{invoice.versionId && !isActiveClaim(state, invoice) && <small>Ersetzt</small>}<small>{formatDate(invoice.invoiceDate)}</small><span className={`status-chip invoice-cell-status status-chip--${actualStatus}`}><i />{actualStatus === 'sent' ? 'Offen' : statusLabel[actualStatus]}</span></td>
+                    <tr style={staggerStyle(index)} className={`${invoice.id === selectedId ? 'is-selected' : ''}${entrance && index < 8 ? ' motion-fade motion-stagger page-entry' : ''}`} key={invoice.id} onClick={() => openDetails(invoice)}>
+                      <td><button ref={(node) => { if (node && invoice.id === selectedId && !detailTriggerRef.current) detailTriggerRef.current = node }} className="button button--text invoice-detail-link" type="button" onClick={(event) => { event.stopPropagation(); openDetails(invoice, event.currentTarget) }}>{invoice.number ?? 'Entwurf'}</button>{invoice.versionId && !isActiveClaim(state, invoice) && <small>Ersetzt</small>}<small>{formatDate(invoice.invoiceDate)}</small><StatusChip className="invoice-cell-status" status={actualStatus}><i />{actualStatus === 'sent' ? 'Offen' : statusLabel[actualStatus]}</StatusChip></td>
                       <td>{guardianName(invoice, state.guardians, state.students)}<small>{studentName(invoice, state.students)}</small></td>
                       <td>{period}</td>
-                      <td><span className={`status-chip status-chip--${actualStatus}`}><i />{statusLabel[actualStatus]}</span></td>
+                      <td><StatusChip status={actualStatus}><i />{statusLabel[actualStatus]}</StatusChip></td>
                       <td className="align-right"><strong>{euro.format(invoiceTotal(invoice))}</strong></td>
                       <td className="invoice-row-actions" onClick={(event) => event.stopPropagation()}>
                         <div className="invoice-row-menu">
@@ -248,6 +253,9 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
   onSetStatus: (status: InvoiceStatus, paymentDay?: string) => void
   onPrint: () => void
 }) {
+  const detailRef = useRef<HTMLElement>(null)
+  const detailEntrance = usePageEntrance(invoice.id)
+  useDetailMotion(detailRef, invoice)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const status = effectiveStatus(invoice)
   const version = versionFor(state, invoice)
@@ -269,12 +277,12 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
   }, [invoice.id])
 
   return (
-    <aside className="surface invoice-detail" aria-label={`Details zu ${invoice.number ?? 'Entwurf'}`}>
+    <aside ref={detailRef} className={`surface invoice-detail${detailEntrance ? ' motion-rise page-entry' : ''}`} aria-label={`Details zu ${invoice.number ?? 'Entwurf'}`}>
       <header className="invoice-detail__header">
         <div><p className="eyebrow">Rechnung</p><h2>{invoice.number ?? 'Entwurf'}</h2><p>{guardianName(invoice, state.guardians, state.students)}</p></div>
         <button ref={closeButtonRef} className="icon-button" type="button" onClick={onClose} aria-label="Detailansicht schließen">×</button>
       </header>
-      <div className="invoice-detail__amount"><strong>{euro.format(invoiceTotal(invoice))}</strong><span className={`status-chip status-chip--${status}`}><i />{statusLabel[status]}</span></div>
+      <div className="invoice-detail__amount"><strong>{euro.format(invoiceTotal(invoice))}</strong><StatusChip status={status}><i />{statusLabel[status]}</StatusChip></div>
       <dl className="detail-list">
         <div><dt><CalendarDays aria-hidden="true" /> Leistungszeitraum</dt><dd>{period}</dd></div>
         <div><dt>Rechnungsdatum</dt><dd>{formatDateLong(invoice.invoiceDate)}</dd></div>

@@ -14,7 +14,13 @@ permissions:
 
 jobs:
   quality:
-    name: Quality (Node 22)
+    name: ${{ matrix.motion == 'reduce' && 'Quality (Node 22)' || 'Quality (Node 22, no-preference)' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        motion: [reduce, no-preference]
+    env:
+      RIFF_REDUCED_MOTION: ${{ matrix.motion }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -78,12 +84,12 @@ jobs:
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          name: browser-evidence
+          name: browser-evidence-${{ matrix.motion }}
           path: test-results
           retention-days: 7
           if-no-files-found: ignore
       - name: Upload checked Pages build
-        if: inputs.upload-pages-artifact
+        if: inputs.upload-pages-artifact && matrix.motion == 'reduce'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: dist

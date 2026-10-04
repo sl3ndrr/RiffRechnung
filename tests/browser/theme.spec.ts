@@ -56,6 +56,7 @@ test('3.AP1: beide Auswahlen erhalten ungespeicherte Eingaben und Dirty-Zustand'
   await page.locator('.sidebar').getByRole('button', { name: 'Personen', exact: true }).click()
   const confirmation = page.getByRole('alertdialog', { name: 'Ungespeicherte Einstellungen verwerfen?' })
   await confirmation.getByRole('button', { name: 'Weiter bearbeiten' }).click()
+  await expect(confirmation).not.toBeVisible()
   await expect(issuer).toHaveValue('Ungespeicherte Eingabe')
   await page.getByRole('textbox', { name: /^IBAN\b/ }).fill('')
   await page.getByRole('textbox', { name: /^Standardpreis Solo\b/ }).fill('31')

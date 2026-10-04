@@ -363,7 +363,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
           {page === 'dashboard' && <Dashboard state={state} mode={mode} lastBackupAt={lastBackupAt} onNavigate={setCurrentPage} onNew={openNewInvoice} onNewPerson={() => setCurrentPage('people', () => setCreatePerson(true))} onOpenInvoice={(id) => setCurrentPage('invoices', () => setSelectedInvoiceId(id))} onShowUnpaid={() => setCurrentPage('invoices', () => { setSelectedInvoiceId(null); setInvoiceInitialStatus('unpaid') })} onExport={exportBackup} onLoadDemo={mode === 'real' ? loadDemo : undefined} />}
           {page === 'invoices' && <Invoices initialStatus={invoiceInitialStatus} onNavigate={setCurrentPage} onLoadDemo={mode === 'real' ? loadDemo : undefined} state={state} selectedId={selectedInvoiceId} onSelect={setSelectedInvoiceId} onNew={openNewInvoice} onEdit={editInvoice} onDuplicate={duplicateInvoice} onDelete={requestDeleteInvoice} onSetStatus={setInvoiceStatus} onCorrection={startCorrection} onAllocatePayment={(paymentId, versionId, reason) => { void commit((current) => allocatePayment(current, paymentId, versionId, reason), 'Zahlung manuell zugeordnet', 'invoice') }} onResolveConflicts={(versionId, reason) => { void commit((current) => resolveDocumentConflicts(current, versionId, reason), 'Historische Abweichung geklärt', 'invoice') }} onPrint={print} />}
           {page === 'people' && <People initialCreate={createPerson ? state.guardians.length ? 'student' : 'guardian' : undefined} state={state} onSaveGuardian={saveGuardian} onSaveStudent={saveStudent} onDeleteGuardian={deleteGuardian} onDeleteStudent={deleteStudent} />}
-          <div hidden={page !== 'settings'}><Settings key={settingsEpoch} state={state} onDirty={setSettingsDirty} onSave={saveSettings} onThemeChange={changeTheme} onExport={exportBackup} onImport={importBackup} onReset={resetAll} onPrevious={reviewPrevious} onArchive={exportRecoveryArchive} /></div>
+          <div hidden={page !== 'settings'}><Settings visible={page === 'settings'} key={settingsEpoch} state={state} onDirty={setSettingsDirty} onSave={saveSettings} onThemeChange={changeTheme} onExport={exportBackup} onImport={importBackup} onReset={resetAll} onPrevious={reviewPrevious} onArchive={exportRecoveryArchive} /></div>
         </main>
       </WorkspaceShell>
 
@@ -377,3 +377,4 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
 }
 
 export default App
+

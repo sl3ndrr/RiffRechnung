@@ -19,7 +19,7 @@ export function StorageRecovery({ recovery, onExport, onImport, onReview, onPrev
         <h1 id="recovery-title">Lokale Daten benötigen Wiederherstellung</h1>
         <p>Die lokalen Daten benötigen eine Formatumstellung oder sind beschädigt beziehungsweise unvollständig. Das automatische Speichern ist pausiert, damit die vorhandenen Rohdaten nicht überschrieben werden.</p>
         <div className="recovery-error"><strong>Technischer Hinweis</strong><code>{recovery.error}</code></div>
-        <div className="recovery-actions">
+        <div className="recovery-actions motion-fade page-entry">
           <button className="button button--tonal" type="button" onClick={onPrevious}>Vorherigen lokalen Stand prüfen</button>
           <button className="button button--tonal" type="button" onClick={onArchive}>Wiederherstellungsarchiv exportieren</button>
           <button className="button button--tonal" type="button" onClick={onReview} disabled={!recovery.rawData}>Altformat und Reparatur prüfen</button>
@@ -31,4 +31,5 @@ export function StorageRecovery({ recovery, onExport, onImport, onReview, onPrev
     </main>
   )
 }
+
 
