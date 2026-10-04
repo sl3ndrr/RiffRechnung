@@ -206,8 +206,8 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
           </section>
         </section>
         {invoice.freeText && <p className="invoice-free-text">{invoice.freeText}</p>}
-        <footer className="invoice-footer">Rechnung {invoice.number ?? 'Entwurf'}</footer>
       </div>
+      <footer className="invoice-footer">Rechnung {invoice.number ?? 'Entwurf'}</footer>
     </article>
   )
 }

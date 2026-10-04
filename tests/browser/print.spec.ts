@@ -75,6 +75,15 @@ async function createPdf(page: Page, state: AppState, invoiceId: string, label: 
     const pages = Number(info.match(/^Pages:\s+(\d+)$/m)?.[1] ?? 0)
     const text = execFileSync('pdftotext', ['-layout', path, '-'], { encoding: 'utf8' })
     const flowText = execFileSync('pdftotext', ['-raw', path, '-'], { encoding: 'utf8' })
+    const bbox = execFileSync('pdftotext', ['-bbox', path, '-'], { encoding: 'utf8' })
+    const boxPages = [...bbox.matchAll(/<page width="[\d.]+" height="([\d.]+)">([\s\S]*?)<\/page>/g)]
+    expect(boxPages).toHaveLength(pages)
+    for (const match of boxPages) {
+      const left = 20 * 72 / 25.4, bottom = Number(match[1]) - 22 * 72 / 25.4
+      const references = [...match[2].matchAll(/<word xMin="([\d.]+)" yMin="([\d.]+)"[^>]*>Rechnung<\/word>/g)]
+        .filter((word) => Math.abs(Number(word[1]) - left) <= 2 && Number(word[2]) >= bottom)
+      expect(references, 'Rechnungsreferenz steht auf jeder Seite im linken unteren Druckrand').toHaveLength(1)
+    }
     const prefix = testInfo.outputPath(`${label}-page`)
     execFileSync('pdftoppm', ['-png', '-f', '1', '-l', String(Math.max(1, pages)), path, prefix])
     const images = (await readdir(testInfo.outputDir)).filter((name) => name.startsWith(`${label}-page-`) && name.endsWith('.png')).sort()
@@ -403,4 +412,3 @@ test('P09 Browser: ungültige historische BIC bietet den bewussten Druck ohne Gi
   execFileSync('pdftoppm', ['-png', path, testInfo.outputPath('p11-qr-fallback-page')])
   await testInfo.attach('p11-qr-fallback.pdf', { body: pdf, contentType: 'application/pdf' })
 })
-

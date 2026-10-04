@@ -729,7 +729,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .invoice-payment { break-inside: avoid; page-break-inside: avoid; }
   .invoice-payment dl, .invoice-qr { break-inside: avoid; page-break-inside: avoid; }
   .invoice-free-text { break-inside: auto; page-break-inside: auto; }
-  .invoice-footer { display: block; position: fixed; left: 0; bottom: -3mm; margin: 0; }
+  /* Explicit top avoids Chromium resolving a negative fixed bottom on the next page. */
+  .invoice-footer { display: block; position: fixed; left: 0; top: calc(297mm - 16mm - 22mm + 3mm); margin: 0; }
 }
 
 .demo-banner { grid-column: 1 / -1; position: sticky; top: 0; z-index: 60; padding: 10px 18px; background: var(--surface-container); color: var(--on-surface); text-align: center; }
