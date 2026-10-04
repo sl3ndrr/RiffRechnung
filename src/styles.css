@@ -519,6 +519,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .empty-state h3 { margin: 0; font-size: 20px; }
 .empty-state p { max-width: 400px; margin: 0 0 8px; color: var(--on-surface-variant); font-size: 12px; line-height: 1.55; }
 
+.toast-host { display: contents; }
 .toast-region { position: fixed; z-index: 200; right: 24px; bottom: 24px; display: grid; width: min(380px, calc(100vw - 32px)); gap: var(--space-3); pointer-events: none; }
 .toast { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); min-height: 54px; padding: 11px 10px 11px 15px; overflow: hidden; border-radius: var(--radius-md); background: var(--on-surface); color: var(--surface); font-size: 12px; pointer-events: auto; }
 .toast--action { grid-template-columns: auto minmax(0, 1fr) auto; }

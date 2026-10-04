@@ -30,7 +30,11 @@ function Toast({ toast, onDismiss }: { toast: ToastMessage; onDismiss: ToastRegi
 }
 
 export function ToastRegion({ messages, onDismiss }: ToastRegionProps) {
-  const [host] = useState(() => document.createElement('div'))
+  const [host] = useState(() => {
+    const element = document.createElement('div')
+    element.className = 'toast-host'
+    return element
+  })
   useLayoutEffect(() => {
     // Keep one portal host (and its running timers) when a modal opens. Inside
     // the top dialog, toast buttons belong to its focus trap and avoid inert.
