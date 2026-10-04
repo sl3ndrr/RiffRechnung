@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-export function useToastTimer(durationMs: number, onExpire: () => void) {
+export function useToastTimer(durationMs: number, onExpire: () => void, enabled = true) {
   const remaining = useRef(durationMs)
   const startedAt = useRef(0)
   const timer = useRef<number | null>(null)
@@ -26,10 +26,11 @@ export function useToastTimer(durationMs: number, onExpire: () => void) {
   }, [onExpire])
 
   useEffect(() => {
+    if (!enabled) { stop(); active.current = false; return }
     active.current = true
     start()
     return () => { stop(); active.current = false }
-  }, [start, stop])
+  }, [enabled, start, stop])
 
   const pause = (reason: 'hover' | 'focus', value: boolean) => {
     if (value) { reasons.current.add(reason); stop() }
