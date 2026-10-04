@@ -111,6 +111,16 @@ for (const twoMonths of [false, true]) test(`AP4 Browser/PDF: ${twoMonths ? 'zwe
   expect(state).toEqual(before)
 })
 
+test('AP4 Browser/PDF: mehrseitiger Entwurf behält das Wasserzeichen über den Monatsflächen', async ({ page }, testInfo) => {
+  const issued = monthlyPrintState(true, 28), source = selectInvoice(issued, issued.invoices[0])
+  const state = saveInvoiceDraft(documentFamily(), { ...documentDraft(), studentIds: source.studentIds, recipients: source.recipients, items: source.items }, false, documentAt)
+  const pdf = await createPdf(page, state, state.invoices[0].id, 'ap4-mehrseitiger-entwurf', testInfo)
+  expect(pdf.pages).toBeGreaterThan(1)
+  expect(pdf.groups.map((group) => group.title)).toEqual(['August 2026', 'September 2026'])
+  for (const text of pdf.text.split('\f').filter((text) => text.trim())) expect(text).toContain('ENTWURF')
+  expect(pdf.payload).toBe('')
+})
+
 test('AP4 Browser/PDF: Legacy-Gesamtsumme erzwingt flache Ausgabe mit unveränderten Positionsbeträgen und Reihenfolge', async ({ page }, testInfo) => {
   const state = monthlyPrintState(), version = state.documentVersions[0]
   version.content.items[0].serviceDate = '2026-09-01'

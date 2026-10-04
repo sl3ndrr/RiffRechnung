@@ -535,7 +535,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .invoice-paper { --invoice-ink: #0b1b3f; --invoice-muted: #636b78; --invoice-blue: #2474df; --invoice-panel: #dcebfc; --invoice-subtotal: #cfe3fb; --invoice-white: #fff; position: relative; width: 210mm; min-height: 297mm; padding: 20mm; isolation: isolate; background: var(--invoice-white); color: var(--invoice-ink); color-scheme: light; font-family: 'Inter Variable', Inter, Arial, sans-serif; font-size: 10pt; line-height: 1.4; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 .invoice-paper, .invoice-paper *, .invoice-paper *::before, .invoice-paper *::after { animation: none !important; transition: none !important; }
 .invoice-paper__body { position: relative; z-index: 1; display: flow-root; }
-.invoice-draft-watermark { position: absolute; z-index: 0; top: 118mm; left: 50%; padding: 3mm 7mm; border: 1.5mm solid rgb(0 0 0 / .09); color: rgb(0 0 0 / .09); font-size: 38pt; font-weight: 800; letter-spacing: .18em; line-height: 1; pointer-events: none; transform: translateX(-50%) rotate(-28deg); }
+.invoice-draft-watermark { position: absolute; z-index: 2; top: 118mm; left: 50%; padding: 3mm 7mm; border: 1.5mm solid rgb(0 0 0 / .09); color: rgb(0 0 0 / .09); font-size: 38pt; font-weight: 800; letter-spacing: .18em; line-height: 1; pointer-events: none; transform: translateX(-50%) rotate(-28deg); }
 .invoice-letterhead__details { display: grid; grid-template-columns: 55fr 40fr; gap: 5%; align-items: start; }
 .invoice-address { display: grid; margin-bottom: 4mm; overflow-wrap: anywhere; white-space: pre-wrap; break-inside: avoid; page-break-inside: avoid; }
 .invoice-issuer { margin-bottom: 7mm; }
