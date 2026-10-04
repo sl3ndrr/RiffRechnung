@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import QRCode from 'qrcode'
-import type { Guardian, Invoice, Settings, Student } from '../types'
-import { billingPeriodFromItems, buildInvoicePrintPageStyle, outputItemTotal, outputUnitPrice } from '../lib/invoiceOutput'
-import { euro, formatDateLong, number, parseDate } from '../lib/utils'
+import type { Guardian, Invoice, InvoiceItem, Settings, Student } from '../types'
+import { billingPeriodFromItems, buildInvoicePrintPageStyle, invoicePrintGroups, invoiceServiceDate, outputItemCents, outputUnitPrice } from '../lib/invoiceOutput'
+import { euro, formatDateLong, number } from '../lib/utils'
 import { formatIban } from '../lib/paymentData'
-import { invoiceTotal } from '../lib/money'
+import { invoiceTotalCents } from '../lib/money'
 import { paymentDataForInvoice } from '../lib/paymentData'
 import { generateGiroCode, resolveGiroCode, type GiroCodeEncoder } from '../lib/printJob'
 import { liveRecipient, recipientKey, recipientRefs, snapshotRecipients } from '../lib/recipients'
@@ -47,12 +47,14 @@ async function waitForPrintFonts(): Promise<void> {
 
 export function InvoicePrint({ invoice, guardians, students, settings, pendingNumberLabel, requestId, includeGiroCode = true, onPrintReady, onPrintError, qrEncoder }: InvoicePrintProps) {
   const [qrCode, setQrCode] = useState<GeneratedQrCode | null>(null)
-  const total = invoice ? invoiceTotal(invoice) : 0
+  const totalCents = invoice ? invoiceTotalCents(invoice) : 0
+  const groups = useMemo(() => invoice ? invoicePrintGroups(invoice) : null, [invoice])
   const period = invoice ? invoice.versionId ? invoice.period ?? '' : billingPeriodFromItems(invoice.items, invoice.invoiceDate) : ''
   const source = invoice?.snapshot ?? invoice?.draftPrintSnapshot
   const legacyDraftWithoutPrintData = invoice?.status === 'draft' && !source
   const printInvoice = useMemo(() => invoice?.status === 'draft' && source ? { ...invoice, snapshot: source } : invoice, [invoice, source])
   const pageStyle = invoice ? buildInvoicePrintPageStyle(invoice.number) : ''
+  const hasPrintMarginBoxes = typeof window !== 'undefined' && 'CSSMarginRule' in window
   const issuer = source?.issuer ?? (legacyDraftWithoutPrintData ? { name: '', street: '', postalCode: '', city: '', email: '', phone: '' } : settings.issuer)
   const account = printInvoice && !legacyDraftWithoutPrintData ? paymentDataForInvoice(printInvoice, settings) : { accountHolder: '', iban: '', bic: '', bankName: '' }
   const recipientList = useMemo(() => {
@@ -117,8 +119,21 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
     ? qrCode
     : null
   const showStudentPerItem = invoice.studentIds.length > 1 || studentList.length > 1
+  const lastOutputItem = groups ? groups.at(-1)?.items.at(-1) : invoice.items.at(-1)
+  const itemRow = (item: InvoiceItem) => {
+    const studentName = studentList.find((student) => student.id === item.studentId)?.name
+    return (
+      <tr className="invoice-item-row" key={item.id} data-last-item={item === lastOutputItem ? 'true' : undefined}>
+        <td>{invoiceServiceDate(item.serviceDate)}</td>
+        <td>{showStudentPerItem && studentName && <span className="invoice-item-student">{studentName}</span>}{item.description}</td>
+        <td>{number.format(item.quantity)} {item.unit}</td>
+        <td>{outputUnitPrice(invoice, item)}</td>
+        <td>{euro.format(outputItemCents(invoice, item) / 100)}</td>
+      </tr>
+    )
+  }
   return (
-    <article className="invoice-paper" aria-label={`Rechnung ${invoice.number ?? 'Entwurf'}`}>
+    <article className="invoice-paper" data-margin-boxes={hasPrintMarginBoxes ? 'true' : undefined} aria-label={`Rechnung ${invoice.number ?? 'Entwurf'}`}>
       <style data-invoice-page-style>{pageStyle}</style>
       {invoice.status === 'draft' && <div className="invoice-draft-watermark" aria-hidden="true">ENTWURF</div>}
       <div className="invoice-paper__body">
@@ -158,47 +173,42 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
         <table className="invoice-table">
           <colgroup><col className="invoice-table__date" /><col /><col className="invoice-table__quantity" /><col className="invoice-table__price" /><col className="invoice-table__amount" /></colgroup>
           <thead>
-            <tr><th>Datum</th><th>Leistung</th><th>Menge</th><th>Einzelpreis</th><th>Betrag</th></tr>
+            <tr><th scope="col">Datum</th><th scope="col">Leistung</th><th scope="col">Menge</th><th scope="col">Einzelpreis</th><th scope="col">Betrag</th></tr>
           </thead>
-          <tbody>
-            {invoice.items.map((item) => {
-              const studentName = studentList.find((student) => student.id === item.studentId)?.name
-              return (
-                <tr className="invoice-item-row" key={item.id}>
-                  <td>{item.serviceDate && new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' }).format(parseDate(item.serviceDate))}</td>
-                  <td>{showStudentPerItem && studentName && <span className="invoice-item-student">{studentName}</span>}{item.description}</td>
-                  <td>{number.format(item.quantity)} {item.unit}</td>
-                  <td>{outputUnitPrice(invoice, item)}</td>
-                  <td>{euro.format(outputItemTotal(invoice, item))}</td>
-                </tr>
-              )
-            })}
-          </tbody>
-          <tbody className="invoice-final-rows">
-            <tr className="invoice-total-row"><td colSpan={4}>Summe</td><td>{euro.format(total)}</td></tr>
-            <tr className="invoice-private-row"><td colSpan={5}>Privatrechnung</td></tr>
-          </tbody>
+          {groups ? groups.map((group) => (
+            <tbody className="invoice-month-group" key={group.key}>
+              <tr className="invoice-group-gap" aria-hidden="true"><td colSpan={5} /></tr>
+              <tr className="invoice-group-heading"><th scope="rowgroup" colSpan={5}>{group.title}</th></tr>
+              {group.items.map(itemRow)}
+              {groups.length > 1 && <tr className="invoice-subtotal-row"><th scope="row" colSpan={4}>{group.subtotalLabel}</th><td>{euro.format(group.totalCents / 100)}</td></tr>}
+              <tr className="invoice-group-end" aria-hidden="true"><td colSpan={5} /></tr>
+            </tbody>
+          )) : <tbody className="invoice-flat-items">{invoice.items.map(itemRow)}</tbody>}
         </table>
 
-        <section className="invoice-payment-block">
-          {invoice.dueDate && <p className="invoice-payment-copy">Zahlbar bis {formatDateLong(invoice.dueDate)}.</p>}
-          <section className={visibleQrCode ? 'invoice-payment' : 'invoice-payment invoice-payment--without-qr'}>
-            <dl>
-              {account.accountHolder && <><dt>Kontoinhaber:</dt><dd>{account.accountHolder}</dd></>}
-              {account.iban && <><dt>IBAN:</dt><dd className="mono">{formatIban(account.iban)}</dd></>}
-              {account.bic && <><dt>BIC:</dt><dd className="mono">{account.bic}</dd></>}
-              {account.bankName && <><dt>Bank:</dt><dd>{account.bankName}</dd></>}
-              <dt>Verwendungszweck:</dt><dd>Rechnung {invoice.number ?? 'Entwurf'}</dd>
-            </dl>
-            {visibleQrCode && <div className="invoice-qr">
-              <img src={visibleQrCode.url} alt="EPC-QR-Code für die SEPA-Überweisung" onLoad={() => { void waitForPrintFonts().then(() => onPrintReady?.(visibleQrCode.requestId, visibleQrCode.invoiceId, visibleQrCode.payload)) }} onError={() => onPrintError?.(visibleQrCode.requestId, visibleQrCode.invoiceId, 'GiroCode konnte nicht geladen werden.')} />
-              <p>Mit Banking-App scannen</p>
-            </div>}
+        <section className="invoice-summary">
+          <p className="invoice-total-row"><span>Summe</span><strong>{euro.format(totalCents / 100)}</strong></p>
+          <p className="invoice-private-row">Privatrechnung</p>
+          <section className="invoice-payment-block">
+            {invoice.dueDate && <p className="invoice-payment-copy">Zahlbar bis {formatDateLong(invoice.dueDate)}.</p>}
+            <section className={visibleQrCode ? 'invoice-payment' : 'invoice-payment invoice-payment--without-qr'}>
+              <dl>
+                {account.accountHolder && <><dt>Kontoinhaber:</dt><dd>{account.accountHolder}</dd></>}
+                {account.iban && <><dt>IBAN:</dt><dd className="mono">{formatIban(account.iban)}</dd></>}
+                {account.bic && <><dt>BIC:</dt><dd className="mono">{account.bic}</dd></>}
+                {account.bankName && <><dt>Bank:</dt><dd>{account.bankName}</dd></>}
+                <dt>Verwendungszweck:</dt><dd>Rechnung {invoice.number ?? 'Entwurf'}</dd>
+              </dl>
+              {visibleQrCode && <div className="invoice-qr">
+                <img src={visibleQrCode.url} alt="EPC-QR-Code für die SEPA-Überweisung" onLoad={() => { void waitForPrintFonts().then(() => onPrintReady?.(visibleQrCode.requestId, visibleQrCode.invoiceId, visibleQrCode.payload)) }} onError={() => onPrintError?.(visibleQrCode.requestId, visibleQrCode.invoiceId, 'GiroCode konnte nicht geladen werden.')} />
+                <p>Mit Banking-App scannen</p>
+              </div>}
+            </section>
           </section>
-          {invoice.freeText && <p className="invoice-free-text">{invoice.freeText}</p>}
-          <footer className="invoice-footer">Rechnung {invoice.number ?? 'Entwurf'}</footer>
         </section>
+        {invoice.freeText && <p className="invoice-free-text">{invoice.freeText}</p>}
       </div>
+      <footer className="invoice-footer">Rechnung {invoice.number ?? 'Entwurf'}</footer>
     </article>
   )
 }

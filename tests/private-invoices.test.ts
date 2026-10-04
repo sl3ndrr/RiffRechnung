@@ -100,7 +100,7 @@ test('P01: unter, bei und über 250 Euro ohne Anschriften derselbe Abschluss; ge
       validateBackupState(result)
       const output = print(result)
       assert.equal(output.split('Privatrechnung').length - 1, 1)
-      assert.match(output, /<tbody class="invoice-final-rows"><tr class="invoice-total-row">.*?<\/tr><tr class="invoice-private-row"><td colSpan="5">Privatrechnung<\/td><\/tr><\/tbody>/)
+      assert.match(output, /<section class="invoice-summary"><p class="invoice-total-row">.*?<\/p><p class="invoice-private-row">Privatrechnung<\/p>/)
       assert.doesNotMatch(output, /Steuernummer|Steuerbefreiung|Kleinbetragsrechnung|Steuerliche Angaben/)
       if (finalize) assert.equal(result.documentVersions[0].amounts.totalCents, Math.round(price * 100))
     }
@@ -201,5 +201,6 @@ test('P01: fehlgeschlagene Speicherung und unlesbare Nebenstruktur lassen alle A
   await assert.rejects(new StorageSession({ storage, lock: sharedLock() }).restore(raw), /nicht lesbar/)
   assert.deepEqual([...storage.entries], before)
 })
+
 
 

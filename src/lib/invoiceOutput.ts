@@ -1,6 +1,6 @@
 import type { Guardian, Invoice, InvoiceItem, InvoiceStatus, Student } from '../types'
-import { localToday } from './calendar'
-import { decimalInputText, itemTotalCents } from './money'
+import { calendarParts, localToday } from './calendar'
+import { decimalInputText, invoiceTotalCents, itemTotalCents, sumCents } from './money'
 import { euro, parseDate } from './utils'
 import { liveRecipient, recipientRefs, snapshotRecipients } from './recipients'
 
@@ -93,10 +93,23 @@ function cssContentString(value: string): string {
 
 export function buildInvoicePrintPageStyle(invoiceNumber: string | null): string {
   const invoiceReference = invoiceNumber ? cssContentString(`Rechnung ${invoiceNumber}`) : '""'
-  // Margin boxes are only an enhancement. The private line and invoice reference are
-  // also present in the ordinary document flow in InvoicePrint.
+  const footerReference = cssContentString(`Rechnung ${invoiceNumber ?? 'Entwurf'}`)
+  // InvoicePrint retains an ordinary footer for browsers without CSSMarginRule.
   return `
 @page {
+  @bottom-left {
+    content: ${footerReference};
+    box-sizing: border-box;
+    height: 15.5mm;
+    padding: 3pt 0 7mm;
+    color: #636b78;
+    font-family: 'Inter Variable', Inter, Arial, sans-serif;
+    font-size: 7pt;
+    line-height: 1.35;
+    text-align: left;
+    vertical-align: bottom;
+    white-space: nowrap;
+  }
   @bottom-right {
     content: "Seite " counter(page) " von " counter(pages);
     box-sizing: border-box;
@@ -139,12 +152,54 @@ export function outputItemCents(invoice: Invoice, item: InvoiceItem): number {
   return invoice.issuedAmounts && index >= 0 ? invoice.issuedAmounts.itemCents[index] : itemTotalCents(item)
 }
 
+interface InvoicePrintGroup {
+  key: string
+  title: string
+  subtotalLabel: string
+  items: InvoiceItem[]
+  totalCents: number
+}
+
+/** Presentation only: never reorder the stored positions or recalculate issued amounts. */
+export function invoicePrintGroups(invoice: Invoice): InvoicePrintGroup[] | null {
+  const months = new Map<string, InvoiceItem[]>()
+  for (const item of invoice.items) {
+    let key = ''
+    try { calendarParts(item.serviceDate); key = item.serviceDate.slice(0, 7) } catch { /* Undated positions follow all months. */ }
+    const items = months.get(key) ?? []
+    items.push(item)
+    months.set(key, items)
+  }
+  try {
+    const groups = [...months.entries()]
+      .sort(([a], [b]) => a === '' ? 1 : b === '' ? -1 : a.localeCompare(b))
+      .map(([key, items]) => {
+        const date = key ? parseDate(`${key}-01`) : null
+        const month = date ? new Intl.DateTimeFormat('de-DE', { month: 'long' }).format(date) : ''
+        return {
+          key,
+          title: date ? new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' }).format(date) : 'Ohne gültiges Leistungsdatum',
+          subtotalLabel: month ? `Zwischensumme ${month}:` : 'Zwischensumme ohne Leistungsdatum:',
+          items,
+          totalCents: sumCents(items.map((item) => outputItemCents(invoice, item))),
+        }
+      })
+    return sumCents(groups.map((group) => group.totalCents)) === invoiceTotalCents(invoice) ? groups : null
+  } catch {
+    // Historical item sums can also exceed the safe range despite a valid frozen total.
+    return null
+  }
+}
+
+export function invoiceServiceDate(value: string): string {
+  try { calendarParts(value); return `${value.slice(8, 10)}.${value.slice(5, 7)}.` } catch { return value }
+}
+
 export function outputUnitPrice(invoice: Invoice, item: InvoiceItem): string {
   // Preserve historical formatting, including its original two-decimal display.
   if (invoice.issuedAmounts?.calculation === 'legacy-v1') return euro.format(item.unitPrice)
   const [whole, fraction = ''] = decimalInputText(item.unitPrice).split('.')
   return `${new Intl.NumberFormat('de-DE').format(BigInt(whole))},${fraction.padEnd(2, '0')}\u00a0€`
 }
-
 
 

@@ -530,6 +530,8 @@ test('P07 Browser/PDF: Schema-12-Konflikte behalten dieselbe Ansicht, Druckausga
   expect(after.payload.split('\n')[7]).toBe('EUR9.00')
   expect(after.text).toContain('Testweg 2'); expect(after.text).toContain('Testweg 3')
   expect(after.text).toContain('9,00')
+  expect(after.text).not.toContain('Zwischensumme') // Legacy item sum differs from the frozen total.
   expect(after.text).not.toMatch(/HEUTIG|Abweichender Roh/)
   await testInfo.attach('p07-migrierter-beleg.pdf', { body: after.pdf, contentType: 'application/pdf' })
 })
+
