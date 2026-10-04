@@ -3,9 +3,9 @@ import { defineConfig } from '@playwright/test'
 export default defineConfig({
   testDir: './tests/browser',
   timeout: 30_000,
-  // Browser contexts and testInfo artifacts are isolated; keep the expanded
-  // three-engine coverage within Quality's existing ten-minute job budget.
-  workers: process.env.CI ? 2 : 1,
+  // Contexts and testInfo artifacts are isolated. Three CI workers leave room
+  // for migrations and audit after the expanded PDF suite in the ten-minute job.
+  workers: process.env.CI ? 3 : 1,
   retries: 0,
   reporter: [['list'], ['json', { outputFile: 'test-results/browser-results.json' }], ['./scripts/browser-failures.mjs']],
   use: { baseURL: 'http://127.0.0.1:4173', reducedMotion: process.env.RIFF_REDUCED_MOTION === 'no-preference' ? 'no-preference' : 'reduce', trace: 'retain-on-failure', screenshot: 'only-on-failure' },

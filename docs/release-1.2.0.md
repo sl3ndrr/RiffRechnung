@@ -59,3 +59,7 @@ PDFs und erste/letzte Seitenbilder werden im bestehenden CI-Artefakt `browser-ev
 ## Offene Punkte und bewusste Grenzen
 
 Die lokalen Fachprüfungen allein erteilen keine Releasefreigabe; dafür gelten die abschließenden Quality-Ergebnisse am PR. Native Druckdialoge, physische Ausdrucke, Banking-App-Scans und eigene Altbestände benötigen die obige manuelle Abnahme. Vorhandene Bereinigungslücken bei historischen Duo-/Nummernmuster-Nachweisen bleiben in [technical.md](technical.md#bekannte-bereinigungslücken) dokumentiert. Kein neues Feature, kein automatischer Backup-Ablauf, keine Änderung an historischen Originalen, keine Veröffentlichung oder Merge des Releases im Rahmen dieses PRs.
+
+## Nachtrag: Pages-Laufzeit
+
+Nach dem Merge von AP8 erreichte der Quality-Job ohne reduzierte Bewegung im [Pages-Lauf 37205673452](https://github.com/sl3ndrr/RiffRechnung/actions/runs/37205673452) das Zehn-Minuten-Limit. Auch ein gezielter Neustart brach ab, obwohl dort alle 239 Browserfälle bestanden waren; der Deploy wurde jeweils übersprungen. Der erfolgreiche Matrixjob hatte das geprüfte 1.2.0-Build bereits hochgeladen. Die Hauptsuite verwendet deshalb in CI drei statt zwei isolierte Worker. Testumfang, Assertions, Retries, Timeouts, Workflows und Produktcode bleiben unverändert; die Angaben zur unveränderten Konfiguration oben beschreiben den ursprünglichen AP8-Abschluss. Die Korrektur muss beide vollständigen Quality-Jobs und anschließend den Pages-Deploy bestehen.
