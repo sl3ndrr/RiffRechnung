@@ -6,6 +6,8 @@ Der Demo-Einstieg arbeitet mit Beispieldaten getrennt vom echten Bestand.
 
 Das Dashboard zeigt Zahlungseingänge im gewählten Jahr, offene Restbeträge, Entwürfe und Personenzahlen. Die Monatsansicht verwendet bestätigte Zahlungstage; Zahlungen ohne bestätigten Tag erscheinen als gesonderter Hinweis. Offene Rechnungen stehen mit überfälligen zuerst und lassen sich direkt öffnen. Bei mehr als acht Einträgen führt **Alle in Rechnungen anzeigen** zur vollständigen Liste mit dem Filter **Noch nicht gezahlt**. Eine dezente Erinnerung bietet den JSON-Export an, wenn Rechnungen vorhanden sind und das letzte Backup mehr als 30 Tage zurückliegt oder fehlt.
 
+**Bezahlt** zählt tatsächliche Zahlungseingänge nach ihrem bestätigten Zahlungstag, auch Teilzahlungen sowie Zahlungen zu inzwischen ersetzten oder archivierten Belegen. Rechnungsdatum und Erfassungszeit bestimmen diese Zahl nicht. **Offen** zeigt die Restbeträge aktiver, nicht archivierter finaler Ansprüche; ersetzte Originale zählen nicht zusätzlich, ein Korrekturentwurf ersetzt den Anspruch noch nicht. **Entwürfe** zählt alle nicht finalisierten Rechnungen, im Betrag nur berechenbare Entwürfe. Die Personenzähler umfassen alle gespeicherten Erziehungsberechtigten und Lernenden, mit aktiven Lernenden als zusätzlicher Angabe. Die Jahresauswahl verändert nur Zahlungseingang und Monatsdiagramm.
+
 ## Einrichten und Personen anlegen
 
 1. Unter **Einstellungen** den Rechnungsstellernamen, Kontoinhaber und eine gültige deutsche IBAN eintragen. Anschrift, Kontaktangaben, Bankname und BIC sind optional; eine eingetragene BIC muss gültig sein. Standardpreise und Zahlungsziel nach Bedarf setzen.
@@ -41,6 +43,7 @@ Auswahlreihenfolge und Zahl der Empfänger ändern die Kennung nicht. `ab` bezei
 ## PDF und GiroCode
 
 In den Rechnungsdetails **PDF / Drucken** wählen und im Browser als PDF speichern oder drucken. Entwürfe haben eine Vorschau mit Wasserzeichen.
+Die neue Darstellung ordnet Leistungen nach Kalendermonaten; innerhalb eines Monats bleibt ihre ursprüngliche Reihenfolge erhalten. Bei mehreren Gruppen erscheinen Zwischensummen, bei einem Monat nur die Endsumme. Fehlende oder ungültige Leistungsdaten stehen in einer eigenen letzten Gruppe. Stimmen historische Positionsbeträge nicht mit der eingefrorenen Gesamtsumme überein oder lässt sich die Gruppensumme nicht sicher berechnen, bleibt die Ausgabe in der ursprünglichen flachen Reihenfolge ohne Zwischensummen. Gesicherte Beträge werden dabei unverändert gedruckt.
 Bei zwei ausgewählten Empfängern erscheinen beide Namen und jeweils die eigene vorhandene Anschrift, auch bei identischen Anschriften. Fehlende Anschriftteile entfallen. Die gemeinsame Rechnung hat einen Gesamtbetrag.
 
 Finale Ausgaben und GiroCode verwenden die gesicherten Belegdaten. Spätere Änderungen an Stammdaten oder Einstellungen verändern das Original nicht. Historische Lücken werden nicht mit heutigen Konten oder Anschriften gefüllt.
@@ -54,6 +57,7 @@ Bei einer bereits erfassten Zahlung lässt sich der bestätigte Tag über **Zahl
 Offen/bezahlt wird aus den Zahlungszuordnungen abgeleitet; überfällig aus Fälligkeit und offenem Anspruch. Die Liste steht fest nach Rechnungsdatum, neueste zuerst; Suche und Statusfilter bleiben.
 
 Nach dem Löschen eines Entwurfs oder einer Person sowie nach Archivieren/Zurückholen bietet die Meldung für **10 Sekunden** **Rückgängig** an. Maus über der Meldung oder Tastaturfokus darin pausieren die Restzeit. Es erscheinen höchstens die letzten drei Meldungen. Rückgängig erhält zwischenzeitliche andere Änderungen; fehlen zugehörige Personen oder Entwürfe oder wurden betroffene Zuordnungen geändert, erscheint eine Fehlermeldung ohne Änderung am Bestand. Finalisieren, Zahlungen, Wiederherstellung und Zurücksetzen haben keinen solchen Rückgängig-Weg.
+Die Aktion ist einmalig und nur in dieser Sitzung verfügbar; Schließen der Meldung, Reload oder Verlassen des Demo-Modus beendet diese Möglichkeit. **Bewegungen reduzieren** und die Gerätepräferenz schalten Animationen ab, ohne die Rückgängig-Frist zu verändern.
 
 Für Änderungen an finalen Belegen **Korrektur** mit Begründung anlegen, den neuen Entwurf prüfen und finalisieren. Original und ursprüngliche Nummer bleiben erhalten; die Korrektur erhält einen neuen Beleg und eine neue Nummer. Bestehende Zahlungen werden nicht automatisch auf eine Korrektur übertragen. Historie, Klärung und Zahlungszuordnung liegen unter **Details**.
 
@@ -66,3 +70,5 @@ Unter **Einstellungen → Backup & Import → JSON exportieren** den zuletzt ges
 Bei Speicher-/Tabkonflikten die Meldung befolgen und den aktuellen Stand neu laden. Im Wiederherstellungsmodus lassen sich Rohdaten sichern und ein vorhandener vorheriger Stand prüfen. **Wiederherstellungsarchiv exportieren** ist ein separater technischer Nachweisexport; bekannte Bereinigungslücken dieses Altpfads sind in der [Migrationsdokumentation](docs/technical.md#bekannte-bereinigungslücken) genannt.
 
 [Technik, Migration und Prüfungen](docs/technical.md) · [Historische Nachweise](docs/evidence.md) · [Kurze Release-Notizen](docs/releases.md)
+
+Vor Freigabe von 1.2.0: [Prüfbericht und manuelle Checkliste](docs/release-1.2.0.md).
