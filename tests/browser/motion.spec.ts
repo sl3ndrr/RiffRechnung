@@ -19,7 +19,7 @@ async function seed(page: Page, reduced = false) {
   }, serializeBackup(state))
   await page.reload()
   await page.evaluate(() => {
-    const motion = window as MotionWindow
+    const motion = window as unknown as MotionWindow
     motion.motionEvents = []
     document.addEventListener('animationstart', (event) => motion.motionEvents.push(event.animationName))
   })
@@ -54,7 +54,7 @@ test('3.AP6: Dialog und Bestätigung animieren, behalten Fokusfalle und geben Fo
   await page.keyboard.press('Escape')
   await expectReleased(page)
   await expect(trigger).toBeFocused()
-  expect(await page.evaluate(() => (window as MotionWindow).motionEvents)).toEqual(expect.arrayContaining(['motion-fade-in', 'motion-fade-out']))
+  expect(await page.evaluate(() => (window as unknown as MotionWindow).motionEvents)).toEqual(expect.arrayContaining(['motion-fade-in', 'motion-fade-out']))
 
   await page.locator('.sidebar').getByRole('button', { name: 'Einstellungen', exact: true }).click()
   const issuer = page.getByLabel('Name / Geschäftsbezeichnung', { exact: true })
@@ -92,7 +92,7 @@ test('3.AP6: ausgefallenes animationend entfernt Dialog und Toast über den Time
   expect((await durations(page.locator('.toast'))).animations[0]).toBe(220)
   await page.getByRole('button', { name: 'Meldung schließen', exact: true }).click()
   await expect(page.locator('.toast')).toHaveCount(0)
-  expect(await page.evaluate(() => (window as MotionWindow).motionEvents)).toContain('motion-rise-out')
+  expect(await page.evaluate(() => (window as unknown as MotionWindow).motionEvents)).toContain('motion-rise-out')
 })
 
 test('3.AP6: Navigation bewegt Indikator und blendet nur den neuen Inhalt ein; Theme bleibt kurzzeitig', async ({ page }) => {
@@ -112,14 +112,14 @@ test('3.AP6: Navigation bewegt Indikator und blendet nur den neuen Inhalt ein; T
   // Capture the short class without depending on assertion/network timing.
   await page.evaluate(() => {
     const observer = new MutationObserver(() => {
-      if (document.documentElement.classList.contains('theme-changing')) (window as MotionWindow).motionEvents.push('theme-changing')
+      if (document.documentElement.classList.contains('theme-changing')) (window as unknown as MotionWindow).motionEvents.push('theme-changing')
     })
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
   })
   await page.locator('.topbar').getByRole('radio', { name: 'Dunkel', exact: true }).click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await expect(page.locator('html')).not.toHaveClass(/theme-changing/)
-  expect(await page.evaluate(() => (window as MotionWindow).motionEvents)).toContain('theme-changing')
+  expect(await page.evaluate(() => (window as unknown as MotionWindow).motionEvents)).toContain('theme-changing')
   expect((await durations(page.locator('.theme-switch__thumb'))).transitions[0]).toBe(220)
   await page.locator('.topbar').getByRole('radio', { name: 'System', exact: true }).click()
   await page.emulateMedia({ colorScheme: 'dark' })
