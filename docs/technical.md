@@ -36,7 +36,7 @@ Wiederherstellungen laufen als neuer `commit` durch Bestandsvalidierung und Orig
 
 Einfache Toast-Meldungen im Modal lassen Klicks auf darunterliegende Dialogaktionen durch; ihre Schließen-Buttons bleiben erreichbar. Undo-Toasts behalten ihre vollständige Hover-Fläche und unveränderte Pausenlogik. Die Motion-Spec prüft das Hit-Testing bei drei gleichzeitigen Meldungen, ohne auf deren Ablauf zu warten.
 
-`invoice-paper`, `print-root` und sämtliche Druckelemente überschreiben Animationen und Transitions mit `none`; Motion-Utilities im Druck behalten Deckkraft 1. Der Druckablauf und `onPrintReady` warten auf keine Animation. Die Playwright-Hauptsuite verwendet `reducedMotion: 'reduce'`; die eigene `motion.spec.ts` überschreibt dies mit `no-preference` und prüft Dialoge, Timeout-Fallback, Toast/Undo, Navigation, Theme, Schublade einschließlich Desktop-Resize, reduzierte Dauern und Druck in Chromium, Firefox und WebKit. In CI laufen zwei Worker mit getrennten Browserkontexten und `testInfo`-Artefaktpfaden, lokal weiterhin einer. Damit bleibt die erweiterte Abdeckung im bestehenden zehnminütigen Jobbudget; Test- und Assertion-Timeouts werden nicht angehoben. Seiteninterne Bewegungen aus 3.AP7 sind im folgenden Abschnitt beschrieben.
+`invoice-paper`, `print-root` und sämtliche Druckelemente überschreiben Animationen und Transitions mit `none`; Motion-Utilities im Druck behalten Deckkraft 1. Der Druckablauf und `onPrintReady` warten auf keine Animation. Die Playwright-Hauptsuite verwendet lokal standardmäßig `reducedMotion: 'reduce'`; die Quality-Matrix führt sie zusätzlich mit `no-preference` aus. Die eigene `motion.spec.ts` prüft Dialoge, Timeout-Fallback, Toast/Undo, Navigation, Theme, Schublade einschließlich Desktop-Resize, reduzierte Dauern und Druck in Chromium, Firefox und WebKit. In CI laufen zwei Worker mit getrennten Browserkontexten und `testInfo`-Artefaktpfaden, lokal weiterhin einer. Das zehnminütige Jobbudget sowie Test- und Assertion-Timeouts bleiben unverändert. Seiteninterne Bewegungen aus 3.AP7 sind im folgenden Abschnitt beschrieben.
 
 ## Seiteninterne Bewegung (3.AP7)
 
@@ -49,6 +49,8 @@ Die Detailansicht gleitet beim Öffnen ein. Beim Rechnungswechsel überblendet `
 Bewusst unverändert und ohne neue Animation bleiben Rechnungspapier/`print-root`, Warnungen mit `role="alert"`, Formularfehler und Validierungstexte. Ein Eintrittsbereich mit Fehlern oder ungültigen Eingaben verliert die AP7-Einblendung. Schema 15, Speicher-Commands, Originalschutz, Rechnungsausgabe, Version und Abhängigkeiten bleiben unverändert.
 
 `use-count-up.test.ts` prüft die vom Hook verwendete Lebensdauer mit kontrollierter Uhr (Endwert, Unmount-Abbruch, reduzierte Bewegung, Änderungen während der Animation, Hintergrundpause und StrictMode-Cleanup). `page-motion.spec.ts` prüft den echten React-Hook sowie einmalige Eintritte, Suche/Filter/Zahlung/Speichern, zugängliche Endwerte, Jahreswechsel, Detail-Fokus, Editor und begrenzte Bewegung unter sechsfacher Chromium-CPU-Drosselung. Die vollständige Quality-Matrix läuft mit `RIFF_REDUCED_MOTION=reduce` und `no-preference`, ohne neue feste Wartezeiten oder erhöhte Timeouts. Die CPU-Prüfung ersetzt keinen Benchmark auf realer schwacher Hardware.
+
+Bestehende Browserprüfungen warten gezielt auf geschlossene AP6-Dialoge, abgeschlossene Theme-Transitions und ruhende Geometrie, bevor sie Fokus, Farben oder Maße prüfen. Undo-Tests beenden dekorative Exits über die Animation-API, ohne ihre eingefrorene Geschäftsuhr vorzustellen: Die exakten 10-Sekunden-/4200-ms-Grenzen und alle Inhaltsprüfungen bleiben erhalten. Ein Fehlerreporter schreibt fehlgeschlagene Assertions sofort ins CI-Log, auch wenn ein späterer Fall das Jobbudget ausschöpft.
 
 ## Belegdaten, Nummern und Zahlungen
 
@@ -133,4 +135,3 @@ JSON-Ergebnisse stehen in `test-results/browser-results.json` und `test-results/
 
 Für lokale Entwicklung: `npm run dev`; zur Kontrolle des gebauten Ergebnisses: `npm run preview`.
 Automatisierte PDF-Prüfungen decken Text, Seitenumbrüche, Empfängeranschriften, eingefrorene Konten, GiroCode und QR-Fallback in Chromium ab. Native Druckdialoge, physische Ausdrucke, Firefox-/Safari-PDF, Banking-App-Scans und reale Altbestände werden dadurch nicht als abgenommen behauptet. Historische visuelle P11-/P12-Nachweise stehen im [Nachweisindex](evidence.md).
-
