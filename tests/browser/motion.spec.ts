@@ -72,6 +72,29 @@ test('3.AP6: Dialog und Bestätigung animieren, behalten Fokusfalle und geben Fo
   await expect(issuer).toHaveValue('Noch nicht gespeichert')
 })
 
+test('3.AP6: Meldungen blockieren keine Dialogaktionen; Schließen bleibt bedienbar', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 })
+  await seed(page)
+  await page.locator('.sidebar').getByRole('button', { name: 'Einstellungen', exact: true }).click()
+  for (let index = 0; index < 3; index++) await page.getByRole('button', { name: 'JSON exportieren', exact: true }).click()
+  await navigateToInvoices(page)
+  await page.getByRole('button', { name: 'Neue Rechnung', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Neue Rechnung', exact: true })
+  await dialog.getByRole('group', { name: 'Lernende', exact: true }).locator('label').filter({ hasText: 'Kind s1' }).click()
+  await expect(page.locator('.toast')).toHaveCount(3)
+  const save = dialog.getByRole('button', { name: 'Als Entwurf speichern', exact: true })
+  await expect.poll(() => save.evaluate((button) => {
+    const rect = button.getBoundingClientRect()
+    return document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)?.closest('button') === button
+  })).toBe(true)
+  // A toast's close button remains part of the modal's focus trap and hit area.
+  await page.getByRole('button', { name: 'Meldung schließen', exact: true }).first().click()
+  await expect(page.locator('.toast')).toHaveCount(2)
+  await save.click()
+  await expectReleased(page)
+  await expect(page.locator('.toast').filter({ hasText: 'Entwurf gespeichert.' })).toBeVisible()
+})
+
 test('3.AP6: ausgefallenes animationend entfernt Dialog und Toast über den Timeout', async ({ page }) => {
   await seed(page)
   await navigateToInvoices(page)

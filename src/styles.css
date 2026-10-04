@@ -542,6 +542,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .toast .toast__action { grid-column: 2; width: auto; min-height: 36px; justify-self: start; padding: 0 10px; border: 1px solid currentColor; border-radius: var(--radius-sm); font-weight: 700; }
 .toast--action .toast__dismiss { grid-column: 3; grid-row: 1 / 3; }
 .toast button:focus-visible { outline: 3px solid currentColor; outline-offset: 2px; }
+/* Plain feedback must not cover dialog actions; Undo retains its hover area. */
+.modal-layer .toast:not(.toast--action) { pointer-events: none; }
+.modal-layer .toast:not(.toast--action) button { pointer-events: auto; }
 .toast__progress { position: absolute; right: 0; bottom: 0; left: 0; height: 3px; background: currentColor; transform-origin: left; animation: toast-countdown linear forwards; }
 @keyframes toast-countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 .mobile-bottom-nav { display: none; }
