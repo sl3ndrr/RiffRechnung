@@ -36,6 +36,7 @@
   --warning: #8a5700;
   --warning-container: #ffeccb;
   --info-container: var(--surface-container);
+  --print-canvas: #ffffff;
   --scrim: rgb(0 0 0 / 0.46);
   --radius-xs: 8px;
   --radius-sm: 12px;
@@ -63,8 +64,8 @@
   --elevation-overlay: 0 12px 36px color-mix(in srgb, var(--on-surface) 16%, transparent);
   --ease-spatial: cubic-bezier(.2, .8, .2, 1);
   --ease-effects: cubic-bezier(.2, 0, 0, 1);
-  --ease-out: cubic-bezier(.2, .8, .2, 1);
-  --ease-in-out: cubic-bezier(.4, 0, .2, 1);
+  --ease-out: var(--ease-spatial);
+  --ease-in-out: var(--ease-effects);
   --dur-fast: 140ms;
   --dur-base: 220ms;
   --dur-slow: 320ms;
@@ -314,7 +315,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .invoice-kebab-menu button:hover, .invoice-kebab-menu button:focus-visible { background: var(--surface-container); color: var(--primary); }
 .invoice-kebab-menu button.is-danger { color: var(--error); }
 .invoice-kebab-menu svg { width: 16px; height: 16px; }
-.invoice-detail { position: sticky; top: 94px; padding: 24px; }
+.invoice-detail { position: sticky; top: 94px; padding: 24px; scroll-margin-block: 24px; }
 .invoice-detail__header { display: flex; align-items: flex-start; justify-content: space-between; }
 .invoice-detail__header h2 { margin-bottom: 5px; font-size: var(--type-page); letter-spacing: -.04em; }
 .invoice-detail__header p:not(.eyebrow) { margin: 0; color: var(--on-surface-variant); font-size: var(--type-caption); }
@@ -489,7 +490,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .modal-open { overflow: hidden; }
 .modal-layer { position: fixed; z-index: 100; width: 100vw; max-width: none; height: 100dvh; max-height: none; margin: 0; inset: 0; display: grid; place-items: center; padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left)); border: 0; background: var(--scrim); }
 .modal-layer::backdrop { background: transparent; }
-.modal { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; width: min(680px, 100%); max-height: min(calc(100dvh - 48px), 980px); overflow: hidden; border: 0; border-radius: var(--radius-xl); background: var(--surface-container-high); box-shadow: var(--elevation-overlay); }
+.modal { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; width: min(680px, 100%); max-height: min(calc(100dvh - 48px), 980px); overflow: hidden; border: 0; border-radius: var(--radius-xl); background: var(--surface-container-high); }
 .modal--small { width: min(470px, 100%); }
 .modal--large { width: min(1250px, 100%); height: min(calc(100dvh - 48px), 1000px); }
 .modal__header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 23px 26px 18px; border-bottom: 0; }
@@ -549,6 +550,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 
 .toast-host { display: contents; }
 .toast-region { position: fixed; z-index: 200; right: 24px; bottom: 24px; display: grid; width: min(380px, calc(100vw - 32px)); gap: var(--space-3); pointer-events: none; }
+/* Keep feedback clear of the invoice detail actions, including frozen Undo timers. */
+@media (min-width: 821px) {
+  body:has(.invoice-detail) > .toast-host .toast-region { right: auto; left: 112px; }
+}
+@media (min-width: 1121px) {
+  body:has(.invoice-detail) > .toast-host .toast-region { left: 288px; }
+}
 .toast { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); min-height: 54px; padding: 11px 10px 11px 15px; overflow: hidden; border-radius: var(--radius-lg); background: var(--surface-container-high); color: var(--on-surface); font-size: var(--type-caption); pointer-events: auto; box-shadow: var(--elevation-overlay); }
 .toast--action { grid-template-columns: auto minmax(0, 1fr) auto; }
 .toast span { overflow-wrap: anywhere; }
@@ -625,11 +633,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .invoice-qr { display: grid; justify-items: center; text-align: center; }
 .invoice-qr img { width: 30mm; height: 30mm; image-rendering: crisp-edges; }
 .invoice-qr p { margin: 1.5pt 0 0; color: var(--invoice-muted); font-size: 7pt; }
-.invoice-free-text { margin: 5mm 0 0; overflow-wrap: anywhere; white-space: pre-wrap; break-inside: auto; page-break-inside: auto; orphans: 2; widows: 2; }
+.invoice-free-text { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; break-inside: auto; page-break-inside: auto; orphans: 2; widows: 2; }
 .invoice-footer { position: static; margin-top: 6mm; color: var(--invoice-muted); font-size: 7pt; overflow-wrap: anywhere; break-inside: avoid; page-break-inside: avoid; }
 
 @media (min-width: 1121px) {
-  .invoice-detail { max-height: calc(100dvh - 118px); overflow-y: auto; overscroll-behavior: contain; }
+  .invoice-detail { max-height: calc(100dvh - 126px); overflow-y: auto; overscroll-behavior: contain; }
 }
 
 @media (max-width: 1350px) {
@@ -749,14 +757,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 /* Shared motion: final styles remain visible even without an animation. */
 @keyframes motion-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes motion-fade-out { from { opacity: 1; } to { opacity: 0; } }
-@keyframes motion-rise-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@keyframes motion-rise-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(8px); } }
-@keyframes motion-scale-in { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
-@keyframes motion-scale-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(.97); } }
+@keyframes motion-rise-in { from { transform: translateY(8px); } to { transform: none; } }
+@keyframes motion-rise-out { from { transform: none; } to { transform: translateY(8px); } }
+@keyframes motion-scale-in { from { transform: scale(.97); } to { transform: none; } }
+@keyframes motion-scale-out { from { transform: none; } to { transform: scale(.97); } }
 @keyframes motion-saving { from { opacity: .5; transform: scale(.8); } to { opacity: 1; transform: scale(1); } }
-.motion-fade { animation: motion-fade-in var(--dur-base) var(--ease-out) backwards; }
-.motion-rise { animation: motion-rise-in var(--dur-base) var(--ease-out) backwards; }
-.motion-scale { animation: motion-scale-in var(--dur-base) var(--ease-out) backwards; }
+.motion-fade { animation: motion-fade-in var(--dur-base) var(--ease-effects) backwards; }
+.motion-rise { animation: motion-rise-in var(--dur-base) var(--ease-spatial) backwards, motion-fade-in var(--dur-base) var(--ease-effects) backwards; }
+.motion-scale { animation: motion-scale-in var(--dur-base) var(--ease-spatial) backwards, motion-fade-in var(--dur-base) var(--ease-effects) backwards; }
 .motion-stagger { animation-delay: calc(var(--stagger-index, 0) * var(--dur-stagger)); }
 /* Page entries occupy their final geometry from the first frame. */
 @keyframes motion-bar-in { from { transform: scaleY(0); } to { transform: scaleY(1); } }
@@ -766,19 +774,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .dashboard-number__sizer { visibility: hidden; }
 .status-chip { position: relative; }
 .status-chip__label { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: var(--space-2); }
-.status-chip__previous { border-radius: inherit; position: absolute; inset: 0; pointer-events: none; animation: motion-fade-out var(--dur-fast) var(--ease-out) forwards; }
+.status-chip__previous { border-radius: inherit; position: absolute; inset: 0; pointer-events: none; animation: motion-fade-out var(--dur-fast) var(--ease-effects) forwards; }
 .invoice-detail__previous { position: fixed; padding: 24px; z-index: 51; overflow: hidden; pointer-events: none; }
 .editor-items { position: relative; }
 .editor-item--exit { position: absolute; margin: 0; pointer-events: none; }
-:is(.invoice-page, .document-history, .settings-page, .modal__body) details[open] > :not(summary):not([role='alert']):not(.form-errors):not(.field-error):not(:has([role='alert'], .field-error, .form-errors)) { animation: motion-fade-in var(--dur-fast) var(--ease-out) backwards; }
+:is(.invoice-page, .document-history, .settings-page, .modal__body) details[open] > :not(summary):not([role='alert']):not(.form-errors):not(.field-error):not(:has([role='alert'], .field-error, .form-errors)) { animation: motion-fade-in var(--dur-fast) var(--ease-effects) backwards; }
 /* A new error or validation message never inherits an AP7 entrance. */
 .page-entry:has([role='alert'], [aria-invalid='true'], .field-error, .form-errors) { animation: none; }
-.modal-layer, .nav-scrim { animation: motion-fade-in var(--dur-base) var(--ease-out) backwards; }
-.modal { animation: motion-scale-in var(--dur-base) var(--ease-out) backwards; }
+.modal-layer, .nav-scrim { animation: motion-fade-in var(--dur-base) var(--ease-effects) backwards; will-change: opacity; }
+.modal { animation: motion-scale-in var(--dur-base) var(--ease-spatial) backwards, motion-fade-in var(--dur-base) var(--ease-effects) backwards; }
 .modal-layer[data-motion='exit'], .nav-scrim[data-motion='exit'] { animation: motion-fade-out var(--dur-base) var(--ease-in-out) forwards; }
-.modal-layer[data-motion='exit'] .modal { animation: motion-scale-out var(--dur-base) var(--ease-in-out) forwards; }
-.toast { animation: motion-rise-in var(--dur-base) var(--ease-out) backwards; }
-.toast[data-motion='exit'] { animation: motion-rise-out var(--dur-base) var(--ease-in-out) forwards; pointer-events: none; }
+.modal-layer[data-motion='exit'] .modal { animation: motion-scale-out var(--dur-base) var(--ease-spatial) forwards, motion-fade-out var(--dur-base) var(--ease-effects) forwards; }
+.toast { animation: motion-rise-in var(--dur-base) var(--ease-spatial) backwards, motion-fade-in var(--dur-base) var(--ease-effects) backwards; }
+.toast[data-motion='exit'] { animation: motion-rise-out var(--dur-base) var(--ease-spatial) forwards, motion-fade-out var(--dur-base) var(--ease-effects) forwards; pointer-events: none; }
 .save-indicator.is-saving i { animation: motion-saving var(--dur-slow) var(--ease-in-out) infinite alternate; }
 
 .sidebar nav { position: relative; }
@@ -786,11 +794,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .sidebar nav button { z-index: 1; }
 .sidebar nav button.is-active { background: transparent; }
 .sidebar nav button.is-active:hover { background: transparent; }
-.sidebar nav button::before { transition: opacity var(--dur-fast) var(--ease-out); }
+.sidebar nav button::before { transition: opacity var(--dur-fast) var(--ease-effects); }
 .sidebar nav button:hover::before, .sidebar nav button:focus-visible::before { opacity: .05; }
 
 :where(.button, .icon-button, .toast button, .choice-chip, .theme-picker label, .sidebar nav button, .mobile-bottom-nav button, .invoice-detail-link, .dashboard-open-row, .student-card, .invoice-list-table tbody tr) { transition: transform var(--dur-fast) var(--ease-out); }
-.button::after { transition: opacity var(--dur-fast) var(--ease-out); pointer-events: none; }
+.button::after { transition: opacity var(--dur-fast) var(--ease-effects); pointer-events: none; }
 .button:focus-visible::after { opacity: .07; }
 :where(.button, .icon-button, .toast button):active:not(:disabled) { transform: scale(.97); }
 .theme-switch svg, .mobile-bottom-nav svg { transition: transform var(--dur-base) var(--ease-out); }
@@ -815,7 +823,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 html.theme-changing, .theme-changing body, .theme-changing body :where(*):not(.invoice-paper, .invoice-paper *, .print-root, .print-root *) {
   transition-property: background-color, color, border-color, transform, opacity;
   transition-duration: var(--dur-theme), var(--dur-theme), var(--dur-theme), var(--dur-fast), var(--dur-fast);
-  transition-timing-function: var(--ease-in-out);
+  transition-timing-function: var(--ease-effects), var(--ease-effects), var(--ease-effects), var(--ease-spatial), var(--ease-effects);
 }
 @media (max-width: 820px) {
   .sidebar { transition: transform var(--dur-base) var(--ease-out); }
@@ -833,6 +841,10 @@ html.theme-changing, .theme-changing body, .theme-changing body :where(*):not(.i
 :root.reduce-motion { --dur-fast: 0ms; --dur-base: 0ms; --dur-slow: 0ms; --dur-theme: 0ms; --dur-stagger: 0ms; }
 .reduce-motion, .reduce-motion::before, .reduce-motion::after, .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { scroll-behavior: auto !important; animation-duration: 0ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 0ms !important; transition-delay: 0ms !important; }
 .reduce-motion .toast__progress { display: none; }
+.reduce-motion :is(.modal, .toast, .invoice-kebab-menu) { box-shadow: none; }
+@media (prefers-reduced-motion: reduce) {
+  :is(.modal, .toast, .invoice-kebab-menu) { box-shadow: none; }
+}
 
 .print-root, .print-root *, .print-root *::before, .print-root *::after { animation: none !important; transition: none !important; }
 :is(.print-root, .invoice-paper) :is(.motion-fade, .motion-rise, .motion-scale, .motion-stagger) { opacity: 1 !important; transform: none !important; }
@@ -846,7 +858,7 @@ html.theme-changing, .theme-changing body, .theme-changing body :where(*):not(.i
     size: A4 portrait;
     margin: 16mm 20mm 22mm;
   }
-  html, body, #root { width: auto; min-width: 0; height: auto; margin: 0; background: #fff !important; }
+  html, body, #root { width: auto; min-width: 0; height: auto; margin: 0; background: var(--print-canvas) !important; }
   .sidebar, .app-main, .mobile-bottom-nav, .modal-layer, .toast-region, .nav-scrim, .skip-link, .invoice-detail__previous { display: none !important; }
   .app-shell { min-height: 0; }
   .print-root { display: block !important; margin: 0; }
@@ -856,9 +868,7 @@ html.theme-changing, .theme-changing body, .theme-changing body :where(*):not(.i
   .invoice-table { break-inside: auto; page-break-inside: auto; break-after: avoid; page-break-after: avoid; }
   .invoice-table thead { display: table-header-group; }
   .invoice-table tbody { display: table-row-group; }
-  .invoice-table tr, .invoice-table th, .invoice-group-gap, .invoice-group-end { display: none; }
-.invoice-table th:nth-child(n+3), .invoice-item-row td:nth-child(n+3) { font-variant-numeric: tabular-nums; }
-.invoice-table td { break-inside: avoid !important; page-break-inside: avoid !important; }
+  .invoice-table tr, .invoice-table th, .invoice-table td { break-inside: avoid !important; page-break-inside: avoid !important; }
   .invoice-group-gap, .invoice-group-heading, .invoice-item-row:has(+ .invoice-subtotal-row), .invoice-item-row[data-last-item], .invoice-subtotal-row { break-after: avoid; page-break-after: avoid; }
   .invoice-group-end { break-before: avoid; page-break-before: avoid; }
   .invoice-summary, .invoice-payment-block { break-inside: avoid; page-break-inside: avoid; }
@@ -998,3 +1008,6 @@ body { font-size: var(--type-body); }
   .student-card__meta { flex-wrap: wrap; justify-content: flex-end; }
   .editor-item { padding: 12px; }
 }
+
+.theme-picker label, .choice-chip { transition: transform var(--dur-fast) var(--ease-spatial), border-radius var(--dur-base) var(--ease-spatial); }
+.button[aria-pressed='true'] { border-radius: var(--radius-md); }
