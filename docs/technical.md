@@ -52,6 +52,8 @@ Bewusst unverändert und ohne neue Animation bleiben Rechnungspapier/`print-root
 
 Bestehende Browserprüfungen warten gezielt auf geschlossene AP6-Dialoge, abgeschlossene Theme-Transitions und ruhende Geometrie, bevor sie Fokus, Farben oder Maße prüfen. Undo-Tests beenden dekorative Exits über die Animation-API, ohne ihre eingefrorene Geschäftsuhr vorzustellen: Die exakten 10-Sekunden-/4200-ms-Grenzen und alle Inhaltsprüfungen bleiben erhalten. Ein Fehlerreporter schreibt fehlgeschlagene Assertions sofort ins CI-Log, auch wenn ein späterer Fall das Jobbudget ausschöpft.
 
+Die feststehende Rechnungsdetailkarte ist auch auf dem Desktop auf die Fensterhöhe begrenzt und scrollt bei langem Inhalt intern. Ohne diese Begrenzung lag der Footer langer Demo-Entwürfe außerhalb des Viewports; wiederholtes automatisches Scrollen an der Sticky-Karte kostete im Undo-Trace je Klick etwa acht Sekunden. Die Accessibility-Suite prüft die Kartengrenzen, Tastaturzugang zum Footer, Bestätigungsdialog und Fokusrückgabe bei 1280 × 720 px in beiden Farbschemata. Die mobilen Detailregeln und das eigenständige Rechnungspapier bleiben unverändert.
+
 ## Belegdaten, Nummern und Zahlungen
 
 `DocumentVersion` ist die geschützte Quelle finaler Belege. Ausgabe-Snapshot, Ausgabezeitraum und gesicherte Centbeträge liegen jeweils einmal in der Belegversion; `selectInvoice` leitet die Ausgabesicht daraus ab. `content` speichert keine zweite Kopie dieser Ausgabeinformationen.
