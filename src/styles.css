@@ -520,7 +520,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .empty-state p { max-width: 400px; margin: 0 0 8px; color: var(--on-surface-variant); font-size: 12px; line-height: 1.55; }
 
 .toast-region { position: fixed; z-index: 200; right: 24px; bottom: 24px; display: grid; width: min(380px, calc(100vw - 32px)); gap: var(--space-3); pointer-events: none; }
-.toast { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--space-3); min-height: 54px; padding: 11px 10px 11px 15px; border-radius: var(--radius-md); background: var(--on-surface); color: var(--surface); font-size: 12px; pointer-events: auto; }
+.toast { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); min-height: 54px; padding: 11px 10px 11px 15px; overflow: hidden; border-radius: var(--radius-md); background: var(--on-surface); color: var(--surface); font-size: 12px; pointer-events: auto; }
+.toast--action { grid-template-columns: auto minmax(0, 1fr) auto; }
+.toast span { overflow-wrap: anywhere; }
 .toast > svg { width: 19px; }
 .toast--success > svg { color: #86e3a3; }
 .toast--error > svg { color: #ffb4ab; }
@@ -528,6 +530,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .toast button { display: grid; width: 32px; height: 32px; place-items: center; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
 .toast button:hover { background: rgb(255 255 255 / .12); }
 .toast button svg { width: 15px; }
+.toast .toast__action { grid-column: 2; width: auto; min-height: 36px; justify-self: start; padding: 0 10px; border: 1px solid currentColor; border-radius: var(--radius-sm); font-weight: 700; }
+.toast--action .toast__dismiss { grid-column: 3; grid-row: 1 / 3; }
+.toast button:focus-visible { outline: 3px solid currentColor; outline-offset: 2px; }
+.toast__progress { position: absolute; right: 0; bottom: 0; left: 0; height: 3px; background: currentColor; transform-origin: left; animation: toast-countdown linear forwards; }
+@keyframes toast-countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 .mobile-bottom-nav { display: none; }
 .print-root { display: none; }
 
@@ -648,7 +655,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .mobile-bottom-nav button.is-active { color: var(--on-primary-container); font-weight: 700; }
   .mobile-bottom-nav button.is-active::before { opacity: 1; transform: none; }
   .mobile-bottom-nav svg { width: 19px; height: 19px; }
-  .toast-region { bottom: 84px; right: 16px; }
+  .toast-region { bottom: calc(84px + env(safe-area-inset-bottom)); right: 16px; }
 }
 
 @media (max-width: 640px) {
@@ -703,8 +710,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .toast__progress { display: none; }
 }
 .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+.reduce-motion .toast__progress { display: none; }
 
 @media print {
   @page {

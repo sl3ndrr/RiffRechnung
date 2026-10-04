@@ -225,6 +225,8 @@ export interface ToastMessage {
   id: string
   tone: 'success' | 'error' | 'info'
   message: string
+  action?: { label: string; onClick: () => void | Promise<void>; ariaLabel?: string }
+  durationMs?: number
 }
 
 export interface InvoiceDraft {

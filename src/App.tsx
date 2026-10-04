@@ -1,7 +1,7 @@
-import { deleteGuardianState, deleteStudentState, deleteInvoiceDraftState } from './lib/commands'
-import { allocatePayment, archiveInvoice, createCorrectionDraft, resolveDocumentConflicts } from './lib/documents'
+import { allocatePayment, createCorrectionDraft, resolveDocumentConflicts } from './lib/documents'
+import { prepareUndoChangeState, undoChangeState, type UndoChange, type UndoPackage } from './lib/undo'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Guardian, Invoice, InvoiceDraft, InvoiceStatus, PageKey, Settings as SettingsType, Student, ThemeMode, ToastMessage } from './types'
+import type { Guardian, Invoice, InvoiceDraft, InvoiceStatus, PageKey, Settings as SettingsType, Student, ThemeMode } from './types'
 import { Invoices } from './views/Invoices'
 import { Dashboard } from './views/Dashboard'
 import { InvoiceEditor } from './views/InvoiceEditor'
@@ -18,12 +18,12 @@ import { InvoicePrint } from './components/InvoicePrint'
 import { createEmptyInvoiceDraft, invoiceDraftFields } from './lib/invoiceDrafts'
 import { downloadText } from './lib/downloads'
 import { statusLabel } from './lib/invoiceOutput'
-import { uid } from './lib/identities'
 import { changeInvoiceStatus } from './lib/invoiceActions'
 import { FINALIZED_INVOICE_BLOCKED, isFinalizedInvoice } from './lib/safety'
 import { WorkspaceShell } from './components/WorkspaceShell'
 import { useInvoicePrint } from './hooks/useInvoicePrint'
 import { useLocalWorkspace } from './hooks/useLocalWorkspace'
+import { useToasts } from './hooks/useToasts'
 
 interface Confirmation {
   title: string
@@ -53,16 +53,10 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const [createPerson, setCreatePerson] = useState(false)
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
   const [editorDirty, setEditorDirty] = useState(false)
-  const [toasts, setToasts] = useState<ToastMessage[]>([])
+  const { toasts, toast, dismissToast, clearUndoToasts } = useToasts()
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
   const [importReview, setImportReview] = useState<ImportReviewData | null>(null)
   const mainContentRef = useRef<HTMLElement | null>(null)
-
-  const toast = useCallback((message: string, tone: ToastMessage['tone'] = 'info') => {
-    const id = uid('toast')
-    setToasts((current) => [...current, { id, message, tone }])
-    window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== id)), 4200)
-  }, [])
 
   const { session, state, stateRef, recovery, pendingWrites, commit, restore, reset, exportBackup,
     saveStateLabel, localSaveError, externalChangeDetected, savedAt, lastBackupAt } = useLocalWorkspace(mode, toast)
@@ -146,10 +140,33 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     setEditor({ open: true, editing: false, draft: result.value })
   }
 
+  const commitUndoChange = async (change: UndoChange, label: string, message: string, ariaLabel: string) => {
+    let undo: UndoPackage | undefined
+    const entityType = change.kind === 'guardian' || change.kind === 'student' ? 'person' : 'invoice'
+    const saved = await commit((current) => {
+      const prepared = requireSuccess(prepareUndoChangeState(current, change))
+      undo = prepared.undo
+      return prepared.state
+    }, label, entityType, change.id)
+    if (!saved || !undo) return false
+    const captured = undo
+    const undoLabel = change.kind === 'archive' ? 'Archivänderung rückgängig gemacht' : 'Löschen rückgängig gemacht'
+    toast(`${message} Rückgängig möglich.`, 'success', { durationMs: 10_000, action: {
+      label: 'Rückgängig', ariaLabel,
+      onClick: async () => {
+        if (await commit((current) => requireSuccess(undoChangeState(current, captured)), undoLabel, entityType, change.id, captured.token)) {
+          toast(`${undoLabel}.`, 'success')
+        }
+      },
+    } })
+    return true
+  }
+
   const requestDeleteInvoice = (invoice: Invoice) => {
     if (isFinalizedInvoice(invoice)) {
       const archived = stateRef.current.invoiceAdministration.find((entry) => entry.versionId === invoice.versionId)?.archived ?? false
-      void commit((current) => archiveInvoice(current, invoice.id, !archived), archived ? 'Beleg aus Archiv geholt' : 'Beleg archiviert', 'invoice', invoice.id)
+      void commitUndoChange({ kind: 'archive', id: invoice.id, archived: !archived }, archived ? 'Beleg aus Archiv geholt' : 'Beleg archiviert',
+        archived ? 'Beleg aus Archiv geholt.' : 'Beleg archiviert.', `Archivänderung von ${invoice.number} rückgängig machen`)
       return
     }
     setConfirmation({
@@ -157,9 +174,8 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       message: 'Der Entwurf und seine Positionen werden dauerhaft aus diesem Browser entfernt. Es wurde noch keine Rechnungsnummer verbraucht.',
       label: 'Entwurf löschen', danger: true,
       action: async () => {
-        if (!await commit((current) => requireSuccess(deleteInvoiceDraftState(current, invoice.id)), 'Rechnungsentwurf gelöscht', 'invoice', invoice.id)) return
+        if (!await commitUndoChange({ kind: 'draft', id: invoice.id }, 'Rechnungsentwurf gelöscht', 'Entwurf gelöscht.', 'Löschen von Entwurf rückgängig machen')) return
         setSelectedInvoiceId(null)
-        toast('Entwurf gelöscht.', 'success')
       },
     })
   }
@@ -183,8 +199,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     message: 'Die Person wird aus Stammdaten, Zuordnungen und offenen Entwürfen entfernt. Finalisierte Rechnungen behalten ihren eingefrorenen Empfängerstand.',
     label: 'Kontakt löschen', danger: true,
     action: async () => {
-      if (!await commit((current) => requireSuccess(deleteGuardianState(current, guardian.id)), 'Erziehungsberechtigte Person gelöscht', 'person', guardian.id)) return
-      toast('Kontakt gelöscht.', 'success')
+      await commitUndoChange({ kind: 'guardian', id: guardian.id }, 'Erziehungsberechtigte Person gelöscht', 'Kontakt gelöscht.', `Löschen von ${guardian.name} rückgängig machen`)
     },
   })
 
@@ -193,8 +208,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     message: 'Die lernende Person und zugehörige Positionen in normalen Entwürfen werden entfernt. Originalbelege und Korrekturentwürfe bleiben erhalten; dort ist gegebenenfalls eine Neuzuordnung nötig.',
     label: 'Lernende Person löschen', danger: true,
     action: async () => {
-      if (!await commit((current) => requireSuccess(deleteStudentState(current, student.id)), 'Lernende Person gelöscht', 'person', student.id)) return
-      toast('Lernende Person gelöscht.', 'success')
+      await commitUndoChange({ kind: 'student', id: student.id }, 'Lernende Person gelöscht', 'Lernende Person gelöscht.', `Löschen von ${student.name} rückgängig machen`)
     },
   })
 
@@ -233,6 +247,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
 
   const applyRestore = async (preview: ImportPreview): Promise<boolean> => {
     if (!await restore(preview.rawData)) return false
+    clearUndoToasts()
     setSettingsEpoch((value) => value + 1)
     setSettingsDirty(false)
     setSelectedInvoiceId(null)
@@ -254,6 +269,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     action: async () => {
       try {
         await reset()
+        clearUndoToasts()
         setSettingsEpoch((value) => value + 1)
         setSelectedInvoiceId(null)
         setPage('dashboard')
@@ -332,7 +348,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       <StorageRecovery recovery={recovery} onExport={exportRecoveryData} onImport={importBackup} onReview={reviewRecovery} onPrevious={reviewPrevious} onArchive={exportRecoveryArchive} />
       <ImportReview review={importReview} onClose={() => setImportReview(null)} onApply={recovery.readOnly ? undefined : confirmImport} />
       <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} cancelLabel={confirmation?.cancelLabel} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />
-      <ToastRegion messages={toasts} onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))} />
+      <ToastRegion messages={toasts} onDismiss={dismissToast} />
     </>
   )
 
@@ -354,7 +370,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       <ImportReview review={importReview} onClose={() => setImportReview(null)} onApply={confirmImport} />
       <InvoiceEditor state={state} open={editor.open} draft={editor.draft} editing={editor.editing} guardians={state.guardians} students={state.students} settings={state.settings} onClose={requestCloseEditor} onDirtyChange={setEditorDirty} onSave={saveInvoice} onConvert={convertLegacyDraft} />
       <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} cancelLabel={confirmation?.cancelLabel} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />
-      <ToastRegion messages={toasts} onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))} />
+      <ToastRegion messages={toasts} onDismiss={dismissToast} />
       <div className="print-root"><InvoicePrint invoice={printRequest?.invoice ?? null} guardians={printRequest?.guardians ?? []} students={printRequest?.students ?? []} settings={printRequest?.settings ?? state.settings} requestId={printRequest?.id} includeGiroCode={printRequest?.includeGiroCode} onPrintReady={handlePrintReady} onPrintError={handlePrintError} /></div>
     </div>
   )
