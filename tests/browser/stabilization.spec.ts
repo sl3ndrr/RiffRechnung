@@ -6,7 +6,11 @@ import { parseBackup, serializeBackup, STORAGE_KEY, LEGACY_STORAGE_KEY } from '.
 
 async function settings(page: Page) { await page.getByRole('button', { name: 'Einstellungen', exact: true }).click() }
 async function save(page: Page) { await page.getByRole('button', { name: 'Jetzt speichern', exact: true }).click(); await expect(page.getByRole('button', { name: 'Lokal gespeichert', exact: true })).toBeDisabled() }
-async function keepEditing(page: Page) { await page.getByRole('alertdialog', { name: 'Ungespeicherte Einstellungen verwerfen?' }).getByRole('button', { name: 'Weiter bearbeiten', exact: true }).click() }
+async function keepEditing(page: Page) {
+  const confirmation = page.getByRole('alertdialog', { name: 'Ungespeicherte Einstellungen verwerfen?' })
+  await confirmation.getByRole('button', { name: 'Weiter bearbeiten', exact: true }).click()
+  await expect(confirmation).not.toBeVisible()
+}
 async function raw(page: Page) { return page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY) }
 async function stateOf(page: Page) { return parseBackup((await raw(page))!) }
 async function seed(page: Page, state: AppState) {

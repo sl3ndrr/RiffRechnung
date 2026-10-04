@@ -18,7 +18,7 @@ export function useDetailMotion(ref: RefObject<HTMLElement | null>, invoice: Inv
     const duration = parseFloat(style.getPropertyValue('--dur-base')) || 0
     const easing = style.getPropertyValue('--ease-out').trim()
     const ghost = old.snapshot
-    ghost.className = 'surface invoice-detail invoice-detail__previous'
+    ghost.className = 'surface invoice-detail__previous'
     ghost.removeAttribute('aria-label')
     ghost.setAttribute('aria-hidden', 'true')
     ghost.inert = true

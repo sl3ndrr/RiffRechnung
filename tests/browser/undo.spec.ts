@@ -23,10 +23,19 @@ async function seed(page: Page, state = undoFixture()) {
   return state
 }
 
+async function finishExits(page: Page) {
+  // Finish decorative AP6 exits without advancing the frozen Undo deadline.
+  await page.locator('[data-motion="exit"]').evaluateAll((nodes) => {
+    for (const node of nodes) for (const animation of node.getAnimations({ subtree: true })) animation.finish()
+  })
+  await expect(page.locator('[data-motion="exit"]')).toHaveCount(0)
+}
+
 async function deleteDraft(page: Page) {
   await page.locator('.invoice-list-table').getByRole('button', { name: 'Entwurf', exact: true }).first().click()
   await page.locator('.invoice-detail__footer').getByRole('button', { name: 'Löschen', exact: true }).click()
   await page.getByRole('alertdialog', { name: 'Entwurf löschen?', exact: true }).getByRole('button', { name: 'Entwurf löschen', exact: true }).click()
+  await finishExits(page)
   await expect(undoButton(page).last()).toBeVisible()
   await page.mouse.move(0, 0)
 }
@@ -133,6 +142,7 @@ for (const [kind, name, confirmation] of [['guardian', 'Kontakt g1', 'Kontakt l�
     await page.locator('.sidebar').getByRole('button', { name: 'Personen', exact: true }).click()
     await page.getByRole('button', { name: `${name} löschen`, exact: true }).click()
     await page.getByRole('alertdialog').getByRole('button', { name: confirmation, exact: true }).click()
+    await finishExits(page)
     const button = page.getByRole('button', { name: `Löschen von ${name} rückgängig machen`, exact: true })
     await expect(button).toBeVisible()
     await button.click()
@@ -175,6 +185,7 @@ test('3.AP5: fehlende zugehörige Person zeigt Fehler ohne Wiederherstellung', a
   await page.locator('.sidebar').getByRole('button', { name: 'Personen', exact: true }).click()
   await page.getByRole('button', { name: 'Kontakt g1 löschen', exact: true }).click()
   await page.getByRole('alertdialog').getByRole('button', { name: 'Kontakt löschen', exact: true }).click()
+  await finishExits(page)
   await undoButton(page).click()
   await expect(page.locator('.toast').filter({ hasText: 'Rückgängig nicht möglich' })).toBeVisible()
   const state = await stateOf(page)
@@ -200,6 +211,7 @@ test('3.AP5: maximal letzte drei Undo-Toasts, unabhängige Timer und Doppelklick
   const target = undoButton(page).last()
   // Two same-turn activations exercise the claim guard before React unmounts.
   await target.evaluate((element) => { (element as HTMLButtonElement).click(); (element as HTMLButtonElement).click() })
+  await finishExits(page)
   await expect.poll(async () => (await stateOf(page)).invoices.length).toBe(1)
   expect((await stateOf(page)).audit.filter((event) => event.label === 'Löschen rückgängig gemacht')).toHaveLength(1)
   await undoButton(page).click()

@@ -275,6 +275,7 @@ test('P10 Browser: relevante Textkontraste erreichen in beiden Themes AA', async
     const group = page.locator('.topbar').getByRole('radiogroup', { name: 'Farbschema' })
     await group.getByRole('radio', { name: theme === 'dark' ? 'Dunkel' : 'Hell', exact: true }).click()
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
+    await expect(page.locator('html')).not.toHaveClass(/theme-changing/)
     const pairs = await page.evaluate(() => {
       const style = getComputedStyle(document.documentElement)
       return [

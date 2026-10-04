@@ -118,6 +118,7 @@ test('P10: erforderliche historische Klärung ist sichtbar und Details bleiben e
   await expect(dialog.getByRole('alert')).toContainText('Vor der Finalisierung')
   await expect(dialog.getByRole('button', { name: 'Korrekturentwurf erzeugen', exact: true })).toBeEnabled()
   await page.keyboard.press('Escape')
+  await expect(dialog).not.toBeVisible()
   await detail.getByText('Details', { exact: true }).press('Enter')
   await detail.getByRole('textbox', { name: 'Ergebnis der Klärung', exact: true }).fill('Gesichertes Original geprüft')
   await detail.getByRole('button', { name: 'Klärung dokumentieren', exact: true }).click()
