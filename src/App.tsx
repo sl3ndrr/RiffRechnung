@@ -354,7 +354,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
 
   return (
     <div className="app-shell">
-      {mode === 'demo' && <section className="demo-banner" role="status">Demo – nur in dieser Sitzung. <button className="button button--tonal" onClick={() => void switchMode()}>Demo verlassen</button></section>}
+      {mode === 'demo' && <section className="demo-banner motion-fade" role="status">Demo – nur in dieser Sitzung. <button className="button button--tonal" onClick={() => void switchMode()}>Demo verlassen</button></section>}
       <WorkspaceShell page={page} settings={state.settings} mode={mode} draftCount={state.invoices.filter((invoice) => invoice.status === 'draft').length} lastBackupAt={lastBackupAt} saveStateLabel={saveStateLabel} saveStatus={saveStatus} mainContentRef={mainContentRef} onNavigate={setCurrentPage} onThemeChange={changeTheme}>
         {externalChangeDetected && <section className="external-update" role="alert"><div><strong>Änderungen in einem anderen Tab erkannt</strong><p>Dieser Tab zeigt nicht mehr den aktuellen Datenstand. Lade neu, bevor du weiterarbeitest.</p></div><button className="button button--tonal" type="button" onClick={() => window.location.reload()}>Aktuellen Stand neu laden</button></section>}
         {localSaveError && <section className="persistence-error" role="alert"><div><strong>Speichern fehlgeschlagen</strong><p>{localSaveError}</p></div><div className="button-row"><button className="button button--tonal" type="button" onClick={() => { void setCurrentPage('settings') }}>Einstellungen prüfen</button><button className="button button--text" type="button" onClick={exportBackup}>JSON-Backup exportieren</button></div></section>}

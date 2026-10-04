@@ -1,6 +1,7 @@
 import { useId, useLayoutEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
+import { useMotionPresence } from '../hooks/useMotionPresence'
 
 interface ModalProps {
   open: boolean
@@ -54,14 +55,18 @@ function returnFocus(dialog: HTMLDivElement, target: HTMLElement | null) {
 
 export function Modal({ open, title, eyebrow, onClose, children, footer, size = 'medium', role = 'dialog', describedBy, initialFocus = 'first' }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
+  const present = useMotionPresence(open, dialogRef)
+  const content = useRef({ title, eyebrow, children, footer, size, role, describedBy, initialFocus })
+  if (open || !present) content.current = { title, eyebrow, children, footer, size, role, describedBy, initialFocus }
+  const displayed = content.current
   const previousFocus = useRef<HTMLElement | null>(null)
   const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
+  onCloseRef.current = () => { if (open) onClose() }
   const titleId = useId()
 
   useLayoutEffect(() => {
     const dialog = dialogRef.current
-    if (!open || !dialog) return
+    if (!present || !dialog) return
 
     previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     if (dialogStack.length === 0) appRootWasInert = document.getElementById('root')?.inert ?? false
@@ -105,34 +110,37 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
       synchronizeModalState()
       if (wasTop) returnFocus(dialog, previousFocus.current)
     }
-  }, [open])
+  }, [present])
 
-  if (!open) return null
+  if (!present) return null
 
   return createPortal(
     <div
       ref={dialogRef}
       className="modal-layer"
-      role={role}
+      data-motion={open ? 'enter' : 'exit'}
+      role={displayed.role}
       aria-labelledby={titleId}
-      aria-describedby={describedBy}
+      aria-describedby={displayed.describedBy}
       aria-modal="true"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget && dialogStack.at(-1) === event.currentTarget) onClose()
+        if (open && event.target === event.currentTarget && dialogStack.at(-1) === event.currentTarget) onClose()
       }}
+      onClickCapture={(event) => { if (!open) { event.preventDefault(); event.stopPropagation() } }}
+      onSubmitCapture={(event) => { if (!open) { event.preventDefault(); event.stopPropagation() } }}
     >
-      <section className={`modal modal--${size}`} role="document">
+      <section className={`modal modal--${displayed.size}`} role="document">
         <header className="modal__header">
           <div>
-            {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-            <h2 id={titleId} tabIndex={initialFocus === 'title' ? -1 : undefined} data-dialog-initial-focus={initialFocus === 'title' ? '' : undefined}>{title}</h2>
+            {displayed.eyebrow && <p className="eyebrow">{displayed.eyebrow}</p>}
+            <h2 id={titleId} tabIndex={displayed.initialFocus === 'title' ? -1 : undefined} data-dialog-initial-focus={displayed.initialFocus === 'title' ? '' : undefined}>{displayed.title}</h2>
           </div>
           <button className="icon-button" type="button" onClick={onClose} aria-label="Dialog schließen">
             <X aria-hidden="true" />
           </button>
         </header>
-        <div className="modal__body">{children}</div>
-        {footer && <footer className="modal__footer">{footer}</footer>}
+        <div className="modal__body">{displayed.children}</div>
+        {displayed.footer && <footer className="modal__footer">{displayed.footer}</footer>}
       </section>
     </div>,
     document.body,

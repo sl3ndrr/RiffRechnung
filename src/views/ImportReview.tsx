@@ -14,10 +14,9 @@ export function ImportReview({ review, onClose, onApply }: {
   onClose: () => void
   onApply?: (preview: ImportPreview) => void
 }) {
-  if (!review) return null
   return (
-    <Modal open onClose={onClose} title="Import und Reparatur prüfen" eyebrow="Datensicherung" size="large" initialFocus="title" footer={<button className="button button--text" onClick={onClose}>Schließen</button>}>
-      <ImportReviewContent review={review} onApply={onApply} />
+    <Modal open={Boolean(review)} onClose={onClose} title="Import und Reparatur prüfen" eyebrow="Datensicherung" size="large" initialFocus="title" footer={<button className="button button--text" onClick={onClose}>Schließen</button>}>
+      {review && <ImportReviewContent review={review} onApply={onApply} />}
     </Modal>
   )
 }
@@ -50,4 +49,3 @@ export function ImportReviewContent({ review, onApply }: { review: ImportReviewD
       </div>
   )
 }
-
