@@ -93,10 +93,23 @@ function cssContentString(value: string): string {
 
 export function buildInvoicePrintPageStyle(invoiceNumber: string | null): string {
   const invoiceReference = invoiceNumber ? cssContentString(`Rechnung ${invoiceNumber}`) : '""'
-  // Margin boxes are only an enhancement. The private line and invoice reference are
-  // also present in the ordinary document flow in InvoicePrint.
+  const footerReference = cssContentString(`Rechnung ${invoiceNumber ?? 'Entwurf'}`)
+  // InvoicePrint retains an ordinary footer for browsers without CSSMarginRule.
   return `
 @page {
+  @bottom-left {
+    content: ${footerReference};
+    box-sizing: border-box;
+    height: 15.5mm;
+    padding: 3pt 0 7mm;
+    color: #636b78;
+    font-family: 'Inter Variable', Inter, Arial, sans-serif;
+    font-size: 7pt;
+    line-height: 1.35;
+    text-align: left;
+    vertical-align: bottom;
+    white-space: nowrap;
+  }
   @bottom-right {
     content: "Seite " counter(page) " von " counter(pages);
     box-sizing: border-box;
@@ -188,6 +201,5 @@ export function outputUnitPrice(invoice: Invoice, item: InvoiceItem): string {
   const [whole, fraction = ''] = decimalInputText(item.unitPrice).split('.')
   return `${new Intl.NumberFormat('de-DE').format(BigInt(whole))},${fraction.padEnd(2, '0')}\u00a0€`
 }
-
 
 

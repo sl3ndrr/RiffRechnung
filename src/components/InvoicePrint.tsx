@@ -54,6 +54,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
   const legacyDraftWithoutPrintData = invoice?.status === 'draft' && !source
   const printInvoice = useMemo(() => invoice?.status === 'draft' && source ? { ...invoice, snapshot: source } : invoice, [invoice, source])
   const pageStyle = invoice ? buildInvoicePrintPageStyle(invoice.number) : ''
+  const hasPrintMarginBoxes = typeof window !== 'undefined' && 'CSSMarginRule' in window
   const issuer = source?.issuer ?? (legacyDraftWithoutPrintData ? { name: '', street: '', postalCode: '', city: '', email: '', phone: '' } : settings.issuer)
   const account = printInvoice && !legacyDraftWithoutPrintData ? paymentDataForInvoice(printInvoice, settings) : { accountHolder: '', iban: '', bic: '', bankName: '' }
   const recipientList = useMemo(() => {
@@ -132,7 +133,7 @@ export function InvoicePrint({ invoice, guardians, students, settings, pendingNu
     )
   }
   return (
-    <article className="invoice-paper" aria-label={`Rechnung ${invoice.number ?? 'Entwurf'}`}>
+    <article className="invoice-paper" data-margin-boxes={hasPrintMarginBoxes ? 'true' : undefined} aria-label={`Rechnung ${invoice.number ?? 'Entwurf'}`}>
       <style data-invoice-page-style>{pageStyle}</style>
       {invoice.status === 'draft' && <div className="invoice-draft-watermark" aria-hidden="true">ENTWURF</div>}
       <div className="invoice-paper__body">

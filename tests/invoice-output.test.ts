@@ -88,7 +88,8 @@ test('P09: Feste Einleitung, Privatzeile und unveränderter mehrzeiliger Hinweis
   const pageStyle = buildInvoicePrintPageStyle('2026-a-0001')
   assert.match(pageStyle, /@bottom-right \{[\s\S]*Seite " counter\(page\) " von " counter\(pages\)/)
   assert.match(pageStyle, /@top-right \{[\s\S]*Rechnung 2026-a-0001/)
-  assert.doesNotMatch(pageStyle, /@bottom-left/)
+  assert.match(pageStyle, /@bottom-left \{[\s\S]*Rechnung 2026-a-0001/)
+  assert.match(buildInvoicePrintPageStyle(null), /@bottom-left \{[\s\S]*Rechnung Entwurf/)
   assert.doesNotMatch(pageStyle, /<\/style>/)
 })
 
