@@ -813,6 +813,8 @@ html.theme-changing, .theme-changing body, .theme-changing body :where(*):not(.i
 
 @media print {
   *, *::before, *::after { animation: none !important; transition: none !important; }
+  /* The page canvas and margin boxes also follow the root color scheme. */
+  html { color-scheme: light !important; }
   :is(.motion-fade, .motion-rise, .motion-scale, .motion-stagger, .modal-layer, .modal, .toast, .nav-scrim) { opacity: 1 !important; }
   @page {
     size: A4 portrait;

@@ -69,10 +69,13 @@ async function createPdf(page: Page, state: AppState, invoiceId: string, label: 
         document.documentElement.classList.toggle('reduce-motion', reduced)
         document.documentElement.classList.add('theme-changing')
       }, appearance)
+      await expect(rendering.locator('html')).toHaveAttribute('data-theme', appearance.theme)
       expect(await rendering.locator('.invoice-paper, .invoice-paper *').evaluateAll((elements) => elements.every((element) => {
         const style = getComputedStyle(element)
         return style.animationName === 'none' && style.transitionProperty === 'none'
       }))).toBe(true)
+      await rendering.emulateMedia({ media: 'print' })
+      await expect(rendering.locator('html')).toHaveCSS('color-scheme', 'light')
     }
     const structure = await rendering.locator('.invoice-paper').evaluate((paper) => ({
       groups: [...paper.querySelectorAll('.invoice-month-group')].map((group) => ({
