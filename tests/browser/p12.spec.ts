@@ -66,7 +66,8 @@ for (const width of [320, 390, 900, 1280]) {
         })
       })).toBe(true)
       const item = editor.locator('.editor-item').first()
-      expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
+      // Geometry checks follow the finite entrance; reduced motion settles immediately.
+      await expect.poll(() => page.evaluate(() => document.getAnimations().length)).toBe(0)
       for (const label of ['Datum', 'Beschreibung', 'Menge']) await expect(item.getByLabel(label, { exact: true })).toBeVisible()
       for (const name of ['Einheit', 'Art', 'Lernende Person']) await expect(item.getByRole('combobox', { name, exact: true })).toBeVisible()
       await expect(item.getByRole('textbox', { name: 'Einzelpreis €', exact: true })).toBeVisible()
@@ -196,3 +197,4 @@ test('P12: Systemtheme, Bewegungspräferenzen und Aktiv-Filter mit sichtbarem Fo
   await page.keyboard.press('Escape')
   await expect(page.getByRole('button', { name: 'Neue Rechnung', exact: true })).toBeFocused()
 })
+
