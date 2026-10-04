@@ -3,7 +3,8 @@ import { reassignCorrectionStudent } from '../lib/documents'
 import { LEGACY_REVIEW_FIELDS } from '../lib/commands'
 import { applyItemNumberInput, itemNumberInput, adjustQuantity as adjustedQuantity, MIN_QUANTITY, MAX_QUANTITY, QUANTITY_INCREMENT } from '../lib/values'
 import { invoiceDraftErrors } from '../lib/invoiceActions'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEditorItemMotion } from '../hooks/useEditorItemMotion'
 import { Calendar, CircleDollarSign, Minus, Plus, Send, Trash2 } from 'lucide-react'
 import type { AppState, Guardian, InvoiceDraft, LessonType, RecipientRef, Settings, Student } from '../types'
 import { FINALIZED_INVOICE_BLOCKED } from '../lib/safety'
@@ -37,6 +38,8 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
   const [errors, setErrors] = useState<string[]>([])
   const [reviewed, setReviewed] = useState<string[]>([])
   const [conversionRecipients, setConversionRecipients] = useState<string[]>([])
+  const itemsRef = useRef<HTMLDivElement>(null)
+  useEditorItemMotion(itemsRef, `${open}:${form.items.map((item) => item.id).join(',')}`)
 
   useEffect(() => {
     setForm(structuredClone(draft))
@@ -213,9 +216,9 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
 
         <section className="form-section">
           <div className="form-section__heading form-section__heading--action"><span>3</span><div><h3>Positionen</h3><p>Unterricht, Pauschalen oder sonstige Leistungen.</p></div><button className="button button--tonal" type="button" onClick={addItem}><Plus aria-hidden="true" /> Position</button></div>
-          <div className="editor-items">
+          <div ref={itemsRef} className="editor-items">
             {form.items.map((item, index) => (
-              <div className="editor-item" key={item.id}>
+              <div className="editor-item" data-item-id={item.id} key={item.id}>
                 <div className="editor-item__header">
                   <span className="editor-item__number">{`Position ${index + 1}`}</span>
                   <button className="icon-button editor-item__delete" type="button" onClick={() => setForm((current) => { const items = current.items.filter((candidate) => candidate.id !== item.id); return { ...current, items } })} aria-label={`Position ${index + 1} löschen`}><Trash2 aria-hidden="true" /></button>

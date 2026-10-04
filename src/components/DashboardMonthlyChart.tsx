@@ -1,3 +1,4 @@
+import { staggerStyle } from '../hooks/usePageEntrance'
 import type { DashboardStats } from '../lib/dashboardStats'
 import { euro } from '../lib/utils'
 
@@ -16,9 +17,9 @@ export function DashboardMonthlyChart({ monthly, onYearChange }: { monthly: Dash
         {monthly.months.map(({ month, cents }) => {
           // Geometry only: all monetary values remain the supplied integer cents.
           const height = cents ? cents / maximum * 120 : 2
-          return <li key={month} className={`dashboard-chart__month ${cents ? '' : 'dashboard-chart__month--empty'}`}>
+          return <li key={`${monthly.year}-${month}`} className={`dashboard-chart__month ${cents ? '' : 'dashboard-chart__month--empty'}`}>
             <span className="dashboard-chart__value">{euro.format(cents / 100)}</span>
-            <svg viewBox="0 0 24 120" preserveAspectRatio="none" focusable="false"><rect x="3" y={120 - height} width="18" height={height} rx="2" /></svg>
+            <svg className="dashboard-chart__bar motion-stagger" style={staggerStyle((month - 1) / 2)} viewBox="0 0 24 120" preserveAspectRatio="none" focusable="false"><rect x="3" y={120 - height} width="18" height={height} rx="2" /></svg>
             <span>{shortMonths[month - 1]}</span>
           </li>
         })}
@@ -27,3 +28,4 @@ export function DashboardMonthlyChart({ monthly, onYearChange }: { monthly: Dash
     <div className="sr-only"><table><caption>Zahlungseingang pro Monat {monthly.year}, nur bestätigte Zahlungstage</caption><thead><tr><th scope="col">Monat</th><th scope="col">Betrag</th></tr></thead><tbody>{monthly.months.map(({ month, cents }) => <tr key={month}><th scope="row">{monthNames[month - 1]}</th><td>{euro.format(cents / 100)}</td></tr>)}</tbody></table></div>
   </section>
 }
+

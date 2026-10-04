@@ -3,6 +3,7 @@ import { mailboxError } from '../lib/mailbox'
 import { parsePaymentTermInput } from '../lib/values'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { ArchiveRestore, CheckCircle2, Download, FileJson, HardDrive, History, Monitor, Moon, Palette, Save, ShieldCheck, Sun, Upload } from 'lucide-react'
+import { usePageEntrance, staggerStyle } from '../hooks/usePageEntrance'
 import type { AppState, Settings as SettingsType, ThemeMode } from '../types'
 import { formatInvoiceNumber } from '../lib/invoiceNumbering'
 import { formatIban, germanIbanError } from '../lib/paymentData'
@@ -17,6 +18,7 @@ import { bicError } from '../lib/paymentData'
 type SettingsForm = Omit<SettingsType, 'theme'>
 
 interface SettingsProps {
+  visible: boolean
   state: AppState
   onSave: (settings: SettingsForm) => Promise<boolean>
   onThemeChange: (theme: ThemeMode) => void
@@ -28,7 +30,9 @@ interface SettingsProps {
   onArchive: () => void
 }
 
-export function Settings({ state, onSave, onThemeChange, onDirty, onExport, onImport, onReset, onPrevious, onArchive }: SettingsProps) {
+export function Settings({ state, visible, onSave, onThemeChange, onDirty, onExport, onImport, onReset, onPrevious, onArchive }: SettingsProps) {
+  const entrance = usePageEntrance(undefined, visible)
+  const entryClass = entrance ? ' motion-fade motion-stagger page-entry' : ''
   const [form, setForm] = useState<SettingsForm>(() => {
     const editable = { ...state.settings }
     Reflect.deleteProperty(editable, 'theme')
@@ -87,7 +91,7 @@ export function Settings({ state, onSave, onThemeChange, onDirty, onExport, onIm
       <div className="settings-layout">
         <nav className="settings-nav" aria-label="Einstellungsbereiche"><a href="#profile">Rechnungssteller</a><a href="#payment">Bankverbindung</a><a href="#numbering">Rechnungen</a><a href="#appearance">Darstellung</a><a href="#backup">Backup & Import</a><a href="#history">Änderungsverlauf</a></nav>
         <div className="settings-content" >
-          <section id="profile" className="surface settings-section">
+          <section id="profile" className={`surface settings-section${entryClass}`} style={staggerStyle(0)}>
             <div className="settings-section__heading"><span><ShieldCheck aria-hidden="true" /></span><div><h2>Rechnungssteller</h2><p>Diese Angaben erscheinen im Briefkopf und werden beim Finalisieren eingefroren.</p></div></div>
             {setupErrors.length > 0 && <div className="form-errors" role="status"><strong>Für den Abschluss fehlen:</strong><ul>{setupErrors.map((error) => <li key={error.field}>{error.message}</li>)}</ul></div>}
             <div className="form-grid form-grid--2">
@@ -100,7 +104,7 @@ export function Settings({ state, onSave, onThemeChange, onDirty, onExport, onIm
             </div>
           </section>
 
-          <section id="payment" className="surface settings-section">
+          <section id="payment" className={`surface settings-section${entryClass}`} style={staggerStyle(1)}>
             <div className="settings-section__heading"><span><HardDrive aria-hidden="true" /></span><div><h2>Bankverbindung, Zahlungsziel & GiroCode</h2><p>Aus diesen Daten entstehen Fälligkeit und EPC-QR-Code auf finalisierten Rechnungen.</p></div></div>
             <div className="form-grid form-grid--2">
               <label className="field"><span>Kontoinhaber</span><input value={form.accountHolder} onChange={(event) => setForm({ ...form, accountHolder: event.target.value })} /></label>
@@ -112,7 +116,7 @@ export function Settings({ state, onSave, onThemeChange, onDirty, onExport, onIm
             <div className="info-banner"><ShieldCheck aria-hidden="true" /><p>Für neue Verwendung werden ausschließlich deutsche Empfänger-IBANs unterstützt. Die Format- und Prüfsummenprüfung bestätigt weder Kontoinhaber noch Erreichbarkeit. Die BIC ist bei einem deutschen Empfängerkonto nach EPC v3.1 optional; daraus folgt keine Aussage über jeden möglichen Zahlerfall.</p></div>
           </section>
 
-          <section id="numbering" className="surface settings-section">
+          <section id="numbering" className={`surface settings-section${entryClass}`} style={staggerStyle(2)}>
             <div className="settings-section__heading"><span><FileJson aria-hidden="true" /></span><div><h2>Rechnungsvorgaben</h2><p>Jede lernende Person bzw. Kombination von Lernenden hat einen eigenen jährlichen Nummernkreis im festen Format Jahr–Folge–Kennung.</p></div></div>
             <div className="form-grid form-grid--3">
               <div className="number-preview"><span>Vorschau · Kennzeichen a</span><strong>{formatInvoiceNumber(23, new Date().getFullYear(), 'a')}</strong></div>
@@ -122,13 +126,13 @@ export function Settings({ state, onSave, onThemeChange, onDirty, onExport, onIm
             <div className="info-banner"><FileJson aria-hidden="true" /><p>Die erste angelegte lernende Person erhält <strong>a</strong>, die zweite <strong>b</strong> usw. Bei einer gemeinsamen Rechnung für diese Lernenden werden die Kennzeichen segmentiert kombiniert, zum Beispiel <strong>a+b</strong>. <strong>ab</strong> kann dagegen das Kennzeichen einer einzelnen später angelegten Person sein. Das Kennzeichen wird beim Löschen oder Bearbeiten nicht verschoben.</p></div>
           </section>
 
-          <section id="appearance" className="surface settings-section">
+          <section id="appearance" className={`surface settings-section${entryClass}`} style={staggerStyle(3)}>
             <div className="settings-section__heading"><span><Palette aria-hidden="true" /></span><div><h2>Darstellung</h2><p>Das Rechnungs-PDF bleibt unabhängig davon immer hell.</p></div></div>
             <fieldset className="theme-picker"><legend>Farbschema</legend>{([['light', Sun, 'Hell'], ['system', Monitor, 'System'], ['dark', Moon, 'Dunkel']] as const).map(([value, Icon, label]) => <label className={state.settings.theme === value ? 'is-selected' : ''} key={value}><input type="radio" name="theme" checked={state.settings.theme === value} onChange={() => onThemeChange(value)} /><Icon aria-hidden="true" /><span>{label}</span></label>)}</fieldset>
             <label className="switch-row"><span><strong>Bewegungen reduzieren</strong><small>Bewegungspräferenz für die Darstellung speichern</small></span><input type="checkbox" checked={form.reducedMotion} onChange={(event) => setForm({ ...form, reducedMotion: event.target.checked })} /><i /></label>
           </section>
 
-          <section id="backup" className="surface settings-section settings-section--backup">
+          <section id="backup" className={`surface settings-section settings-section--backup${entryClass}`} style={staggerStyle(4)}>
             <div className="settings-section__heading"><span><Download aria-hidden="true" /></span><div><h2>Backup & Import</h2><p>JSON-Export bleibt verfügbar. Eine Wiederherstellung erhält bekannte Originalbelege und Nummernreservierungen.</p></div></div>
             <div className="button-row"><button className="button button--tonal" onClick={onPrevious}>Vorherigen lokalen Stand prüfen</button><button className="button button--tonal" onClick={onArchive}>Wiederherstellungsarchiv exportieren</button></div>
             <div className="backup-grid">
@@ -137,7 +141,7 @@ export function Settings({ state, onSave, onThemeChange, onDirty, onExport, onIm
             </div>
           </section>
 
-          <section id="history" className="surface settings-section">
+          <section id="history" className={`surface settings-section${entryClass}`} style={staggerStyle(5)}>
             <div className="settings-section__heading"><span><History aria-hidden="true" /></span><div><h2>Änderungsverlauf</h2><p>Die letzten lokalen Aktionen helfen dabei, Änderungen nachzuvollziehen.</p></div></div>
             <div className="history-list">
               {state.audit.slice(0, 12).map((event) => <div key={event.id}><span><i /><strong>{event.label}</strong></span><time dateTime={event.at}>{new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(event.at))}</time></div>)}
@@ -152,3 +156,4 @@ export function Settings({ state, onSave, onThemeChange, onDirty, onExport, onIm
     </div>
   )
 }
+

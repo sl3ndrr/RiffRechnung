@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { ChevronRight, Mail, MapPin, Pencil, Plus, Search, Trash2, UserRound, Users } from 'lucide-react'
 import type { AppState, Guardian, Student } from '../types'
 import { contactNameError } from '../lib/contactName'
+import { usePageEntrance, staggerStyle } from '../hooks/usePageEntrance'
 import { EmptyState } from '../components/EmptyState'
 import { Modal } from '../components/Modal'
 import { sortPeople } from '../lib/utils'
@@ -47,6 +48,9 @@ export function People({ state, initialCreate, onSaveGuardian, onSaveStudent, on
   ))), [needle, onlyActiveStudents, state.guardians, state.students])
   const guardians = useMemo(() => sortPeople(state.guardians.filter((guardian) => !needle || `${guardian.name} ${guardian.email} ${guardian.address.city}`.toLocaleLowerCase('de-DE').includes(needle))), [needle, state.guardians])
 
+  const studentEntrance = usePageEntrance(students)
+  const guardianEntrance = usePageEntrance(guardians)
+
   const closeGuardianForm = () => { setGuardianForm(null); setError('') }
   const closeStudentForm = () => { setStudentForm(null); setError('') }
 
@@ -89,10 +93,10 @@ export function People({ state, initialCreate, onSaveGuardian, onSaveStudent, on
           <section className="people-section">
             <div className="section-heading"><div><p className="eyebrow">Unterricht</p><h2>{students.length} Lernende</h2></div></div>
             <div className="student-grid">
-              {students.map((student) => {
+              {students.map((student, index) => {
                 const linked = student.guardianIds.flatMap((id) => state.guardians.filter((guardian) => guardian.id === id))
                 return (
-                  <article className="student-card" key={student.id}>
+                  <article style={staggerStyle(index)} className={`student-card${studentEntrance && index < 8 ? ' motion-fade motion-stagger page-entry' : ''}`} key={student.id}>
                     <header><span className="avatar avatar--large">{student.name.slice(0, 1)}</span><span className="student-card__meta"><span className="student-code" title="Kennzeichen im Rechnungsnummernkreis">{student.billingCode}</span><span className={`active-dot ${student.active ? '' : 'active-dot--muted'}`} title={student.active ? 'Aktiv' : 'Inaktiv'} /></span></header>
                     <h3>{student.name}</h3>
                     <p>Gitarrenunterricht</p>
@@ -108,10 +112,10 @@ export function People({ state, initialCreate, onSaveGuardian, onSaveStudent, on
           <section className="surface guardian-section">
             <div className="section-heading"><div><p className="eyebrow">Rechnungsempfänger</p><h2>{guardians.length} Erziehungsberechtigte</h2></div></div>
             <div className="guardian-list">
-              {guardians.map((guardian) => {
+              {guardians.map((guardian, index) => {
                 const linkedStudents = state.students.filter((student) => student.guardianIds.includes(guardian.id))
                 return (
-                  <article className="guardian-row" key={guardian.id}>
+                  <article style={staggerStyle(index)} className={`guardian-row${guardianEntrance && index < 8 ? ' motion-fade motion-stagger page-entry' : ''}`} key={guardian.id}>
                     <span className="avatar avatar--warm">{guardian.name.slice(0, 1)}</span>
                     <div className="guardian-row__main"><strong>{guardian.name}</strong><span><Mail aria-hidden="true" /> {guardian.email || 'Keine E-Mail'}</span><span><MapPin aria-hidden="true" /> {[guardian.address.postalCode, guardian.address.city].filter(Boolean).join(' ') || 'Keine Anschrift'}</span><small>{linkedStudents.map((student) => student.name).join(', ') || 'Noch keiner lernenden Person zugeordnet'}</small></div>
                     <div className="guardian-row__actions"><button className="icon-button icon-button--small" onClick={() => { setGuardianForm(structuredClone(guardian)) }} aria-label={`${guardian.name} bearbeiten`}><Pencil aria-hidden="true" /></button><button className="icon-button icon-button--small" onClick={() => onDeleteGuardian(guardian)} aria-label={`${guardian.name} löschen`}><Trash2 aria-hidden="true" /></button><ChevronRight aria-hidden="true" /></div>
@@ -152,3 +156,4 @@ export function People({ state, initialCreate, onSaveGuardian, onSaveStudent, on
     </div>
   )
 }
+

@@ -196,7 +196,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .dashboard-people { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .dashboard-stat { min-width: 0; padding: var(--space-6); }
 .dashboard-stat h2 { margin-bottom: var(--space-4); font-size: 14px; font-weight: 650; }
-.dashboard-stat__value { display: block; overflow-wrap: anywhere; font-size: clamp(26px, 3vw, 34px); font-weight: 720; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.dashboard-stat__value, .dashboard-number__sizer { display: block; overflow-wrap: anywhere; font-size: clamp(26px, 3vw, 34px); font-weight: 720; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
 .dashboard-stat p { margin: var(--space-2) 0 0; color: var(--on-surface-variant); font-size: 13px; line-height: 1.55; }
 .dashboard-stat .dashboard-stat__note { margin-top: var(--space-4); font-size: 12px; }
 .dashboard-unpaid, .dashboard-monthly, .dashboard-empty { margin-bottom: var(--space-6); }
@@ -732,6 +732,21 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .motion-rise { animation: motion-rise-in var(--dur-base) var(--ease-out) backwards; }
 .motion-scale { animation: motion-scale-in var(--dur-base) var(--ease-out) backwards; }
 .motion-stagger { animation-delay: calc(var(--stagger-index, 0) * var(--dur-stagger)); }
+/* Page entries occupy their final geometry from the first frame. */
+@keyframes motion-bar-in { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.dashboard-chart__bar { transform-origin: bottom; animation: motion-bar-in var(--dur-base) var(--ease-out) calc(var(--stagger-index, 0) * var(--dur-stagger)) backwards; }
+.dashboard-number { display: grid; }
+.dashboard-number > * { grid-area: 1 / 1; }
+.dashboard-number__sizer { visibility: hidden; }
+.status-chip { position: relative; }
+.status-chip__label { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: var(--space-2); }
+.status-chip__previous { border-radius: inherit; position: absolute; inset: 0; pointer-events: none; animation: motion-fade-out var(--dur-fast) var(--ease-out) forwards; }
+.invoice-detail__previous { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100%; z-index: 1; overflow: hidden; pointer-events: none; }
+.editor-items { position: relative; }
+.editor-item--exit { position: absolute; margin: 0; pointer-events: none; }
+:is(.invoice-page, .document-history, .settings-page, .modal-body) details[open] > :not(summary):not([role='alert']):not(.form-errors):not(.field-error):not(:has([role='alert'], .field-error, .form-errors)) { animation: motion-fade-in var(--dur-fast) var(--ease-out) backwards; }
+/* A new error or validation message never inherits an AP7 entrance. */
+.page-entry:has([role='alert'], [aria-invalid='true'], .field-error, .form-errors) { animation: none; }
 .modal-layer, .nav-scrim { animation: motion-fade-in var(--dur-base) var(--ease-out) backwards; }
 .modal { animation: motion-scale-in var(--dur-base) var(--ease-out) backwards; }
 .modal-layer[data-motion='exit'], .nav-scrim[data-motion='exit'] { animation: motion-fade-out var(--dur-base) var(--ease-in-out) forwards; }
