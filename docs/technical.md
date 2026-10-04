@@ -1,12 +1,12 @@
 # Technik und Migration
 
-Diese Beschreibung folgt dem integrierten Stand P01–P13 und dem kleinen Abschluss P14.
+Diese Beschreibung folgt dem integrierten Stand P01–P14 und 3.AP1–3.AP8 für Version 1.2.0.
 Die [Nutzeranleitung](../README.md) beschreibt die Bedienung; [historische Nachweise](evidence.md) ersetzen frühere Paketmatrizen und CI-Protokolle.
 
 ## Stack und Version
 
 React 19, TypeScript 5.7 und Vite 6; Inter, Lucide und `qrcode` bleiben die vorhandenen UI-/GiroCode-Abhängigkeiten. Die genauen aufgelösten Versionen stehen in `package-lock.json`. `.nvmrc` verlangt Node 22.
-`package.json.version` ist die einzige maßgebliche App-Version. `src/version.ts` importiert sie direkt für den bestehenden Info-Link; `resolveJsonModule` ist bereits konfiguriert. Paket und Lockfile bleiben unverändert. Die früher unabhängig vergebenen UI-/Release-Nummern sind historische Angaben, keine zweite aktuelle Versionsquelle.
+`package.json.version` ist die einzige maßgebliche App-Version (1.2.0). `src/version.ts` importiert sie direkt für den bestehenden Info-Link; `resolveJsonModule` ist bereits konfiguriert. Der Wurzeleintrag im Lockfile folgt derselben Version; die aufgelösten Abhängigkeiten bleiben unverändert. Die früher unabhängig vergebenen UI-/Release-Nummern sind historische Angaben, keine zweite aktuelle Versionsquelle.
 
 ## Lokale Speicherung
 
@@ -36,7 +36,7 @@ Wiederherstellungen laufen als neuer `commit` durch Bestandsvalidierung und Orig
 
 Einfache Toast-Meldungen im Modal lassen Klicks auf darunterliegende Dialogaktionen durch; ihre Schließen-Buttons bleiben erreichbar. Undo-Toasts behalten ihre vollständige Hover-Fläche und unveränderte Pausenlogik. Die Motion-Spec prüft das Hit-Testing bei drei gleichzeitigen Meldungen, ohne auf deren Ablauf zu warten.
 
-`invoice-paper`, `print-root` und sämtliche Druckelemente überschreiben Animationen und Transitions mit `none`; Motion-Utilities im Druck behalten Deckkraft 1. Der Druckablauf und `onPrintReady` warten auf keine Animation. Die Playwright-Hauptsuite verwendet lokal standardmäßig `reducedMotion: 'reduce'`; die Quality-Matrix führt sie zusätzlich mit `no-preference` aus. Die eigene `motion.spec.ts` prüft Dialoge, Timeout-Fallback, Toast/Undo, Navigation, Theme, Schublade einschließlich Desktop-Resize, reduzierte Dauern und Druck in Chromium, Firefox und WebKit. In CI laufen zwei Worker mit getrennten Browserkontexten und `testInfo`-Artefaktpfaden, lokal weiterhin einer. Das zehnminütige Jobbudget sowie Test- und Assertion-Timeouts bleiben unverändert. Seiteninterne Bewegungen aus 3.AP7 sind im folgenden Abschnitt beschrieben.
+`invoice-paper`, `print-root` und sämtliche Druckelemente überschreiben Animationen und Transitions mit `none`; `html` erzwingt im Druck außerdem `color-scheme: light !important`, damit auch Seitenfläche und Randboxen außerhalb des hellen Papiers hell bleiben; Motion-Utilities im Druck behalten Deckkraft 1. Der Druckablauf und `onPrintReady` warten auf keine Animation. Die Playwright-Hauptsuite verwendet lokal standardmäßig `reducedMotion: 'reduce'`; die Quality-Matrix führt sie zusätzlich mit `no-preference` aus. Die eigene `motion.spec.ts` prüft Dialoge, Timeout-Fallback, Toast/Undo, Navigation, Theme, Schublade einschließlich Desktop-Resize, reduzierte Dauern und Druck in Chromium, Firefox und WebKit. In CI laufen zwei Worker mit getrennten Browserkontexten und `testInfo`-Artefaktpfaden, lokal weiterhin einer. Das zehnminütige Jobbudget sowie Test- und Assertion-Timeouts bleiben unverändert. Seiteninterne Bewegungen aus 3.AP7 sind im folgenden Abschnitt beschrieben.
 
 ## Seiteninterne Bewegung (3.AP7)
 
@@ -118,6 +118,7 @@ Befehle aus `package.json`, `.github/workflows/quality.yml` und den beiden Playw
 ```sh
 npm ci
 npm run lint
+npm run typecheck
 npm test
 npm run build
 npx playwright install --with-deps chromium firefox webkit
@@ -130,8 +131,12 @@ npm audit --json
 
 `npm test` bündelt alle `tests/*.test.ts` direkt über `scripts/bundle-tests.mjs` und führt die Fachtests mit `node --test` aus. Auch die schnellen Altformatregressionen gehören dazu. `npm run build` führt `tsc -b && vite build` aus; der Build prüft App, Node-Konfiguration und Tests. `npm run typecheck` ist als gezielter lokaler Befehl vorhanden, wird in CI nicht zusätzlich zum Build ausgeführt.
 
-`test:browser` startet ausschließlich gewöhnliche Browser-/PDF-Fälle: Chromium als Hauptlauf, je drei JSON-Fallbackfälle in Chromium, Firefox und Linux-WebKit. `test:migrations` baut separat den unveränderten historischen Commit `ba7857fd9180fa392c42a0235643e478e5077ee5` und führt die beiden historischen Browserfälle unter derselben Origin aus. Dieser Befehl benötigt Git-Historie oder einen erreichbaren `origin` sowie die installierte Vite-/Playwright-Toolchain; temporäre Altcode-Pfade werden anschließend entfernt.
+`test:browser` startet ausschließlich gewöhnliche Browser-/PDF-Fälle: Chromium als Hauptlauf, zusätzlich dunkle Accessibility-Prüfungen, Theme-/Motion-/Seitenbewegungsfälle in Firefox und Linux-WebKit sowie je drei JSON-Fallbackfälle in allen drei Engines. Die unveränderte Quality-Matrix wiederholt diese Suite mit reduzierter und normaler Bewegung. `test:migrations` baut separat den unveränderten historischen Commit `ba7857fd9180fa392c42a0235643e478e5077ee5` und führt die beiden historischen Browserfälle unter derselben Origin aus. Dieser Befehl benötigt Git-Historie oder einen erreichbaren `origin` sowie die installierte Vite-/Playwright-Toolchain; temporäre Altcode-Pfade werden anschließend entfernt.
 JSON-Ergebnisse stehen in `test-results/browser-results.json` und `test-results/migration-results.json`; synthetische PDFs und Fehlerkontext im selben Artefaktbereich. Der vorhandene CI-APT-Workaround und alle Gates bleiben unverändert.
 
 Für lokale Entwicklung: `npm run dev`; zur Kontrolle des gebauten Ergebnisses: `npm run preview`.
 Automatisierte PDF-Prüfungen decken Text, Seitenumbrüche, Empfängeranschriften, eingefrorene Konten, GiroCode und QR-Fallback in Chromium ab. Native Druckdialoge, physische Ausdrucke, Firefox-/Safari-PDF, Banking-App-Scans und reale Altbestände werden dadurch nicht als abgenommen behauptet. Historische visuelle P11-/P12-Nachweise stehen im [Nachweisindex](evidence.md).
+
+AP8 ergänzt eine eingefrorene synthetische 1.1.3-Sicherung (`tests/fixtures/schema15-1.1.3.json`). Sie wurde mit `createDemoState` und `serializeBackup` aus dem unveränderten `main`-Commit `750ff71faeb72571a8e6558d6634e8b2e7f2c052` bei Paketversion 1.1.3 erzeugt (Demo-Stichtag 2025-02-10). Sie enthält bezahlte und offene Originale sowie Entwürfe. `release-compatibility.test.ts` verlangt identische Daten ohne Migration, das bisherige Dateiformat und den Speicherumschlag Version 4 nach bestätigtem Restore/Export/Reload. Die Import-/Export-/Validierungsimplementierung bleibt gegenüber diesem 1.1.3-Stand unverändert; ein neuer Export erhält keine zusätzlichen Versionsfelder.
+
+Die AP8-Fälle in `print.spec.ts` rendern dieselben AP4-Varianten jeweils in Hell/Dunkel und mit/ohne reduzierte Bewegung. Die helle Ausgabe ohne Bewegungsreduktion ist die Referenz desselben Laufs; SHA-256 der gerasterten PDF-Seiten, extrahierter Text und GiroCode müssen übereinstimmen. Zusätzlich müssen Animationen und Transitions am gesamten Papier auch während `theme-changing` abgeschaltet sein. Das ist eine pixelgenaue Prüfung der Theme-/Motion-Unabhängigkeit, kein dauerhaftes Referenzbild für künftige Layoutänderungen. Ergebnisse, Umgebungseinschränkungen und manuelle Freigabeschritte stehen im [AP8-Prüfbericht](release-1.2.0.md).

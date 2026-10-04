@@ -1,0 +1,5105 @@
+{
+  "app": "riffrechnung",
+  "exportedAt": "2026-10-04T12:36:12.332Z",
+  "schemaVersion": 15,
+  "data": {
+    "schemaVersion": 15,
+    "guardians": [
+      {
+        "id": "guardian-demo-claudia-schneider",
+        "name": "Claudia Schneider",
+        "email": "claudia.schneider@example.de",
+        "phone": "+49 221 555 11 01",
+        "address": {
+          "street": "Lindenweg 8",
+          "postalCode": "50931",
+          "city": "Köln"
+        },
+        "createdAt": "2025-01-02T09:00:00.000Z",
+        "updatedAt": "2025-01-02T09:00:00.000Z"
+      },
+      {
+        "id": "guardian-demo-tobias-schneider",
+        "name": "Tobias Schneider",
+        "email": "tobias.schneider@example.de",
+        "phone": "+49 221 555 11 02",
+        "address": {
+          "street": "Lindenweg 8",
+          "postalCode": "50931",
+          "city": "Köln"
+        },
+        "createdAt": "2025-01-02T09:00:00.000Z",
+        "updatedAt": "2025-01-02T09:00:00.000Z"
+      },
+      {
+        "id": "guardian-demo-aylin-yilmaz",
+        "name": "Aylin Yılmaz",
+        "email": "aylin.yilmaz@example.de",
+        "phone": "+49 221 555 12 01",
+        "address": {
+          "street": "Rosenstraße 14",
+          "postalCode": "50678",
+          "city": "Köln"
+        },
+        "createdAt": "2025-01-02T09:00:00.000Z",
+        "updatedAt": "2025-01-02T09:00:00.000Z"
+      },
+      {
+        "id": "guardian-demo-murat-yilmaz",
+        "name": "Murat Yılmaz",
+        "email": "murat.yilmaz@example.de",
+        "phone": "+49 221 555 12 02",
+        "address": {
+          "street": "Rosenstraße 14",
+          "postalCode": "50678",
+          "city": "Köln"
+        },
+        "createdAt": "2025-01-02T09:00:00.000Z",
+        "updatedAt": "2025-01-02T09:00:00.000Z"
+      },
+      {
+        "id": "guardian-demo-anna-becker",
+        "name": "Anna Becker",
+        "email": "anna.becker@example.de",
+        "phone": "+49 221 555 13 01",
+        "address": {
+          "street": "Berrenrather Straße 96",
+          "postalCode": "50937",
+          "city": "Köln"
+        },
+        "createdAt": "2025-01-02T09:00:00.000Z",
+        "updatedAt": "2025-01-02T09:00:00.000Z"
+      },
+      {
+        "id": "guardian-demo-thomas-hoffmann",
+        "name": "Thomas Hoffmann",
+        "email": "thomas.hoffmann@example.de",
+        "phone": "+49 221 555 14 01",
+        "address": {
+          "street": "Neusser Straße 221",
+          "postalCode": "50733",
+          "city": "Köln"
+        },
+        "createdAt": "2025-01-02T09:00:00.000Z",
+        "updatedAt": "2025-01-02T09:00:00.000Z"
+      },
+      {
+        "id": "guardian-demo-linh-nguyen",
+        "name": "Linh Nguyen",
+        "email": "linh.nguyen@example.de",
+        "phone": "+49 221 555 15 01",
+        "address": {
+          "street": "Aachener Straße 318",
+          "postalCode": "50933",
+          "city": "Köln"
+        },
+        "createdAt": "2025-01-02T09:00:00.000Z",
+        "updatedAt": "2025-01-02T09:00:00.000Z"
+      },
+      {
+        "id": "guardian-demo-katharina-wagner",
+        "name": "Katharina Wagner",
+        "email": "katharina.wagner@example.de",
+        "phone": "+49 221 555 16 01",
+        "address": {
+          "street": "Sülzburgstraße 42",
+          "postalCode": "50937",
+          "city": "Köln"
+        },
+        "createdAt": "2025-01-02T09:00:00.000Z",
+        "updatedAt": "2025-01-02T09:00:00.000Z"
+      },
+      {
+        "id": "guardian-demo-sebastian-wagner",
+        "name": "Sebastian Wagner",
+        "email": "sebastian.wagner@example.de",
+        "phone": "+49 221 555 16 02",
+        "address": {
+          "street": "Sülzburgstraße 42",
+          "postalCode": "50937",
+          "city": "Köln"
+        },
+        "createdAt": "2025-01-02T09:00:00.000Z",
+        "updatedAt": "2025-01-02T09:00:00.000Z"
+      },
+      {
+        "id": "guardian-demo-marco-romano",
+        "name": "Marco Romano",
+        "email": "marco.romano@example.de",
+        "phone": "+49 221 555 17 01",
+        "address": {
+          "street": "Deutzer Freiheit 73",
+          "postalCode": "50679",
+          "city": "Köln"
+        },
+        "createdAt": "2025-01-02T09:00:00.000Z",
+        "updatedAt": "2025-01-02T09:00:00.000Z"
+      }
+    ],
+    "students": [
+      {
+        "id": "student-demo-mia-schneider",
+        "name": "Mia Schneider",
+        "billingCode": "a",
+        "guardianIds": [
+          "guardian-demo-claudia-schneider",
+          "guardian-demo-tobias-schneider"
+        ],
+        "active": true,
+        "createdAt": "2025-01-02T09:00:00.000Z",
+        "updatedAt": "2025-01-02T09:00:00.000Z"
+      },
+      {
+        "id": "student-demo-jonas-schneider",
+        "name": "Jonas Schneider",
+        "billingCode": "b",
+        "guardianIds": [
+          "guardian-demo-claudia-schneider",
+          "guardian-demo-tobias-schneider"
+        ],
+        "active": true,
+        "createdAt": "2025-01-02T09:00:00.000Z",
+        "updatedAt": "2025-01-02T09:00:00.000Z"
+      },
+      {
+        "id": "student-demo-elif-yilmaz",
+        "name": "Elif Yılmaz",
+        "billingCode": "c",
+        "guardianIds": [
+          "guardian-demo-aylin-yilmaz",
+          "guardian-demo-murat-yilmaz"
+        ],
+        "active": true,
+        "createdAt": "2025-01-02T09:00:00.000Z",
+        "updatedAt": "2025-01-02T09:00:00.000Z"
+      },
+      {
+        "id": "student-demo-deniz-yilmaz",
+        "name": "Deniz Yılmaz",
+        "billingCode": "d",
+        "guardianIds": [
+          "guardian-demo-aylin-yilmaz",
+          "guardian-demo-murat-yilmaz"
+        ],
+        "active": true,
+        "createdAt": "2025-01-02T09:00:00.000Z",
+        "updatedAt": "2025-01-02T09:00:00.000Z"
+      },
+      {
+        "id": "student-demo-paul-becker",
+        "name": "Paul Becker",
+        "billingCode": "e",
+        "guardianIds": [
+          "guardian-demo-anna-becker"
+        ],
+        "active": true,
+        "createdAt": "2025-01-02T09:00:00.000Z",
+        "updatedAt": "2025-01-02T09:00:00.000Z"
+      },
+      {
+        "id": "student-demo-sophie-hoffmann",
+        "name": "Sophie Hoffmann",
+        "billingCode": "f",
+        "guardianIds": [
+          "guardian-demo-thomas-hoffmann"
+        ],
+        "active": true,
+        "createdAt": "2025-01-02T09:00:00.000Z",
+        "updatedAt": "2025-01-02T09:00:00.000Z"
+      },
+      {
+        "id": "student-demo-minh-nguyen",
+        "name": "Minh Nguyen",
+        "billingCode": "g",
+        "guardianIds": [
+          "guardian-demo-linh-nguyen"
+        ],
+        "active": true,
+        "createdAt": "2025-01-02T09:00:00.000Z",
+        "updatedAt": "2025-01-02T09:00:00.000Z"
+      },
+      {
+        "id": "student-demo-emma-wagner",
+        "name": "Emma Wagner",
+        "billingCode": "h",
+        "guardianIds": [
+          "guardian-demo-katharina-wagner",
+          "guardian-demo-sebastian-wagner"
+        ],
+        "active": true,
+        "createdAt": "2025-01-02T09:00:00.000Z",
+        "updatedAt": "2025-01-02T09:00:00.000Z"
+      },
+      {
+        "id": "student-demo-noah-wagner",
+        "name": "Noah Wagner",
+        "billingCode": "i",
+        "guardianIds": [
+          "guardian-demo-katharina-wagner",
+          "guardian-demo-sebastian-wagner"
+        ],
+        "active": true,
+        "createdAt": "2025-01-02T09:00:00.000Z",
+        "updatedAt": "2025-01-02T09:00:00.000Z"
+      },
+      {
+        "id": "student-demo-luca-romano",
+        "name": "Luca Romano",
+        "billingCode": "j",
+        "guardianIds": [
+          "guardian-demo-marco-romano"
+        ],
+        "active": true,
+        "createdAt": "2025-01-02T09:00:00.000Z",
+        "updatedAt": "2025-01-02T09:00:00.000Z"
+      }
+    ],
+    "invoices": [
+      {
+        "id": "invoice-demo-2025-01-schneider",
+        "number": "2025-0001-a+b",
+        "sequence": 1,
+        "year": 2025,
+        "invoiceDate": "2025-01-31",
+        "dueDate": "2025-02-14",
+        "period": "Januar 2025",
+        "status": "paid",
+        "recipients": [
+          {
+            "type": "guardian",
+            "id": "guardian-demo-claudia-schneider"
+          },
+          {
+            "type": "guardian",
+            "id": "guardian-demo-tobias-schneider"
+          }
+        ],
+        "studentIds": [
+          "student-demo-mia-schneider",
+          "student-demo-jonas-schneider"
+        ],
+        "recipientStrategy": "joint",
+        "items": [
+          {
+            "id": "item-demo-2025-01-schneider-a-01",
+            "studentId": "student-demo-mia-schneider",
+            "serviceDate": "2025-01-02",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-schneider-b-01",
+            "studentId": "student-demo-jonas-schneider",
+            "serviceDate": "2025-01-03",
+            "lessonType": "duo",
+            "description": "Duo-Unterricht (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-schneider-a-02",
+            "studentId": "student-demo-mia-schneider",
+            "serviceDate": "2025-01-06",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-schneider-b-02",
+            "studentId": "student-demo-jonas-schneider",
+            "serviceDate": "2025-01-07",
+            "lessonType": "duo",
+            "description": "Rhythmus & Zusammenspiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-schneider-a-03",
+            "studentId": "student-demo-mia-schneider",
+            "serviceDate": "2025-01-09",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-schneider-b-03",
+            "studentId": "student-demo-jonas-schneider",
+            "serviceDate": "2025-01-10",
+            "lessonType": "duo",
+            "description": "Ensemble-Spiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-schneider-a-04",
+            "studentId": "student-demo-mia-schneider",
+            "serviceDate": "2025-01-13",
+            "lessonType": "solo",
+            "description": "Fingerstyle (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-schneider-b-04",
+            "studentId": "student-demo-jonas-schneider",
+            "serviceDate": "2025-01-14",
+            "lessonType": "duo",
+            "description": "Akkordwechsel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-schneider-a-05",
+            "studentId": "student-demo-mia-schneider",
+            "serviceDate": "2025-01-16",
+            "lessonType": "solo",
+            "description": "Songbegleitung (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-schneider-b-05",
+            "studentId": "student-demo-jonas-schneider",
+            "serviceDate": "2025-01-17",
+            "lessonType": "duo",
+            "description": "Songbegleitung (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-schneider-a-06",
+            "studentId": "student-demo-mia-schneider",
+            "serviceDate": "2025-01-20",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-schneider-b-06",
+            "studentId": "student-demo-jonas-schneider",
+            "serviceDate": "2025-01-21",
+            "lessonType": "duo",
+            "description": "Duo-Unterricht (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-schneider-a-07",
+            "studentId": "student-demo-mia-schneider",
+            "serviceDate": "2025-01-23",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-schneider-b-07",
+            "studentId": "student-demo-jonas-schneider",
+            "serviceDate": "2025-01-24",
+            "lessonType": "duo",
+            "description": "Rhythmus & Zusammenspiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-schneider-a-08",
+            "studentId": "student-demo-mia-schneider",
+            "serviceDate": "2025-01-27",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-schneider-b-08",
+            "studentId": "student-demo-jonas-schneider",
+            "serviceDate": "2025-01-28",
+            "lessonType": "duo",
+            "description": "Ensemble-Spiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-schneider-a-09",
+            "studentId": "student-demo-mia-schneider",
+            "serviceDate": "2025-01-30",
+            "lessonType": "solo",
+            "description": "Fingerstyle (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-schneider-b-09",
+            "studentId": "student-demo-jonas-schneider",
+            "serviceDate": "2025-01-31",
+            "lessonType": "duo",
+            "description": "Akkordwechsel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          }
+        ],
+        "freeText": "",
+        "snapshot": {
+          "issuer": {
+            "name": "Max Mustermann",
+            "street": "Musterweg 12",
+            "postalCode": "50674",
+            "city": "Köln",
+            "email": "max.mustermann@example.de",
+            "phone": "+49 221 555 01 00"
+          },
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-claudia-schneider",
+              "name": "Claudia Schneider",
+              "email": "claudia.schneider@example.de",
+              "street": "Lindenweg 8",
+              "postalCode": "50931",
+              "city": "Köln"
+            },
+            {
+              "type": "guardian",
+              "id": "guardian-demo-tobias-schneider",
+              "name": "Tobias Schneider",
+              "email": "tobias.schneider@example.de",
+              "street": "Lindenweg 8",
+              "postalCode": "50931",
+              "city": "Köln"
+            }
+          ],
+          "students": [
+            {
+              "id": "student-demo-mia-schneider",
+              "name": "Mia Schneider"
+            },
+            {
+              "id": "student-demo-jonas-schneider",
+              "name": "Jonas Schneider"
+            }
+          ],
+          "accountHolder": "Max Mustermann",
+          "iban": "DE52000000000000000100",
+          "bic": "MUSTDEFFXXX",
+          "bankName": "Musterbank Köln"
+        },
+        "sentAt": "2025-01-31T10:00:00.000Z",
+        "createdAt": "2025-01-31T08:00:00.000Z",
+        "updatedAt": "2025-02-05T12:00:00.000Z",
+        "versionId": "version-v4-0"
+      },
+      {
+        "id": "invoice-demo-2025-01-yilmaz",
+        "number": "2025-0001-c+d",
+        "sequence": 1,
+        "year": 2025,
+        "invoiceDate": "2025-01-31",
+        "dueDate": "2025-02-14",
+        "period": "Januar 2025",
+        "status": "paid",
+        "recipients": [
+          {
+            "type": "guardian",
+            "id": "guardian-demo-aylin-yilmaz"
+          },
+          {
+            "type": "guardian",
+            "id": "guardian-demo-murat-yilmaz"
+          }
+        ],
+        "studentIds": [
+          "student-demo-elif-yilmaz",
+          "student-demo-deniz-yilmaz"
+        ],
+        "recipientStrategy": "joint",
+        "items": [
+          {
+            "id": "item-demo-2025-01-yilmaz-d-01",
+            "studentId": "student-demo-deniz-yilmaz",
+            "serviceDate": "2025-01-01",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-yilmaz-c-01",
+            "studentId": "student-demo-elif-yilmaz",
+            "serviceDate": "2025-01-03",
+            "lessonType": "duo",
+            "description": "Duo-Unterricht (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-yilmaz-d-02",
+            "studentId": "student-demo-deniz-yilmaz",
+            "serviceDate": "2025-01-04",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-yilmaz-c-02",
+            "studentId": "student-demo-elif-yilmaz",
+            "serviceDate": "2025-01-07",
+            "lessonType": "duo",
+            "description": "Rhythmus & Zusammenspiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-yilmaz-d-03",
+            "studentId": "student-demo-deniz-yilmaz",
+            "serviceDate": "2025-01-08",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-yilmaz-c-03",
+            "studentId": "student-demo-elif-yilmaz",
+            "serviceDate": "2025-01-10",
+            "lessonType": "duo",
+            "description": "Ensemble-Spiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-yilmaz-d-04",
+            "studentId": "student-demo-deniz-yilmaz",
+            "serviceDate": "2025-01-11",
+            "lessonType": "solo",
+            "description": "Fingerstyle (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-yilmaz-c-04",
+            "studentId": "student-demo-elif-yilmaz",
+            "serviceDate": "2025-01-14",
+            "lessonType": "duo",
+            "description": "Akkordwechsel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-yilmaz-d-05",
+            "studentId": "student-demo-deniz-yilmaz",
+            "serviceDate": "2025-01-15",
+            "lessonType": "solo",
+            "description": "Songbegleitung (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-yilmaz-c-05",
+            "studentId": "student-demo-elif-yilmaz",
+            "serviceDate": "2025-01-17",
+            "lessonType": "duo",
+            "description": "Songbegleitung (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-yilmaz-d-06",
+            "studentId": "student-demo-deniz-yilmaz",
+            "serviceDate": "2025-01-18",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-yilmaz-c-06",
+            "studentId": "student-demo-elif-yilmaz",
+            "serviceDate": "2025-01-21",
+            "lessonType": "duo",
+            "description": "Duo-Unterricht (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-yilmaz-d-07",
+            "studentId": "student-demo-deniz-yilmaz",
+            "serviceDate": "2025-01-22",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-yilmaz-c-07",
+            "studentId": "student-demo-elif-yilmaz",
+            "serviceDate": "2025-01-24",
+            "lessonType": "duo",
+            "description": "Rhythmus & Zusammenspiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-yilmaz-d-08",
+            "studentId": "student-demo-deniz-yilmaz",
+            "serviceDate": "2025-01-25",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-yilmaz-c-08",
+            "studentId": "student-demo-elif-yilmaz",
+            "serviceDate": "2025-01-28",
+            "lessonType": "duo",
+            "description": "Ensemble-Spiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-yilmaz-d-09",
+            "studentId": "student-demo-deniz-yilmaz",
+            "serviceDate": "2025-01-29",
+            "lessonType": "solo",
+            "description": "Fingerstyle (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-yilmaz-c-09",
+            "studentId": "student-demo-elif-yilmaz",
+            "serviceDate": "2025-01-31",
+            "lessonType": "duo",
+            "description": "Akkordwechsel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          }
+        ],
+        "freeText": "",
+        "snapshot": {
+          "issuer": {
+            "name": "Max Mustermann",
+            "street": "Musterweg 12",
+            "postalCode": "50674",
+            "city": "Köln",
+            "email": "max.mustermann@example.de",
+            "phone": "+49 221 555 01 00"
+          },
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-aylin-yilmaz",
+              "name": "Aylin Yılmaz",
+              "email": "aylin.yilmaz@example.de",
+              "street": "Rosenstraße 14",
+              "postalCode": "50678",
+              "city": "Köln"
+            },
+            {
+              "type": "guardian",
+              "id": "guardian-demo-murat-yilmaz",
+              "name": "Murat Yılmaz",
+              "email": "murat.yilmaz@example.de",
+              "street": "Rosenstraße 14",
+              "postalCode": "50678",
+              "city": "Köln"
+            }
+          ],
+          "students": [
+            {
+              "id": "student-demo-elif-yilmaz",
+              "name": "Elif Yılmaz"
+            },
+            {
+              "id": "student-demo-deniz-yilmaz",
+              "name": "Deniz Yılmaz"
+            }
+          ],
+          "accountHolder": "Max Mustermann",
+          "iban": "DE52000000000000000100",
+          "bic": "MUSTDEFFXXX",
+          "bankName": "Musterbank Köln"
+        },
+        "sentAt": "2025-01-31T10:00:00.000Z",
+        "createdAt": "2025-01-31T08:00:00.000Z",
+        "updatedAt": "2025-02-05T12:00:00.000Z",
+        "versionId": "version-v4-1"
+      },
+      {
+        "id": "invoice-demo-2025-01-becker",
+        "number": "2025-0001-e",
+        "sequence": 1,
+        "year": 2025,
+        "invoiceDate": "2025-01-31",
+        "dueDate": "2025-02-14",
+        "period": "Januar 2025",
+        "status": "paid",
+        "recipients": [
+          {
+            "type": "guardian",
+            "id": "guardian-demo-anna-becker"
+          }
+        ],
+        "studentIds": [
+          "student-demo-paul-becker"
+        ],
+        "recipientStrategy": "joint",
+        "items": [
+          {
+            "id": "item-demo-2025-01-becker-e-01",
+            "studentId": "student-demo-paul-becker",
+            "serviceDate": "2025-01-01",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-becker-e-02",
+            "studentId": "student-demo-paul-becker",
+            "serviceDate": "2025-01-06",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-becker-e-03",
+            "studentId": "student-demo-paul-becker",
+            "serviceDate": "2025-01-08",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-becker-e-04",
+            "studentId": "student-demo-paul-becker",
+            "serviceDate": "2025-01-13",
+            "lessonType": "solo",
+            "description": "Fingerstyle (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-becker-e-05",
+            "studentId": "student-demo-paul-becker",
+            "serviceDate": "2025-01-15",
+            "lessonType": "solo",
+            "description": "Songbegleitung (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-becker-e-06",
+            "studentId": "student-demo-paul-becker",
+            "serviceDate": "2025-01-20",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-becker-e-07",
+            "studentId": "student-demo-paul-becker",
+            "serviceDate": "2025-01-22",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-becker-e-08",
+            "studentId": "student-demo-paul-becker",
+            "serviceDate": "2025-01-27",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-becker-e-09",
+            "studentId": "student-demo-paul-becker",
+            "serviceDate": "2025-01-29",
+            "lessonType": "solo",
+            "description": "Fingerstyle (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          }
+        ],
+        "freeText": "",
+        "snapshot": {
+          "issuer": {
+            "name": "Max Mustermann",
+            "street": "Musterweg 12",
+            "postalCode": "50674",
+            "city": "Köln",
+            "email": "max.mustermann@example.de",
+            "phone": "+49 221 555 01 00"
+          },
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-anna-becker",
+              "name": "Anna Becker",
+              "email": "anna.becker@example.de",
+              "street": "Berrenrather Straße 96",
+              "postalCode": "50937",
+              "city": "Köln"
+            }
+          ],
+          "students": [
+            {
+              "id": "student-demo-paul-becker",
+              "name": "Paul Becker"
+            }
+          ],
+          "accountHolder": "Max Mustermann",
+          "iban": "DE52000000000000000100",
+          "bic": "MUSTDEFFXXX",
+          "bankName": "Musterbank Köln"
+        },
+        "sentAt": "2025-01-31T10:00:00.000Z",
+        "createdAt": "2025-01-31T08:00:00.000Z",
+        "updatedAt": "2025-02-05T12:00:00.000Z",
+        "versionId": "version-v4-2"
+      },
+      {
+        "id": "invoice-demo-2025-01-hoffmann",
+        "number": "2025-0001-f",
+        "sequence": 1,
+        "year": 2025,
+        "invoiceDate": "2025-01-31",
+        "dueDate": "2025-02-14",
+        "period": "Januar 2025",
+        "status": "paid",
+        "recipients": [
+          {
+            "type": "guardian",
+            "id": "guardian-demo-thomas-hoffmann"
+          }
+        ],
+        "studentIds": [
+          "student-demo-sophie-hoffmann"
+        ],
+        "recipientStrategy": "joint",
+        "items": [
+          {
+            "id": "item-demo-2025-01-hoffmann-f-01",
+            "studentId": "student-demo-sophie-hoffmann",
+            "serviceDate": "2025-01-01",
+            "lessonType": "duo",
+            "description": "Duo-Unterricht (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-hoffmann-f-02",
+            "studentId": "student-demo-sophie-hoffmann",
+            "serviceDate": "2025-01-03",
+            "lessonType": "duo",
+            "description": "Rhythmus & Zusammenspiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-hoffmann-f-03",
+            "studentId": "student-demo-sophie-hoffmann",
+            "serviceDate": "2025-01-08",
+            "lessonType": "duo",
+            "description": "Ensemble-Spiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-hoffmann-f-04",
+            "studentId": "student-demo-sophie-hoffmann",
+            "serviceDate": "2025-01-10",
+            "lessonType": "duo",
+            "description": "Akkordwechsel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-hoffmann-f-05",
+            "studentId": "student-demo-sophie-hoffmann",
+            "serviceDate": "2025-01-15",
+            "lessonType": "duo",
+            "description": "Songbegleitung (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-hoffmann-f-06",
+            "studentId": "student-demo-sophie-hoffmann",
+            "serviceDate": "2025-01-17",
+            "lessonType": "duo",
+            "description": "Duo-Unterricht (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-hoffmann-f-07",
+            "studentId": "student-demo-sophie-hoffmann",
+            "serviceDate": "2025-01-22",
+            "lessonType": "duo",
+            "description": "Rhythmus & Zusammenspiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-hoffmann-f-08",
+            "studentId": "student-demo-sophie-hoffmann",
+            "serviceDate": "2025-01-24",
+            "lessonType": "duo",
+            "description": "Ensemble-Spiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-hoffmann-f-09",
+            "studentId": "student-demo-sophie-hoffmann",
+            "serviceDate": "2025-01-29",
+            "lessonType": "duo",
+            "description": "Akkordwechsel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-hoffmann-f-10",
+            "studentId": "student-demo-sophie-hoffmann",
+            "serviceDate": "2025-01-31",
+            "lessonType": "duo",
+            "description": "Songbegleitung (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          }
+        ],
+        "freeText": "",
+        "snapshot": {
+          "issuer": {
+            "name": "Max Mustermann",
+            "street": "Musterweg 12",
+            "postalCode": "50674",
+            "city": "Köln",
+            "email": "max.mustermann@example.de",
+            "phone": "+49 221 555 01 00"
+          },
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-thomas-hoffmann",
+              "name": "Thomas Hoffmann",
+              "email": "thomas.hoffmann@example.de",
+              "street": "Neusser Straße 221",
+              "postalCode": "50733",
+              "city": "Köln"
+            }
+          ],
+          "students": [
+            {
+              "id": "student-demo-sophie-hoffmann",
+              "name": "Sophie Hoffmann"
+            }
+          ],
+          "accountHolder": "Max Mustermann",
+          "iban": "DE52000000000000000100",
+          "bic": "MUSTDEFFXXX",
+          "bankName": "Musterbank Köln"
+        },
+        "sentAt": "2025-01-31T10:00:00.000Z",
+        "createdAt": "2025-01-31T08:00:00.000Z",
+        "updatedAt": "2025-02-05T12:00:00.000Z",
+        "versionId": "version-v4-3"
+      },
+      {
+        "id": "invoice-demo-2025-01-nguyen",
+        "number": "2025-0001-g",
+        "sequence": 1,
+        "year": 2025,
+        "invoiceDate": "2025-01-31",
+        "dueDate": "2025-02-14",
+        "period": "Januar 2025",
+        "status": "paid",
+        "recipients": [
+          {
+            "type": "guardian",
+            "id": "guardian-demo-linh-nguyen"
+          }
+        ],
+        "studentIds": [
+          "student-demo-minh-nguyen"
+        ],
+        "recipientStrategy": "joint",
+        "items": [
+          {
+            "id": "item-demo-2025-01-nguyen-g-01",
+            "studentId": "student-demo-minh-nguyen",
+            "serviceDate": "2025-01-02",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-nguyen-g-02",
+            "studentId": "student-demo-minh-nguyen",
+            "serviceDate": "2025-01-07",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-nguyen-g-03",
+            "studentId": "student-demo-minh-nguyen",
+            "serviceDate": "2025-01-09",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-nguyen-g-04",
+            "studentId": "student-demo-minh-nguyen",
+            "serviceDate": "2025-01-14",
+            "lessonType": "solo",
+            "description": "Fingerstyle (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-nguyen-g-05",
+            "studentId": "student-demo-minh-nguyen",
+            "serviceDate": "2025-01-16",
+            "lessonType": "solo",
+            "description": "Songbegleitung (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-nguyen-g-06",
+            "studentId": "student-demo-minh-nguyen",
+            "serviceDate": "2025-01-21",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-nguyen-g-07",
+            "studentId": "student-demo-minh-nguyen",
+            "serviceDate": "2025-01-23",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-nguyen-g-08",
+            "studentId": "student-demo-minh-nguyen",
+            "serviceDate": "2025-01-28",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-nguyen-g-09",
+            "studentId": "student-demo-minh-nguyen",
+            "serviceDate": "2025-01-30",
+            "lessonType": "solo",
+            "description": "Fingerstyle (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          }
+        ],
+        "freeText": "",
+        "snapshot": {
+          "issuer": {
+            "name": "Max Mustermann",
+            "street": "Musterweg 12",
+            "postalCode": "50674",
+            "city": "Köln",
+            "email": "max.mustermann@example.de",
+            "phone": "+49 221 555 01 00"
+          },
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-linh-nguyen",
+              "name": "Linh Nguyen",
+              "email": "linh.nguyen@example.de",
+              "street": "Aachener Straße 318",
+              "postalCode": "50933",
+              "city": "Köln"
+            }
+          ],
+          "students": [
+            {
+              "id": "student-demo-minh-nguyen",
+              "name": "Minh Nguyen"
+            }
+          ],
+          "accountHolder": "Max Mustermann",
+          "iban": "DE52000000000000000100",
+          "bic": "MUSTDEFFXXX",
+          "bankName": "Musterbank Köln"
+        },
+        "sentAt": "2025-01-31T10:00:00.000Z",
+        "createdAt": "2025-01-31T08:00:00.000Z",
+        "updatedAt": "2025-02-05T12:00:00.000Z",
+        "versionId": "version-v4-4"
+      },
+      {
+        "id": "invoice-demo-2025-01-wagner",
+        "number": "2025-0001-h+i",
+        "sequence": 1,
+        "year": 2025,
+        "invoiceDate": "2025-01-31",
+        "dueDate": "2025-02-14",
+        "period": "Januar 2025",
+        "status": "paid",
+        "recipients": [
+          {
+            "type": "guardian",
+            "id": "guardian-demo-katharina-wagner"
+          },
+          {
+            "type": "guardian",
+            "id": "guardian-demo-sebastian-wagner"
+          }
+        ],
+        "studentIds": [
+          "student-demo-emma-wagner",
+          "student-demo-noah-wagner"
+        ],
+        "recipientStrategy": "joint",
+        "items": [
+          {
+            "id": "item-demo-2025-01-wagner-i-01",
+            "studentId": "student-demo-noah-wagner",
+            "serviceDate": "2025-01-01",
+            "lessonType": "duo",
+            "description": "Duo-Unterricht (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-wagner-h-01",
+            "studentId": "student-demo-emma-wagner",
+            "serviceDate": "2025-01-02",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-wagner-i-02",
+            "studentId": "student-demo-noah-wagner",
+            "serviceDate": "2025-01-03",
+            "lessonType": "duo",
+            "description": "Rhythmus & Zusammenspiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-wagner-h-02",
+            "studentId": "student-demo-emma-wagner",
+            "serviceDate": "2025-01-06",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-wagner-i-03",
+            "studentId": "student-demo-noah-wagner",
+            "serviceDate": "2025-01-08",
+            "lessonType": "duo",
+            "description": "Ensemble-Spiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-wagner-h-03",
+            "studentId": "student-demo-emma-wagner",
+            "serviceDate": "2025-01-09",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-wagner-i-04",
+            "studentId": "student-demo-noah-wagner",
+            "serviceDate": "2025-01-10",
+            "lessonType": "duo",
+            "description": "Akkordwechsel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-wagner-h-04",
+            "studentId": "student-demo-emma-wagner",
+            "serviceDate": "2025-01-13",
+            "lessonType": "solo",
+            "description": "Fingerstyle (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-wagner-i-05",
+            "studentId": "student-demo-noah-wagner",
+            "serviceDate": "2025-01-15",
+            "lessonType": "duo",
+            "description": "Songbegleitung (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-wagner-h-05",
+            "studentId": "student-demo-emma-wagner",
+            "serviceDate": "2025-01-16",
+            "lessonType": "solo",
+            "description": "Songbegleitung (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-wagner-i-06",
+            "studentId": "student-demo-noah-wagner",
+            "serviceDate": "2025-01-17",
+            "lessonType": "duo",
+            "description": "Duo-Unterricht (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-wagner-h-06",
+            "studentId": "student-demo-emma-wagner",
+            "serviceDate": "2025-01-20",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-wagner-i-07",
+            "studentId": "student-demo-noah-wagner",
+            "serviceDate": "2025-01-22",
+            "lessonType": "duo",
+            "description": "Rhythmus & Zusammenspiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-wagner-h-07",
+            "studentId": "student-demo-emma-wagner",
+            "serviceDate": "2025-01-23",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-wagner-i-08",
+            "studentId": "student-demo-noah-wagner",
+            "serviceDate": "2025-01-24",
+            "lessonType": "duo",
+            "description": "Ensemble-Spiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-wagner-h-08",
+            "studentId": "student-demo-emma-wagner",
+            "serviceDate": "2025-01-27",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-wagner-i-09",
+            "studentId": "student-demo-noah-wagner",
+            "serviceDate": "2025-01-29",
+            "lessonType": "duo",
+            "description": "Akkordwechsel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-01-wagner-h-09",
+            "studentId": "student-demo-emma-wagner",
+            "serviceDate": "2025-01-30",
+            "lessonType": "solo",
+            "description": "Fingerstyle (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-wagner-i-10",
+            "studentId": "student-demo-noah-wagner",
+            "serviceDate": "2025-01-31",
+            "lessonType": "duo",
+            "description": "Songbegleitung (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          }
+        ],
+        "freeText": "",
+        "snapshot": {
+          "issuer": {
+            "name": "Max Mustermann",
+            "street": "Musterweg 12",
+            "postalCode": "50674",
+            "city": "Köln",
+            "email": "max.mustermann@example.de",
+            "phone": "+49 221 555 01 00"
+          },
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-katharina-wagner",
+              "name": "Katharina Wagner",
+              "email": "katharina.wagner@example.de",
+              "street": "Sülzburgstraße 42",
+              "postalCode": "50937",
+              "city": "Köln"
+            },
+            {
+              "type": "guardian",
+              "id": "guardian-demo-sebastian-wagner",
+              "name": "Sebastian Wagner",
+              "email": "sebastian.wagner@example.de",
+              "street": "Sülzburgstraße 42",
+              "postalCode": "50937",
+              "city": "Köln"
+            }
+          ],
+          "students": [
+            {
+              "id": "student-demo-emma-wagner",
+              "name": "Emma Wagner"
+            },
+            {
+              "id": "student-demo-noah-wagner",
+              "name": "Noah Wagner"
+            }
+          ],
+          "accountHolder": "Max Mustermann",
+          "iban": "DE52000000000000000100",
+          "bic": "MUSTDEFFXXX",
+          "bankName": "Musterbank Köln"
+        },
+        "sentAt": "2025-01-31T10:00:00.000Z",
+        "createdAt": "2025-01-31T08:00:00.000Z",
+        "updatedAt": "2025-02-05T12:00:00.000Z",
+        "versionId": "version-v4-5"
+      },
+      {
+        "id": "invoice-demo-2025-01-romano",
+        "number": "2025-0001-j",
+        "sequence": 1,
+        "year": 2025,
+        "invoiceDate": "2025-01-31",
+        "dueDate": "2025-02-14",
+        "period": "Januar 2025",
+        "status": "paid",
+        "recipients": [
+          {
+            "type": "guardian",
+            "id": "guardian-demo-marco-romano"
+          }
+        ],
+        "studentIds": [
+          "student-demo-luca-romano"
+        ],
+        "recipientStrategy": "joint",
+        "items": [
+          {
+            "id": "item-demo-2025-01-romano-j-01",
+            "studentId": "student-demo-luca-romano",
+            "serviceDate": "2025-01-04",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-romano-j-02",
+            "studentId": "student-demo-luca-romano",
+            "serviceDate": "2025-01-07",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-romano-j-03",
+            "studentId": "student-demo-luca-romano",
+            "serviceDate": "2025-01-11",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-romano-j-04",
+            "studentId": "student-demo-luca-romano",
+            "serviceDate": "2025-01-14",
+            "lessonType": "solo",
+            "description": "Fingerstyle (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-romano-j-05",
+            "studentId": "student-demo-luca-romano",
+            "serviceDate": "2025-01-18",
+            "lessonType": "solo",
+            "description": "Songbegleitung (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-romano-j-06",
+            "studentId": "student-demo-luca-romano",
+            "serviceDate": "2025-01-21",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-romano-j-07",
+            "studentId": "student-demo-luca-romano",
+            "serviceDate": "2025-01-25",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-01-romano-j-08",
+            "studentId": "student-demo-luca-romano",
+            "serviceDate": "2025-01-28",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          }
+        ],
+        "freeText": "",
+        "snapshot": {
+          "issuer": {
+            "name": "Max Mustermann",
+            "street": "Musterweg 12",
+            "postalCode": "50674",
+            "city": "Köln",
+            "email": "max.mustermann@example.de",
+            "phone": "+49 221 555 01 00"
+          },
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-marco-romano",
+              "name": "Marco Romano",
+              "email": "marco.romano@example.de",
+              "street": "Deutzer Freiheit 73",
+              "postalCode": "50679",
+              "city": "Köln"
+            }
+          ],
+          "students": [
+            {
+              "id": "student-demo-luca-romano",
+              "name": "Luca Romano"
+            }
+          ],
+          "accountHolder": "Max Mustermann",
+          "iban": "DE52000000000000000100",
+          "bic": "MUSTDEFFXXX",
+          "bankName": "Musterbank Köln"
+        },
+        "sentAt": "2025-01-31T10:00:00.000Z",
+        "createdAt": "2025-01-31T08:00:00.000Z",
+        "updatedAt": "2025-02-05T12:00:00.000Z",
+        "versionId": "version-v4-6"
+      },
+      {
+        "id": "invoice-demo-2025-02-schneider",
+        "number": "2025-0002-a+b",
+        "sequence": 2,
+        "year": 2025,
+        "invoiceDate": "2025-02-10",
+        "dueDate": "2025-02-24",
+        "period": "Februar 2025",
+        "status": "sent",
+        "recipients": [
+          {
+            "type": "guardian",
+            "id": "guardian-demo-claudia-schneider"
+          },
+          {
+            "type": "guardian",
+            "id": "guardian-demo-tobias-schneider"
+          }
+        ],
+        "studentIds": [
+          "student-demo-mia-schneider",
+          "student-demo-jonas-schneider"
+        ],
+        "recipientStrategy": "joint",
+        "items": [
+          {
+            "id": "item-demo-2025-02-schneider-a-01",
+            "studentId": "student-demo-mia-schneider",
+            "serviceDate": "2025-02-03",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-schneider-b-01",
+            "studentId": "student-demo-jonas-schneider",
+            "serviceDate": "2025-02-04",
+            "lessonType": "duo",
+            "description": "Duo-Unterricht (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-schneider-a-02",
+            "studentId": "student-demo-mia-schneider",
+            "serviceDate": "2025-02-06",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-schneider-b-02",
+            "studentId": "student-demo-jonas-schneider",
+            "serviceDate": "2025-02-07",
+            "lessonType": "duo",
+            "description": "Rhythmus & Zusammenspiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-schneider-a-03",
+            "studentId": "student-demo-mia-schneider",
+            "serviceDate": "2025-02-10",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-schneider-b-03",
+            "studentId": "student-demo-jonas-schneider",
+            "serviceDate": "2025-02-11",
+            "lessonType": "duo",
+            "description": "Ensemble-Spiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-schneider-a-04",
+            "studentId": "student-demo-mia-schneider",
+            "serviceDate": "2025-02-13",
+            "lessonType": "solo",
+            "description": "Fingerstyle (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-schneider-b-04",
+            "studentId": "student-demo-jonas-schneider",
+            "serviceDate": "2025-02-14",
+            "lessonType": "duo",
+            "description": "Akkordwechsel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-schneider-a-05",
+            "studentId": "student-demo-mia-schneider",
+            "serviceDate": "2025-02-17",
+            "lessonType": "solo",
+            "description": "Songbegleitung (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-schneider-b-05",
+            "studentId": "student-demo-jonas-schneider",
+            "serviceDate": "2025-02-18",
+            "lessonType": "duo",
+            "description": "Songbegleitung (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-schneider-a-06",
+            "studentId": "student-demo-mia-schneider",
+            "serviceDate": "2025-02-20",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-schneider-b-06",
+            "studentId": "student-demo-jonas-schneider",
+            "serviceDate": "2025-02-21",
+            "lessonType": "duo",
+            "description": "Duo-Unterricht (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-schneider-a-07",
+            "studentId": "student-demo-mia-schneider",
+            "serviceDate": "2025-02-24",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-schneider-b-07",
+            "studentId": "student-demo-jonas-schneider",
+            "serviceDate": "2025-02-25",
+            "lessonType": "duo",
+            "description": "Rhythmus & Zusammenspiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-schneider-a-08",
+            "studentId": "student-demo-mia-schneider",
+            "serviceDate": "2025-02-27",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-schneider-b-08",
+            "studentId": "student-demo-jonas-schneider",
+            "serviceDate": "2025-02-28",
+            "lessonType": "duo",
+            "description": "Ensemble-Spiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          }
+        ],
+        "freeText": "",
+        "snapshot": {
+          "issuer": {
+            "name": "Max Mustermann",
+            "street": "Musterweg 12",
+            "postalCode": "50674",
+            "city": "Köln",
+            "email": "max.mustermann@example.de",
+            "phone": "+49 221 555 01 00"
+          },
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-claudia-schneider",
+              "name": "Claudia Schneider",
+              "email": "claudia.schneider@example.de",
+              "street": "Lindenweg 8",
+              "postalCode": "50931",
+              "city": "Köln"
+            },
+            {
+              "type": "guardian",
+              "id": "guardian-demo-tobias-schneider",
+              "name": "Tobias Schneider",
+              "email": "tobias.schneider@example.de",
+              "street": "Lindenweg 8",
+              "postalCode": "50931",
+              "city": "Köln"
+            }
+          ],
+          "students": [
+            {
+              "id": "student-demo-mia-schneider",
+              "name": "Mia Schneider"
+            },
+            {
+              "id": "student-demo-jonas-schneider",
+              "name": "Jonas Schneider"
+            }
+          ],
+          "accountHolder": "Max Mustermann",
+          "iban": "DE52000000000000000100",
+          "bic": "MUSTDEFFXXX",
+          "bankName": "Musterbank Köln"
+        },
+        "sentAt": "2025-02-10T10:00:00.000Z",
+        "createdAt": "2025-02-10T08:00:00.000Z",
+        "updatedAt": "2025-02-10T12:00:00.000Z",
+        "versionId": "version-v4-7"
+      },
+      {
+        "id": "invoice-demo-2025-02-yilmaz",
+        "number": "2025-0002-c+d",
+        "sequence": 2,
+        "year": 2025,
+        "invoiceDate": "2025-02-10",
+        "dueDate": "2025-02-24",
+        "period": "Februar 2025",
+        "status": "sent",
+        "recipients": [
+          {
+            "type": "guardian",
+            "id": "guardian-demo-aylin-yilmaz"
+          },
+          {
+            "type": "guardian",
+            "id": "guardian-demo-murat-yilmaz"
+          }
+        ],
+        "studentIds": [
+          "student-demo-elif-yilmaz",
+          "student-demo-deniz-yilmaz"
+        ],
+        "recipientStrategy": "joint",
+        "items": [
+          {
+            "id": "item-demo-2025-02-yilmaz-d-01",
+            "studentId": "student-demo-deniz-yilmaz",
+            "serviceDate": "2025-02-01",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-yilmaz-c-01",
+            "studentId": "student-demo-elif-yilmaz",
+            "serviceDate": "2025-02-04",
+            "lessonType": "duo",
+            "description": "Duo-Unterricht (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-yilmaz-d-02",
+            "studentId": "student-demo-deniz-yilmaz",
+            "serviceDate": "2025-02-05",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-yilmaz-c-02",
+            "studentId": "student-demo-elif-yilmaz",
+            "serviceDate": "2025-02-07",
+            "lessonType": "duo",
+            "description": "Rhythmus & Zusammenspiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-yilmaz-d-03",
+            "studentId": "student-demo-deniz-yilmaz",
+            "serviceDate": "2025-02-08",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-yilmaz-c-03",
+            "studentId": "student-demo-elif-yilmaz",
+            "serviceDate": "2025-02-11",
+            "lessonType": "duo",
+            "description": "Ensemble-Spiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-yilmaz-d-04",
+            "studentId": "student-demo-deniz-yilmaz",
+            "serviceDate": "2025-02-12",
+            "lessonType": "solo",
+            "description": "Fingerstyle (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-yilmaz-c-04",
+            "studentId": "student-demo-elif-yilmaz",
+            "serviceDate": "2025-02-14",
+            "lessonType": "duo",
+            "description": "Akkordwechsel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-yilmaz-d-05",
+            "studentId": "student-demo-deniz-yilmaz",
+            "serviceDate": "2025-02-15",
+            "lessonType": "solo",
+            "description": "Songbegleitung (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-yilmaz-c-05",
+            "studentId": "student-demo-elif-yilmaz",
+            "serviceDate": "2025-02-18",
+            "lessonType": "duo",
+            "description": "Songbegleitung (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-yilmaz-d-06",
+            "studentId": "student-demo-deniz-yilmaz",
+            "serviceDate": "2025-02-19",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-yilmaz-c-06",
+            "studentId": "student-demo-elif-yilmaz",
+            "serviceDate": "2025-02-21",
+            "lessonType": "duo",
+            "description": "Duo-Unterricht (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-yilmaz-d-07",
+            "studentId": "student-demo-deniz-yilmaz",
+            "serviceDate": "2025-02-22",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-yilmaz-c-07",
+            "studentId": "student-demo-elif-yilmaz",
+            "serviceDate": "2025-02-25",
+            "lessonType": "duo",
+            "description": "Rhythmus & Zusammenspiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-yilmaz-d-08",
+            "studentId": "student-demo-deniz-yilmaz",
+            "serviceDate": "2025-02-26",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-yilmaz-c-08",
+            "studentId": "student-demo-elif-yilmaz",
+            "serviceDate": "2025-02-28",
+            "lessonType": "duo",
+            "description": "Ensemble-Spiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          }
+        ],
+        "freeText": "",
+        "snapshot": {
+          "issuer": {
+            "name": "Max Mustermann",
+            "street": "Musterweg 12",
+            "postalCode": "50674",
+            "city": "Köln",
+            "email": "max.mustermann@example.de",
+            "phone": "+49 221 555 01 00"
+          },
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-aylin-yilmaz",
+              "name": "Aylin Yılmaz",
+              "email": "aylin.yilmaz@example.de",
+              "street": "Rosenstraße 14",
+              "postalCode": "50678",
+              "city": "Köln"
+            },
+            {
+              "type": "guardian",
+              "id": "guardian-demo-murat-yilmaz",
+              "name": "Murat Yılmaz",
+              "email": "murat.yilmaz@example.de",
+              "street": "Rosenstraße 14",
+              "postalCode": "50678",
+              "city": "Köln"
+            }
+          ],
+          "students": [
+            {
+              "id": "student-demo-elif-yilmaz",
+              "name": "Elif Yılmaz"
+            },
+            {
+              "id": "student-demo-deniz-yilmaz",
+              "name": "Deniz Yılmaz"
+            }
+          ],
+          "accountHolder": "Max Mustermann",
+          "iban": "DE52000000000000000100",
+          "bic": "MUSTDEFFXXX",
+          "bankName": "Musterbank Köln"
+        },
+        "sentAt": "2025-02-10T10:00:00.000Z",
+        "createdAt": "2025-02-10T08:00:00.000Z",
+        "updatedAt": "2025-02-10T12:00:00.000Z",
+        "versionId": "version-v4-8"
+      },
+      {
+        "id": "invoice-demo-2025-02-becker",
+        "number": null,
+        "sequence": null,
+        "year": 2025,
+        "invoiceDate": "2025-02-10",
+        "dueDate": "2025-02-24",
+        "period": "Februar 2025",
+        "status": "draft",
+        "recipients": [
+          {
+            "type": "guardian",
+            "id": "guardian-demo-anna-becker"
+          }
+        ],
+        "studentIds": [
+          "student-demo-paul-becker"
+        ],
+        "recipientStrategy": "joint",
+        "items": [
+          {
+            "id": "item-demo-2025-02-becker-e-01",
+            "studentId": "student-demo-paul-becker",
+            "serviceDate": "2025-02-03",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-becker-e-02",
+            "studentId": "student-demo-paul-becker",
+            "serviceDate": "2025-02-05",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-becker-e-03",
+            "studentId": "student-demo-paul-becker",
+            "serviceDate": "2025-02-10",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-becker-e-04",
+            "studentId": "student-demo-paul-becker",
+            "serviceDate": "2025-02-12",
+            "lessonType": "solo",
+            "description": "Fingerstyle (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-becker-e-05",
+            "studentId": "student-demo-paul-becker",
+            "serviceDate": "2025-02-17",
+            "lessonType": "solo",
+            "description": "Songbegleitung (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-becker-e-06",
+            "studentId": "student-demo-paul-becker",
+            "serviceDate": "2025-02-19",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-becker-e-07",
+            "studentId": "student-demo-paul-becker",
+            "serviceDate": "2025-02-24",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-becker-e-08",
+            "studentId": "student-demo-paul-becker",
+            "serviceDate": "2025-02-26",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          }
+        ],
+        "freeText": "Entwurf: Termine und Zuordnung sind vorbereitet und können vor der Finalisierung angepasst werden.",
+        "createdAt": "2025-02-10T08:00:00.000Z",
+        "updatedAt": "2025-02-10T12:00:00.000Z"
+      },
+      {
+        "id": "invoice-demo-2025-02-hoffmann",
+        "number": null,
+        "sequence": null,
+        "year": 2025,
+        "invoiceDate": "2025-02-10",
+        "dueDate": "2025-02-24",
+        "period": "Februar 2025",
+        "status": "draft",
+        "recipients": [
+          {
+            "type": "guardian",
+            "id": "guardian-demo-thomas-hoffmann"
+          }
+        ],
+        "studentIds": [
+          "student-demo-sophie-hoffmann"
+        ],
+        "recipientStrategy": "joint",
+        "items": [
+          {
+            "id": "item-demo-2025-02-hoffmann-f-01",
+            "studentId": "student-demo-sophie-hoffmann",
+            "serviceDate": "2025-02-05",
+            "lessonType": "duo",
+            "description": "Duo-Unterricht (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-hoffmann-f-02",
+            "studentId": "student-demo-sophie-hoffmann",
+            "serviceDate": "2025-02-07",
+            "lessonType": "duo",
+            "description": "Rhythmus & Zusammenspiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-hoffmann-f-03",
+            "studentId": "student-demo-sophie-hoffmann",
+            "serviceDate": "2025-02-12",
+            "lessonType": "duo",
+            "description": "Ensemble-Spiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-hoffmann-f-04",
+            "studentId": "student-demo-sophie-hoffmann",
+            "serviceDate": "2025-02-14",
+            "lessonType": "duo",
+            "description": "Akkordwechsel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-hoffmann-f-05",
+            "studentId": "student-demo-sophie-hoffmann",
+            "serviceDate": "2025-02-19",
+            "lessonType": "duo",
+            "description": "Songbegleitung (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-hoffmann-f-06",
+            "studentId": "student-demo-sophie-hoffmann",
+            "serviceDate": "2025-02-21",
+            "lessonType": "duo",
+            "description": "Duo-Unterricht (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-hoffmann-f-07",
+            "studentId": "student-demo-sophie-hoffmann",
+            "serviceDate": "2025-02-26",
+            "lessonType": "duo",
+            "description": "Rhythmus & Zusammenspiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-hoffmann-f-08",
+            "studentId": "student-demo-sophie-hoffmann",
+            "serviceDate": "2025-02-28",
+            "lessonType": "duo",
+            "description": "Ensemble-Spiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          }
+        ],
+        "freeText": "Entwurf: Termine und Zuordnung sind vorbereitet und können vor der Finalisierung angepasst werden.",
+        "createdAt": "2025-02-10T08:00:00.000Z",
+        "updatedAt": "2025-02-10T12:00:00.000Z"
+      },
+      {
+        "id": "invoice-demo-2025-02-nguyen",
+        "number": null,
+        "sequence": null,
+        "year": 2025,
+        "invoiceDate": "2025-02-10",
+        "dueDate": "2025-02-24",
+        "period": "Februar 2025",
+        "status": "draft",
+        "recipients": [
+          {
+            "type": "guardian",
+            "id": "guardian-demo-linh-nguyen"
+          }
+        ],
+        "studentIds": [
+          "student-demo-minh-nguyen"
+        ],
+        "recipientStrategy": "joint",
+        "items": [
+          {
+            "id": "item-demo-2025-02-nguyen-g-01",
+            "studentId": "student-demo-minh-nguyen",
+            "serviceDate": "2025-02-04",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-nguyen-g-02",
+            "studentId": "student-demo-minh-nguyen",
+            "serviceDate": "2025-02-06",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-nguyen-g-03",
+            "studentId": "student-demo-minh-nguyen",
+            "serviceDate": "2025-02-11",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-nguyen-g-04",
+            "studentId": "student-demo-minh-nguyen",
+            "serviceDate": "2025-02-13",
+            "lessonType": "solo",
+            "description": "Fingerstyle (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-nguyen-g-05",
+            "studentId": "student-demo-minh-nguyen",
+            "serviceDate": "2025-02-18",
+            "lessonType": "solo",
+            "description": "Songbegleitung (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-nguyen-g-06",
+            "studentId": "student-demo-minh-nguyen",
+            "serviceDate": "2025-02-20",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-nguyen-g-07",
+            "studentId": "student-demo-minh-nguyen",
+            "serviceDate": "2025-02-25",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-nguyen-g-08",
+            "studentId": "student-demo-minh-nguyen",
+            "serviceDate": "2025-02-27",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          }
+        ],
+        "freeText": "Entwurf: Termine und Zuordnung sind vorbereitet und können vor der Finalisierung angepasst werden.",
+        "createdAt": "2025-02-10T08:00:00.000Z",
+        "updatedAt": "2025-02-10T12:00:00.000Z"
+      },
+      {
+        "id": "invoice-demo-2025-02-wagner",
+        "number": null,
+        "sequence": null,
+        "year": 2025,
+        "invoiceDate": "2025-02-10",
+        "dueDate": "2025-02-24",
+        "period": "Februar 2025",
+        "status": "draft",
+        "recipients": [
+          {
+            "type": "guardian",
+            "id": "guardian-demo-katharina-wagner"
+          },
+          {
+            "type": "guardian",
+            "id": "guardian-demo-sebastian-wagner"
+          }
+        ],
+        "studentIds": [
+          "student-demo-emma-wagner",
+          "student-demo-noah-wagner"
+        ],
+        "recipientStrategy": "joint",
+        "items": [
+          {
+            "id": "item-demo-2025-02-wagner-h-01",
+            "studentId": "student-demo-emma-wagner",
+            "serviceDate": "2025-02-03",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-wagner-i-01",
+            "studentId": "student-demo-noah-wagner",
+            "serviceDate": "2025-02-05",
+            "lessonType": "duo",
+            "description": "Duo-Unterricht (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-wagner-h-02",
+            "studentId": "student-demo-emma-wagner",
+            "serviceDate": "2025-02-06",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-wagner-i-02",
+            "studentId": "student-demo-noah-wagner",
+            "serviceDate": "2025-02-07",
+            "lessonType": "duo",
+            "description": "Rhythmus & Zusammenspiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-wagner-h-03",
+            "studentId": "student-demo-emma-wagner",
+            "serviceDate": "2025-02-10",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-wagner-i-03",
+            "studentId": "student-demo-noah-wagner",
+            "serviceDate": "2025-02-12",
+            "lessonType": "duo",
+            "description": "Ensemble-Spiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-wagner-h-04",
+            "studentId": "student-demo-emma-wagner",
+            "serviceDate": "2025-02-13",
+            "lessonType": "solo",
+            "description": "Fingerstyle (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-wagner-i-04",
+            "studentId": "student-demo-noah-wagner",
+            "serviceDate": "2025-02-14",
+            "lessonType": "duo",
+            "description": "Akkordwechsel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-wagner-h-05",
+            "studentId": "student-demo-emma-wagner",
+            "serviceDate": "2025-02-17",
+            "lessonType": "solo",
+            "description": "Songbegleitung (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-wagner-i-05",
+            "studentId": "student-demo-noah-wagner",
+            "serviceDate": "2025-02-19",
+            "lessonType": "duo",
+            "description": "Songbegleitung (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-wagner-h-06",
+            "studentId": "student-demo-emma-wagner",
+            "serviceDate": "2025-02-20",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-wagner-i-06",
+            "studentId": "student-demo-noah-wagner",
+            "serviceDate": "2025-02-21",
+            "lessonType": "duo",
+            "description": "Duo-Unterricht (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-wagner-h-07",
+            "studentId": "student-demo-emma-wagner",
+            "serviceDate": "2025-02-24",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-wagner-i-07",
+            "studentId": "student-demo-noah-wagner",
+            "serviceDate": "2025-02-26",
+            "lessonType": "duo",
+            "description": "Rhythmus & Zusammenspiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          },
+          {
+            "id": "item-demo-2025-02-wagner-h-08",
+            "studentId": "student-demo-emma-wagner",
+            "serviceDate": "2025-02-27",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-wagner-i-08",
+            "studentId": "student-demo-noah-wagner",
+            "serviceDate": "2025-02-28",
+            "lessonType": "duo",
+            "description": "Ensemble-Spiel (Duo)",
+            "quantity": 0.75,
+            "unit": "Std.",
+            "unitPrice": 20
+          }
+        ],
+        "freeText": "Entwurf: Termine und Zuordnung sind vorbereitet und können vor der Finalisierung angepasst werden.",
+        "createdAt": "2025-02-10T08:00:00.000Z",
+        "updatedAt": "2025-02-10T12:00:00.000Z"
+      },
+      {
+        "id": "invoice-demo-2025-02-romano",
+        "number": null,
+        "sequence": null,
+        "year": 2025,
+        "invoiceDate": "2025-02-10",
+        "dueDate": "2025-02-24",
+        "period": "Februar 2025",
+        "status": "draft",
+        "recipients": [
+          {
+            "type": "guardian",
+            "id": "guardian-demo-marco-romano"
+          }
+        ],
+        "studentIds": [
+          "student-demo-luca-romano"
+        ],
+        "recipientStrategy": "joint",
+        "items": [
+          {
+            "id": "item-demo-2025-02-romano-j-01",
+            "studentId": "student-demo-luca-romano",
+            "serviceDate": "2025-02-01",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-romano-j-02",
+            "studentId": "student-demo-luca-romano",
+            "serviceDate": "2025-02-04",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-romano-j-03",
+            "studentId": "student-demo-luca-romano",
+            "serviceDate": "2025-02-08",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-romano-j-04",
+            "studentId": "student-demo-luca-romano",
+            "serviceDate": "2025-02-11",
+            "lessonType": "solo",
+            "description": "Fingerstyle (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-romano-j-05",
+            "studentId": "student-demo-luca-romano",
+            "serviceDate": "2025-02-15",
+            "lessonType": "solo",
+            "description": "Songbegleitung (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-romano-j-06",
+            "studentId": "student-demo-luca-romano",
+            "serviceDate": "2025-02-18",
+            "lessonType": "solo",
+            "description": "Gitarrenunterricht (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-romano-j-07",
+            "studentId": "student-demo-luca-romano",
+            "serviceDate": "2025-02-22",
+            "lessonType": "solo",
+            "description": "Akkordtechnik (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          },
+          {
+            "id": "item-demo-2025-02-romano-j-08",
+            "studentId": "student-demo-luca-romano",
+            "serviceDate": "2025-02-25",
+            "lessonType": "solo",
+            "description": "Rhythmustraining (Solo)",
+            "quantity": 1,
+            "unit": "Std.",
+            "unitPrice": 30
+          }
+        ],
+        "freeText": "Entwurf: Termine und Zuordnung sind vorbereitet und können vor der Finalisierung angepasst werden.",
+        "createdAt": "2025-02-10T08:00:00.000Z",
+        "updatedAt": "2025-02-10T12:00:00.000Z"
+      }
+    ],
+    "voidedInvoiceNumbers": [],
+    "settings": {
+      "issuer": {
+        "name": "Max Mustermann",
+        "street": "Musterweg 12",
+        "postalCode": "50674",
+        "city": "Köln",
+        "email": "max.mustermann@example.de",
+        "phone": "+49 221 555 01 00"
+      },
+      "accountHolder": "Max Mustermann",
+      "iban": "DE52000000000000000100",
+      "bic": "MUSTDEFFXXX",
+      "bankName": "Musterbank Köln",
+      "privateRate": 30,
+      "duoRate": 20,
+      "paymentTermDays": 14,
+      "theme": "system",
+      "reducedMotion": false
+    },
+    "counters": {
+      "2025:a+b": 3,
+      "2025:c+d": 3,
+      "2025:e": 2,
+      "2025:f": 2,
+      "2025:g": 2,
+      "2025:h+i": 2,
+      "2025:j": 2
+    },
+    "nextStudentCodeIndex": 10,
+    "audit": [
+      {
+        "id": "event-demo-data-loaded",
+        "at": "2025-02-10T12:00:00.000Z",
+        "label": "Vollständige Beispieldaten ab Januar 2025 angelegt",
+        "entityType": "system"
+      }
+    ],
+    "updatedAt": "2025-02-10T12:00:00.000Z",
+    "documentVersions": [
+      {
+        "id": "version-v4-0",
+        "invoiceId": "invoice-demo-2025-01-schneider",
+        "originalId": "version-v4-0",
+        "replacesId": null,
+        "cancelsId": null,
+        "reason": "",
+        "provenance": "oldest-available",
+        "sourceUpdatedAt": "2025-02-05T12:00:00.000Z",
+        "content": {
+          "id": "invoice-demo-2025-01-schneider",
+          "number": "2025-0001-a+b",
+          "sequence": 1,
+          "year": 2025,
+          "invoiceDate": "2025-01-31",
+          "dueDate": "2025-02-14",
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-claudia-schneider"
+            },
+            {
+              "type": "guardian",
+              "id": "guardian-demo-tobias-schneider"
+            }
+          ],
+          "studentIds": [
+            "student-demo-mia-schneider",
+            "student-demo-jonas-schneider"
+          ],
+          "recipientStrategy": "joint",
+          "items": [
+            {
+              "id": "item-demo-2025-01-schneider-a-01",
+              "studentId": "student-demo-mia-schneider",
+              "serviceDate": "2025-01-02",
+              "lessonType": "solo",
+              "description": "Gitarrenunterricht (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-schneider-b-01",
+              "studentId": "student-demo-jonas-schneider",
+              "serviceDate": "2025-01-03",
+              "lessonType": "duo",
+              "description": "Duo-Unterricht (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-schneider-a-02",
+              "studentId": "student-demo-mia-schneider",
+              "serviceDate": "2025-01-06",
+              "lessonType": "solo",
+              "description": "Akkordtechnik (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-schneider-b-02",
+              "studentId": "student-demo-jonas-schneider",
+              "serviceDate": "2025-01-07",
+              "lessonType": "duo",
+              "description": "Rhythmus & Zusammenspiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-schneider-a-03",
+              "studentId": "student-demo-mia-schneider",
+              "serviceDate": "2025-01-09",
+              "lessonType": "solo",
+              "description": "Rhythmustraining (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-schneider-b-03",
+              "studentId": "student-demo-jonas-schneider",
+              "serviceDate": "2025-01-10",
+              "lessonType": "duo",
+              "description": "Ensemble-Spiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-schneider-a-04",
+              "studentId": "student-demo-mia-schneider",
+              "serviceDate": "2025-01-13",
+              "lessonType": "solo",
+              "description": "Fingerstyle (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-schneider-b-04",
+              "studentId": "student-demo-jonas-schneider",
+              "serviceDate": "2025-01-14",
+              "lessonType": "duo",
+              "description": "Akkordwechsel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-schneider-a-05",
+              "studentId": "student-demo-mia-schneider",
+              "serviceDate": "2025-01-16",
+              "lessonType": "solo",
+              "description": "Songbegleitung (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-schneider-b-05",
+              "studentId": "student-demo-jonas-schneider",
+              "serviceDate": "2025-01-17",
+              "lessonType": "duo",
+              "description": "Songbegleitung (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-schneider-a-06",
+              "studentId": "student-demo-mia-schneider",
+              "serviceDate": "2025-01-20",
+              "lessonType": "solo",
+              "description": "Gitarrenunterricht (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-schneider-b-06",
+              "studentId": "student-demo-jonas-schneider",
+              "serviceDate": "2025-01-21",
+              "lessonType": "duo",
+              "description": "Duo-Unterricht (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-schneider-a-07",
+              "studentId": "student-demo-mia-schneider",
+              "serviceDate": "2025-01-23",
+              "lessonType": "solo",
+              "description": "Akkordtechnik (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-schneider-b-07",
+              "studentId": "student-demo-jonas-schneider",
+              "serviceDate": "2025-01-24",
+              "lessonType": "duo",
+              "description": "Rhythmus & Zusammenspiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-schneider-a-08",
+              "studentId": "student-demo-mia-schneider",
+              "serviceDate": "2025-01-27",
+              "lessonType": "solo",
+              "description": "Rhythmustraining (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-schneider-b-08",
+              "studentId": "student-demo-jonas-schneider",
+              "serviceDate": "2025-01-28",
+              "lessonType": "duo",
+              "description": "Ensemble-Spiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-schneider-a-09",
+              "studentId": "student-demo-mia-schneider",
+              "serviceDate": "2025-01-30",
+              "lessonType": "solo",
+              "description": "Fingerstyle (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-schneider-b-09",
+              "studentId": "student-demo-jonas-schneider",
+              "serviceDate": "2025-01-31",
+              "lessonType": "duo",
+              "description": "Akkordwechsel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            }
+          ],
+          "freeText": "",
+          "createdAt": "2025-01-31T08:00:00.000Z"
+        },
+        "outputSnapshot": {
+          "issuer": {
+            "name": "Max Mustermann",
+            "street": "Musterweg 12",
+            "postalCode": "50674",
+            "city": "Köln",
+            "email": "max.mustermann@example.de",
+            "phone": "+49 221 555 01 00"
+          },
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-claudia-schneider",
+              "name": "Claudia Schneider",
+              "email": "claudia.schneider@example.de",
+              "street": "Lindenweg 8",
+              "postalCode": "50931",
+              "city": "Köln"
+            },
+            {
+              "type": "guardian",
+              "id": "guardian-demo-tobias-schneider",
+              "name": "Tobias Schneider",
+              "email": "tobias.schneider@example.de",
+              "street": "Lindenweg 8",
+              "postalCode": "50931",
+              "city": "Köln"
+            }
+          ],
+          "students": [
+            {
+              "id": "student-demo-mia-schneider",
+              "name": "Mia Schneider"
+            },
+            {
+              "id": "student-demo-jonas-schneider",
+              "name": "Jonas Schneider"
+            }
+          ],
+          "accountHolder": "Max Mustermann",
+          "iban": "DE52000000000000000100",
+          "bic": "MUSTDEFFXXX",
+          "bankName": "Musterbank Köln"
+        },
+        "outputPeriod": "Januar 2025",
+        "amounts": {
+          "itemCents": [
+            2250,
+            1500,
+            2250,
+            1500,
+            2250,
+            1500,
+            2250,
+            1500,
+            2250,
+            1500,
+            2250,
+            1500,
+            2250,
+            1500,
+            2250,
+            1500,
+            2250,
+            1500
+          ],
+          "totalCents": 33750,
+          "legacyCalculatedTotalCents": 33750,
+          "source": "legacy-output",
+          "calculation": "legacy-v1"
+        },
+        "conflicts": [],
+        "snapshotHistory": [],
+        "registerEntries": []
+      },
+      {
+        "id": "version-v4-1",
+        "invoiceId": "invoice-demo-2025-01-yilmaz",
+        "originalId": "version-v4-1",
+        "replacesId": null,
+        "cancelsId": null,
+        "reason": "",
+        "provenance": "oldest-available",
+        "sourceUpdatedAt": "2025-02-05T12:00:00.000Z",
+        "content": {
+          "id": "invoice-demo-2025-01-yilmaz",
+          "number": "2025-0001-c+d",
+          "sequence": 1,
+          "year": 2025,
+          "invoiceDate": "2025-01-31",
+          "dueDate": "2025-02-14",
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-aylin-yilmaz"
+            },
+            {
+              "type": "guardian",
+              "id": "guardian-demo-murat-yilmaz"
+            }
+          ],
+          "studentIds": [
+            "student-demo-elif-yilmaz",
+            "student-demo-deniz-yilmaz"
+          ],
+          "recipientStrategy": "joint",
+          "items": [
+            {
+              "id": "item-demo-2025-01-yilmaz-d-01",
+              "studentId": "student-demo-deniz-yilmaz",
+              "serviceDate": "2025-01-01",
+              "lessonType": "solo",
+              "description": "Gitarrenunterricht (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-yilmaz-c-01",
+              "studentId": "student-demo-elif-yilmaz",
+              "serviceDate": "2025-01-03",
+              "lessonType": "duo",
+              "description": "Duo-Unterricht (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-yilmaz-d-02",
+              "studentId": "student-demo-deniz-yilmaz",
+              "serviceDate": "2025-01-04",
+              "lessonType": "solo",
+              "description": "Akkordtechnik (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-yilmaz-c-02",
+              "studentId": "student-demo-elif-yilmaz",
+              "serviceDate": "2025-01-07",
+              "lessonType": "duo",
+              "description": "Rhythmus & Zusammenspiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-yilmaz-d-03",
+              "studentId": "student-demo-deniz-yilmaz",
+              "serviceDate": "2025-01-08",
+              "lessonType": "solo",
+              "description": "Rhythmustraining (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-yilmaz-c-03",
+              "studentId": "student-demo-elif-yilmaz",
+              "serviceDate": "2025-01-10",
+              "lessonType": "duo",
+              "description": "Ensemble-Spiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-yilmaz-d-04",
+              "studentId": "student-demo-deniz-yilmaz",
+              "serviceDate": "2025-01-11",
+              "lessonType": "solo",
+              "description": "Fingerstyle (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-yilmaz-c-04",
+              "studentId": "student-demo-elif-yilmaz",
+              "serviceDate": "2025-01-14",
+              "lessonType": "duo",
+              "description": "Akkordwechsel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-yilmaz-d-05",
+              "studentId": "student-demo-deniz-yilmaz",
+              "serviceDate": "2025-01-15",
+              "lessonType": "solo",
+              "description": "Songbegleitung (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-yilmaz-c-05",
+              "studentId": "student-demo-elif-yilmaz",
+              "serviceDate": "2025-01-17",
+              "lessonType": "duo",
+              "description": "Songbegleitung (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-yilmaz-d-06",
+              "studentId": "student-demo-deniz-yilmaz",
+              "serviceDate": "2025-01-18",
+              "lessonType": "solo",
+              "description": "Gitarrenunterricht (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-yilmaz-c-06",
+              "studentId": "student-demo-elif-yilmaz",
+              "serviceDate": "2025-01-21",
+              "lessonType": "duo",
+              "description": "Duo-Unterricht (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-yilmaz-d-07",
+              "studentId": "student-demo-deniz-yilmaz",
+              "serviceDate": "2025-01-22",
+              "lessonType": "solo",
+              "description": "Akkordtechnik (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-yilmaz-c-07",
+              "studentId": "student-demo-elif-yilmaz",
+              "serviceDate": "2025-01-24",
+              "lessonType": "duo",
+              "description": "Rhythmus & Zusammenspiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-yilmaz-d-08",
+              "studentId": "student-demo-deniz-yilmaz",
+              "serviceDate": "2025-01-25",
+              "lessonType": "solo",
+              "description": "Rhythmustraining (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-yilmaz-c-08",
+              "studentId": "student-demo-elif-yilmaz",
+              "serviceDate": "2025-01-28",
+              "lessonType": "duo",
+              "description": "Ensemble-Spiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-yilmaz-d-09",
+              "studentId": "student-demo-deniz-yilmaz",
+              "serviceDate": "2025-01-29",
+              "lessonType": "solo",
+              "description": "Fingerstyle (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-yilmaz-c-09",
+              "studentId": "student-demo-elif-yilmaz",
+              "serviceDate": "2025-01-31",
+              "lessonType": "duo",
+              "description": "Akkordwechsel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            }
+          ],
+          "freeText": "",
+          "createdAt": "2025-01-31T08:00:00.000Z"
+        },
+        "outputSnapshot": {
+          "issuer": {
+            "name": "Max Mustermann",
+            "street": "Musterweg 12",
+            "postalCode": "50674",
+            "city": "Köln",
+            "email": "max.mustermann@example.de",
+            "phone": "+49 221 555 01 00"
+          },
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-aylin-yilmaz",
+              "name": "Aylin Yılmaz",
+              "email": "aylin.yilmaz@example.de",
+              "street": "Rosenstraße 14",
+              "postalCode": "50678",
+              "city": "Köln"
+            },
+            {
+              "type": "guardian",
+              "id": "guardian-demo-murat-yilmaz",
+              "name": "Murat Yılmaz",
+              "email": "murat.yilmaz@example.de",
+              "street": "Rosenstraße 14",
+              "postalCode": "50678",
+              "city": "Köln"
+            }
+          ],
+          "students": [
+            {
+              "id": "student-demo-elif-yilmaz",
+              "name": "Elif Yılmaz"
+            },
+            {
+              "id": "student-demo-deniz-yilmaz",
+              "name": "Deniz Yılmaz"
+            }
+          ],
+          "accountHolder": "Max Mustermann",
+          "iban": "DE52000000000000000100",
+          "bic": "MUSTDEFFXXX",
+          "bankName": "Musterbank Köln"
+        },
+        "outputPeriod": "Januar 2025",
+        "amounts": {
+          "itemCents": [
+            3000,
+            1500,
+            3000,
+            1500,
+            3000,
+            1500,
+            3000,
+            1500,
+            3000,
+            1500,
+            3000,
+            1500,
+            3000,
+            1500,
+            3000,
+            1500,
+            3000,
+            1500
+          ],
+          "totalCents": 40500,
+          "legacyCalculatedTotalCents": 40500,
+          "source": "legacy-output",
+          "calculation": "legacy-v1"
+        },
+        "conflicts": [],
+        "snapshotHistory": [],
+        "registerEntries": []
+      },
+      {
+        "id": "version-v4-2",
+        "invoiceId": "invoice-demo-2025-01-becker",
+        "originalId": "version-v4-2",
+        "replacesId": null,
+        "cancelsId": null,
+        "reason": "",
+        "provenance": "oldest-available",
+        "sourceUpdatedAt": "2025-02-05T12:00:00.000Z",
+        "content": {
+          "id": "invoice-demo-2025-01-becker",
+          "number": "2025-0001-e",
+          "sequence": 1,
+          "year": 2025,
+          "invoiceDate": "2025-01-31",
+          "dueDate": "2025-02-14",
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-anna-becker"
+            }
+          ],
+          "studentIds": [
+            "student-demo-paul-becker"
+          ],
+          "recipientStrategy": "joint",
+          "items": [
+            {
+              "id": "item-demo-2025-01-becker-e-01",
+              "studentId": "student-demo-paul-becker",
+              "serviceDate": "2025-01-01",
+              "lessonType": "solo",
+              "description": "Gitarrenunterricht (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-becker-e-02",
+              "studentId": "student-demo-paul-becker",
+              "serviceDate": "2025-01-06",
+              "lessonType": "solo",
+              "description": "Akkordtechnik (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-becker-e-03",
+              "studentId": "student-demo-paul-becker",
+              "serviceDate": "2025-01-08",
+              "lessonType": "solo",
+              "description": "Rhythmustraining (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-becker-e-04",
+              "studentId": "student-demo-paul-becker",
+              "serviceDate": "2025-01-13",
+              "lessonType": "solo",
+              "description": "Fingerstyle (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-becker-e-05",
+              "studentId": "student-demo-paul-becker",
+              "serviceDate": "2025-01-15",
+              "lessonType": "solo",
+              "description": "Songbegleitung (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-becker-e-06",
+              "studentId": "student-demo-paul-becker",
+              "serviceDate": "2025-01-20",
+              "lessonType": "solo",
+              "description": "Gitarrenunterricht (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-becker-e-07",
+              "studentId": "student-demo-paul-becker",
+              "serviceDate": "2025-01-22",
+              "lessonType": "solo",
+              "description": "Akkordtechnik (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-becker-e-08",
+              "studentId": "student-demo-paul-becker",
+              "serviceDate": "2025-01-27",
+              "lessonType": "solo",
+              "description": "Rhythmustraining (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-becker-e-09",
+              "studentId": "student-demo-paul-becker",
+              "serviceDate": "2025-01-29",
+              "lessonType": "solo",
+              "description": "Fingerstyle (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            }
+          ],
+          "freeText": "",
+          "createdAt": "2025-01-31T08:00:00.000Z"
+        },
+        "outputSnapshot": {
+          "issuer": {
+            "name": "Max Mustermann",
+            "street": "Musterweg 12",
+            "postalCode": "50674",
+            "city": "Köln",
+            "email": "max.mustermann@example.de",
+            "phone": "+49 221 555 01 00"
+          },
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-anna-becker",
+              "name": "Anna Becker",
+              "email": "anna.becker@example.de",
+              "street": "Berrenrather Straße 96",
+              "postalCode": "50937",
+              "city": "Köln"
+            }
+          ],
+          "students": [
+            {
+              "id": "student-demo-paul-becker",
+              "name": "Paul Becker"
+            }
+          ],
+          "accountHolder": "Max Mustermann",
+          "iban": "DE52000000000000000100",
+          "bic": "MUSTDEFFXXX",
+          "bankName": "Musterbank Köln"
+        },
+        "outputPeriod": "Januar 2025",
+        "amounts": {
+          "itemCents": [
+            2250,
+            2250,
+            2250,
+            2250,
+            2250,
+            2250,
+            2250,
+            2250,
+            2250
+          ],
+          "totalCents": 20250,
+          "legacyCalculatedTotalCents": 20250,
+          "source": "legacy-output",
+          "calculation": "legacy-v1"
+        },
+        "conflicts": [],
+        "snapshotHistory": [],
+        "registerEntries": []
+      },
+      {
+        "id": "version-v4-3",
+        "invoiceId": "invoice-demo-2025-01-hoffmann",
+        "originalId": "version-v4-3",
+        "replacesId": null,
+        "cancelsId": null,
+        "reason": "",
+        "provenance": "oldest-available",
+        "sourceUpdatedAt": "2025-02-05T12:00:00.000Z",
+        "content": {
+          "id": "invoice-demo-2025-01-hoffmann",
+          "number": "2025-0001-f",
+          "sequence": 1,
+          "year": 2025,
+          "invoiceDate": "2025-01-31",
+          "dueDate": "2025-02-14",
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-thomas-hoffmann"
+            }
+          ],
+          "studentIds": [
+            "student-demo-sophie-hoffmann"
+          ],
+          "recipientStrategy": "joint",
+          "items": [
+            {
+              "id": "item-demo-2025-01-hoffmann-f-01",
+              "studentId": "student-demo-sophie-hoffmann",
+              "serviceDate": "2025-01-01",
+              "lessonType": "duo",
+              "description": "Duo-Unterricht (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-hoffmann-f-02",
+              "studentId": "student-demo-sophie-hoffmann",
+              "serviceDate": "2025-01-03",
+              "lessonType": "duo",
+              "description": "Rhythmus & Zusammenspiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-hoffmann-f-03",
+              "studentId": "student-demo-sophie-hoffmann",
+              "serviceDate": "2025-01-08",
+              "lessonType": "duo",
+              "description": "Ensemble-Spiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-hoffmann-f-04",
+              "studentId": "student-demo-sophie-hoffmann",
+              "serviceDate": "2025-01-10",
+              "lessonType": "duo",
+              "description": "Akkordwechsel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-hoffmann-f-05",
+              "studentId": "student-demo-sophie-hoffmann",
+              "serviceDate": "2025-01-15",
+              "lessonType": "duo",
+              "description": "Songbegleitung (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-hoffmann-f-06",
+              "studentId": "student-demo-sophie-hoffmann",
+              "serviceDate": "2025-01-17",
+              "lessonType": "duo",
+              "description": "Duo-Unterricht (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-hoffmann-f-07",
+              "studentId": "student-demo-sophie-hoffmann",
+              "serviceDate": "2025-01-22",
+              "lessonType": "duo",
+              "description": "Rhythmus & Zusammenspiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-hoffmann-f-08",
+              "studentId": "student-demo-sophie-hoffmann",
+              "serviceDate": "2025-01-24",
+              "lessonType": "duo",
+              "description": "Ensemble-Spiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-hoffmann-f-09",
+              "studentId": "student-demo-sophie-hoffmann",
+              "serviceDate": "2025-01-29",
+              "lessonType": "duo",
+              "description": "Akkordwechsel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-hoffmann-f-10",
+              "studentId": "student-demo-sophie-hoffmann",
+              "serviceDate": "2025-01-31",
+              "lessonType": "duo",
+              "description": "Songbegleitung (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            }
+          ],
+          "freeText": "",
+          "createdAt": "2025-01-31T08:00:00.000Z"
+        },
+        "outputSnapshot": {
+          "issuer": {
+            "name": "Max Mustermann",
+            "street": "Musterweg 12",
+            "postalCode": "50674",
+            "city": "Köln",
+            "email": "max.mustermann@example.de",
+            "phone": "+49 221 555 01 00"
+          },
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-thomas-hoffmann",
+              "name": "Thomas Hoffmann",
+              "email": "thomas.hoffmann@example.de",
+              "street": "Neusser Straße 221",
+              "postalCode": "50733",
+              "city": "Köln"
+            }
+          ],
+          "students": [
+            {
+              "id": "student-demo-sophie-hoffmann",
+              "name": "Sophie Hoffmann"
+            }
+          ],
+          "accountHolder": "Max Mustermann",
+          "iban": "DE52000000000000000100",
+          "bic": "MUSTDEFFXXX",
+          "bankName": "Musterbank Köln"
+        },
+        "outputPeriod": "Januar 2025",
+        "amounts": {
+          "itemCents": [
+            1500,
+            1500,
+            1500,
+            1500,
+            1500,
+            1500,
+            1500,
+            1500,
+            1500,
+            1500
+          ],
+          "totalCents": 15000,
+          "legacyCalculatedTotalCents": 15000,
+          "source": "legacy-output",
+          "calculation": "legacy-v1"
+        },
+        "conflicts": [],
+        "snapshotHistory": [],
+        "registerEntries": []
+      },
+      {
+        "id": "version-v4-4",
+        "invoiceId": "invoice-demo-2025-01-nguyen",
+        "originalId": "version-v4-4",
+        "replacesId": null,
+        "cancelsId": null,
+        "reason": "",
+        "provenance": "oldest-available",
+        "sourceUpdatedAt": "2025-02-05T12:00:00.000Z",
+        "content": {
+          "id": "invoice-demo-2025-01-nguyen",
+          "number": "2025-0001-g",
+          "sequence": 1,
+          "year": 2025,
+          "invoiceDate": "2025-01-31",
+          "dueDate": "2025-02-14",
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-linh-nguyen"
+            }
+          ],
+          "studentIds": [
+            "student-demo-minh-nguyen"
+          ],
+          "recipientStrategy": "joint",
+          "items": [
+            {
+              "id": "item-demo-2025-01-nguyen-g-01",
+              "studentId": "student-demo-minh-nguyen",
+              "serviceDate": "2025-01-02",
+              "lessonType": "solo",
+              "description": "Gitarrenunterricht (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-nguyen-g-02",
+              "studentId": "student-demo-minh-nguyen",
+              "serviceDate": "2025-01-07",
+              "lessonType": "solo",
+              "description": "Akkordtechnik (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-nguyen-g-03",
+              "studentId": "student-demo-minh-nguyen",
+              "serviceDate": "2025-01-09",
+              "lessonType": "solo",
+              "description": "Rhythmustraining (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-nguyen-g-04",
+              "studentId": "student-demo-minh-nguyen",
+              "serviceDate": "2025-01-14",
+              "lessonType": "solo",
+              "description": "Fingerstyle (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-nguyen-g-05",
+              "studentId": "student-demo-minh-nguyen",
+              "serviceDate": "2025-01-16",
+              "lessonType": "solo",
+              "description": "Songbegleitung (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-nguyen-g-06",
+              "studentId": "student-demo-minh-nguyen",
+              "serviceDate": "2025-01-21",
+              "lessonType": "solo",
+              "description": "Gitarrenunterricht (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-nguyen-g-07",
+              "studentId": "student-demo-minh-nguyen",
+              "serviceDate": "2025-01-23",
+              "lessonType": "solo",
+              "description": "Akkordtechnik (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-nguyen-g-08",
+              "studentId": "student-demo-minh-nguyen",
+              "serviceDate": "2025-01-28",
+              "lessonType": "solo",
+              "description": "Rhythmustraining (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-nguyen-g-09",
+              "studentId": "student-demo-minh-nguyen",
+              "serviceDate": "2025-01-30",
+              "lessonType": "solo",
+              "description": "Fingerstyle (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            }
+          ],
+          "freeText": "",
+          "createdAt": "2025-01-31T08:00:00.000Z"
+        },
+        "outputSnapshot": {
+          "issuer": {
+            "name": "Max Mustermann",
+            "street": "Musterweg 12",
+            "postalCode": "50674",
+            "city": "Köln",
+            "email": "max.mustermann@example.de",
+            "phone": "+49 221 555 01 00"
+          },
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-linh-nguyen",
+              "name": "Linh Nguyen",
+              "email": "linh.nguyen@example.de",
+              "street": "Aachener Straße 318",
+              "postalCode": "50933",
+              "city": "Köln"
+            }
+          ],
+          "students": [
+            {
+              "id": "student-demo-minh-nguyen",
+              "name": "Minh Nguyen"
+            }
+          ],
+          "accountHolder": "Max Mustermann",
+          "iban": "DE52000000000000000100",
+          "bic": "MUSTDEFFXXX",
+          "bankName": "Musterbank Köln"
+        },
+        "outputPeriod": "Januar 2025",
+        "amounts": {
+          "itemCents": [
+            3000,
+            3000,
+            3000,
+            3000,
+            3000,
+            3000,
+            3000,
+            3000,
+            3000
+          ],
+          "totalCents": 27000,
+          "legacyCalculatedTotalCents": 27000,
+          "source": "legacy-output",
+          "calculation": "legacy-v1"
+        },
+        "conflicts": [],
+        "snapshotHistory": [],
+        "registerEntries": []
+      },
+      {
+        "id": "version-v4-5",
+        "invoiceId": "invoice-demo-2025-01-wagner",
+        "originalId": "version-v4-5",
+        "replacesId": null,
+        "cancelsId": null,
+        "reason": "",
+        "provenance": "oldest-available",
+        "sourceUpdatedAt": "2025-02-05T12:00:00.000Z",
+        "content": {
+          "id": "invoice-demo-2025-01-wagner",
+          "number": "2025-0001-h+i",
+          "sequence": 1,
+          "year": 2025,
+          "invoiceDate": "2025-01-31",
+          "dueDate": "2025-02-14",
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-katharina-wagner"
+            },
+            {
+              "type": "guardian",
+              "id": "guardian-demo-sebastian-wagner"
+            }
+          ],
+          "studentIds": [
+            "student-demo-emma-wagner",
+            "student-demo-noah-wagner"
+          ],
+          "recipientStrategy": "joint",
+          "items": [
+            {
+              "id": "item-demo-2025-01-wagner-i-01",
+              "studentId": "student-demo-noah-wagner",
+              "serviceDate": "2025-01-01",
+              "lessonType": "duo",
+              "description": "Duo-Unterricht (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-wagner-h-01",
+              "studentId": "student-demo-emma-wagner",
+              "serviceDate": "2025-01-02",
+              "lessonType": "solo",
+              "description": "Gitarrenunterricht (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-wagner-i-02",
+              "studentId": "student-demo-noah-wagner",
+              "serviceDate": "2025-01-03",
+              "lessonType": "duo",
+              "description": "Rhythmus & Zusammenspiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-wagner-h-02",
+              "studentId": "student-demo-emma-wagner",
+              "serviceDate": "2025-01-06",
+              "lessonType": "solo",
+              "description": "Akkordtechnik (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-wagner-i-03",
+              "studentId": "student-demo-noah-wagner",
+              "serviceDate": "2025-01-08",
+              "lessonType": "duo",
+              "description": "Ensemble-Spiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-wagner-h-03",
+              "studentId": "student-demo-emma-wagner",
+              "serviceDate": "2025-01-09",
+              "lessonType": "solo",
+              "description": "Rhythmustraining (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-wagner-i-04",
+              "studentId": "student-demo-noah-wagner",
+              "serviceDate": "2025-01-10",
+              "lessonType": "duo",
+              "description": "Akkordwechsel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-wagner-h-04",
+              "studentId": "student-demo-emma-wagner",
+              "serviceDate": "2025-01-13",
+              "lessonType": "solo",
+              "description": "Fingerstyle (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-wagner-i-05",
+              "studentId": "student-demo-noah-wagner",
+              "serviceDate": "2025-01-15",
+              "lessonType": "duo",
+              "description": "Songbegleitung (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-wagner-h-05",
+              "studentId": "student-demo-emma-wagner",
+              "serviceDate": "2025-01-16",
+              "lessonType": "solo",
+              "description": "Songbegleitung (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-wagner-i-06",
+              "studentId": "student-demo-noah-wagner",
+              "serviceDate": "2025-01-17",
+              "lessonType": "duo",
+              "description": "Duo-Unterricht (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-wagner-h-06",
+              "studentId": "student-demo-emma-wagner",
+              "serviceDate": "2025-01-20",
+              "lessonType": "solo",
+              "description": "Gitarrenunterricht (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-wagner-i-07",
+              "studentId": "student-demo-noah-wagner",
+              "serviceDate": "2025-01-22",
+              "lessonType": "duo",
+              "description": "Rhythmus & Zusammenspiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-wagner-h-07",
+              "studentId": "student-demo-emma-wagner",
+              "serviceDate": "2025-01-23",
+              "lessonType": "solo",
+              "description": "Akkordtechnik (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-wagner-i-08",
+              "studentId": "student-demo-noah-wagner",
+              "serviceDate": "2025-01-24",
+              "lessonType": "duo",
+              "description": "Ensemble-Spiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-wagner-h-08",
+              "studentId": "student-demo-emma-wagner",
+              "serviceDate": "2025-01-27",
+              "lessonType": "solo",
+              "description": "Rhythmustraining (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-wagner-i-09",
+              "studentId": "student-demo-noah-wagner",
+              "serviceDate": "2025-01-29",
+              "lessonType": "duo",
+              "description": "Akkordwechsel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-01-wagner-h-09",
+              "studentId": "student-demo-emma-wagner",
+              "serviceDate": "2025-01-30",
+              "lessonType": "solo",
+              "description": "Fingerstyle (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-wagner-i-10",
+              "studentId": "student-demo-noah-wagner",
+              "serviceDate": "2025-01-31",
+              "lessonType": "duo",
+              "description": "Songbegleitung (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            }
+          ],
+          "freeText": "",
+          "createdAt": "2025-01-31T08:00:00.000Z"
+        },
+        "outputSnapshot": {
+          "issuer": {
+            "name": "Max Mustermann",
+            "street": "Musterweg 12",
+            "postalCode": "50674",
+            "city": "Köln",
+            "email": "max.mustermann@example.de",
+            "phone": "+49 221 555 01 00"
+          },
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-katharina-wagner",
+              "name": "Katharina Wagner",
+              "email": "katharina.wagner@example.de",
+              "street": "Sülzburgstraße 42",
+              "postalCode": "50937",
+              "city": "Köln"
+            },
+            {
+              "type": "guardian",
+              "id": "guardian-demo-sebastian-wagner",
+              "name": "Sebastian Wagner",
+              "email": "sebastian.wagner@example.de",
+              "street": "Sülzburgstraße 42",
+              "postalCode": "50937",
+              "city": "Köln"
+            }
+          ],
+          "students": [
+            {
+              "id": "student-demo-emma-wagner",
+              "name": "Emma Wagner"
+            },
+            {
+              "id": "student-demo-noah-wagner",
+              "name": "Noah Wagner"
+            }
+          ],
+          "accountHolder": "Max Mustermann",
+          "iban": "DE52000000000000000100",
+          "bic": "MUSTDEFFXXX",
+          "bankName": "Musterbank Köln"
+        },
+        "outputPeriod": "Januar 2025",
+        "amounts": {
+          "itemCents": [
+            1500,
+            2250,
+            1500,
+            2250,
+            1500,
+            2250,
+            1500,
+            2250,
+            1500,
+            2250,
+            1500,
+            2250,
+            1500,
+            2250,
+            1500,
+            2250,
+            1500,
+            2250,
+            1500
+          ],
+          "totalCents": 35250,
+          "legacyCalculatedTotalCents": 35250,
+          "source": "legacy-output",
+          "calculation": "legacy-v1"
+        },
+        "conflicts": [],
+        "snapshotHistory": [],
+        "registerEntries": []
+      },
+      {
+        "id": "version-v4-6",
+        "invoiceId": "invoice-demo-2025-01-romano",
+        "originalId": "version-v4-6",
+        "replacesId": null,
+        "cancelsId": null,
+        "reason": "",
+        "provenance": "oldest-available",
+        "sourceUpdatedAt": "2025-02-05T12:00:00.000Z",
+        "content": {
+          "id": "invoice-demo-2025-01-romano",
+          "number": "2025-0001-j",
+          "sequence": 1,
+          "year": 2025,
+          "invoiceDate": "2025-01-31",
+          "dueDate": "2025-02-14",
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-marco-romano"
+            }
+          ],
+          "studentIds": [
+            "student-demo-luca-romano"
+          ],
+          "recipientStrategy": "joint",
+          "items": [
+            {
+              "id": "item-demo-2025-01-romano-j-01",
+              "studentId": "student-demo-luca-romano",
+              "serviceDate": "2025-01-04",
+              "lessonType": "solo",
+              "description": "Gitarrenunterricht (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-romano-j-02",
+              "studentId": "student-demo-luca-romano",
+              "serviceDate": "2025-01-07",
+              "lessonType": "solo",
+              "description": "Akkordtechnik (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-romano-j-03",
+              "studentId": "student-demo-luca-romano",
+              "serviceDate": "2025-01-11",
+              "lessonType": "solo",
+              "description": "Rhythmustraining (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-romano-j-04",
+              "studentId": "student-demo-luca-romano",
+              "serviceDate": "2025-01-14",
+              "lessonType": "solo",
+              "description": "Fingerstyle (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-romano-j-05",
+              "studentId": "student-demo-luca-romano",
+              "serviceDate": "2025-01-18",
+              "lessonType": "solo",
+              "description": "Songbegleitung (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-romano-j-06",
+              "studentId": "student-demo-luca-romano",
+              "serviceDate": "2025-01-21",
+              "lessonType": "solo",
+              "description": "Gitarrenunterricht (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-romano-j-07",
+              "studentId": "student-demo-luca-romano",
+              "serviceDate": "2025-01-25",
+              "lessonType": "solo",
+              "description": "Akkordtechnik (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-01-romano-j-08",
+              "studentId": "student-demo-luca-romano",
+              "serviceDate": "2025-01-28",
+              "lessonType": "solo",
+              "description": "Rhythmustraining (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            }
+          ],
+          "freeText": "",
+          "createdAt": "2025-01-31T08:00:00.000Z"
+        },
+        "outputSnapshot": {
+          "issuer": {
+            "name": "Max Mustermann",
+            "street": "Musterweg 12",
+            "postalCode": "50674",
+            "city": "Köln",
+            "email": "max.mustermann@example.de",
+            "phone": "+49 221 555 01 00"
+          },
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-marco-romano",
+              "name": "Marco Romano",
+              "email": "marco.romano@example.de",
+              "street": "Deutzer Freiheit 73",
+              "postalCode": "50679",
+              "city": "Köln"
+            }
+          ],
+          "students": [
+            {
+              "id": "student-demo-luca-romano",
+              "name": "Luca Romano"
+            }
+          ],
+          "accountHolder": "Max Mustermann",
+          "iban": "DE52000000000000000100",
+          "bic": "MUSTDEFFXXX",
+          "bankName": "Musterbank Köln"
+        },
+        "outputPeriod": "Januar 2025",
+        "amounts": {
+          "itemCents": [
+            3000,
+            3000,
+            3000,
+            3000,
+            3000,
+            3000,
+            3000,
+            3000
+          ],
+          "totalCents": 24000,
+          "legacyCalculatedTotalCents": 24000,
+          "source": "legacy-output",
+          "calculation": "legacy-v1"
+        },
+        "conflicts": [],
+        "snapshotHistory": [],
+        "registerEntries": []
+      },
+      {
+        "id": "version-v4-7",
+        "invoiceId": "invoice-demo-2025-02-schneider",
+        "originalId": "version-v4-7",
+        "replacesId": null,
+        "cancelsId": null,
+        "reason": "",
+        "provenance": "oldest-available",
+        "sourceUpdatedAt": "2025-02-10T12:00:00.000Z",
+        "content": {
+          "id": "invoice-demo-2025-02-schneider",
+          "number": "2025-0002-a+b",
+          "sequence": 2,
+          "year": 2025,
+          "invoiceDate": "2025-02-10",
+          "dueDate": "2025-02-24",
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-claudia-schneider"
+            },
+            {
+              "type": "guardian",
+              "id": "guardian-demo-tobias-schneider"
+            }
+          ],
+          "studentIds": [
+            "student-demo-mia-schneider",
+            "student-demo-jonas-schneider"
+          ],
+          "recipientStrategy": "joint",
+          "items": [
+            {
+              "id": "item-demo-2025-02-schneider-a-01",
+              "studentId": "student-demo-mia-schneider",
+              "serviceDate": "2025-02-03",
+              "lessonType": "solo",
+              "description": "Gitarrenunterricht (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-02-schneider-b-01",
+              "studentId": "student-demo-jonas-schneider",
+              "serviceDate": "2025-02-04",
+              "lessonType": "duo",
+              "description": "Duo-Unterricht (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-02-schneider-a-02",
+              "studentId": "student-demo-mia-schneider",
+              "serviceDate": "2025-02-06",
+              "lessonType": "solo",
+              "description": "Akkordtechnik (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-02-schneider-b-02",
+              "studentId": "student-demo-jonas-schneider",
+              "serviceDate": "2025-02-07",
+              "lessonType": "duo",
+              "description": "Rhythmus & Zusammenspiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-02-schneider-a-03",
+              "studentId": "student-demo-mia-schneider",
+              "serviceDate": "2025-02-10",
+              "lessonType": "solo",
+              "description": "Rhythmustraining (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-02-schneider-b-03",
+              "studentId": "student-demo-jonas-schneider",
+              "serviceDate": "2025-02-11",
+              "lessonType": "duo",
+              "description": "Ensemble-Spiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-02-schneider-a-04",
+              "studentId": "student-demo-mia-schneider",
+              "serviceDate": "2025-02-13",
+              "lessonType": "solo",
+              "description": "Fingerstyle (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-02-schneider-b-04",
+              "studentId": "student-demo-jonas-schneider",
+              "serviceDate": "2025-02-14",
+              "lessonType": "duo",
+              "description": "Akkordwechsel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-02-schneider-a-05",
+              "studentId": "student-demo-mia-schneider",
+              "serviceDate": "2025-02-17",
+              "lessonType": "solo",
+              "description": "Songbegleitung (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-02-schneider-b-05",
+              "studentId": "student-demo-jonas-schneider",
+              "serviceDate": "2025-02-18",
+              "lessonType": "duo",
+              "description": "Songbegleitung (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-02-schneider-a-06",
+              "studentId": "student-demo-mia-schneider",
+              "serviceDate": "2025-02-20",
+              "lessonType": "solo",
+              "description": "Gitarrenunterricht (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-02-schneider-b-06",
+              "studentId": "student-demo-jonas-schneider",
+              "serviceDate": "2025-02-21",
+              "lessonType": "duo",
+              "description": "Duo-Unterricht (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-02-schneider-a-07",
+              "studentId": "student-demo-mia-schneider",
+              "serviceDate": "2025-02-24",
+              "lessonType": "solo",
+              "description": "Akkordtechnik (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-02-schneider-b-07",
+              "studentId": "student-demo-jonas-schneider",
+              "serviceDate": "2025-02-25",
+              "lessonType": "duo",
+              "description": "Rhythmus & Zusammenspiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-02-schneider-a-08",
+              "studentId": "student-demo-mia-schneider",
+              "serviceDate": "2025-02-27",
+              "lessonType": "solo",
+              "description": "Rhythmustraining (Solo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-02-schneider-b-08",
+              "studentId": "student-demo-jonas-schneider",
+              "serviceDate": "2025-02-28",
+              "lessonType": "duo",
+              "description": "Ensemble-Spiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            }
+          ],
+          "freeText": "",
+          "createdAt": "2025-02-10T08:00:00.000Z"
+        },
+        "outputSnapshot": {
+          "issuer": {
+            "name": "Max Mustermann",
+            "street": "Musterweg 12",
+            "postalCode": "50674",
+            "city": "Köln",
+            "email": "max.mustermann@example.de",
+            "phone": "+49 221 555 01 00"
+          },
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-claudia-schneider",
+              "name": "Claudia Schneider",
+              "email": "claudia.schneider@example.de",
+              "street": "Lindenweg 8",
+              "postalCode": "50931",
+              "city": "Köln"
+            },
+            {
+              "type": "guardian",
+              "id": "guardian-demo-tobias-schneider",
+              "name": "Tobias Schneider",
+              "email": "tobias.schneider@example.de",
+              "street": "Lindenweg 8",
+              "postalCode": "50931",
+              "city": "Köln"
+            }
+          ],
+          "students": [
+            {
+              "id": "student-demo-mia-schneider",
+              "name": "Mia Schneider"
+            },
+            {
+              "id": "student-demo-jonas-schneider",
+              "name": "Jonas Schneider"
+            }
+          ],
+          "accountHolder": "Max Mustermann",
+          "iban": "DE52000000000000000100",
+          "bic": "MUSTDEFFXXX",
+          "bankName": "Musterbank Köln"
+        },
+        "outputPeriod": "Februar 2025",
+        "amounts": {
+          "itemCents": [
+            2250,
+            1500,
+            2250,
+            1500,
+            2250,
+            1500,
+            2250,
+            1500,
+            2250,
+            1500,
+            2250,
+            1500,
+            2250,
+            1500,
+            2250,
+            1500
+          ],
+          "totalCents": 30000,
+          "legacyCalculatedTotalCents": 30000,
+          "source": "legacy-output",
+          "calculation": "legacy-v1"
+        },
+        "conflicts": [],
+        "snapshotHistory": [],
+        "registerEntries": []
+      },
+      {
+        "id": "version-v4-8",
+        "invoiceId": "invoice-demo-2025-02-yilmaz",
+        "originalId": "version-v4-8",
+        "replacesId": null,
+        "cancelsId": null,
+        "reason": "",
+        "provenance": "oldest-available",
+        "sourceUpdatedAt": "2025-02-10T12:00:00.000Z",
+        "content": {
+          "id": "invoice-demo-2025-02-yilmaz",
+          "number": "2025-0002-c+d",
+          "sequence": 2,
+          "year": 2025,
+          "invoiceDate": "2025-02-10",
+          "dueDate": "2025-02-24",
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-aylin-yilmaz"
+            },
+            {
+              "type": "guardian",
+              "id": "guardian-demo-murat-yilmaz"
+            }
+          ],
+          "studentIds": [
+            "student-demo-elif-yilmaz",
+            "student-demo-deniz-yilmaz"
+          ],
+          "recipientStrategy": "joint",
+          "items": [
+            {
+              "id": "item-demo-2025-02-yilmaz-d-01",
+              "studentId": "student-demo-deniz-yilmaz",
+              "serviceDate": "2025-02-01",
+              "lessonType": "solo",
+              "description": "Gitarrenunterricht (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-02-yilmaz-c-01",
+              "studentId": "student-demo-elif-yilmaz",
+              "serviceDate": "2025-02-04",
+              "lessonType": "duo",
+              "description": "Duo-Unterricht (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-02-yilmaz-d-02",
+              "studentId": "student-demo-deniz-yilmaz",
+              "serviceDate": "2025-02-05",
+              "lessonType": "solo",
+              "description": "Akkordtechnik (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-02-yilmaz-c-02",
+              "studentId": "student-demo-elif-yilmaz",
+              "serviceDate": "2025-02-07",
+              "lessonType": "duo",
+              "description": "Rhythmus & Zusammenspiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-02-yilmaz-d-03",
+              "studentId": "student-demo-deniz-yilmaz",
+              "serviceDate": "2025-02-08",
+              "lessonType": "solo",
+              "description": "Rhythmustraining (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-02-yilmaz-c-03",
+              "studentId": "student-demo-elif-yilmaz",
+              "serviceDate": "2025-02-11",
+              "lessonType": "duo",
+              "description": "Ensemble-Spiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-02-yilmaz-d-04",
+              "studentId": "student-demo-deniz-yilmaz",
+              "serviceDate": "2025-02-12",
+              "lessonType": "solo",
+              "description": "Fingerstyle (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-02-yilmaz-c-04",
+              "studentId": "student-demo-elif-yilmaz",
+              "serviceDate": "2025-02-14",
+              "lessonType": "duo",
+              "description": "Akkordwechsel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-02-yilmaz-d-05",
+              "studentId": "student-demo-deniz-yilmaz",
+              "serviceDate": "2025-02-15",
+              "lessonType": "solo",
+              "description": "Songbegleitung (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-02-yilmaz-c-05",
+              "studentId": "student-demo-elif-yilmaz",
+              "serviceDate": "2025-02-18",
+              "lessonType": "duo",
+              "description": "Songbegleitung (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-02-yilmaz-d-06",
+              "studentId": "student-demo-deniz-yilmaz",
+              "serviceDate": "2025-02-19",
+              "lessonType": "solo",
+              "description": "Gitarrenunterricht (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-02-yilmaz-c-06",
+              "studentId": "student-demo-elif-yilmaz",
+              "serviceDate": "2025-02-21",
+              "lessonType": "duo",
+              "description": "Duo-Unterricht (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-02-yilmaz-d-07",
+              "studentId": "student-demo-deniz-yilmaz",
+              "serviceDate": "2025-02-22",
+              "lessonType": "solo",
+              "description": "Akkordtechnik (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-02-yilmaz-c-07",
+              "studentId": "student-demo-elif-yilmaz",
+              "serviceDate": "2025-02-25",
+              "lessonType": "duo",
+              "description": "Rhythmus & Zusammenspiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            },
+            {
+              "id": "item-demo-2025-02-yilmaz-d-08",
+              "studentId": "student-demo-deniz-yilmaz",
+              "serviceDate": "2025-02-26",
+              "lessonType": "solo",
+              "description": "Rhythmustraining (Solo)",
+              "quantity": 1,
+              "unit": "Std.",
+              "unitPrice": 30
+            },
+            {
+              "id": "item-demo-2025-02-yilmaz-c-08",
+              "studentId": "student-demo-elif-yilmaz",
+              "serviceDate": "2025-02-28",
+              "lessonType": "duo",
+              "description": "Ensemble-Spiel (Duo)",
+              "quantity": 0.75,
+              "unit": "Std.",
+              "unitPrice": 20
+            }
+          ],
+          "freeText": "",
+          "createdAt": "2025-02-10T08:00:00.000Z"
+        },
+        "outputSnapshot": {
+          "issuer": {
+            "name": "Max Mustermann",
+            "street": "Musterweg 12",
+            "postalCode": "50674",
+            "city": "Köln",
+            "email": "max.mustermann@example.de",
+            "phone": "+49 221 555 01 00"
+          },
+          "recipients": [
+            {
+              "type": "guardian",
+              "id": "guardian-demo-aylin-yilmaz",
+              "name": "Aylin Yılmaz",
+              "email": "aylin.yilmaz@example.de",
+              "street": "Rosenstraße 14",
+              "postalCode": "50678",
+              "city": "Köln"
+            },
+            {
+              "type": "guardian",
+              "id": "guardian-demo-murat-yilmaz",
+              "name": "Murat Yılmaz",
+              "email": "murat.yilmaz@example.de",
+              "street": "Rosenstraße 14",
+              "postalCode": "50678",
+              "city": "Köln"
+            }
+          ],
+          "students": [
+            {
+              "id": "student-demo-elif-yilmaz",
+              "name": "Elif Yılmaz"
+            },
+            {
+              "id": "student-demo-deniz-yilmaz",
+              "name": "Deniz Yılmaz"
+            }
+          ],
+          "accountHolder": "Max Mustermann",
+          "iban": "DE52000000000000000100",
+          "bic": "MUSTDEFFXXX",
+          "bankName": "Musterbank Köln"
+        },
+        "outputPeriod": "Februar 2025",
+        "amounts": {
+          "itemCents": [
+            3000,
+            1500,
+            3000,
+            1500,
+            3000,
+            1500,
+            3000,
+            1500,
+            3000,
+            1500,
+            3000,
+            1500,
+            3000,
+            1500,
+            3000,
+            1500
+          ],
+          "totalCents": 36000,
+          "legacyCalculatedTotalCents": 36000,
+          "source": "legacy-output",
+          "calculation": "legacy-v1"
+        },
+        "conflicts": [],
+        "snapshotHistory": [],
+        "registerEntries": []
+      }
+    ],
+    "invoiceAdministration": [
+      {
+        "versionId": "version-v4-0",
+        "archived": false,
+        "events": [
+          {
+            "at": "2025-02-05T12:00:00.000Z",
+            "status": "paid",
+            "kind": "imported",
+            "reason": "Ältester verfügbarer Verwaltungsstand; frühere Versand-/Statusereignisse unbekannt."
+          }
+        ],
+        "resolutions": []
+      },
+      {
+        "versionId": "version-v4-1",
+        "archived": false,
+        "events": [
+          {
+            "at": "2025-02-05T12:00:00.000Z",
+            "status": "paid",
+            "kind": "imported",
+            "reason": "Ältester verfügbarer Verwaltungsstand; frühere Versand-/Statusereignisse unbekannt."
+          }
+        ],
+        "resolutions": []
+      },
+      {
+        "versionId": "version-v4-2",
+        "archived": false,
+        "events": [
+          {
+            "at": "2025-02-05T12:00:00.000Z",
+            "status": "paid",
+            "kind": "imported",
+            "reason": "Ältester verfügbarer Verwaltungsstand; frühere Versand-/Statusereignisse unbekannt."
+          }
+        ],
+        "resolutions": []
+      },
+      {
+        "versionId": "version-v4-3",
+        "archived": false,
+        "events": [
+          {
+            "at": "2025-02-05T12:00:00.000Z",
+            "status": "paid",
+            "kind": "imported",
+            "reason": "Ältester verfügbarer Verwaltungsstand; frühere Versand-/Statusereignisse unbekannt."
+          }
+        ],
+        "resolutions": []
+      },
+      {
+        "versionId": "version-v4-4",
+        "archived": false,
+        "events": [
+          {
+            "at": "2025-02-05T12:00:00.000Z",
+            "status": "paid",
+            "kind": "imported",
+            "reason": "Ältester verfügbarer Verwaltungsstand; frühere Versand-/Statusereignisse unbekannt."
+          }
+        ],
+        "resolutions": []
+      },
+      {
+        "versionId": "version-v4-5",
+        "archived": false,
+        "events": [
+          {
+            "at": "2025-02-05T12:00:00.000Z",
+            "status": "paid",
+            "kind": "imported",
+            "reason": "Ältester verfügbarer Verwaltungsstand; frühere Versand-/Statusereignisse unbekannt."
+          }
+        ],
+        "resolutions": []
+      },
+      {
+        "versionId": "version-v4-6",
+        "archived": false,
+        "events": [
+          {
+            "at": "2025-02-05T12:00:00.000Z",
+            "status": "paid",
+            "kind": "imported",
+            "reason": "Ältester verfügbarer Verwaltungsstand; frühere Versand-/Statusereignisse unbekannt."
+          }
+        ],
+        "resolutions": []
+      },
+      {
+        "versionId": "version-v4-7",
+        "archived": false,
+        "events": [
+          {
+            "at": "2025-02-10T12:00:00.000Z",
+            "status": "sent",
+            "kind": "imported",
+            "reason": "Ältester verfügbarer Verwaltungsstand; frühere Versand-/Statusereignisse unbekannt."
+          }
+        ],
+        "resolutions": []
+      },
+      {
+        "versionId": "version-v4-8",
+        "archived": false,
+        "events": [
+          {
+            "at": "2025-02-10T12:00:00.000Z",
+            "status": "sent",
+            "kind": "imported",
+            "reason": "Ältester verfügbarer Verwaltungsstand; frühere Versand-/Statusereignisse unbekannt."
+          }
+        ],
+        "resolutions": []
+      }
+    ],
+    "payments": [
+      {
+        "id": "payment-v4-0",
+        "sourceVersionId": "version-v4-0",
+        "amountCents": 33750,
+        "paidAt": "2025-02-05",
+        "paymentDayStatus": "confirmed",
+        "recordedAt": "2025-02-05T12:00:00.000Z",
+        "provenance": "legacy-status",
+        "allocations": [
+          {
+            "versionId": "version-v4-0",
+            "at": "2025-02-05T12:00:00.000Z",
+            "reason": "Aus historischem Vollzahlungsstatus übernommen; Zahlungsdatum bleibt unbekannt, wenn es nicht gespeichert war."
+          }
+        ]
+      },
+      {
+        "id": "payment-v4-1",
+        "sourceVersionId": "version-v4-1",
+        "amountCents": 40500,
+        "paidAt": "2025-02-05",
+        "paymentDayStatus": "confirmed",
+        "recordedAt": "2025-02-05T12:00:00.000Z",
+        "provenance": "legacy-status",
+        "allocations": [
+          {
+            "versionId": "version-v4-1",
+            "at": "2025-02-05T12:00:00.000Z",
+            "reason": "Aus historischem Vollzahlungsstatus übernommen; Zahlungsdatum bleibt unbekannt, wenn es nicht gespeichert war."
+          }
+        ]
+      },
+      {
+        "id": "payment-v4-2",
+        "sourceVersionId": "version-v4-2",
+        "amountCents": 20250,
+        "paidAt": "2025-02-05",
+        "paymentDayStatus": "confirmed",
+        "recordedAt": "2025-02-05T12:00:00.000Z",
+        "provenance": "legacy-status",
+        "allocations": [
+          {
+            "versionId": "version-v4-2",
+            "at": "2025-02-05T12:00:00.000Z",
+            "reason": "Aus historischem Vollzahlungsstatus übernommen; Zahlungsdatum bleibt unbekannt, wenn es nicht gespeichert war."
+          }
+        ]
+      },
+      {
+        "id": "payment-v4-3",
+        "sourceVersionId": "version-v4-3",
+        "amountCents": 15000,
+        "paidAt": "2025-02-05",
+        "paymentDayStatus": "confirmed",
+        "recordedAt": "2025-02-05T12:00:00.000Z",
+        "provenance": "legacy-status",
+        "allocations": [
+          {
+            "versionId": "version-v4-3",
+            "at": "2025-02-05T12:00:00.000Z",
+            "reason": "Aus historischem Vollzahlungsstatus übernommen; Zahlungsdatum bleibt unbekannt, wenn es nicht gespeichert war."
+          }
+        ]
+      },
+      {
+        "id": "payment-v4-4",
+        "sourceVersionId": "version-v4-4",
+        "amountCents": 27000,
+        "paidAt": "2025-02-05",
+        "paymentDayStatus": "confirmed",
+        "recordedAt": "2025-02-05T12:00:00.000Z",
+        "provenance": "legacy-status",
+        "allocations": [
+          {
+            "versionId": "version-v4-4",
+            "at": "2025-02-05T12:00:00.000Z",
+            "reason": "Aus historischem Vollzahlungsstatus übernommen; Zahlungsdatum bleibt unbekannt, wenn es nicht gespeichert war."
+          }
+        ]
+      },
+      {
+        "id": "payment-v4-5",
+        "sourceVersionId": "version-v4-5",
+        "amountCents": 35250,
+        "paidAt": "2025-02-05",
+        "paymentDayStatus": "confirmed",
+        "recordedAt": "2025-02-05T12:00:00.000Z",
+        "provenance": "legacy-status",
+        "allocations": [
+          {
+            "versionId": "version-v4-5",
+            "at": "2025-02-05T12:00:00.000Z",
+            "reason": "Aus historischem Vollzahlungsstatus übernommen; Zahlungsdatum bleibt unbekannt, wenn es nicht gespeichert war."
+          }
+        ]
+      },
+      {
+        "id": "payment-v4-6",
+        "sourceVersionId": "version-v4-6",
+        "amountCents": 24000,
+        "paidAt": "2025-02-05",
+        "paymentDayStatus": "confirmed",
+        "recordedAt": "2025-02-05T12:00:00.000Z",
+        "provenance": "legacy-status",
+        "allocations": [
+          {
+            "versionId": "version-v4-6",
+            "at": "2025-02-05T12:00:00.000Z",
+            "reason": "Aus historischem Vollzahlungsstatus übernommen; Zahlungsdatum bleibt unbekannt, wenn es nicht gespeichert war."
+          }
+        ]
+      }
+    ],
+    "historicalSnapshotCorrections": []
+  }
+}
