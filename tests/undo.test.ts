@@ -156,3 +156,16 @@ test('3.AP5: voneinander unabhängige Undo-Pakete und Demo-Bestand funktionieren
   assert.deepEqual(restoredDraft.guardians, demo.guardians)
   validateBackupState(restoredDraft)
 })
+
+test('3.AP5: Korrekturentwurf mit bereits historisch fehlender Person ist identisch wiederherstellbar', () => {
+  const initial = undoFixture()
+  let state = requireSuccess(saveInvoiceState(initial, { id: initial.invoices[0].id, ...invoiceDraftFields(initial.invoices[0]) }, true, undoAt))
+  state = createCorrectionDraft(state, state.invoices[0].id, 'Historische Lücke', undoAt)
+  state = requireSuccess(deleteGuardianState(state, 'g1'))
+  const original = state.invoices[1]
+  const prepared = requireSuccess(prepareUndoChangeState(state, { kind: 'draft', id: original.id }))
+  const restored = requireSuccess(undoChangeState(prepared.state, prepared.undo))
+  assert.deepEqual(restored.invoices[1], original)
+  assert.deepEqual(restored.documentVersions, state.documentVersions)
+  assertOriginalsPreserved(state, restored)
+})

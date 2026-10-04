@@ -113,6 +113,9 @@ test('3.AP5: Keyboard-Undo hat sichtbaren Fokus und klaut bei Erscheinen keinen 
   await deleteDraft(page)
   await expect(undoButton(page)).not.toBeFocused()
   await undoButton(page).focus()
+  await page.keyboard.press('Tab')
+  await page.keyboard.press('Shift+Tab')
+  await expect(undoButton(page)).toBeFocused()
   const focus = await undoButton(page).evaluate((element) => {
     const style = getComputedStyle(element)
     return { style: style.outlineStyle, width: parseFloat(style.outlineWidth) }

@@ -39,10 +39,13 @@ function invoicePeople(invoice: Invoice): RecipientRef[] {
 }
 
 function assertDraftAudience(state: AppState, invoice: Invoice) {
-  if (invoice.recipients.some((ref) => invoice.studentIds.some((id) => {
-    const student = state.students.find((entry) => entry.id === id)
-    return student && !recipientCanBillStudent(ref, student)
-  }))) conflict('Die Empfänger sind inzwischen nicht mehr allen zugehörigen Lernenden zugeordnet.')
+  if (invoice.recipients.some((ref) => {
+    if (invoice.correction && !state[ref.type === 'guardian' ? 'guardians' : 'students'].some((person) => person.id === ref.id)) return false
+    return invoice.studentIds.some((id) => {
+      const student = state.students.find((entry) => entry.id === id)
+      return student && !recipientCanBillStudent(ref, student)
+    })
+  })) conflict('Die Empfänger sind inzwischen nicht mehr allen zugehörigen Lernenden zugeordnet.')
 }
 
 /** Capture inside the commit producer, from the state actually being changed. */
