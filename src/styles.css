@@ -767,7 +767,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .button::after { transition: opacity var(--dur-fast) var(--ease-out); pointer-events: none; }
 .button:focus-visible::after { opacity: .07; }
 :where(.button, .icon-button, .toast button):active:not(:disabled) { transform: scale(.97); }
-:where(.choice-chip, .theme-picker label):active:not(:has(input:disabled)) { transform: scale(.98); }
 .theme-switch svg, .mobile-bottom-nav svg { transition: transform var(--dur-base) var(--ease-out); }
 .theme-switch label.is-selected svg { transform: scale(1.08) rotate(-8deg); }
 .theme-switch label:active svg { transform: scale(.92); }

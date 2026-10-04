@@ -1,6 +1,7 @@
 import { test, expect, type Page, type TestInfo } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
-import { readdir, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { readFile, readdir, writeFile } from 'node:fs/promises'
 import type { AppState, InvoiceDraft } from '../../src/types'
 import { documentAt, documentDraft, documentFamily } from '../documentFixtures'
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
@@ -49,7 +50,7 @@ function printableState(itemCount: number, freeText = ''): AppState {
   return saveInvoiceDraft(state, draft, true, documentAt)
 }
 
-async function createPdf(page: Page, state: AppState, invoiceId: string, label: string, testInfo: TestInfo): Promise<{ pages: number; text: string; flowText: string; payload: string; groups: Array<{ title: string; descriptions: string[]; subtotal: string }>; paperColor: string; paperBackground: string }> {
+async function createPdf(page: Page, state: AppState, invoiceId: string, label: string, testInfo: TestInfo, appearance?: { theme: 'light' | 'dark'; reduced: boolean }) {
   const rendering = await page.context().newPage()
   try {
     await rendering.goto('/')
@@ -60,6 +61,19 @@ async function createPdf(page: Page, state: AppState, invoiceId: string, label: 
       await document.fonts.ready
     }, { state, invoiceId })
     await expect.poll(() => rendering.evaluate(() => document.documentElement.dataset.documentReady)).toBe(invoiceId)
+    if (appearance) {
+      await rendering.emulateMedia({ colorScheme: appearance.theme, reducedMotion: appearance.reduced ? 'reduce' : 'no-preference' })
+      await rendering.evaluate(({ theme, reduced }) => {
+        document.documentElement.dataset.theme = theme
+        document.documentElement.style.colorScheme = theme
+        document.documentElement.classList.toggle('reduce-motion', reduced)
+        document.documentElement.classList.add('theme-changing')
+      }, appearance)
+      expect(await rendering.locator('.invoice-paper, .invoice-paper *').evaluateAll((elements) => elements.every((element) => {
+        const style = getComputedStyle(element)
+        return style.animationName === 'none' && style.transitionProperty === 'none'
+      }))).toBe(true)
+    }
     const structure = await rendering.locator('.invoice-paper').evaluate((paper) => ({
       groups: [...paper.querySelectorAll('.invoice-month-group')].map((group) => ({
         title: group.querySelector('.invoice-group-heading')!.textContent!,
@@ -87,15 +101,47 @@ async function createPdf(page: Page, state: AppState, invoiceId: string, label: 
     const prefix = testInfo.outputPath(`${label}-page`)
     execFileSync('pdftoppm', ['-png', '-f', '1', '-l', String(Math.max(1, pages)), path, prefix])
     const images = (await readdir(testInfo.outputDir)).filter((name) => name.startsWith(`${label}-page-`) && name.endsWith('.png')).sort()
+    // PDF metadata varies; compare the rendered pages, including the GiroCode.
+    const rasterHashes = appearance ? await Promise.all(images.map(async (name) => createHash('sha256').update(await readFile(testInfo.outputPath(name))).digest('hex'))) : []
     for (const image of [images.at(0), images.at(-1)].filter((value, index, values): value is string => Boolean(value) && values.indexOf(value) === index)) {
       await testInfo.attach(image, { path: testInfo.outputPath(image), contentType: 'image/png' })
     }
     await testInfo.attach(`${label}.pdf`, { body: pdf, contentType: 'application/pdf' })
     const payload = await rendering.evaluate(() => document.documentElement.dataset.giroPayload ?? '')
-    return { pages, text, flowText, payload, ...structure }
+    return { pages, text, flowText, payload, rasterHashes, ...structure }
   } finally {
     await rendering.close()
   }
+}
+
+for (const variant of ['ein-monat', 'zwei-monate', 'entwurf', 'leistungsdaten', 'legacy-fallback', 'mehrseitig'] as const) {
+  test(`AP8 Browser/PDF: ${variant} bleibt bei Theme und Motion pixelgleich zur hellen Referenz`, async ({ page }, testInfo) => {
+    let state = monthlyPrintState(variant !== 'ein-monat', variant === 'mehrseitig' ? 40 : undefined)
+    if (variant === 'entwurf') {
+      const invoice = selectInvoice(state, state.invoices[0])
+      state = saveInvoiceDraft(documentFamily(), { ...documentDraft(), studentIds: invoice.studentIds, recipients: invoice.recipients, items: invoice.items }, false, documentAt)
+    } else if (variant === 'leistungsdaten') {
+      state.documentVersions[0].content.items[0].serviceDate = ''
+      state.documentVersions[0].content.items[1].serviceDate = '2026-02-30'
+    } else if (variant === 'legacy-fallback') {
+      Object.assign(state.documentVersions[0].amounts, { calculation: 'legacy-v1', source: 'legacy-output', itemCents: [1999, 2000, 2000, 2000], totalCents: 8001 })
+    }
+    const before = structuredClone(state)
+    let reference: Awaited<ReturnType<typeof createPdf>> | undefined
+    for (const theme of ['light', 'dark'] as const) for (const reduced of [false, true]) {
+      const pdf = await createPdf(page, state, state.invoices[0].id, `ap8-${variant}-${theme}-${reduced}`, testInfo, { theme, reduced })
+      expect(pdf.paperColor).toBe('rgb(11, 27, 63)')
+      expect(pdf.paperBackground).toBe('rgb(255, 255, 255)')
+      expect(pdf.rasterHashes).toHaveLength(pdf.pages)
+      if (!reference) reference = pdf
+      else {
+        expect(pdf.rasterHashes).toEqual(reference.rasterHashes)
+        expect(pdf.text).toBe(reference.text)
+        expect(pdf.payload).toBe(reference.payload)
+      }
+    }
+    expect(state).toEqual(before)
+  })
 }
 
 
