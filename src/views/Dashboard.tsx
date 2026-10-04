@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CheckCheck, Download, FilePlus2, LayoutDashboard, Plus } from 'lucide-react'
+import { CheckCheck, Clock3, Download, FilePenLine, FilePlus2, LayoutDashboard, Plus } from 'lucide-react'
 import type { AppState, PageKey } from '../types'
 import { EmptyState } from '../components/EmptyState'
 import { DashboardNumber } from '../components/DashboardNumber'
@@ -54,9 +54,9 @@ export function Dashboard({ state, mode, lastBackupAt, clock = systemClock, onNa
     {onLoadDemo && <button className="button button--text dashboard-demo" onClick={onLoadDemo}>Mit Beispieldaten testen</button>}
 
     <section className="dashboard-amounts" aria-label="Beträge">
-      <article className={`surface dashboard-stat${entryClass}`} style={staggerStyle(0)} aria-labelledby="dashboard-paid"><h2 id="dashboard-paid">Bezahlt</h2><DashboardNumber value={stats.paid.yearCents} money /><p>Zahlungseingang {stats.monthly.year}</p>{stats.paid.withoutConfirmedDay.count > 0 && <p className="dashboard-stat__note">{stats.paid.withoutConfirmedDay.count} {stats.paid.withoutConfirmedDay.count === 1 ? 'Zahlung' : 'Zahlungen'} ohne bestätigten Zahlungstag: {euro.format(stats.paid.withoutConfirmedDay.cents / 100)} (keinem Jahr zugeordnet)</p>}</article>
-      <article className={`surface dashboard-stat${entryClass}`} style={staggerStyle(1)} aria-labelledby="dashboard-open"><h2 id="dashboard-open">Offen</h2><DashboardNumber value={stats.open.totalCents} money /><p>{stats.open.count} {stats.open.count === 1 ? 'Rechnung' : 'Rechnungen'}</p><p className="dashboard-stat__note">davon überfällig: {euro.format(stats.open.overdueCents / 100)}, {stats.open.overdueCount} {stats.open.overdueCount === 1 ? 'Rechnung' : 'Rechnungen'}</p></article>
-      <article className={`surface dashboard-stat${entryClass}`} style={staggerStyle(2)} aria-labelledby="dashboard-drafts"><h2 id="dashboard-drafts">Entwürfe (nicht finalisiert)</h2><DashboardNumber value={stats.drafts.totalCents} money /><p>{stats.drafts.totalCount} {stats.drafts.totalCount === 1 ? 'Entwurf' : 'Entwürfe'}</p>{stats.drafts.uncalculableCount > 0 && <p className="dashboard-stat__note">{stats.drafts.uncalculableCount} {stats.drafts.uncalculableCount === 1 ? 'Entwurf ist' : 'Entwürfe sind'} nicht berechenbar und fehlen im Betrag.</p>}</article>
+      <article className={`surface dashboard-stat dashboard-stat--paid${entryClass}`} style={staggerStyle(0)} aria-labelledby="dashboard-paid"><span className="dashboard-stat__icon" aria-hidden="true"><CheckCheck /></span><h2 id="dashboard-paid">Bezahlt</h2><DashboardNumber value={stats.paid.yearCents} money /><p>Zahlungseingang {stats.monthly.year}</p>{stats.paid.withoutConfirmedDay.count > 0 && <p className="dashboard-stat__note">{stats.paid.withoutConfirmedDay.count} {stats.paid.withoutConfirmedDay.count === 1 ? 'Zahlung' : 'Zahlungen'} ohne bestätigten Zahlungstag: {euro.format(stats.paid.withoutConfirmedDay.cents / 100)} (keinem Jahr zugeordnet)</p>}</article>
+      <article className={`surface dashboard-stat dashboard-stat--open${entryClass}`} style={staggerStyle(1)} aria-labelledby="dashboard-open"><span className="dashboard-stat__icon" aria-hidden="true"><Clock3 /></span><h2 id="dashboard-open">Offen</h2><DashboardNumber value={stats.open.totalCents} money /><p>{stats.open.count} {stats.open.count === 1 ? 'Rechnung' : 'Rechnungen'}</p><p className="dashboard-stat__note dashboard-stat__note--overdue"><strong>{stats.open.overdueCount} überfällig</strong> · davon überfällig: {euro.format(stats.open.overdueCents / 100)}, {stats.open.overdueCount} {stats.open.overdueCount === 1 ? 'Rechnung' : 'Rechnungen'}</p></article>
+      <article className={`surface dashboard-stat dashboard-stat--draft${entryClass}`} style={staggerStyle(2)} aria-labelledby="dashboard-drafts"><span className="dashboard-stat__icon" aria-hidden="true"><FilePenLine /></span><h2 id="dashboard-drafts">Entwürfe (nicht finalisiert)</h2><DashboardNumber value={stats.drafts.totalCents} money /><p>{stats.drafts.totalCount} {stats.drafts.totalCount === 1 ? 'Entwurf' : 'Entwürfe'}</p>{stats.drafts.uncalculableCount > 0 && <p className="dashboard-stat__note">{stats.drafts.uncalculableCount} {stats.drafts.uncalculableCount === 1 ? 'Entwurf ist' : 'Entwürfe sind'} nicht berechenbar und fehlen im Betrag.</p>}</article>
     </section>
 
     <section className="dashboard-people" aria-label="Personenzähler">
@@ -64,19 +64,21 @@ export function Dashboard({ state, mode, lastBackupAt, clock = systemClock, onNa
       <article className={`surface dashboard-stat${entryClass}`} style={staggerStyle(4)} aria-labelledby="dashboard-children"><h2 id="dashboard-children">Kinder</h2><DashboardNumber value={stats.people.students} /><p>Lernende · davon aktiv: {stats.people.activeStudents}</p></article>
     </section>
 
+    <div className="dashboard-content">
     <section className="surface dashboard-unpaid" aria-labelledby="dashboard-unpaid-title">
       <header className="dashboard-section-heading"><h2 id="dashboard-unpaid-title">Noch nicht gezahlt ({stats.open.count})</h2></header>
       {stats.open.count === 0 ? <EmptyState icon={CheckCheck} title={state.invoices.length ? 'Alles bezahlt' : 'Noch keine offenen Rechnungen'} description={state.invoices.length ? 'Hier ist alles erledigt. Sobald eine Rechnung offen ist, findest du sie hier.' : 'Deine offenen finalisierten Rechnungen erscheinen hier.'} /> : <ul className="dashboard-open-list">
         {stats.open.items.slice(0, 8).map((item, index) => <li key={item.invoiceId} className={entryClass} style={staggerStyle(index)}><button className="dashboard-open-row" onClick={() => onOpenInvoice(item.invoiceId)}>
           <span className="dashboard-open-row__person"><strong>{item.number}</strong><span>{item.recipientLabel}</span><small>{item.studentLabel}</small></span>
-          <span className="dashboard-open-row__dates"><span>Rechnung vom {formatDate(item.invoiceDate)}</span><small>seit {days(item.daysSinceInvoice, true)} offen</small><span>Fällig am {formatDate(item.dueDate)}</span><StatusChip status={item.isOverdue ? 'overdue' : 'sent'}>{item.isOverdue ? `${days(item.daysOverdue)} überfällig` : item.daysUntilDue === 0 ? 'heute fällig' : `fällig in ${days(item.daysUntilDue, true)}`}</StatusChip></span>
+          <span className="dashboard-open-row__dates"><span>Rechnung vom {formatDate(item.invoiceDate)}</span><small>seit {days(item.daysSinceInvoice, true)} offen</small><strong className={`dashboard-due${item.isOverdue ? " dashboard-due--overdue" : ""}`}>{item.isOverdue ? `Überfällig seit ${days(item.daysOverdue, true)}` : item.daysUntilDue === 0 ? "Heute fällig" : `Fällig in ${days(item.daysUntilDue, true)}`}</strong><span>Fällig am {formatDate(item.dueDate)}</span><StatusChip status={item.isOverdue ? 'overdue' : 'sent'}>{item.isOverdue ? `${days(item.daysOverdue)} überfällig` : item.daysUntilDue === 0 ? 'heute fällig' : `fällig in ${days(item.daysUntilDue, true)}`}</StatusChip></span>
           <strong className="dashboard-open-row__amount">{euro.format(item.openCents / 100)}</strong>
         </button></li>)}
       </ul>}
       {stats.open.count > 8 && <footer className="dashboard-unpaid__footer"><button className="button button--text" onClick={onShowUnpaid}>Alle in Rechnungen anzeigen</button></footer>}
     </section>
 
-    <DashboardMonthlyChart monthly={stats.monthly} onYearChange={setYear} />
+    <DashboardMonthlyChart monthly={stats.monthly} onYearChange={setYear} currentDate={now} />
+    </div>
     {showBackup && <section className="surface dashboard-backup" aria-labelledby="dashboard-backup-title"><div><h2 id="dashboard-backup-title">Zeit für ein Backup</h2><p>Sichere deinen gespeicherten Bestand als JSON-Datei außerhalb dieses Browserprofils.</p></div><button className="button button--tonal" onClick={onExport}><Download aria-hidden="true" /> JSON exportieren</button></section>}
   </div>
 }
