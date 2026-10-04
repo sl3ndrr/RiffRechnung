@@ -741,7 +741,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .status-chip { position: relative; }
 .status-chip__label { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: var(--space-2); }
 .status-chip__previous { border-radius: inherit; position: absolute; inset: 0; pointer-events: none; animation: motion-fade-out var(--dur-fast) var(--ease-out) forwards; }
-.invoice-detail__previous { position: absolute; inset: 0; width: 100%; height: 100%; padding: 24px; z-index: 1; overflow: hidden; pointer-events: none; }
+.invoice-detail__previous { position: fixed; padding: 24px; z-index: 51; overflow: hidden; pointer-events: none; }
 .editor-items { position: relative; }
 .editor-item--exit { position: absolute; margin: 0; pointer-events: none; }
 :is(.invoice-page, .document-history, .settings-page, .modal__body) details[open] > :not(summary):not([role='alert']):not(.form-errors):not(.field-error):not(:has([role='alert'], .field-error, .form-errors)) { animation: motion-fade-in var(--dur-fast) var(--ease-out) backwards; }

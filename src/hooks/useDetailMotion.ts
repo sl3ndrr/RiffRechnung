@@ -24,11 +24,16 @@ export function useDetailMotion(ref: RefObject<HTMLElement | null>, invoice: Inv
     ghost.inert = true
     ghost.querySelectorAll('[id]').forEach((node) => node.removeAttribute('id'))
     const incoming = Array.from(element.children).map((node) => node.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing }))
-    element.append(ghost)
+    // Keep decorative content outside the live detail's labels/selectors.
+    const bounds = element.getBoundingClientRect()
+    Object.assign(ghost.style, { top: `${bounds.top}px`, left: `${bounds.left}px`, width: `${bounds.width}px`, height: `${bounds.height}px` })
+    document.body.append(ghost)
     const outgoing = ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration, easing })
     const cancel = () => { ghost.remove(); outgoing.cancel(); incoming.forEach((animation) => animation.cancel()) }
     const timer = window.setTimeout(cancel, duration)
     window.addEventListener('beforeprint', cancel)
-    return () => { window.clearTimeout(timer); window.removeEventListener('beforeprint', cancel); cancel() }
+    window.addEventListener('resize', cancel)
+    window.addEventListener('scroll', cancel, true)
+    return () => { window.clearTimeout(timer); window.removeEventListener('beforeprint', cancel); window.removeEventListener('resize', cancel); window.removeEventListener('scroll', cancel, true); cancel() }
   }, [invoice, reduced, ref])
 }

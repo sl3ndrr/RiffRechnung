@@ -92,6 +92,7 @@ test('3.AP7: Detailwechsel hält nur einen bedienbaren Bereich und Eingaben sind
   await page.getByRole('button', { name: '2026-0001-a', exact: true }).click()
   await page.getByRole('button', { name: '2026-0002-a', exact: true }).click()
   await expect(page.locator('.invoice-detail')).toHaveCount(1)
+  await expect(page.locator('.invoice-detail .status-chip')).toHaveCount(1)
   await expect(page.getByRole('complementary', { name: 'Details zu 2026-0002-a', exact: true })).toHaveCount(1)
   await expect(page.getByRole('complementary', { name: 'Details zu 2026-0001-a', exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Detailansicht schließen', exact: true })).toBeFocused()
