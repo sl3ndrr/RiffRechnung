@@ -293,9 +293,9 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
 
       <div className="detail-actions">
         {!isFinalizedInvoice(invoice) ? (
-          <>{invoice.recipientStrategy === 'separate' && !invoice.correction ? <p className="notice" role="status">Historischer Aufteilungsentwurf: Bitte öffnen, alle Angaben prüfen und ausdrücklich als gemeinsamen Entwurf übernehmen. Eine direkte Finalisierung ist gesperrt.</p> : <button className="button button--primary" type="button" onClick={() => onSetStatus('sent')}><Send aria-hidden="true" /> Finalisieren</button>}<button className="button button--tonal" type="button" onClick={onPrint}><Printer aria-hidden="true" /> Vorschau</button><button className="button button--text" type="button" onClick={onEdit}><Edit3 aria-hidden="true" /> Bearbeiten</button></>
+          <>{invoice.recipientStrategy === 'separate' && !invoice.correction ? <p className="notice" role="status">Historischer Aufteilungsentwurf: Bitte öffnen, alle Angaben prüfen und ausdrücklich als gemeinsamen Entwurf übernehmen. Eine direkte Finalisierung ist gesperrt.</p> : <button className="button button--tonal" type="button" onClick={() => onSetStatus('sent')}><Send aria-hidden="true" /> Finalisieren</button>}<button className="button button--tonal" type="button" onClick={onPrint}><Printer aria-hidden="true" /> Vorschau</button><button className="button button--text" type="button" onClick={onEdit}><Edit3 aria-hidden="true" /> Bearbeiten</button></>
         ) : (
-          <><button className="button button--primary" onClick={onPrint}><Printer aria-hidden="true" /> PDF / Drucken</button><InvoiceCorrection key={invoice.id} state={state} invoice={invoice} onSelect={onSelect} onCorrection={onCorrection} /></>
+          <><button className="button button--tonal" onClick={onPrint}><Printer aria-hidden="true" /> PDF / Drucken</button><InvoiceCorrection key={invoice.id} state={state} invoice={invoice} onSelect={onSelect} onCorrection={onCorrection} /></>
         )}
         {isFinalizedInvoice(invoice) && <div className="status-editor">
           <span className="status-editor__label" id={`invoice-status-${invoice.id}`}>Forderungsstatus</span>

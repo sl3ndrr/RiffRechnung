@@ -97,7 +97,7 @@ export function People({ state, initialCreate, onSaveGuardian, onSaveStudent, on
                 const linked = student.guardianIds.flatMap((id) => state.guardians.filter((guardian) => guardian.id === id))
                 return (
                   <article style={staggerStyle(index)} className={`student-card${studentEntrance && index < 8 ? ' motion-fade motion-stagger page-entry' : ''}`} key={student.id}>
-                    <header><span className="avatar avatar--large">{student.name.slice(0, 1)}</span><span className="student-card__meta"><span className="student-code" title="Kennzeichen im Rechnungsnummernkreis">{student.billingCode}</span><span className={`active-dot ${student.active ? '' : 'active-dot--muted'}`} title={student.active ? 'Aktiv' : 'Inaktiv'} /></span></header>
+                    <header><span className="avatar avatar--large">{student.name.slice(0, 1)}</span><span className="student-card__meta"><span className="student-code" title="Kennzeichen im Rechnungsnummernkreis">{student.billingCode}</span><span className="student-activity"><span className={`active-dot ${student.active ? '' : 'active-dot--muted'}`} aria-hidden="true" />{student.active ? 'Aktiv' : 'Inaktiv'}</span></span></header>
                     <h3>{student.name}</h3>
                     <p>Gitarrenunterricht</p>
                     <div className="student-card__guardians">{student.selfPayer ? <span><UserRound aria-hidden="true" />Zahlt selbst</span> : linked.map((guardian) => <span key={guardian.id}><UserRound aria-hidden="true" />{guardian.name}</span>)}</div>
