@@ -19,10 +19,10 @@ test('3.AP1: alle Positionen, Systemwechsel zur Laufzeit, Metafarbe und Reload',
   }
   await page.emulateMedia({ colorScheme: 'dark' })
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#151618')
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#11151c')
   await page.emulateMedia({ colorScheme: 'light' })
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#f7f7f8')
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#f5f7fb')
   await option(page, 'Dunkel').click()
   await expect(option(page, 'Dunkel')).toBeChecked()
   await page.reload()
@@ -147,7 +147,7 @@ for (const hint of ['dark', 'light', 'system', 'invalid', null]) {
     await page.goto('/')
     const resolved = hint === 'light' ? 'light' : 'dark'
     await expect(page.locator('html')).toHaveAttribute('data-theme', resolved)
-    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', resolved === 'dark' ? '#151618' : '#f7f7f8')
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', resolved === 'dark' ? '#11151c' : '#f5f7fb')
     expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBeNull()
   })
 }
