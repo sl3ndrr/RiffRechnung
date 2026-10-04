@@ -15,33 +15,33 @@
   --on-primary: #ffffff;
   --primary-container: #d7e6ff;
   --on-primary-container: #0b396d;
-  --surface: #f7f7f8;
-  --surface-dim: #dedee0;
-  --surface-bright: #f7f7f8;
+  --surface: #f5f7fb;
+  --surface-dim: #dfe4ee;
+  --surface-bright: #f5f7fb;
   --surface-container-lowest: #ffffff;
-  --surface-container-low: #f3f3f4;
-  --surface-container: #ededee;
-  --surface-container-high: #e7e7e9;
-  --surface-container-highest: #e1e1e3;
-  --on-surface: #202124;
-  --on-surface-variant: #45464a;
-  --outline: #74757b;
-  --outline-variant: #c6c7cc;
+  --surface-container-low: #eef2f8;
+  --surface-container: #e6ebf4;
+  --surface-container-high: #dee4ef;
+  --surface-container-highest: #d6dde9;
+  --on-surface: #1b2433;
+  --on-surface-variant: #434c5c;
+  --outline: #727b8c;
+  --outline-variant: #c9d1de;
   --error: #ba1a1a;
   --on-error: #ffffff;
-  --error-container: #ffdad6;
+  --error-container: #ffe1de;
   --on-error-container: #93000a;
   --success: #256a42;
-  --success-container: #a8f2bf;
+  --success-container: #d9f3e3;
   --warning: #8a5700;
-  --warning-container: #ffdea6;
+  --warning-container: #ffeccb;
   --info-container: var(--surface-container);
   --scrim: rgb(0 0 0 / 0.46);
   --radius-xs: 8px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 12px;
-  --radius-xl: 12px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
   --radius-full: 999px;
   --space-1: 4px;
   --space-2: 8px;
@@ -51,6 +51,18 @@
   --space-6: 24px;
   --space-7: 32px;
   --space-8: 40px;
+  --type-caption: 12px;
+  --type-label: 14px;
+  --type-body: 15px;
+  --type-title: 20px;
+  --type-heading: 24px;
+  --type-page: clamp(32px, 3vw, 40px);
+  --type-metric: clamp(36px, 3vw, 44px);
+  --weight-label: 600;
+  --weight-emphasized: 700;
+  --elevation-overlay: 0 12px 36px color-mix(in srgb, var(--on-surface) 16%, transparent);
+  --ease-spatial: cubic-bezier(.2, .8, .2, 1);
+  --ease-effects: cubic-bezier(.2, 0, 0, 1);
   --ease-out: cubic-bezier(.2, .8, .2, 1);
   --ease-in-out: cubic-bezier(.4, 0, .2, 1);
   --dur-fast: 140ms;
@@ -66,18 +78,18 @@
   --on-primary: #003061;
   --primary-container: #164878;
   --on-primary-container: #d7e6ff;
-  --surface: #151618;
-  --surface-dim: #151618;
-  --surface-bright: #383a3e;
-  --surface-container-lowest: #101113;
-  --surface-container-low: #202124;
-  --surface-container: #242528;
-  --surface-container-high: #2d2e32;
-  --surface-container-highest: #38393d;
-  --on-surface: #e7e7e9;
-  --on-surface-variant: #c6c7cc;
-  --outline: #90919a;
-  --outline-variant: #45464a;
+  --surface: #11151c;
+  --surface-dim: #11151c;
+  --surface-bright: #313742;
+  --surface-container-lowest: #0c1016;
+  --surface-container-low: #181d26;
+  --surface-container: #1c222c;
+  --surface-container-high: #262c37;
+  --surface-container-highest: #313742;
+  --on-surface: #e3e8f1;
+  --on-surface-variant: #c2c9d6;
+  --outline: #8c94a4;
+  --outline-variant: #404858;
   --error: #ffb4ab;
   --on-error: #690005;
   --error-container: #93000a;
@@ -88,6 +100,14 @@
   --warning-container: #5e3b00;
   --info-container: var(--surface-container);
   --scrim: rgb(0 0 0 / 0.7);
+}
+
+/* Product spring approximation: 8% spatial overshoot; effects never overshoot. */
+@supports (animation-timing-function: linear(0, 1)) {
+  :root {
+    --ease-spatial: linear(0, .12 8%, .44 20%, .82 35%, 1.08 52%, 1.04 68%, .99 84%, 1);
+    --ease-effects: linear(0, .18 12%, .52 30%, .8 50%, .95 75%, 1);
+  }
 }
 
 *, *::before, *::after { box-sizing: border-box; }

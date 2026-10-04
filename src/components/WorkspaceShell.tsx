@@ -68,7 +68,7 @@ export function WorkspaceShell({ children, page, settings, mode, draftCount, las
       resolvedTheme.current = theme
       root.dataset.theme = dark ? 'dark' : 'light'
       root.style.colorScheme = dark ? 'dark' : 'light'
-      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#151618' : '#f7f7f8')
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', getComputedStyle(root).getPropertyValue('--surface').trim())
     }
     apply()
     const media = matchMedia('(prefers-color-scheme: dark)')
