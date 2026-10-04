@@ -13,9 +13,7 @@ export function useDetailMotion(ref: RefObject<HTMLElement | null>, invoice: Inv
     const snapshot = element.cloneNode(true) as HTMLElement
     previous.current = { id: invoice.id, snapshot }
     if (reduced || element.querySelector('[role="alert"]')) return
-    if (!old) { element.classList.add('motion-rise', 'page-entry'); return }
-    if (old.id === invoice.id || old.snapshot.querySelector('[role="alert"]')) return
-    element.classList.remove('motion-rise', 'page-entry')
+    if (!old || old.id === invoice.id || old.snapshot.querySelector('[role="alert"]')) return
     const style = getComputedStyle(document.documentElement)
     const duration = parseFloat(style.getPropertyValue('--dur-base')) || 0
     const easing = style.getPropertyValue('--ease-out').trim()
@@ -28,7 +26,9 @@ export function useDetailMotion(ref: RefObject<HTMLElement | null>, invoice: Inv
     const incoming = Array.from(element.children).map((node) => node.animate([{ opacity: 0 }, { opacity: 1 }], { duration, easing }))
     element.append(ghost)
     const outgoing = ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration, easing })
-    const timer = window.setTimeout(() => ghost.remove(), duration)
-    return () => { window.clearTimeout(timer); ghost.remove(); outgoing.cancel(); incoming.forEach((animation) => animation.cancel()) }
+    const cancel = () => { ghost.remove(); outgoing.cancel(); incoming.forEach((animation) => animation.cancel()) }
+    const timer = window.setTimeout(cancel, duration)
+    window.addEventListener('beforeprint', cancel)
+    return () => { window.clearTimeout(timer); window.removeEventListener('beforeprint', cancel); cancel() }
   }, [invoice, reduced, ref])
 }

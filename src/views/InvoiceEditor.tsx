@@ -39,7 +39,8 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
   const [reviewed, setReviewed] = useState<string[]>([])
   const [conversionRecipients, setConversionRecipients] = useState<string[]>([])
   const itemsRef = useRef<HTMLDivElement>(null)
-  useEditorItemMotion(itemsRef, `${open}:${form.items.map((item) => item.id).join(',')}`)
+  const validNumbers = !form.items.some((item) => (['quantity', 'unitPrice'] as const).some((field) => itemNumberInput(numberInputs[item.id]?.[field] ?? decimalInputText(item[field]), field) === null))
+  const prepareItemExit = useEditorItemMotion(itemsRef, form.items.map((item) => item.id).join(','), open, validNumbers && previewCents(form) !== null)
 
   useEffect(() => {
     setForm(structuredClone(draft))
@@ -139,10 +140,9 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
   }
 
   const submit = (finalize: boolean) => {
-    const invalidNumbers = form.items.some((item) => (['quantity', 'unitPrice'] as const).some((field) => itemNumberInput(numberInputs[item.id]?.[field] ?? decimalInputText(item[field]), field) === null))
     const issued = form.id && state.invoices.some((invoice) => invoice.id === form.id && Boolean(invoice.number))
     const nextErrors = issued ? [FINALIZED_INVOICE_BLOCKED] : invoiceDraftErrors(state, form, finalize)
-    if (invalidNumbers) nextErrors.push('Bitte die Preise und Mengen vervollständigen. Ungültige Zwischenwerte werden nicht gespeichert.')
+    if (!validNumbers) nextErrors.push('Bitte die Preise und Mengen vervollständigen. Ungültige Zwischenwerte werden nicht gespeichert.')
     setErrors(nextErrors)
     if (!nextErrors.length) {
       onSave(form, finalize)
@@ -221,7 +221,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
               <div className="editor-item" data-item-id={item.id} key={item.id}>
                 <div className="editor-item__header">
                   <span className="editor-item__number">{`Position ${index + 1}`}</span>
-                  <button className="icon-button editor-item__delete" type="button" onClick={() => setForm((current) => { const items = current.items.filter((candidate) => candidate.id !== item.id); return { ...current, items } })} aria-label={`Position ${index + 1} löschen`}><Trash2 aria-hidden="true" /></button>
+                  <button className="icon-button editor-item__delete" type="button" onClick={() => { prepareItemExit(item.id); setForm((current) => { const items = current.items.filter((candidate) => candidate.id !== item.id); return { ...current, items } }) }} aria-label={`Position ${index + 1} löschen`}><Trash2 aria-hidden="true" /></button>
                 </div>
                 <div className="editor-item__core">
                   <label className="field field--date"><span>Datum</span><input type="date" value={item.serviceDate} onChange={(event) => updateServiceDate(item.id, event.target.value)} /></label>
@@ -251,4 +251,3 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
     </Modal>
   )
 }
-

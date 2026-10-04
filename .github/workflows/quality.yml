@@ -64,6 +64,8 @@ jobs:
       - run: npx playwright install --with-deps chromium firefox webkit
       - name: Install PDF text verification
         run: sudo apt-get install -y poppler-utils
+      - name: Exercise motion-sensitive regressions
+        run: npm run test:browser -- --grep '3.AP7|P08 Browser: bestehende Zahlung|P12: lesbare Positionen|P10: erforderliche historische|P12 Browser: negativer Preis|P12 Browser: ausländisches Konto|3.AP1: beide Auswahlen|3.AP5: Keyboard-Undo|3.AP5: fehlende zugehörige|3.AP5: maximal letzte|P10 Browser: relevante Textkontraste'
       - run: npm run test:browser
       - run: npm run test:migrations
       - name: Audit all locked dependencies
@@ -93,4 +95,3 @@ jobs:
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: dist
-

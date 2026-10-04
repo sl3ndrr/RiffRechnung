@@ -744,7 +744,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .invoice-detail__previous { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100%; z-index: 1; overflow: hidden; pointer-events: none; }
 .editor-items { position: relative; }
 .editor-item--exit { position: absolute; margin: 0; pointer-events: none; }
-:is(.invoice-page, .document-history, .settings-page, .modal-body) details[open] > :not(summary):not([role='alert']):not(.form-errors):not(.field-error):not(:has([role='alert'], .field-error, .form-errors)) { animation: motion-fade-in var(--dur-fast) var(--ease-out) backwards; }
+:is(.invoice-page, .document-history, .settings-page, .modal__body) details[open] > :not(summary):not([role='alert']):not(.form-errors):not(.field-error):not(:has([role='alert'], .field-error, .form-errors)) { animation: motion-fade-in var(--dur-fast) var(--ease-out) backwards; }
 /* A new error or validation message never inherits an AP7 entrance. */
 .page-entry:has([role='alert'], [aria-invalid='true'], .field-error, .form-errors) { animation: none; }
 .modal-layer, .nav-scrim { animation: motion-fade-in var(--dur-base) var(--ease-out) backwards; }

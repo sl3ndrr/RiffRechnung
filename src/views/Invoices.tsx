@@ -254,6 +254,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
   onPrint: () => void
 }) {
   const detailRef = useRef<HTMLElement>(null)
+  const detailEntrance = usePageEntrance(invoice.id)
   useDetailMotion(detailRef, invoice)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const status = effectiveStatus(invoice)
@@ -276,7 +277,7 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
   }, [invoice.id])
 
   return (
-    <aside ref={detailRef} className="surface invoice-detail" aria-label={`Details zu ${invoice.number ?? 'Entwurf'}`}>
+    <aside ref={detailRef} className={`surface invoice-detail${detailEntrance ? ' motion-rise page-entry' : ''}`} aria-label={`Details zu ${invoice.number ?? 'Entwurf'}`}>
       <header className="invoice-detail__header">
         <div><p className="eyebrow">Rechnung</p><h2>{invoice.number ?? 'Entwurf'}</h2><p>{guardianName(invoice, state.guardians, state.students)}</p></div>
         <button ref={closeButtonRef} className="icon-button" type="button" onClick={onClose} aria-label="Detailansicht schließen">×</button>
