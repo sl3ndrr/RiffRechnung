@@ -29,21 +29,21 @@ test('P11: jeder Empfänger behält seine eigene vorhandene Anschrift, auch iden
       if (place) assert.ok(addresses[i].includes(`<span>${place}</span>`))
       if (!recipient.street && !place) assert.equal(addresses[i], `<strong>${recipient.name}</strong>`)
     })
-    assert.doesNotMatch(output, /Zwischensumme|invoice-group|invoice-subtotal|invoice-item-row--tint|Seitenzahl im Seitenrand|Kein GiroCode|Ohne GiroCode|>–</)
+    assert.doesNotMatch(output, /invoice-item-row--tint|Seitenzahl im Seitenrand|Kein GiroCode|Ohne GiroCode|>–</)
     assert.equal((output.match(/class="invoice-address invoice-issuer"/g) ?? []).length, 1)
     assert.equal((output.match(/Privatrechnung/g) ?? []).length, 1)
     assert.doesNotMatch(output, /<dt>BIC:<\/dt>|<dt>Bank:<\/dt>|Vielen Dank|Sehr geehrte/)
   }
 })
 
-test('P11: einfache Tabelle erhält Personen, Einzelmengen und Einheiten; Endsumme summiert ausschließlich Geld', () => {
+test('P11: Monatstabelle erhält Personen, Einzelmengen und Einheiten; Endsumme summiert ausschließlich Geld', () => {
   const state = p11State('zwei-anschriften'), output = print(state)
-  const rows = [...output.matchAll(/<tr class="invoice-item-row">(.*?)<\/tr>/g)].map((match) => match[1])
+  const rows = [...output.matchAll(/<tr class="invoice-item-row"(?: [^>]+)?>(.*?)<\/tr>/g)].map((match) => match[1])
   assert.equal(rows.length, 3)
-  for (const [i, name] of ['Testkind A', 'Testkind B', 'Testkind A'].entries()) assert.ok(rows[i].includes(name))
-  for (const [i, quantity] of ['0,75 Std.', '2 Pauschale', '3 Stück'].entries()) assert.ok(rows[i].includes(quantity))
+  for (const [i, name] of ['Testkind A', 'Testkind A', 'Testkind B'].entries()) assert.ok(rows[i].includes(name))
+  for (const [i, quantity] of ['0,75 Std.', '3 Stück', '2 Pauschale'].entries()) assert.ok(rows[i].includes(quantity))
   assert.equal(state.documentVersions[0].amounts.totalCents, 3858)
-  assert.match(output, /<tr class="invoice-total-row"><td colSpan="4">Summe<\/td><td>38,58.*?<\/td><\/tr><tr class="invoice-private-row">/)
+  assert.match(output, /<p class="invoice-total-row"><span>Summe<\/span><strong>38,58.*?<\/strong><\/p><p class="invoice-private-row">Privatrechnung<\/p>/)
 })
 
 test('P11: Wiederausgabe und GiroCode verwenden ausschließlich eingefrorene Nummer, Beträge, Empfänger und Konto', () => {
@@ -83,3 +83,4 @@ test('P11: lückenhafte historische Lernendennamen erzeugen keine leere Zeile un
   assert.match(output, /class="invoice-item-student">Testkind A<\/span>/)
   assert.doesNotMatch(output, /HEUTIGE ERGÄNZUNG|class="invoice-item-student"><\/span>|Unterricht für:/)
 })
+

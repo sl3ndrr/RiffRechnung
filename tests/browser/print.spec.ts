@@ -10,6 +10,7 @@ import { invoiceTotal } from '../../src/lib/money'
 import { selectInvoice } from '../../src/lib/documents'
 import { euro } from '../../src/lib/utils'
 import { p11Cases, p11State } from '../p11PrintFixtures'
+import { monthlyPrintState } from '../invoicePrintFixtures'
 
 async function seed(page: Page, state: AppState) {
   await page.goto('/')
@@ -48,7 +49,7 @@ function printableState(itemCount: number, freeText = ''): AppState {
   return saveInvoiceDraft(state, draft, true, documentAt)
 }
 
-async function createPdf(page: Page, state: AppState, invoiceId: string, label: string, testInfo: TestInfo): Promise<{ pages: number; text: string; flowText: string; payload: string }> {
+async function createPdf(page: Page, state: AppState, invoiceId: string, label: string, testInfo: TestInfo): Promise<{ pages: number; text: string; flowText: string; payload: string; groups: Array<{ title: string; descriptions: string[]; subtotal: string }>; paperColor: string; paperBackground: string }> {
   const rendering = await page.context().newPage()
   try {
     await rendering.goto('/')
@@ -59,6 +60,14 @@ async function createPdf(page: Page, state: AppState, invoiceId: string, label: 
       await document.fonts.ready
     }, { state, invoiceId })
     await expect.poll(() => rendering.evaluate(() => document.documentElement.dataset.documentReady)).toBe(invoiceId)
+    const structure = await rendering.locator('.invoice-paper').evaluate((paper) => ({
+      groups: [...paper.querySelectorAll('.invoice-month-group')].map((group) => ({
+        title: group.querySelector('.invoice-group-heading')!.textContent!,
+        descriptions: [...group.querySelectorAll('.invoice-item-row td:nth-child(2)')].map((cell) => cell.textContent!),
+        subtotal: group.querySelector('.invoice-subtotal-row')?.textContent ?? '',
+      })),
+      paperColor: getComputedStyle(paper).color, paperBackground: getComputedStyle(paper).backgroundColor,
+    }))
     const pdf = await rendering.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true })
     const path = testInfo.outputPath(`${label}.pdf`)
     await writeFile(path, pdf)
@@ -74,11 +83,77 @@ async function createPdf(page: Page, state: AppState, invoiceId: string, label: 
     }
     await testInfo.attach(`${label}.pdf`, { body: pdf, contentType: 'application/pdf' })
     const payload = await rendering.evaluate(() => document.documentElement.dataset.giroPayload ?? '')
-    return { pages, text, flowText, payload }
+    return { pages, text, flowText, payload, ...structure }
   } finally {
     await rendering.close()
   }
 }
+
+
+for (const twoMonths of [false, true]) test(`AP4 Browser/PDF: ${twoMonths ? 'zwei Monate mit Zwischensummen' : 'ein Monat ohne doppelte Zwischensumme'}, immer hell`, async ({ page }, testInfo) => {
+  const state = monthlyPrintState(twoMonths)
+  state.settings.theme = 'dark'
+  await page.emulateMedia({ colorScheme: 'dark' })
+  const invoice = selectInvoice(state, state.invoices[0])
+  const before = structuredClone(state)
+  const pdf = await createPdf(page, state, invoice.id, `ap4-${twoMonths ? 'zwei' : 'ein'}-monate`, testInfo)
+  expect(pdf.pages).toBe(1)
+  expect(pdf.paperColor).toBe('rgb(11, 27, 63)'); expect(pdf.paperBackground).toBe('rgb(255, 255, 255)')
+  expect(pdf.groups.map((group) => group.title)).toEqual(twoMonths ? ['August 2026', 'September 2026'] : ['September 2026'])
+  expect(pdf.groups.map((group) => group.descriptions.length)).toEqual(twoMonths ? [1, 3] : [3])
+  const text = pdf.text.replace(/\s+/g, ' ')
+  if (twoMonths) {
+    expect(text).toMatch(/Zwischensumme August: 20,00 €/)
+    expect(text).toMatch(/Zwischensumme September: 60,00 €/)
+  } else expect(pdf.text).not.toContain('Zwischensumme')
+  expect(text).toMatch(new RegExp(`Summe ${twoMonths ? '80' : '60'},00 € Privatrechnung`))
+  expect(pdf.payload).toBe(buildEpcPayload(invoice, state.settings, invoiceTotal(invoice)))
+  expect(state).toEqual(before)
+})
+
+test('AP4 Browser/PDF: Legacy-Gesamtsumme erzwingt flache Ausgabe mit unveränderten Positionsbeträgen und Reihenfolge', async ({ page }, testInfo) => {
+  const state = monthlyPrintState(), version = state.documentVersions[0]
+  version.content.items[0].serviceDate = '2026-09-01'
+  version.content.items[1].serviceDate = '2026-08-25'
+  version.content.items.forEach((item, i) => { item.description = `Legacyposition ${i + 1}` })
+  Object.assign(version.amounts, { calculation: 'legacy-v1', source: 'legacy-output', itemCents: [1999, 2000, 2000, 2000], totalCents: 8001 })
+  const pdf = await createPdf(page, state, state.invoices[0].id, 'ap4-legacy-fallback', testInfo)
+  expect(pdf.groups).toEqual([])
+  expect(pdf.text).not.toMatch(/Zwischensumme|August 2026/)
+  const text = pdf.text.replace(/\s+/g, ' ')
+  expect(text).toMatch(/Legacyposition 1 .*?19,99 € .*?Legacyposition 2 .*?Legacyposition 3 .*?Legacyposition 4/)
+  expect(text).toMatch(/Summe 80,01 € Privatrechnung/)
+  expect(pdf.payload).toContain('EUR80.01')
+})
+
+test('AP4 Browser/PDF: fehlende und ungültige Leistungsdaten bilden die letzte Gruppe', async ({ page }, testInfo) => {
+  const state = monthlyPrintState(), items = state.documentVersions[0].content.items
+  items[0].serviceDate = ''; items[1].serviceDate = '2026-02-30'
+  items.forEach((item, i) => { item.description = `Datumstest ${i + 1}` })
+  const pdf = await createPdf(page, state, state.invoices[0].id, 'ap4-ohne-leistungsdatum', testInfo)
+  expect(pdf.groups.map((group) => group.title)).toEqual(['September 2026', 'Ohne gültiges Leistungsdatum'])
+  expect(pdf.groups.at(-1)!.descriptions).toEqual(['Datumstest 1', 'Datumstest 2'])
+  expect(pdf.text.replace(/\s+/g, ' ')).toMatch(/Zwischensumme ohne Leistungsdatum: 40,00 €/)
+  expect(pdf.text).toContain('2026-02-30')
+})
+
+test('AP4 Browser/PDF: lange Positionszeilen bleiben ganz, Tabellenkopf wiederholt sich und der Abschluss bleibt bei der letzten Position', async ({ page }, testInfo) => {
+  const state = monthlyPrintState(true, 60), items = state.documentVersions[0].content.items
+  items.forEach((item, i) => { item.description = `Zeilenanfang-${i + 1}: ${'Ausführliche Unterrichtsleistung mit nachvollziehbarem Inhalt. '.repeat(6)} Zeilenende-${i + 1}.` })
+  const pdf = await createPdf(page, state, state.invoices[0].id, 'ap4-lange-positionen', testInfo)
+  const pages = pdf.text.split('\f').filter((text) => text.trim())
+  expect(pdf.pages).toBeGreaterThan(3)
+  for (const [i] of items.entries()) {
+    const containing = pages.filter((text) => text.includes(`Zeilenanfang-${i + 1}:`))
+    expect(containing).toHaveLength(1)
+    expect(containing[0]).toContain(`Zeilenende-${i + 1}.`)
+  }
+  for (const text of pages.filter((text) => text.includes('Zeilenanfang-'))) expect(text.replace(/\s+/g, ' ')).toContain('Datum Leistung Menge Einzelpreis Betrag')
+  const finalPage = pages.find((text) => /\bSumme\b/.test(text))!
+  expect(finalPage).toContain('Zeilenende-60.')
+  expect(finalPage).toContain('Privatrechnung'); expect(finalPage).toContain('Zahlbar bis')
+  expect(finalPage).toContain('Kontoinhaber:'); expect(finalPage).toContain('Mit Banking-App scannen')
+})
 
 test('P09 Browser/PDF: ein-, zwei- und mehrseitige Rechnungen behalten Text, Wasserzeichen und Seitenzahlen', async ({ page }, testInfo) => {
   const cases = [
@@ -138,7 +213,7 @@ for (const example of p11Cases) test(`P11 Browser/PDF: ${example}, eingefrorene 
   expect(normalized).toContain(euro.format(invoiceTotal(invoice)).replace(/\s+/g, ' '))
   expect(normalized).toContain('DE02 1203 0000 0000 2020 51')
   expect(pdf.payload).toBe(expectedPayload)
-  expect(pdf.text).not.toMatch(/HEUTIG|ALTER RECHTSTEXT|Zwischensumme|Seitenzahl im Seitenrand|Kein GiroCode|Ohne GiroCode|BIC:|Bank:|–/)
+  expect(pdf.text).not.toMatch(/HEUTIG|ALTER RECHTSTEXT|Seitenzahl im Seitenrand|Kein GiroCode|Ohne GiroCode|BIC:|Bank:|–/)
   const pages = pdf.text.split('\f').filter((text) => text.trim())
   const sumPage = pages.findIndex((text) => /\bSumme\b/.test(text))
   expect(pages.flatMap((text, i) => text.includes('Privatrechnung') ? [i] : [])).toEqual([sumPage])
@@ -314,3 +389,4 @@ test('P09 Browser: ungültige historische BIC bietet den bewussten Druck ohne Gi
   execFileSync('pdftoppm', ['-png', path, testInfo.outputPath('p11-qr-fallback-page')])
   await testInfo.attach('p11-qr-fallback.pdf', { body: pdf, contentType: 'application/pdf' })
 })
+
