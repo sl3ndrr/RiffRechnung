@@ -53,6 +53,8 @@ Rechnung öffnen, den **Tatsächlichen Zahlungstag** eintragen und **Vollzahlung
 Bei einer bereits erfassten Zahlung lässt sich der bestätigte Tag über **Zahlungstag korrigieren** ändern. Ein unbekannter historischer Zahlungstag bleibt unbekannt, bis er ausdrücklich bestätigt wird.
 Offen/bezahlt wird aus den Zahlungszuordnungen abgeleitet; überfällig aus Fälligkeit und offenem Anspruch. Die Liste steht fest nach Rechnungsdatum, neueste zuerst; Suche und Statusfilter bleiben.
 
+Nach dem Löschen eines Entwurfs oder einer Person sowie nach Archivieren/Zurückholen bietet die Meldung für **10 Sekunden** **Rückgängig** an. Maus über der Meldung oder Tastaturfokus darin pausieren die Restzeit. Es erscheinen höchstens die letzten drei Meldungen. Rückgängig erhält zwischenzeitliche andere Änderungen; fehlen zugehörige Personen oder Entwürfe oder wurden betroffene Zuordnungen geändert, erscheint eine Fehlermeldung ohne Änderung am Bestand. Finalisieren, Zahlungen, Wiederherstellung und Zurücksetzen haben keinen solchen Rückgängig-Weg.
+
 Für Änderungen an finalen Belegen **Korrektur** mit Begründung anlegen, den neuen Entwurf prüfen und finalisieren. Original und ursprüngliche Nummer bleiben erhalten; die Korrektur erhält einen neuen Beleg und eine neue Nummer. Bestehende Zahlungen werden nicht automatisch auf eine Korrektur übertragen. Historie, Klärung und Zahlungszuordnung liegen unter **Details**.
 
 ## JSON sichern und wiederherstellen
