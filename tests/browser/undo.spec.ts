@@ -195,7 +195,7 @@ test('3.AP5: maximal letzte drei Undo-Toasts, unabhängige Timer und Doppelklick
   await expect(undoButton(page)).toHaveCount(2)
   const target = undoButton(page).last()
   // Two same-turn activations exercise the claim guard before React unmounts.
-  await target.evaluate((element: HTMLButtonElement) => { element.click(); element.click() })
+  await target.evaluate((element) => { (element as HTMLButtonElement).click(); (element as HTMLButtonElement).click() })
   await expect.poll(async () => (await stateOf(page)).invoices.length).toBe(1)
   expect((await stateOf(page)).audit.filter((event) => event.label === 'Löschen rückgängig gemacht')).toHaveLength(1)
   await undoButton(page).click()

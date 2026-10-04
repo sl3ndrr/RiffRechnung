@@ -147,7 +147,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       const prepared = requireSuccess(prepareUndoChangeState(current, change))
       undo = prepared.undo
       return prepared.state
-    }, label, entityType, change.id)
+    }, label, entityType, change.id, () => undo ? `${undo.token}-apply` : undefined)
     if (!saved || !undo) return false
     const captured = undo
     const undoLabel = change.kind === 'archive' ? 'Archivänderung rückgängig gemacht' : 'Löschen rückgängig gemacht'

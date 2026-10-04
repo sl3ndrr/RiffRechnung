@@ -46,7 +46,7 @@ function assertDraftAudience(state: AppState, invoice: Invoice) {
 }
 
 /** Capture inside the commit producer, from the state actually being changed. */
-export function prepareUndoChangeState(state: AppState, change: UndoChange): CommandResult<{ state: AppState; undo: UndoPackage }> {
+export function prepareUndoChangeState(state: AppState, change: UndoChange, at = new Date().toISOString()): CommandResult<{ state: AppState; undo: UndoPackage }> {
   return commandResult(() => {
     validateBackupState(state)
     const base: UndoBase = { token: uid('undo'), entityId: change.id, requiredPeople: [] }
@@ -82,6 +82,10 @@ export function prepareUndoChangeState(state: AppState, change: UndoChange): Com
     // Pre-existing historical gaps in correction drafts remain valid gaps.
     undo.requiredPeople = undo.requiredPeople.filter((ref) => state[ref.type === 'guardian' ? 'guardians' : 'students'].some((person) => person.id === ref.id))
     assertOriginalsPreserved(state, next)
+    const label = change.kind === 'draft' ? 'Rechnungsentwurf gelöscht' : change.kind === 'guardian' ? 'Erziehungsberechtigte Person gelöscht'
+      : change.kind === 'student' ? 'Lernende Person gelöscht' : change.archived ? 'Beleg archiviert' : 'Beleg aus Archiv geholt'
+    next = recordActivity(next, { id: `${undo.token}-apply`, at, label,
+      entityType: change.kind === 'guardian' || change.kind === 'student' ? 'person' : 'invoice', entityId: change.id })
     return { state: next, undo: structuredClone(undo) }
   })
 }
@@ -133,7 +137,10 @@ export function undoChangeState(state: AppState, undo: UndoPackage, at = new Dat
     } else {
       const invoice = state.invoices.find((entry) => entry.id === undo.entityId)
       const admin = state.invoiceAdministration.find((entry) => entry.versionId === undo.versionId)
-      if (invoice?.versionId !== undo.versionId || !admin || admin.archived !== undo.after) conflict('Der Archivstand dieses Belegs wurde inzwischen geändert.')
+      const lastArchiveChange = state.audit.find((event) => event.entityId === undo.entityId && ['Beleg archiviert', 'Beleg aus Archiv geholt', 'Archivänderung rückgängig gemacht'].includes(event.label))
+      if (invoice?.versionId !== undo.versionId || !admin || admin.archived !== undo.after || lastArchiveChange?.id !== `${undo.token}-apply`) {
+        conflict('Der Archivstand dieses Belegs wurde inzwischen geändert.')
+      }
       next = { ...state, invoiceAdministration: state.invoiceAdministration.map((entry) => entry.versionId === undo.versionId ? { ...entry, archived: undo.before } : entry) }
     }
     if (undo.requiredPeople.some((ref) => !next[ref.type === 'guardian' ? 'guardians' : 'students'].some((person) => person.id === ref.id))) {

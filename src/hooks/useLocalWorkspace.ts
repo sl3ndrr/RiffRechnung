@@ -22,7 +22,7 @@ export function useLocalWorkspace(mode: 'real' | 'demo', toast: (message: string
   const [savedAt, setSavedAt] = useState(() => new Date())
   const [lastBackupAt, setLastBackupAt] = useState(() => mode === 'real' ? loadLastBackupAt() : null)
 
-  const commit = useCallback(async (producer: (current: AppState) => AppState, label: string, entityType: AuditEvent['entityType'], entityId?: string, activityId?: string): Promise<boolean> => {
+  const commit = useCallback(async (producer: (current: AppState) => AppState, label: string, entityType: AuditEvent['entityType'], entityId?: string, activityId?: string | (() => string | undefined)): Promise<boolean> => {
     pendingWrites.current++
     setSaveStateLabel('saving')
     setLocalSaveError(null)
@@ -31,10 +31,11 @@ export function useLocalWorkspace(mode: 'real' | 'demo', toast: (message: string
         const next = producer(current)
         assertOriginalsPreserved(current, next)
         const at = new Date().toISOString()
+        const eventId = typeof activityId === 'function' ? activityId() : activityId
         // Undo commands carry their replay token in the audit event. Confirm
         // that same event once at the storage boundary, without duplicating it.
-        return recordActivity(activityId ? { ...next, audit: next.audit.filter((event) => event.id !== activityId) } : next,
-          { id: activityId ?? uid('event'), at, label, entityType, entityId })
+        return recordActivity(eventId ? { ...next, audit: next.audit.filter((event) => event.id !== eventId) } : next,
+          { id: eventId ?? uid('event'), at, label, entityType, entityId })
       })
       stateRef.current = committed
       setState(committed)

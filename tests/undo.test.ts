@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { changeThemeState, deleteGuardianState, deleteInvoiceDraftState, deleteStudentState, recordActivity, saveInvoiceState, saveStudentState } from '../src/lib/commands'
+import { changeThemeState, deleteGuardianState, deleteInvoiceDraftState, deleteStudentState, saveInvoiceState, saveStudentState } from '../src/lib/commands'
 import { archiveInvoice, createCorrectionDraft } from '../src/lib/documents'
 import { invoiceDraftFields } from '../src/lib/invoiceDrafts'
 import { requireSuccess } from '../src/lib/result'
@@ -16,7 +16,7 @@ for (const kind of ['draft', 'guardian', 'student'] as const) {
     const original = structuredClone(initial)
     const change: UndoChange = { kind, id: kind === 'draft' ? initial.invoices[0].id : kind === 'guardian' ? 'g1' : 's1' }
     const prepared = requireSuccess(prepareUndoChangeState(initial, change))
-    const deleted = recordActivity(prepared.state, { id: 'delete-event', at: undoAt, label: 'Gelöscht', entityType: 'system' })
+    const deleted = prepared.state
     const interim = requireSuccess(changeThemeState(deleted, 'dark'))
     const restored = requireSuccess(undoChangeState(interim, prepared.undo, undoAt))
     assert.deepEqual(restored.invoices, original.invoices)
@@ -25,7 +25,8 @@ for (const kind of ['draft', 'guardian', 'student'] as const) {
     assert.deepEqual(restored.counters, original.counters)
     assert.equal(restored.nextStudentCodeIndex, original.nextStudentCodeIndex)
     assert.equal(restored.settings.theme, 'dark')
-    assert.deepEqual(restored.audit.map((event) => event.label), ['Löschen rückgängig gemacht', 'Gelöscht'])
+    assert.deepEqual(restored.audit.map((event) => event.label), ['Löschen rückgängig gemacht', kind === 'draft' ? 'Rechnungsentwurf gelöscht'
+      : kind === 'guardian' ? 'Erziehungsberechtigte Person gelöscht' : 'Lernende Person gelöscht'])
     assert.equal(undoChangeState(restored, prepared.undo).ok, false)
     assert.deepEqual(initial, original, 'Erfassung und Undo verändern ihre Eingabe nicht')
     validateBackupState(restored)
@@ -124,6 +125,10 @@ test('3.AP5: Archivierung in beide Richtungen erhält Originale und spätere Ver
   }
   assert.equal(prepareUndoChangeState(initial, { kind: 'archive', id: initial.invoices[0].id, archived: true }).ok, false)
   assert.equal(prepareUndoChangeState(finalized, { kind: 'draft', id: finalized.invoices[0].id }).ok, false)
+  const first = requireSuccess(prepareUndoChangeState(finalized, { kind: 'archive', id: finalized.invoices[0].id, archived: true }))
+  const second = requireSuccess(prepareUndoChangeState(first.state, { kind: 'archive', id: finalized.invoices[0].id, archived: false }))
+  const third = requireSuccess(prepareUndoChangeState(second.state, { kind: 'archive', id: finalized.invoices[0].id, archived: true }))
+  assert.equal(undoChangeState(third.state, first.undo).ok, false, 'Späterer Archivwechsel bleibt auch bei demselben Flag geschützt')
 })
 
 test('3.AP5: finale Belege und Korrekturentwürfe bleiben bei Personen-Undo unverändert', () => {
