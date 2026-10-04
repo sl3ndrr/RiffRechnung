@@ -126,7 +126,8 @@ test('AP4 Browser/PDF: mehrseitiger Entwurf behält das Wasserzeichen über den 
   const pdf = await createPdf(page, state, state.invoices[0].id, 'ap4-mehrseitiger-entwurf', testInfo)
   expect(pdf.pages).toBeGreaterThan(1)
   expect(pdf.groups.map((group) => group.title)).toEqual(['August 2026', 'September 2026'])
-  for (const text of pdf.text.split('\f').filter((text) => text.trim())) expect(text).toContain('ENTWURF')
+  // Layout extraction interleaves diagonal watermark letters with table cells.
+  for (const text of pdf.flowText.split('\f').filter((text) => text.trim())) expect(text).toContain('ENTWURF')
   expect(pdf.payload).toBe('')
 })
 
