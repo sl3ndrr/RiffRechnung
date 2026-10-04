@@ -94,6 +94,36 @@ async function finishAnimations(page: Page) {
   })
 }
 
+test('AP8 Accessibility: lange Desktop-Details bleiben im Fenster und Footeraktionen per Tastatur erreichbar', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1280, height: 720 })
+  const draft = documentDraft()
+  const state = saveInvoiceDraft(documentFamily(), {
+    ...draft,
+    items: Array.from({ length: 12 }, (_, index) => ({ ...draft.items[0], id: `long-detail-${index}`, description: `Unterrichtsposition ${index + 1} mit ausführlicher Beschreibung` })),
+  }, false, documentAt)
+  await seed(page, state)
+  await invoices(page)
+  await page.getByRole('button', { name: 'Entwurf', exact: true }).first().click()
+  await finishAnimations(page)
+  const detail = page.locator('.invoice-detail')
+  await detail.scrollIntoViewIfNeeded()
+  const bounds = await detail.boundingBox()
+  expect(bounds!.y).toBeGreaterThanOrEqual(0)
+  // Native scroll offsets round to CSS pixels; an outer border can be fractional.
+  expect(Math.floor(bounds!.y + bounds!.height)).toBeLessThanOrEqual(720)
+  expect(await detail.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true)
+  const remove = detail.getByRole('button', { name: 'Löschen', exact: true })
+  await tabTo(page, remove)
+  await expect(remove).toBeInViewport({ ratio: 1 })
+  await testInfo.attach('lange-desktop-details.png', { body: await page.screenshot(), contentType: 'image/png' })
+  await page.keyboard.press('Enter')
+  const dialog = page.getByRole('alertdialog', { name: 'Entwurf löschen?', exact: true })
+  await expect(dialog).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await expect(remove).toBeFocused()
+})
+
 function contrast(foreground: string, background: string) {
   const rgb = (value: string) => {
     const normalized = value.trim()

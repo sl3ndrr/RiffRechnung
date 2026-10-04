@@ -606,6 +606,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .invoice-free-text { margin: 5mm 0 0; overflow-wrap: anywhere; white-space: pre-wrap; break-inside: auto; page-break-inside: auto; orphans: 2; widows: 2; }
 .invoice-footer { position: static; margin-top: 6mm; color: var(--invoice-muted); font-size: 7pt; overflow-wrap: anywhere; break-inside: avoid; page-break-inside: avoid; }
 
+@media (min-width: 1121px) {
+  .invoice-detail { max-height: calc(100dvh - 118px); overflow-y: auto; overscroll-behavior: contain; }
+}
+
 @media (max-width: 1350px) {
   .invoice-workspace--detail { grid-template-columns: minmax(540px, 1fr) 340px; }
 }
