@@ -55,6 +55,8 @@ function returnFocus(dialog: HTMLDivElement, target: HTMLElement | null) {
 export function Modal({ open, title, eyebrow, onClose, children, footer, size = 'medium', role = 'dialog', describedBy, initialFocus = 'first' }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
   const titleId = useId()
 
   useLayoutEffect(() => {
@@ -71,7 +73,32 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
     const target = dialog.querySelector<HTMLElement>('[data-dialog-initial-focus]') ?? focusableElements(dialog).at(0)
     target?.focus()
 
+    // Native bubbling also reaches buttons in the stable toast portal host.
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (dialogStack.at(-1) !== dialog) return
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onCloseRef.current()
+        return
+      }
+      if (event.key !== 'Tab') return
+      const focusable = focusableElements(dialog)
+      const first = focusable.at(0)
+      const last = focusable.at(-1)
+      if (!first || !last) { event.preventDefault(); return }
+      if (!focusable.includes(document.activeElement as HTMLElement)) {
+        event.preventDefault()
+        const destination = event.shiftKey ? last : first
+        destination.focus()
+        return
+      }
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+    }
+    dialog.addEventListener('keydown', handleKeyDown)
+
     return () => {
+      dialog.removeEventListener('keydown', handleKeyDown)
       const index = dialogStack.lastIndexOf(dialog)
       const wasTop = index === dialogStack.length - 1
       if (index >= 0) dialogStack.splice(index, 1)
@@ -90,27 +117,6 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
       aria-labelledby={titleId}
       aria-describedby={describedBy}
       aria-modal="true"
-      onKeyDown={(event) => {
-        if (dialogStack.at(-1) !== event.currentTarget) return
-        if (event.key === 'Escape') {
-          event.preventDefault()
-          onClose()
-          return
-        }
-        if (event.key !== 'Tab') return
-        const focusable = focusableElements(event.currentTarget)
-        const first = focusable.at(0)
-        const last = focusable.at(-1)
-        if (!first || !last) { event.preventDefault(); return }
-        if (!focusable.includes(document.activeElement as HTMLElement)) {
-          event.preventDefault()
-          const destination = event.shiftKey ? last : first
-          destination.focus()
-          return
-        }
-        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
-        if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
-      }}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && dialogStack.at(-1) === event.currentTarget) onClose()
       }}

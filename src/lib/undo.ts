@@ -83,7 +83,7 @@ export function prepareUndoChangeState(state: AppState, change: UndoChange, at =
     undo.requiredPeople = undo.requiredPeople.filter((ref) => state[ref.type === 'guardian' ? 'guardians' : 'students'].some((person) => person.id === ref.id))
     assertOriginalsPreserved(state, next)
     const label = change.kind === 'draft' ? 'Rechnungsentwurf gelöscht' : change.kind === 'guardian' ? 'Erziehungsberechtigte Person gelöscht'
-      : change.kind === 'student' ? 'Lernende Person gelöscht' : change.archived ? 'Beleg archiviert' : 'Beleg aus Archiv geholt'
+      : change.kind === 'student' ? 'Lernende Person gelöscht' : change.kind === 'archive' && change.archived ? 'Beleg archiviert' : 'Beleg aus Archiv geholt'
     next = recordActivity(next, { id: `${undo.token}-apply`, at, label,
       entityType: change.kind === 'guardian' || change.kind === 'student' ? 'person' : 'invoice', entityId: change.id })
     return { state: next, undo: structuredClone(undo) }
