@@ -162,6 +162,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .theme-switch label:has(input:focus-visible) { outline: 3px solid var(--primary); outline-offset: 4px; }
 .theme-switch input { position: absolute; width: 100%; height: 100%; margin: 0; inset: 0; opacity: 0; cursor: pointer; }
 .theme-switch svg { width: 18px; height: 18px; }
+.theme-switch svg, .theme-switch label > span { pointer-events: none; }
 .save-indicator { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--on-surface-variant); font-size: 12px; white-space: nowrap; }
 .save-indicator i { width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
 .save-indicator.is-saving i { background: var(--warning); }
@@ -762,6 +763,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .dashboard-open-row:hover, .invoice-list-table tbody tr:hover { transform: translateX(2px); }
   :where(.button, .icon-button):active:not(:disabled) { transform: scale(.97); }
 }
+:where(.sidebar nav button, .mobile-bottom-nav button):active { transform: scale(.98); }
+:where(.choice-chip, .theme-picker label):active:not(:has(input:disabled)) { transform: scale(.98); }
+.student-card:active { transform: translateY(-1px); }
+.dashboard-open-row:active, .invoice-list-table tbody tr:active { transform: translateX(1px); }
 
 /* Colors only transition during a resolved theme change, never on paper. */
 html.theme-changing, .theme-changing body, .theme-changing body :where(*):not(.invoice-paper, .invoice-paper *, .print-root, .print-root *) {

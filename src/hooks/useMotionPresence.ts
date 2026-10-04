@@ -19,11 +19,17 @@ export function useMotionPresence(open: boolean, ref: RefObject<HTMLElement | nu
     const style = getComputedStyle(element)
     const delays = style.animationDelay.split(',').map(milliseconds)
     const duration = Math.max(0, ...style.animationDuration.split(',').map((value, index) => milliseconds(value) + delays[index % delays.length]))
-    const finish = () => setRetained(false)
-    if (!duration || style.animationName === 'none') { finish(); return }
-    const onEnd = (event: AnimationEvent) => { if (event.target === element && style.animationName.split(',').map((name) => name.trim()).includes(event.animationName)) finish() }
+    if (!duration || style.animationName === 'none') { setRetained(false); return }
+    let timer: number | undefined
+    const names = style.animationName.split(',').map((name) => name.trim())
+    const finish = () => {
+      window.clearTimeout(timer)
+      element.removeEventListener('animationend', onEnd)
+      setRetained(false)
+    }
+    const onEnd = (event: AnimationEvent) => { if (event.target === element && names.includes(event.animationName)) finish() }
     element.addEventListener('animationend', onEnd)
-    const timer = window.setTimeout(finish, duration)
+    timer = window.setTimeout(finish, duration)
     return () => { window.clearTimeout(timer); element.removeEventListener('animationend', onEnd) }
   }, [open, reduced, ref])
 

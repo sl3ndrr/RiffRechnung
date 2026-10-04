@@ -122,7 +122,7 @@ export function WorkspaceShell({ children, page, settings, mode, draftCount, las
         <div className="sidebar__privacy"><span><ShieldDot /></span><div><strong>Nur auf diesem Gerät</strong><small>Keine automatische Cloud-Übertragung</small></div></div>
         <a className="sidebar__version" href="https://github.com/sl3ndrr/RiffRechnung/blob/main/docs/about.md" target="_blank" rel="noreferrer" aria-label={`Info öffnen (neuer Tab), aktuelle Version ${APP_VERSION}`}>Info · Version {APP_VERSION}</a>
       </aside>
-      {scrimPresent && <button ref={scrimRef} className="nav-scrim" data-motion={mobileNav ? 'enter' : 'exit'} inert={!mobileNav} aria-label="Navigation schließen" onClick={closeMobileNav} />}
+      {isMobile && scrimPresent && <button ref={scrimRef} className="nav-scrim" data-motion={mobileNav ? 'enter' : 'exit'} inert={!mobileNav} aria-label="Navigation schließen" onClick={closeMobileNav} />}
 
       <div className="app-main" inert={isMobile && mobileNav}>
         <header className="topbar">

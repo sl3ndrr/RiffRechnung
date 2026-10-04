@@ -43,6 +43,7 @@ test('3.AP6: Dialog und Bestätigung animieren, behalten Fokusfalle und geben Fo
   await seed(page)
   await navigateToInvoices(page)
   const trigger = page.getByRole('button', { name: 'Neue Rechnung', exact: true })
+  await trigger.focus()
   await trigger.click()
   const dialog = page.getByRole('dialog', { name: 'Neue Rechnung', exact: true })
   await expect(dialog).toHaveCount(1)
@@ -60,6 +61,7 @@ test('3.AP6: Dialog und Bestätigung animieren, behalten Fokusfalle und geben Fo
   const issuer = page.getByLabel('Name / Geschäftsbezeichnung', { exact: true })
   await issuer.fill('Noch nicht gespeichert')
   const navigation = page.locator('.sidebar').getByRole('button', { name: 'Personen', exact: true })
+  await navigation.focus()
   await navigation.click()
   const confirm = page.getByRole('alertdialog', { name: 'Ungespeicherte Einstellungen verwerfen?' })
   await expect(confirm).toHaveCount(1)
@@ -151,6 +153,11 @@ test('3.AP6: mobile Schublade und Scrim schließen; Bottom-Navigation bleibt bed
   }
   await navigateToInvoices(page)
   await expect(page.locator('.mobile-bottom-nav [aria-current="page"]')).toHaveAccessibleName('Rechnungen')
+  await open.click()
+  await page.setViewportSize({ width: 1024, height: 900 })
+  await expect(page.locator('.nav-scrim')).toHaveCount(0)
+  await expect(sidebar).not.toHaveAttribute('inert')
+  await expect(sidebar).not.toHaveClass(/sidebar--open/)
 })
 
 test('3.AP6: Undo-Fortschritt und Pause bleiben während aktiver Toast-Animation erhalten', async ({ page }) => {

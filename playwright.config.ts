@@ -3,7 +3,9 @@ import { defineConfig } from '@playwright/test'
 export default defineConfig({
   testDir: './tests/browser',
   timeout: 30_000,
-  workers: 1,
+  // Browser contexts and testInfo artifacts are isolated; keep the expanded
+  // three-engine coverage within Quality's existing ten-minute job budget.
+  workers: process.env.CI ? 2 : 1,
   retries: 0,
   reporter: [['list'], ['json', { outputFile: 'test-results/browser-results.json' }]],
   use: { baseURL: 'http://127.0.0.1:4173', reducedMotion: 'reduce', trace: 'retain-on-failure', screenshot: 'only-on-failure' },
