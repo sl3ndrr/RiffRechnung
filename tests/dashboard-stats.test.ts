@@ -59,7 +59,7 @@ test('3.AP2: leerer Bestand und ein gewähltes Jahr ohne Zahlungen', () => {
   const state = emptyState(), stats = checkedStats(state)
   assert.deepEqual(stats.paid, { yearCents: 0, allTimeCents: 0, withoutConfirmedDay: { count: 0, cents: 0 } })
   assert.deepEqual(stats.open, { count: 0, totalCents: 0, overdueCount: 0, overdueCents: 0, items: [] })
-  assert.deepEqual(stats.drafts, { count: 0, totalCents: 0, uncalculableCount: 0 })
+  assert.deepEqual(stats.drafts, { count: 0, totalCount: 0, totalCents: 0, uncalculableCount: 0 })
   assert.deepEqual(stats.people, { guardians: 0, students: 0, activeStudents: 0 })
   assert.equal(stats.monthly.year, 2026)
   assert.deepEqual(stats.monthly.availableYears, [2026])
@@ -74,7 +74,7 @@ test('3.AP2: nur Entwürfe verwenden exakte Vorschaucent; Personen zählen aktiv
   state = saveInvoiceDraft(state, draft, false, documentAt)
   state.students[1].active = false
   const stats = checkedStats(state)
-  assert.deepEqual(stats.drafts, { count: 2, totalCents: 833, uncalculableCount: 0 })
+  assert.deepEqual(stats.drafts, { count: 2, totalCount: 2, totalCents: 833, uncalculableCount: 0 })
   assert.deepEqual(stats.people, { guardians: 2, students: 2, activeStudents: 1 })
   assert.equal(stats.open.count, 0); assert.equal(stats.paid.allTimeCents, 0)
 })
@@ -84,7 +84,7 @@ test('3.AP2: genau am Fälligkeitstag offen, erst einen Kalendertag danach über
   for (const [day, overdue] of [['2026-09-15', false], ['2026-09-16', true]] as const) {
     const stats = checkedStats(state, parseDate(day))
     assert.deepEqual(stats.open.items, [{ invoiceId: invoice.id, number: invoice.number, recipientLabel: 'Empfaenger A', studentLabel: 'Testkind A',
-      openCents: 3000, invoiceDate: '2026-09-01', dueDate: '2026-09-15', daysSinceInvoice: overdue ? 15 : 14, daysOverdue: overdue ? 1 : 0, isOverdue: overdue }])
+      openCents: 3000, invoiceDate: '2026-09-01', dueDate: '2026-09-15', daysSinceInvoice: overdue ? 15 : 14, daysOverdue: overdue ? 1 : 0, daysUntilDue: 0, isOverdue: overdue }])
     assert.equal(stats.open.totalCents, 3000); assert.equal(stats.open.overdueCount, overdue ? 1 : 0)
     assert.equal(stats.open.overdueCents, overdue ? 3000 : 0)
   }
@@ -99,6 +99,7 @@ test('3.AP2: offene Liste sortiert überfällige zuerst und anschließend nach F
   const stats = checkedStats(state)
   assert.deepEqual(stats.open.items.map((item) => item.dueDate), ['2026-09-10', '2026-09-14', '2026-09-14', '2026-09-18', '2026-09-20'])
   assert.deepEqual(stats.open.items.map((item) => item.daysOverdue), [6, 2, 2, 0, 0])
+  assert.deepEqual(stats.open.items.map((item) => item.daysUntilDue), [0, 0, 0, 2, 4])
   assert.equal(stats.open.overdueCount, 3); assert.equal(stats.open.overdueCents, 9000)
   assert.deepEqual(checkedStats({ ...state, invoices: [...state.invoices].reverse() }).open.items, stats.open.items)
 })
@@ -161,7 +162,7 @@ test('3.AP2: Korrekturentwurf lässt den ursprünglichen offenen oder bezahlten 
     state = createCorrectionDraft(state, state.invoices[0].id, 'Text berichtigen', documentAt)
     const stats = checkedStats(state)
     assert.deepEqual(stats.paid, before.paid); assert.deepEqual(stats.open, before.open)
-    assert.deepEqual(stats.drafts, { count: 1, totalCents: 3000, uncalculableCount: 0 })
+    assert.deepEqual(stats.drafts, { count: 1, totalCount: 1, totalCents: 3000, uncalculableCount: 0 })
   }
 })
 
@@ -226,7 +227,7 @@ test('3.AP2: unberechenbare Entwürfe zählen ausschließlich im gesonderten Zä
   state.invoices[1].items[0].quantity = 99.99
   state.invoices[1].items[0].unitPrice = Number.MAX_SAFE_INTEGER / 100
   const before = structuredClone(state), stats = dashboardStats(state, now)
-  assert.deepEqual(stats.drafts, { count: 1, totalCents: 758, uncalculableCount: 1 })
+  assert.deepEqual(stats.drafts, { count: 1, totalCount: 2, totalCents: 758, uncalculableCount: 1 })
   assert.equal(stats.open.count, 0); assert.deepEqual(state, before)
   assertInvariants(state, stats)
 })

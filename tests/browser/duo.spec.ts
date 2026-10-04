@@ -1,3 +1,4 @@
+import { navigateToInvoices } from './navigation'
 import { expectedTextless } from '../documentFixtures'
 import { test, expect, type Page } from '@playwright/test'
 import { execFileSync } from 'node:child_process'
@@ -21,6 +22,7 @@ async function seed(page: Page, state: AppState) {
   await page.reload()
 }
 async function openDraft(page: Page, name: string) {
+  await navigateToInvoices(page)
   await page.locator('.invoice-list-table tbody tr').filter({ hasText: name }).getByRole('button', { name: 'Entwurf', exact: true }).click()
   await page.locator('.invoice-detail').getByRole('button', { name: 'Bearbeiten', exact: true }).click()
   return page.getByRole('dialog', { name: 'Entwurf bearbeiten', exact: true })

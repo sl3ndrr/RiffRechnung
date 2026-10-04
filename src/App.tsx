@@ -3,6 +3,7 @@ import { allocatePayment, archiveInvoice, createCorrectionDraft, resolveDocument
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Guardian, Invoice, InvoiceDraft, InvoiceStatus, PageKey, Settings as SettingsType, Student, ThemeMode, ToastMessage } from './types'
 import { Invoices } from './views/Invoices'
+import { Dashboard } from './views/Dashboard'
 import { InvoiceEditor } from './views/InvoiceEditor'
 import { People } from './views/People'
 import { Settings } from './views/Settings'
@@ -47,7 +48,9 @@ function App() {
 function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange: (mode: 'real' | 'demo') => void }) {
   const [settingsEpoch, setSettingsEpoch] = useState(0)
   const [settingsDirty, setSettingsDirty] = useState(false)
-  const [page, setPage] = useState<PageKey>('invoices')
+  const [page, setPage] = useState<PageKey>('dashboard')
+  const [invoiceInitialStatus, setInvoiceInitialStatus] = useState<'all' | 'unpaid'>('all')
+  const [createPerson, setCreatePerson] = useState(false)
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
   const [editorDirty, setEditorDirty] = useState(false)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
@@ -233,7 +236,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     setSettingsEpoch((value) => value + 1)
     setSettingsDirty(false)
     setSelectedInvoiceId(null)
-    setPage('invoices')
+    setPage('dashboard')
     return true
   }
 
@@ -253,7 +256,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         await reset()
         setSettingsEpoch((value) => value + 1)
         setSelectedInvoiceId(null)
-        setPage('invoices')
+        setPage('dashboard')
         toast('Zurücksetzen lokal gespeichert.', 'success')
       } catch (error) { toast(error instanceof Error ? error.message : 'Zurücksetzen fehlgeschlagen.', 'error') }
     },
@@ -315,6 +318,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       return
     }
     const navigate = () => {
+      if (next !== page) { setInvoiceInitialStatus('all'); setCreatePerson(false) }
       setPage(next)
       afterNavigation?.()
     }
@@ -340,8 +344,9 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         {localSaveError && <section className="persistence-error" role="alert"><div><strong>Speichern fehlgeschlagen</strong><p>{localSaveError}</p></div><div className="button-row"><button className="button button--tonal" type="button" onClick={() => { void setCurrentPage('settings') }}>Einstellungen prüfen</button><button className="button button--text" type="button" onClick={exportBackup}>JSON-Backup exportieren</button></div></section>}
 
         <main ref={mainContentRef} id="main-content" tabIndex={-1}>
-          {page === 'invoices' && <Invoices onNavigate={setCurrentPage} onLoadDemo={mode === 'real' ? loadDemo : undefined} state={state} selectedId={selectedInvoiceId} onSelect={setSelectedInvoiceId} onNew={openNewInvoice} onEdit={editInvoice} onDuplicate={duplicateInvoice} onDelete={requestDeleteInvoice} onSetStatus={setInvoiceStatus} onCorrection={startCorrection} onAllocatePayment={(paymentId, versionId, reason) => { void commit((current) => allocatePayment(current, paymentId, versionId, reason), 'Zahlung manuell zugeordnet', 'invoice') }} onResolveConflicts={(versionId, reason) => { void commit((current) => resolveDocumentConflicts(current, versionId, reason), 'Historische Abweichung geklärt', 'invoice') }} onPrint={print} />}
-          {page === 'people' && <People state={state} onSaveGuardian={saveGuardian} onSaveStudent={saveStudent} onDeleteGuardian={deleteGuardian} onDeleteStudent={deleteStudent} />}
+          {page === 'dashboard' && <Dashboard state={state} mode={mode} lastBackupAt={lastBackupAt} onNavigate={setCurrentPage} onNew={openNewInvoice} onNewPerson={() => setCurrentPage('people', () => setCreatePerson(true))} onOpenInvoice={(id) => setCurrentPage('invoices', () => setSelectedInvoiceId(id))} onShowUnpaid={() => setCurrentPage('invoices', () => { setSelectedInvoiceId(null); setInvoiceInitialStatus('unpaid') })} onExport={exportBackup} onLoadDemo={mode === 'real' ? loadDemo : undefined} />}
+          {page === 'invoices' && <Invoices initialStatus={invoiceInitialStatus} onNavigate={setCurrentPage} onLoadDemo={mode === 'real' ? loadDemo : undefined} state={state} selectedId={selectedInvoiceId} onSelect={setSelectedInvoiceId} onNew={openNewInvoice} onEdit={editInvoice} onDuplicate={duplicateInvoice} onDelete={requestDeleteInvoice} onSetStatus={setInvoiceStatus} onCorrection={startCorrection} onAllocatePayment={(paymentId, versionId, reason) => { void commit((current) => allocatePayment(current, paymentId, versionId, reason), 'Zahlung manuell zugeordnet', 'invoice') }} onResolveConflicts={(versionId, reason) => { void commit((current) => resolveDocumentConflicts(current, versionId, reason), 'Historische Abweichung geklärt', 'invoice') }} onPrint={print} />}
+          {page === 'people' && <People initialCreate={createPerson ? state.guardians.length ? 'student' : 'guardian' : undefined} state={state} onSaveGuardian={saveGuardian} onSaveStudent={saveStudent} onDeleteGuardian={deleteGuardian} onDeleteStudent={deleteStudent} />}
           <div hidden={page !== 'settings'}><Settings key={settingsEpoch} state={state} onDirty={setSettingsDirty} onSave={saveSettings} onThemeChange={changeTheme} onExport={exportBackup} onImport={importBackup} onReset={resetAll} onPrevious={reviewPrevious} onArchive={exportRecoveryArchive} /></div>
         </main>
       </WorkspaceShell>
