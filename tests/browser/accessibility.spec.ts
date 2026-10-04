@@ -109,7 +109,8 @@ test('AP8 Accessibility: lange Desktop-Details bleiben im Fenster und Footerakti
   await detail.scrollIntoViewIfNeeded()
   const bounds = await detail.boundingBox()
   expect(bounds!.y).toBeGreaterThanOrEqual(0)
-  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(720)
+  // Native scroll offsets round to CSS pixels; an outer border can be fractional.
+  expect(Math.floor(bounds!.y + bounds!.height)).toBeLessThanOrEqual(720)
   expect(await detail.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true)
   const remove = detail.getByRole('button', { name: 'Löschen', exact: true })
   await tabTo(page, remove)

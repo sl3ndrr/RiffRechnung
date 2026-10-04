@@ -50,19 +50,23 @@ function printableState(itemCount: number, freeText = ''): AppState {
   return saveInvoiceDraft(state, draft, true, documentAt)
 }
 
-async function createPdf(page: Page, state: AppState, invoiceId: string, label: string, testInfo: TestInfo, appearance?: { theme: 'light' | 'dark'; reduced: boolean }) {
-  const rendering = await page.context().newPage()
+async function mountPdf(rendering: Page, state: AppState, invoiceId: string) {
+  await rendering.goto('/')
+  await rendering.evaluate(async ({ state, invoiceId }) => {
+    const harnessModule = '/tests/browser/documentPrintHarness.tsx'
+    const { mountDocument } = await import(harnessModule)
+    mountDocument(state, invoiceId)
+    await document.fonts.ready
+  }, { state, invoiceId })
+  await expect.poll(() => rendering.evaluate(() => document.documentElement.dataset.documentReady)).toBe(invoiceId)
+}
+
+async function createPdf(page: Page, state: AppState, invoiceId: string, label: string, testInfo: TestInfo, appearance?: { theme: 'light' | 'dark'; reduced: boolean }, prepared?: Page) {
+  const rendering = prepared ?? await page.context().newPage()
   try {
-    await rendering.goto('/')
-    await rendering.evaluate(async ({ state, invoiceId }) => {
-      const harnessModule = '/tests/browser/documentPrintHarness.tsx'
-      const { mountDocument } = await import(harnessModule)
-      mountDocument(state, invoiceId)
-      await document.fonts.ready
-    }, { state, invoiceId })
-    await expect.poll(() => rendering.evaluate(() => document.documentElement.dataset.documentReady)).toBe(invoiceId)
+    if (!prepared) await mountPdf(rendering, state, invoiceId)
     if (appearance) {
-      await rendering.emulateMedia({ colorScheme: appearance.theme, reducedMotion: appearance.reduced ? 'reduce' : 'no-preference' })
+      await rendering.emulateMedia({ media: 'screen', colorScheme: appearance.theme, reducedMotion: appearance.reduced ? 'reduce' : 'no-preference' })
       await rendering.evaluate(({ theme, reduced }) => {
         document.documentElement.dataset.theme = theme
         document.documentElement.style.colorScheme = theme
@@ -113,7 +117,7 @@ async function createPdf(page: Page, state: AppState, invoiceId: string, label: 
     const payload = await rendering.evaluate(() => document.documentElement.dataset.giroPayload ?? '')
     return { pages, text, flowText, payload, rasterHashes, ...structure }
   } finally {
-    await rendering.close()
+    if (!prepared) await rendering.close()
   }
 }
 
@@ -131,17 +135,24 @@ for (const variant of ['ein-monat', 'zwei-monate', 'entwurf', 'leistungsdaten', 
     }
     const before = structuredClone(state)
     let reference: Awaited<ReturnType<typeof createPdf>> | undefined
-    for (const theme of ['light', 'dark'] as const) for (const reduced of [false, true]) {
-      const pdf = await createPdf(page, state, state.invoices[0].id, `ap8-${variant}-${theme}-${reduced}`, testInfo, { theme, reduced })
-      expect(pdf.paperColor).toBe('rgb(11, 27, 63)')
-      expect(pdf.paperBackground).toBe('rgb(255, 255, 255)')
-      expect(pdf.rasterHashes).toHaveLength(pdf.pages)
-      if (!reference) reference = pdf
-      else {
-        expect(pdf.rasterHashes).toEqual(reference.rasterHashes)
-        expect(pdf.text).toBe(reference.text)
-        expect(pdf.payload).toBe(reference.payload)
+    const rendering = await page.context().newPage()
+    try {
+      // Keep the same invoice mounted while switching every theme/motion pair.
+      await mountPdf(rendering, state, state.invoices[0].id)
+      for (const theme of ['light', 'dark'] as const) for (const reduced of [false, true]) {
+        const pdf = await createPdf(page, state, state.invoices[0].id, `ap8-${variant}-${theme}-${reduced}`, testInfo, { theme, reduced }, rendering)
+        expect(pdf.paperColor).toBe('rgb(11, 27, 63)')
+        expect(pdf.paperBackground).toBe('rgb(255, 255, 255)')
+        expect(pdf.rasterHashes).toHaveLength(pdf.pages)
+        if (!reference) reference = pdf
+        else {
+          expect(pdf.rasterHashes).toEqual(reference.rasterHashes)
+          expect(pdf.text).toBe(reference.text)
+          expect(pdf.payload).toBe(reference.payload)
+        }
       }
+    } finally {
+      await rendering.close()
     }
     expect(state).toEqual(before)
   })

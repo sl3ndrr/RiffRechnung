@@ -54,6 +54,8 @@ Bestehende Browserprüfungen warten gezielt auf geschlossene AP6-Dialoge, abgesc
 
 Die feststehende Rechnungsdetailkarte ist auch auf dem Desktop auf die Fensterhöhe begrenzt und scrollt bei langem Inhalt intern. Ohne diese Begrenzung lag der Footer langer Demo-Entwürfe außerhalb des Viewports; wiederholtes automatisches Scrollen an der Sticky-Karte kostete im Undo-Trace je Klick etwa acht Sekunden. Die Accessibility-Suite prüft die Kartengrenzen, Tastaturzugang zum Footer, Bestätigungsdialog und Fokusrückgabe bei 1280 × 720 px in beiden Farbschemata. Die mobilen Detailregeln und das eigenständige Rechnungspapier bleiben unverändert.
 
+Die AP8-Druckvergleiche mounten jede unveränderte Rechnung einmal und wechseln auf derselben Seite durch alle vier Theme-/Motion-Paare. Vor jeder Ausgabe gilt zunächst Screen-Media für die Motion-Prüfung, danach Print-Media für Root-Farbschema und PDF. So entfallen 18 redundante App-/Beleg-Mounts pro Matrixjob; sämtliche Pixel-, Text-, GiroCode-, Farb- und Originalschutz-Assertions bleiben erhalten. Andere Druckfälle erhalten weiterhin eine frische Seite.
+
 ## Belegdaten, Nummern und Zahlungen
 
 `DocumentVersion` ist die geschützte Quelle finaler Belege. Ausgabe-Snapshot, Ausgabezeitraum und gesicherte Centbeträge liegen jeweils einmal in der Belegversion; `selectInvoice` leitet die Ausgabesicht daraus ab. `content` speichert keine zweite Kopie dieser Ausgabeinformationen.
