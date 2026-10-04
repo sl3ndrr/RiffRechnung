@@ -783,12 +783,12 @@ html.theme-changing, .theme-changing body, .theme-changing body :where(*):not(.i
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :root { --dur-fast: .01ms; --dur-base: .01ms; --dur-slow: .01ms; --dur-theme: .01ms; --dur-stagger: 0ms; }
-  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; transition-delay: 0ms !important; }
+  :root { --dur-fast: 0ms; --dur-base: 0ms; --dur-slow: 0ms; --dur-theme: 0ms; --dur-stagger: 0ms; }
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 0ms !important; transition-delay: 0ms !important; }
   .toast__progress { display: none; }
 }
-:root.reduce-motion { --dur-fast: .01ms; --dur-base: .01ms; --dur-slow: .01ms; --dur-theme: .01ms; --dur-stagger: 0ms; }
-.reduce-motion, .reduce-motion::before, .reduce-motion::after, .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; transition-delay: 0ms !important; }
+:root.reduce-motion { --dur-fast: 0ms; --dur-base: 0ms; --dur-slow: 0ms; --dur-theme: 0ms; --dur-stagger: 0ms; }
+.reduce-motion, .reduce-motion::before, .reduce-motion::after, .reduce-motion *, .reduce-motion *::before, .reduce-motion *::after { scroll-behavior: auto !important; animation-duration: 0ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 0ms !important; transition-delay: 0ms !important; }
 .reduce-motion .toast__progress { display: none; }
 
 .print-root, .print-root *, .print-root *::before, .print-root *::after { animation: none !important; transition: none !important; }
