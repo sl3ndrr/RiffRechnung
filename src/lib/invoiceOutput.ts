@@ -1,6 +1,6 @@
 import type { Guardian, Invoice, InvoiceItem, InvoiceStatus, Student } from '../types'
-import { localToday } from './calendar'
-import { decimalInputText, itemTotalCents } from './money'
+import { calendarParts, localToday } from './calendar'
+import { decimalInputText, invoiceTotalCents, itemTotalCents, sumCents } from './money'
 import { euro, parseDate } from './utils'
 import { liveRecipient, recipientRefs, snapshotRecipients } from './recipients'
 
@@ -137,6 +137,49 @@ export function outputItemTotal(invoice: Invoice, item: InvoiceItem): number {
 export function outputItemCents(invoice: Invoice, item: InvoiceItem): number {
   const index = invoice.items.findIndex((entry) => entry.id === item.id)
   return invoice.issuedAmounts && index >= 0 ? invoice.issuedAmounts.itemCents[index] : itemTotalCents(item)
+}
+
+interface InvoicePrintGroup {
+  key: string
+  title: string
+  subtotalLabel: string
+  items: InvoiceItem[]
+  totalCents: number
+}
+
+/** Presentation only: never reorder the stored positions or recalculate issued amounts. */
+export function invoicePrintGroups(invoice: Invoice): InvoicePrintGroup[] | null {
+  const months = new Map<string, InvoiceItem[]>()
+  for (const item of invoice.items) {
+    let key = ''
+    try { calendarParts(item.serviceDate); key = item.serviceDate.slice(0, 7) } catch { /* Undated positions follow all months. */ }
+    const items = months.get(key) ?? []
+    items.push(item)
+    months.set(key, items)
+  }
+  try {
+    const groups = [...months.entries()]
+      .sort(([a], [b]) => a === '' ? 1 : b === '' ? -1 : a.localeCompare(b))
+      .map(([key, items]) => {
+        const date = key ? parseDate(`${key}-01`) : null
+        const month = date ? new Intl.DateTimeFormat('de-DE', { month: 'long' }).format(date) : ''
+        return {
+          key,
+          title: date ? new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' }).format(date) : 'Ohne gültiges Leistungsdatum',
+          subtotalLabel: month ? `Zwischensumme ${month}:` : 'Zwischensumme ohne Leistungsdatum:',
+          items,
+          totalCents: sumCents(items.map((item) => outputItemCents(invoice, item))),
+        }
+      })
+    return sumCents(groups.map((group) => group.totalCents)) === invoiceTotalCents(invoice) ? groups : null
+  } catch {
+    // Historical item sums can also exceed the safe range despite a valid frozen total.
+    return null
+  }
+}
+
+export function invoiceServiceDate(value: string): string {
+  try { calendarParts(value); return `${value.slice(8, 10)}.${value.slice(5, 7)}.` } catch { return value }
 }
 
 export function outputUnitPrice(invoice: Invoice, item: InvoiceItem): string {
