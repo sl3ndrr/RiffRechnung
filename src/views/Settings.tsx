@@ -14,14 +14,16 @@ import { isFinalizedInvoice } from '../lib/safety'
 import { canonical } from '../lib/envelope'
 import { invoiceSetupErrors } from '../lib/invoiceSetup'
 import { bicError } from '../lib/paymentData'
+import { centerOf, type RevealOrigin } from '../lib/themeTransition'
 
 type SettingsForm = Omit<SettingsType, 'theme'>
 
 interface SettingsProps {
   visible: boolean
   state: AppState
+  theme: ThemeMode
   onSave: (settings: SettingsForm) => Promise<boolean>
-  onThemeChange: (theme: ThemeMode) => void
+  onThemeChange: (theme: ThemeMode, origin?: RevealOrigin) => void
   onDirty: (dirty: boolean) => void
   onExport: () => void
   onImport: (file: File) => void
@@ -30,7 +32,7 @@ interface SettingsProps {
   onArchive: () => void
 }
 
-export function Settings({ state, visible, onSave, onThemeChange, onDirty, onExport, onImport, onReset, onPrevious, onArchive }: SettingsProps) {
+export function Settings({ state, theme, visible, onSave, onThemeChange, onDirty, onExport, onImport, onReset, onPrevious, onArchive }: SettingsProps) {
   const entrance = usePageEntrance(undefined, visible)
   const entryClass = entrance ? ' motion-fade motion-stagger page-entry' : ''
   const [form, setForm] = useState<SettingsForm>(() => {
@@ -44,6 +46,7 @@ export function Settings({ state, visible, onSave, onThemeChange, onDirty, onExp
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const pendingSave = useRef(false)
+  const themeOrigin = useRef<{ theme: ThemeMode; origin?: RevealOrigin } | null>(null)
 
   const ibanError = form.iban.trim() ? germanIbanError(form.iban) : null
   const currentBicError = form.bic.trim() ? bicError(form.bic) : null
@@ -128,7 +131,16 @@ export function Settings({ state, visible, onSave, onThemeChange, onDirty, onExp
 
           <section id="appearance" className={`surface settings-section${entryClass}`} style={staggerStyle(3)}>
             <div className="settings-section__heading"><span><Palette aria-hidden="true" /></span><div><h2>Darstellung</h2><p>Das Rechnungs-PDF bleibt unabhängig davon immer hell.</p></div></div>
-            <fieldset className="theme-picker"><legend>Farbschema</legend>{([['light', Sun, 'Hell'], ['system', Monitor, 'System'], ['dark', Moon, 'Dunkel']] as const).map(([value, Icon, label]) => <label className={state.settings.theme === value ? 'is-selected' : ''} key={value}><input type="radio" name="theme" checked={state.settings.theme === value} onChange={() => onThemeChange(value)} /><Icon aria-hidden="true" /><span>{label}</span></label>)}</fieldset>
+            <fieldset className="theme-picker"><legend>Farbschema</legend>{([['light', Sun, 'Hell'], ['system', Monitor, 'System'], ['dark', Moon, 'Dunkel']] as const).map(([value, Icon, label]) => <label className={theme === value ? 'is-selected' : ''} key={value}
+              onPointerDown={(event) => { themeOrigin.current = { theme: value, origin: centerOf(event.currentTarget) } }}
+              onKeyDown={() => { themeOrigin.current = null }}>
+              <input type="radio" name="theme" checked={theme === value} onChange={(event) => {
+                // Native focus may scroll the absolutely positioned input.
+                // Pointer origins must stay where the user pressed the card.
+                const origin = themeOrigin.current?.theme === value ? themeOrigin.current.origin : centerOf(event.currentTarget.closest('label'))
+                themeOrigin.current = null
+                onThemeChange(value, origin)
+              }} /><Icon aria-hidden="true" /><span>{label}</span></label>)}</fieldset>
             <label className="switch-row"><span><strong>Bewegungen reduzieren</strong><small>Bewegungspräferenz für die Darstellung speichern</small></span><input type="checkbox" checked={form.reducedMotion} onChange={(event) => setForm({ ...form, reducedMotion: event.target.checked })} /><i /></label>
           </section>
 

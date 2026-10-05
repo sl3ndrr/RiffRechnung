@@ -25,7 +25,7 @@ Dashboardkarten nutzen unterschiedliche dekorative Iconformen.
 Inter Variable wird lokal geladen. Die kleine `type-*`-Skala reicht von
 12-px-Hilfstext über 14/15-px-Labels und Fließtext bis zu 32–40-px-Seitentiteln
 und 36–44-px-Kennzahlen. Betonte Werte verwenden Gewicht 700 und tabellarische
-Ziffern. Schatten sind auf Menüs und Toasts beschränkt; Dialoge erhalten
+Ziffern. Schatten sind auf Menüs, Toasts und den dezenten Theme-Thumb beschränkt; Dialoge erhalten
 Tiefe durch den Scrim und die getönte Fläche.
 
 ## Bewegung und Bedienung
@@ -40,6 +40,10 @@ Fokus ist 3 px breit;
 mobile Touchziele sind mindestens 44 px. Buttonhöhen: S 40, M 48, L 56 px;
 S wächst mobil auf 44 px. Pro Ansicht gibt es eine hervorgehobene Hauptaktion,
 im leeren Dashboard bleibt die vorhandene Einrichtung mit „Person anlegen“.
+
+Der Topbar-Theme-Schalter besteht aus drei runden 44 × 44-px-Iconsegmenten (Hell/System/Dunkel), 132 px Innenbreite, 4 px Padding und 1 px Rand. Der 44-px-Thumb verwendet `primary-container`, einen `primary`-Rand und `0 1px 2px rgb(0 0 0 / .12)`. Nur die zugänglichen Namen und Label-Titel bleiben; die Einstellungskarten behalten ihre Darstellung. Aktive Icons (`on-primary-container` auf `primary-container`) und inaktive Icons (`on-surface-variant` auf `surface-container-high`) übertreffen 3:1 in beiden Themes; die Palette bleibt unverändert.
+
+`spring-spatial-fast` und `spring-spatial` ergänzen die bisherigen Kurven mit den Federn des Prüfungsdashboards, jeweils mit `linear()` und Bezier-Fallback. Räumliche Bewegung darf überschwingen, Farbe und Deckkraft bleiben monoton. `dur-spatial-fast` (350 ms) bewegt den Thumb um 0/44/88 px und federt Icons und Segment-Interaktion; der Thumb-Squash animiert separat `scale` und `border-radius`. Diese Formanimation ist eine bewusste Ausnahme zur sonst auf Transform/Deckkraft beschränkten Bewegung. `dur-spatial-slow` (570 ms) steuert den Kreis-Reveal der neuen Root-Momentaufnahme ab Thumb-/Kartenmitte bei einem aufgelösten Farbwechsel. Ohne View Transitions und bei OS-Wechseln bleibt der 250-ms-Farb-Fade erhalten. Gleiche aufgelöste Farbe bewegt nur den Schalter. Beide Bewegungspräferenzen deaktivieren Reveal und Squash und setzen alle Dauern auf exakt 0 ms. Papier und Druck bleiben unabhängig und ohne Animation.
 
 ## Ansichten und Dokument
 
@@ -66,3 +70,4 @@ Rechnungsliste, Editor und Einstellungen bei 1440/390 px in Hell/Dunkel.
 Die bestehende PDF-Suite prüft die unterschiedlichen Rechnungsszenarien
 einschließlich mehrseitiger Ausgabe und unveränderter Daten. Bilder und PDFs
 liegen ausschließlich in den CI-Artefakten, nicht im Repository.
+

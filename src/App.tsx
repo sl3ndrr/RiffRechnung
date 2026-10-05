@@ -24,6 +24,7 @@ import { WorkspaceShell } from './components/WorkspaceShell'
 import { useInvoicePrint } from './hooks/useInvoicePrint'
 import { useLocalWorkspace } from './hooks/useLocalWorkspace'
 import { useToasts } from './hooks/useToasts'
+import { useThemeChange } from './hooks/useThemeChange'
 
 interface Confirmation {
   title: string
@@ -279,9 +280,9 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   })
 
   const saveSettings = useCallback((settings: Omit<SettingsType, 'theme'>) => commit((current) => requireSuccess(saveSettingsState(current, { ...settings, theme: current.settings.theme })), 'Einstellungen aktualisiert', 'settings'), [commit])
-  const changeTheme = useCallback((theme: ThemeMode) => {
-    void commit((current) => requireSuccess(changeThemeState(current, theme)), 'Farbschema geändert', 'settings')
-  }, [commit])
+  const persistTheme = useCallback((theme: ThemeMode) => commit((current) => requireSuccess(changeThemeState(current, theme)), 'Farbschema geändert', 'settings'), [commit])
+  const readConfirmedTheme = useCallback(() => stateRef.current.settings.theme, [stateRef])
+  const { theme, activeTheme, changeTheme } = useThemeChange(state.settings.theme, readConfirmedTheme, persistTheme)
   const guardSettings = (action: () => void | Promise<void>): void => {
     if (pendingWrites.current) { toast('Bitte den laufenden Speichervorgang abwarten.', 'info'); return }
     if (!settingsDirty) { void action(); return }
@@ -355,7 +356,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   return (
     <div className="app-shell">
       {mode === 'demo' && <section className="demo-banner motion-fade" role="status">Demo – nur in dieser Sitzung. <button className="button button--tonal" onClick={() => void switchMode()}>Demo verlassen</button></section>}
-      <WorkspaceShell page={page} settings={state.settings} mode={mode} draftCount={state.invoices.filter((invoice) => invoice.status === 'draft').length} lastBackupAt={lastBackupAt} saveStateLabel={saveStateLabel} saveStatus={saveStatus} mainContentRef={mainContentRef} onNavigate={setCurrentPage} onThemeChange={changeTheme}>
+      <WorkspaceShell theme={theme} activeTheme={activeTheme} page={page} settings={state.settings} mode={mode} draftCount={state.invoices.filter((invoice) => invoice.status === 'draft').length} lastBackupAt={lastBackupAt} saveStateLabel={saveStateLabel} saveStatus={saveStatus} mainContentRef={mainContentRef} onNavigate={setCurrentPage} onThemeChange={changeTheme}>
         {externalChangeDetected && <section className="external-update" role="alert"><div><strong>Änderungen in einem anderen Tab erkannt</strong><p>Dieser Tab zeigt nicht mehr den aktuellen Datenstand. Lade neu, bevor du weiterarbeitest.</p></div><button className="button button--tonal" type="button" onClick={() => window.location.reload()}>Aktuellen Stand neu laden</button></section>}
         {localSaveError && <section className="persistence-error" role="alert"><div><strong>Speichern fehlgeschlagen</strong><p>{localSaveError}</p></div><div className="button-row"><button className="button button--tonal" type="button" onClick={() => { void setCurrentPage('settings') }}>Einstellungen prüfen</button><button className="button button--text" type="button" onClick={exportBackup}>JSON-Backup exportieren</button></div></section>}
 
@@ -363,7 +364,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
           {page === 'dashboard' && <Dashboard state={state} mode={mode} lastBackupAt={lastBackupAt} onNavigate={setCurrentPage} onNew={openNewInvoice} onNewPerson={() => setCurrentPage('people', () => setCreatePerson(true))} onOpenInvoice={(id) => setCurrentPage('invoices', () => setSelectedInvoiceId(id))} onShowUnpaid={() => setCurrentPage('invoices', () => { setSelectedInvoiceId(null); setInvoiceInitialStatus('unpaid') })} onExport={exportBackup} onLoadDemo={mode === 'real' ? loadDemo : undefined} />}
           {page === 'invoices' && <Invoices initialStatus={invoiceInitialStatus} onNavigate={setCurrentPage} onLoadDemo={mode === 'real' ? loadDemo : undefined} state={state} selectedId={selectedInvoiceId} onSelect={setSelectedInvoiceId} onNew={openNewInvoice} onEdit={editInvoice} onDuplicate={duplicateInvoice} onDelete={requestDeleteInvoice} onSetStatus={setInvoiceStatus} onCorrection={startCorrection} onAllocatePayment={(paymentId, versionId, reason) => { void commit((current) => allocatePayment(current, paymentId, versionId, reason), 'Zahlung manuell zugeordnet', 'invoice') }} onResolveConflicts={(versionId, reason) => { void commit((current) => resolveDocumentConflicts(current, versionId, reason), 'Historische Abweichung geklärt', 'invoice') }} onPrint={print} />}
           {page === 'people' && <People initialCreate={createPerson ? state.guardians.length ? 'student' : 'guardian' : undefined} state={state} onSaveGuardian={saveGuardian} onSaveStudent={saveStudent} onDeleteGuardian={deleteGuardian} onDeleteStudent={deleteStudent} />}
-          <div hidden={page !== 'settings'}><Settings visible={page === 'settings'} key={settingsEpoch} state={state} onDirty={setSettingsDirty} onSave={saveSettings} onThemeChange={changeTheme} onExport={exportBackup} onImport={importBackup} onReset={resetAll} onPrevious={reviewPrevious} onArchive={exportRecoveryArchive} /></div>
+          <div hidden={page !== 'settings'}><Settings theme={theme} visible={page === 'settings'} key={settingsEpoch} state={state} onDirty={setSettingsDirty} onSave={saveSettings} onThemeChange={changeTheme} onExport={exportBackup} onImport={importBackup} onReset={resetAll} onPrevious={reviewPrevious} onArchive={exportRecoveryArchive} /></div>
         </main>
       </WorkspaceShell>
 
@@ -377,4 +378,5 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
 }
 
 export default App
+
 

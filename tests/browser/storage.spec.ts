@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { waitForThemeMotion } from './themeMotion'
 import { readFile } from 'node:fs/promises'
 import { emptyState } from '../../src/lib/defaults'
 import { serializeBackup, STORAGE_KEY } from '../../src/lib/storage'
@@ -199,6 +200,7 @@ test('P04: Verwerfen speichert nichts; Darstellung und Demo-Wechsel respektieren
   const before = await stored(page)
   await page.getByLabel('Name / Geschäftsbezeichnung', { exact: true }).fill('Nicht speichern')
   await page.locator('.theme-picker label').filter({ hasText: 'Dunkel' }).click()
+  await waitForThemeMotion(page)
   await page.locator('label.switch-row').filter({ hasText: 'Bewegungen reduzieren' }).click()
   expect(await stored(page)).toBe(before)
   await page.getByRole('button', { name: 'Demo verlassen', exact: true }).click()
@@ -262,3 +264,4 @@ test('P04: genau ein ausdrücklicher Speicherversuch; Änderungen während einer
   expect(JSON.parse((await stored(page))!).data.settings.issuer.name).toBe('Spätere Eingabe')
   expect(JSON.parse((await stored(page))!).revision).toBe(2)
 })
+

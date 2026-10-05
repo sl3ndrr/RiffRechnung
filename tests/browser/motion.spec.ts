@@ -2,6 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test'
 import { serializeBackup } from '../../src/lib/storage'
 import { undoFixture } from '../undoFixtures'
 import { navigateToInvoices } from './navigation'
+import { observeThemeMotion, waitForThemeMotion, type ThemeMotionWindow } from './themeMotion'
 
 test.use({ reducedMotion: 'no-preference', colorScheme: 'light' })
 
@@ -134,22 +135,35 @@ test('3.AP6: Navigation bewegt Indikator und blendet nur den neuen Inhalt ein; T
     await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
   }
   await main?.dispose()
-  // Capture the short class without depending on assertion/network timing.
-  await page.evaluate(() => {
-    const observer = new MutationObserver(() => {
-      if (document.documentElement.classList.contains('theme-changing')) (window as unknown as MotionWindow).motionEvents.push('theme-changing')
-    })
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-  })
+  const native = await observeThemeMotion(page)
+  const thumb = await page.locator('.theme-switch__thumb').boundingBox()
   await page.locator('.topbar').getByRole('radio', { name: 'Dunkel', exact: true }).click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
-  await expect(page.locator('html')).not.toHaveClass(/theme-changing/)
-  expect(await page.evaluate(() => (window as unknown as MotionWindow).motionEvents)).toContain('theme-changing')
-  expect((await durations(page.locator('.theme-switch__thumb'))).transitions[0]).toBe(220)
+  await waitForThemeMotion(page)
+  const events = await page.evaluate(() => (window as unknown as ThemeMotionWindow).themeEvents)
+  if (native) {
+    expect(events.map((event) => event.kind)).toContain('reveal')
+    expect(events.map((event) => event.kind)).not.toContain('fade')
+    const reveal = events.find((event) => event.kind === 'reveal')!
+    expect(reveal.x).toBeCloseTo(thumb!.x + thumb!.width / 2, 0)
+    expect(reveal.y).toBeCloseTo(thumb!.y + thumb!.height / 2, 0)
+    const viewport = page.viewportSize()!
+    expect(reveal.radius).toBeCloseTo(Math.hypot(Math.max(reveal.x, viewport.width - reveal.x), Math.max(reveal.y, viewport.height - reveal.y)), 0)
+  } else expect(events.map((event) => event.kind)).toContain('fade')
+  expect((await durations(page.locator('.theme-switch__thumb'))).transitions[0]).toBe(350)
+  const squashes = await page.evaluate(() => (window as unknown as ThemeMotionWindow).squashes)
+  expect(squashes).toHaveLength(1)
+  expect(squashes[0].some((frame) => frame.scale === '1.28 0.85' || frame.scale === '1.28 .85')).toBe(true)
   await page.locator('.topbar').getByRole('radio', { name: 'System', exact: true }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  await waitForThemeMotion(page)
+  await page.evaluate(() => { (window as unknown as ThemeMotionWindow).themeEvents = [] })
   await page.emulateMedia({ colorScheme: 'dark' })
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
-  await expect(page.locator('html')).not.toHaveClass(/theme-changing/)
+  await waitForThemeMotion(page)
+  const osEvents = await page.evaluate(() => (window as unknown as ThemeMotionWindow).themeEvents.map((event) => event.kind))
+  expect(osEvents).toContain('fade')
+  expect(osEvents).not.toContain('reveal')
 })
 
 test('3.AP6: mobile Schublade und Scrim schließen; Bottom-Navigation bleibt bedienbar', async ({ page }) => {
@@ -204,7 +218,7 @@ test('3.AP6: Undo-Fortschritt und Pause bleiben während aktiver Toast-Animation
 })
 
 for (const preference of ['setting', 'media'] as const) {
-  test(`3.AP6: ${preference} reduziert alle Dauern und Staffelverzögerungen auf höchstens 0,01 ms`, async ({ page }) => {
+  test(`3.AP6: ${preference} reduziert alle Dauern und Staffelverzögerungen auf 0 ms`, async ({ page }) => {
     if (preference === 'media') await page.emulateMedia({ reducedMotion: 'reduce' })
     await seed(page, preference === 'setting')
     if (preference === 'setting') await expect(page.locator('html')).toHaveClass(/reduce-motion/)
@@ -214,20 +228,26 @@ for (const preference of ['setting', 'media'] as const) {
       sample.style.setProperty('--stagger-index', '5')
       document.body.append(sample)
     })
+    await observeThemeMotion(page)
+    await page.locator('.topbar').getByRole('radio', { name: 'Dunkel', exact: true }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+    await waitForThemeMotion(page)
+    expect(await page.evaluate(() => (window as unknown as ThemeMotionWindow).themeEvents)).toEqual([])
+    expect(await page.evaluate(() => (window as unknown as ThemeMotionWindow).squashes)).toEqual([])
     await navigateToInvoices(page)
     await page.getByRole('button', { name: 'Neue Rechnung', exact: true }).click()
     for (const selector of ['.modal-layer', '.modal', '.theme-switch__thumb', '.sidebar .nav-indicator', '#main-content', '.motion-sample', '.button']) {
       const values = await durations(page.locator(selector).first())
-      for (const ms of [...values.animations, ...values.transitions, ...values.delays]) expect(ms).toBeLessThanOrEqual(.010001)
+      for (const ms of [...values.animations, ...values.transitions, ...values.delays]) expect(ms).toBe(0)
     }
     await page.keyboard.press('Escape')
     await expectReleased(page)
     await page.locator('.sidebar').getByRole('button', { name: 'Einstellungen', exact: true }).click()
     const thumb = await durations(page.locator('.switch-row > i').first(), '::after')
-    for (const ms of thumb.transitions) expect(ms).toBeLessThanOrEqual(.010001)
+    for (const ms of thumb.transitions) expect(ms).toBe(0)
     await page.getByRole('button', { name: 'JSON exportieren', exact: true }).click()
     const toast = await durations(page.locator('.toast'))
-    for (const ms of toast.animations) expect(ms).toBeLessThanOrEqual(.010001)
+    for (const ms of toast.animations) expect(ms).toBe(0)
     await page.getByRole('button', { name: 'Meldung schließen', exact: true }).click()
     await expect(page.locator('.toast')).toHaveCount(0)
   })
@@ -265,4 +285,106 @@ test('3.AP6: Druck und print-root bleiben ohne Motion und ohne transparenten Sta
     expect(transition).toBe('0s')
   }
   await expect(page.locator('.print-motion-sample')).toHaveCSS('opacity', '1')
+})
+
+
+test('Theme: Hell → System bewegt und quetscht den Thumb ohne Farb-Reveal', async ({ page }) => {
+  await seed(page)
+  await observeThemeMotion(page)
+  await page.locator('.topbar').getByRole('radio', { name: 'System', exact: true }).click()
+  await expect(page.locator('.theme-switch')).toHaveAttribute('data-mode', 'system')
+  await waitForThemeMotion(page)
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  expect(await page.evaluate(() => (window as unknown as ThemeMotionWindow).themeEvents)).toEqual([])
+  expect(await page.evaluate(() => (window as unknown as ThemeMotionWindow).squashes.length)).toBe(1)
+  await expect(page.locator('.theme-switch__thumb')).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 44, 0)')
+})
+
+test('Theme: erzwungener Fallback erhält 250-ms-Fade und 350-ms-Thumb', async ({ page }) => {
+  await seed(page)
+  await page.evaluate(() => Object.defineProperty(document, 'startViewTransition', { value: undefined, configurable: true }))
+  expect(await observeThemeMotion(page)).toBe(false)
+  await page.locator('.topbar').getByRole('radio', { name: 'Dunkel', exact: true }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await waitForThemeMotion(page)
+  expect(await page.evaluate(() => (window as unknown as ThemeMotionWindow).themeEvents.map((event) => event.kind))).toContain('fade')
+  expect((await durations(page.locator('.theme-switch__thumb'))).transitions[0]).toBe(350)
+  await expect(page.locator('.theme-switch__thumb')).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 88, 0)')
+})
+
+test('Theme: Einstellungskarte liefert ihren eigenen Reveal-Ursprung', async ({ page }) => {
+  await seed(page)
+  await page.locator('.sidebar').getByRole('button', { name: 'Einstellungen', exact: true }).click()
+  const native = await observeThemeMotion(page)
+  const card = page.locator('.theme-picker label').filter({ hasText: 'Dunkel' })
+  await card.scrollIntoViewIfNeeded()
+  await card.hover()
+  await card.evaluate((label) => label.addEventListener('pointerdown', () => {
+    const rect = label.getBoundingClientRect()
+    Reflect.set(window, 'expectedCardOrigin', { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
+  }, { once: true }))
+  await card.click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await waitForThemeMotion(page)
+  const events = await page.evaluate(() => (window as unknown as ThemeMotionWindow).themeEvents)
+  if (native) {
+    const reveal = events.find((event) => event.kind === 'reveal')!
+    const origin = await page.evaluate(() => Reflect.get(window, 'expectedCardOrigin')) as { x: number; y: number }
+    expect(reveal.x).toBeCloseTo(origin.x, 0)
+    expect(reveal.y).toBeCloseTo(origin.y, 0)
+  } else expect(events.map((event) => event.kind)).toContain('fade')
+})
+
+test('Theme: schnelle Klicks vor dem Update und während des Reveals enden konsistent', async ({ page }) => {
+  await seed(page)
+  // Two requests in one task exercise the stale native update-callback guard.
+  await page.evaluate(() => {
+    document.querySelector<HTMLInputElement>('.theme-switch input[value="dark"]')!.click()
+    document.querySelector<HTMLInputElement>('.theme-switch input[value="system"]')!.click()
+  })
+  await expect(page.locator('.theme-switch')).toHaveAttribute('data-mode', 'system')
+  await waitForThemeMotion(page)
+  const stored = () => page.evaluate(async () => {
+    const path = '/src/lib/storage.ts'
+    const { StorageSession } = await import(path)
+    return new StorageSession().state.settings.theme
+  })
+  await expect.poll(stored).toBe('system')
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  await page.locator('.topbar').getByRole('radio', { name: 'Dunkel', exact: true }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await page.locator('.topbar').getByRole('radio', { name: 'Hell', exact: true }).click()
+  await expect.poll(stored).toBe('light')
+  await waitForThemeMotion(page)
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  await expect(page.locator('.topbar').getByRole('radio', { name: 'Hell', exact: true })).toBeChecked()
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+})
+
+test('Theme: fehlgeschlagener Commit setzt DOM und Auswahl ohne Fade zurück', async ({ page }) => {
+  await seed(page)
+  await observeThemeMotion(page)
+  await page.evaluate(async () => {
+    const path = '/src/lib/storage.ts'
+    const { StorageSession } = await import(path)
+    StorageSession.prototype.change = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 80))
+      throw new Error('Theme-Test: Speichern fehlgeschlagen')
+    }
+  })
+  await page.locator('.topbar').getByRole('radio', { name: 'Dunkel', exact: true }).click()
+  await expect(page.locator('.toast')).toContainText('Theme-Test: Speichern fehlgeschlagen')
+  await waitForThemeMotion(page)
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  await expect(page.locator('.topbar').getByRole('radio', { name: 'Hell', exact: true })).toBeChecked()
+  const state = await page.evaluate(async () => {
+    const path = '/src/lib/storage.ts'
+    const { StorageSession } = await import(path)
+    return new StorageSession().state.settings.theme
+  })
+  expect(state).toBe('light')
+  // The optional fallback fade may occur on the initial request; rollback adds none.
+  const events = await page.evaluate(() => (window as unknown as ThemeMotionWindow).themeEvents.map((event) => event.kind))
+  expect(events.filter((kind) => kind === 'fade').length).toBeLessThanOrEqual(1)
 })
