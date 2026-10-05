@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
+import { waitForThemeMotion } from './themeMotion'
 import type { AppState } from '../../src/types'
 import { saveInvoiceState } from '../../src/lib/commands'
 import { invoiceDraftFields } from '../../src/lib/invoiceDrafts'
@@ -49,6 +50,7 @@ test('3.AP5: Entwurf-Undo vor Ablauf erhält ID, Inhalt, Nummernkreis und Zwisch
   await page.clock.runFor(9000)
   await page.locator('.topbar').getByRole('radio', { name: 'Dunkel', exact: true }).click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await waitForThemeMotion(page)
   await undoButton(page).click()
   await expect.poll(async () => (await stateOf(page)).invoices.length).toBe(1)
   const restored = await stateOf(page)
@@ -279,3 +281,4 @@ test('3.AP5: Demo-Undo bleibt in der Sitzung und Unmount entfernt Timer', async 
   await expect(page.locator('.toast')).toHaveCount(0)
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(before)
 })
+

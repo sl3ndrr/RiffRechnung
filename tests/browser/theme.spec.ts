@@ -1,17 +1,24 @@
 import { test, expect, type Page } from '@playwright/test'
 import { emptyState } from '../../src/lib/defaults'
 import { serializeBackup, STORAGE_KEY } from '../../src/lib/storage'
+import { waitForThemeMotion } from './themeMotion'
 
 const hintKey = 'riffrechnung-theme-hint'
 const switchGroup = (page: Page) => page.locator('.topbar').getByRole('radiogroup', { name: 'Farbschema' })
 const option = (page: Page, name: string) => switchGroup(page).getByRole('radio', { name, exact: true })
 const storedSettings = (page: Page) => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).data.settings, STORAGE_KEY)
 
+async function selectTheme(page: Page, label: string) {
+  await option(page, label).click()
+  await expect.poll(async () => (await storedSettings(page))?.theme).toBe(({ Hell: 'light', System: 'system', Dunkel: 'dark' } as Record<string, string>)[label])
+  await waitForThemeMotion(page)
+}
+
 test('3.AP1: alle Positionen, Systemwechsel zur Laufzeit, Metafarbe und Reload', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' })
   await page.goto('/')
   for (const [label, theme, resolved] of [['Dunkel', 'dark', 'dark'], ['Hell', 'light', 'light'], ['System', 'system', 'light']] as const) {
-    await option(page, label).click()
+    await selectTheme(page, label)
     await expect(option(page, label)).toBeChecked()
     await expect(page.locator('html')).toHaveAttribute('data-theme', resolved)
     expect((await storedSettings(page)).theme).toBe(theme)
@@ -23,7 +30,7 @@ test('3.AP1: alle Positionen, Systemwechsel zur Laufzeit, Metafarbe und Reload',
   await page.emulateMedia({ colorScheme: 'light' })
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
   await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#f5f7fb')
-  await option(page, 'Dunkel').click()
+  await selectTheme(page, 'Dunkel')
   await expect(option(page, 'Dunkel')).toBeChecked()
   await page.reload()
   await expect(option(page, 'Dunkel')).toBeChecked()
@@ -36,7 +43,7 @@ test('3.AP1: beide Auswahlen erhalten ungespeicherte Eingaben und Dirty-Zustand'
   await page.goto('/')
   await page.locator('.sidebar').getByRole('button', { name: 'Einstellungen', exact: true }).click()
   const appearance = page.locator('#appearance')
-  await option(page, 'Dunkel').click()
+  await selectTheme(page, 'Dunkel')
   await expect(appearance.getByRole('radio', { name: 'Dunkel', exact: true })).toBeChecked()
   await expect(page.getByRole('button', { name: 'Lokal gespeichert', exact: true })).toBeDisabled()
   await expect(page.locator('.save-indicator')).not.toContainText('Ungespeicherte')
@@ -44,13 +51,15 @@ test('3.AP1: beide Auswahlen erhalten ungespeicherte Eingaben und Dirty-Zustand'
   await issuer.fill('Ungespeicherte Eingabe')
   await page.getByRole('textbox', { name: /^IBAN\b/ }).fill('DE02 1203')
   await page.getByRole('textbox', { name: /^Standardpreis Solo\b/ }).fill('1,')
-  await option(page, 'Hell').click()
+  await selectTheme(page, 'Hell')
   await expect(appearance.getByRole('radio', { name: 'Hell', exact: true })).toBeChecked()
   await expect(issuer).toHaveValue('Ungespeicherte Eingabe')
   await expect(page.getByRole('textbox', { name: /^IBAN\b/ })).toHaveValue('DE02 1203')
   await expect(page.getByRole('textbox', { name: /^Standardpreis Solo\b/ })).toHaveValue('1,')
   await expect(page.locator('.save-indicator')).toContainText('Ungespeicherte')
   await appearance.getByRole('radio', { name: 'Dunkel', exact: true }).click()
+  await expect.poll(async () => (await storedSettings(page)).theme).toBe('dark')
+  await waitForThemeMotion(page)
   await expect(option(page, 'Dunkel')).toBeChecked()
   expect((await storedSettings(page)).issuer.name).not.toBe('Ungespeicherte Eingabe')
   await page.locator('.sidebar').getByRole('button', { name: 'Personen', exact: true }).click()
@@ -70,13 +79,14 @@ test('3.AP1: beide Auswahlen erhalten ungespeicherte Eingaben und Dirty-Zustand'
 
 test('3.AP1: Demo ändert weder echten Bestand noch Starthinweis', async ({ page }) => {
   await page.goto('/')
-  await option(page, 'Hell').click()
+  await selectTheme(page, 'Hell')
   await expect(option(page, 'Hell')).toBeChecked()
   await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), hintKey)).toBe('light')
   const before = await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)
   await page.getByRole('button', { name: 'Mit Beispieldaten testen', exact: true }).click()
   await option(page, 'Dunkel').click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await waitForThemeMotion(page)
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(before)
   expect(await page.evaluate((key) => localStorage.getItem(key), hintKey)).toBe('light')
   await page.getByRole('button', { name: 'Demo verlassen', exact: true }).click()
@@ -90,10 +100,11 @@ test('3.AP1: Pfeiltasten, eine Tab-Position und sichtbarer Fokus', async ({ page
   await expect(group).toHaveAccessibleName('Farbschema')
   await expect(group.getByRole('radio')).toHaveCount(3)
   await option(page, 'System').focus()
-  for (const [key, label] of [['ArrowLeft', 'Hell'], ['ArrowRight', 'System'], ['ArrowRight', 'Dunkel'], ['ArrowRight', 'Hell'], ['ArrowUp', 'Dunkel']] as const) {
+  for (const [key, label] of [['ArrowLeft', 'Hell'], ['ArrowRight', 'System'], ['ArrowRight', 'Dunkel'], ['ArrowRight', 'Hell'], ['ArrowUp', 'Dunkel'], ['Home', 'Hell'], ['End', 'Dunkel']] as const) {
     await page.keyboard.press(key)
     await expect(option(page, label)).toBeChecked()
     await expect(option(page, label)).toBeFocused()
+    await waitForThemeMotion(page)
   }
   const style = await option(page, 'Dunkel').locator('xpath=..').evaluate((element) => {
     const style = getComputedStyle(element)
@@ -120,12 +131,16 @@ test('3.AP1: Daumen respektiert beide Bewegungspräferenzen', async ({ page }) =
   expect(await duration()).toBeLessThanOrEqual(0.00001)
 })
 
-for (const width of [320, 390, 820]) {
+for (const width of [320, 390, 820, 1440]) {
   test(`3.AP1: Topbar bleibt bei ${width}px bedienbar`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/')
-    await option(page, 'Dunkel').click()
+    await selectTheme(page, 'Dunkel')
     await expect(option(page, 'Dunkel')).toBeChecked()
+    if (width === 1440) {
+      await expect(switchGroup(page)).toHaveCSS('width', '142px')
+      return
+    }
     const menu = await page.getByRole('button', { name: 'Navigation öffnen', exact: true }).boundingBox()
     const group = await switchGroup(page).boundingBox()
     const status = await page.locator('.topbar__storage-status').boundingBox()
@@ -166,8 +181,9 @@ test('3.AP1: bestätigter Bestand korrigiert einen veralteten Starthinweis', asy
   await page.reload()
   await expect(option(page, 'Dunkel')).toBeChecked()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
-  await option(page, 'Hell').click()
+  await selectTheme(page, 'Hell')
   await expect(option(page, 'Hell')).toBeChecked()
   expect((await storedSettings(page)).iban).toBe('DE02 1203')
   await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), hintKey)).toBe('light')
 })
+

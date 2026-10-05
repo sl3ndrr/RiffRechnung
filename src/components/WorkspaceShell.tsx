@@ -5,6 +5,8 @@ import { APP_VERSION } from '../version'
 import { ThemeSwitch } from './ThemeSwitch'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useMotionPresence } from '../hooks/useMotionPresence'
+import { applyResolvedTheme, resetAppliedTheme, resolveTheme } from '../lib/theme'
+import { cancelThemeReveal, type RevealOrigin } from '../lib/themeTransition'
 
 const navItems: Array<{ key: PageKey; label: string; icon: typeof ReceiptText }> = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -19,6 +21,8 @@ interface WorkspaceShellProps {
   children: ReactNode
   page: PageKey
   settings: Settings
+  theme: ThemeMode
+  activeTheme: ThemeMode
   mode: 'real' | 'demo'
   draftCount: number
   lastBackupAt: string | null
@@ -26,16 +30,15 @@ interface WorkspaceShellProps {
   saveStatus: string
   mainContentRef: RefObject<HTMLElement | null>
   onNavigate: (next: PageKey, afterNavigation?: () => void) => void
-  onThemeChange: (theme: ThemeMode) => void
+  onThemeChange: (theme: ThemeMode, origin?: RevealOrigin) => void
 }
 
-export function WorkspaceShell({ children, page, settings, mode, draftCount, lastBackupAt, saveStateLabel, saveStatus, mainContentRef, onNavigate, onThemeChange }: WorkspaceShellProps) {
+export function WorkspaceShell({ children, page, settings, theme, activeTheme, mode, draftCount, lastBackupAt, saveStateLabel, saveStatus, mainContentRef, onNavigate, onThemeChange }: WorkspaceShellProps) {
   const [mobileNav, setMobileNav] = useState(false)
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 820px)').matches)
   const reducedMotion = useReducedMotion()
   const scrimRef = useRef<HTMLButtonElement | null>(null)
   const scrimPresent = useMotionPresence(mobileNav, scrimRef)
-  const resolvedTheme = useRef<string | null>(null)
   const navStyle = { '--nav-index': navItems.findIndex((item) => item.key === page) } as CSSProperties
   const mobileMenuButtonRef = useRef<HTMLButtonElement | null>(null)
   const mobileCloseButtonRef = useRef<HTMLButtonElement | null>(null)
@@ -52,29 +55,21 @@ export function WorkspaceShell({ children, page, settings, mode, draftCount, las
 
   useLayoutEffect(() => {
     const root = document.documentElement
-    let timer: number | undefined
     root.classList.toggle('reduce-motion', settings.reducedMotion)
-    const apply = () => {
-      const dark = settings.theme === 'dark' || (settings.theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
-      const theme = dark ? 'dark' : 'light'
-      if (resolvedTheme.current !== null && resolvedTheme.current !== theme && !settings.reducedMotion && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        root.classList.add('theme-changing')
-        // Establish the old colors before changing tokens, including rapid switches.
-        void getComputedStyle(document.body).backgroundColor
-        window.clearTimeout(timer)
-        const duration = getComputedStyle(root).getPropertyValue('--dur-theme').trim()
-        timer = window.setTimeout(() => root.classList.remove('theme-changing'), parseFloat(duration) || 250)
-      }
-      resolvedTheme.current = theme
-      root.dataset.theme = dark ? 'dark' : 'light'
-      root.style.colorScheme = dark ? 'dark' : 'light'
-      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', getComputedStyle(root).getPropertyValue('--surface').trim())
-    }
+    if (reducedMotion || settings.reducedMotion) cancelThemeReveal()
+    const apply = () => applyResolvedTheme(resolveTheme(activeTheme), true)
     apply()
     const media = matchMedia('(prefers-color-scheme: dark)')
-    media.addEventListener('change', apply)
-    return () => { media.removeEventListener('change', apply); window.clearTimeout(timer); root.classList.remove('theme-changing') }
-  }, [reducedMotion, settings.reducedMotion, settings.theme])
+    const systemChange = () => {
+      if (activeTheme !== 'system') return
+      cancelThemeReveal()
+      apply()
+    }
+    media.addEventListener('change', systemChange)
+    return () => media.removeEventListener('change', systemChange)
+  }, [reducedMotion, settings.reducedMotion, activeTheme])
+
+  useLayoutEffect(() => () => resetAppliedTheme(), [])
 
   useLayoutEffect(() => {
     const main = mainContentRef.current
@@ -127,7 +122,7 @@ export function WorkspaceShell({ children, page, settings, mode, draftCount, las
       <div className="app-main" inert={isMobile && mobileNav}>
         <header className="topbar">
           <button ref={mobileMenuButtonRef} className="icon-button mobile-only" onClick={openMobileNav} aria-label="Navigation öffnen" aria-controls="mobile-sidebar" aria-expanded={mobileNav}><Menu aria-hidden="true" /></button>
-          <div className="topbar__end"><div className="topbar__storage-status" role="status" aria-live="polite"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : saveStateLabel === 'error' ? 'is-error' : ''}`}><i key={saveStateLabel} className="motion-scale" />{saveStatus}</span><span className="backup-indicator">{backupStatusLabel}</span></div><ThemeSwitch theme={settings.theme} onChange={onThemeChange} /></div>
+          <div className="topbar__end"><div className="topbar__storage-status" role="status" aria-live="polite"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : saveStateLabel === 'error' ? 'is-error' : ''}`}><i key={saveStateLabel} className="motion-scale" />{saveStatus}</span><span className="backup-indicator">{backupStatusLabel}</span></div><ThemeSwitch theme={theme} onChange={onThemeChange} /></div>
         </header>
 
         {children}

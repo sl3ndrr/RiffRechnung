@@ -73,6 +73,7 @@ async function createPdf(page: Page, state: AppState, invoiceId: string, label: 
         document.documentElement.classList.toggle('reduce-motion', reduced)
         document.documentElement.classList.add('theme-changing')
       }, appearance)
+      await expect(rendering.locator('html')).not.toHaveAttribute('data-transition', 'theme')
       await expect(rendering.locator('html')).toHaveAttribute('data-theme', appearance.theme)
       expect(await rendering.locator('.invoice-paper, .invoice-paper *').evaluateAll((elements) => elements.every((element) => {
         const style = getComputedStyle(element)
@@ -89,6 +90,7 @@ async function createPdf(page: Page, state: AppState, invoiceId: string, label: 
       })),
       paperColor: getComputedStyle(paper).color, paperBackground: getComputedStyle(paper).backgroundColor,
     }))
+    await expect(rendering.locator('html')).not.toHaveAttribute('data-transition', 'theme')
     const pdf = await rendering.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true })
     const path = testInfo.outputPath(`${label}.pdf`)
     await writeFile(path, pdf)
@@ -473,3 +475,4 @@ test('P09 Browser: ungültige historische BIC bietet den bewussten Druck ohne Gi
   execFileSync('pdftoppm', ['-png', path, testInfo.outputPath('p11-qr-fallback-page')])
   await testInfo.attach('p11-qr-fallback.pdf', { body: pdf, contentType: 'application/pdf' })
 })
+
