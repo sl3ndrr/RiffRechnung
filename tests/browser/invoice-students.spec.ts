@@ -82,7 +82,7 @@ for (const newFirst of [false, true]) test(`Kopie: ${newFirst ? 'neue Person zue
   await expect(audience.getByRole('checkbox', { name: /Empfaenger A/ })).toHaveCount(0)
   await expect(editor.getByRole('status').filter({ hasText: 'Rechnungsempfänger ergänzt' })).toBeVisible()
   await editor.getByLabel('Rechnungsdatum', { exact: true }).fill('2026-10-10')
-  await expect(editor.getByLabel('Fällig am', { exact: true })).toHaveValue('2026-10-24')
+  await expect(editor.getByLabel(/^Fällig am/)).toHaveValue('2026-10-24')
   await editor.getByLabel('Freitext / Hinweis', { exact: true }).fill('Geänderter Hinweis der Kopie')
   expect(await itemValues(editor)).toEqual(values)
   await editor.getByRole('button', { name: 'Als Entwurf speichern', exact: true }).click()
