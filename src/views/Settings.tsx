@@ -46,6 +46,7 @@ export function Settings({ state, theme, visible, onSave, onThemeChange, onDirty
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const pendingSave = useRef(false)
+  const themeOrigin = useRef<{ theme: ThemeMode; origin?: RevealOrigin } | null>(null)
 
   const ibanError = form.iban.trim() ? germanIbanError(form.iban) : null
   const currentBicError = form.bic.trim() ? bicError(form.bic) : null
@@ -130,7 +131,16 @@ export function Settings({ state, theme, visible, onSave, onThemeChange, onDirty
 
           <section id="appearance" className={`surface settings-section${entryClass}`} style={staggerStyle(3)}>
             <div className="settings-section__heading"><span><Palette aria-hidden="true" /></span><div><h2>Darstellung</h2><p>Das Rechnungs-PDF bleibt unabhängig davon immer hell.</p></div></div>
-            <fieldset className="theme-picker"><legend>Farbschema</legend>{([['light', Sun, 'Hell'], ['system', Monitor, 'System'], ['dark', Moon, 'Dunkel']] as const).map(([value, Icon, label]) => <label className={theme === value ? 'is-selected' : ''} key={value}><input type="radio" name="theme" checked={theme === value} onChange={(event) => onThemeChange(value, centerOf(event.currentTarget.closest('label')))} /><Icon aria-hidden="true" /><span>{label}</span></label>)}</fieldset>
+            <fieldset className="theme-picker"><legend>Farbschema</legend>{([['light', Sun, 'Hell'], ['system', Monitor, 'System'], ['dark', Moon, 'Dunkel']] as const).map(([value, Icon, label]) => <label className={theme === value ? 'is-selected' : ''} key={value}
+              onPointerDown={(event) => { themeOrigin.current = { theme: value, origin: centerOf(event.currentTarget) } }}
+              onKeyDown={() => { themeOrigin.current = null }}>
+              <input type="radio" name="theme" checked={theme === value} onChange={(event) => {
+                // Native focus may scroll the absolutely positioned input.
+                // Pointer origins must stay where the user pressed the card.
+                const origin = themeOrigin.current?.theme === value ? themeOrigin.current.origin : centerOf(event.currentTarget.closest('label'))
+                themeOrigin.current = null
+                onThemeChange(value, origin)
+              }} /><Icon aria-hidden="true" /><span>{label}</span></label>)}</fieldset>
             <label className="switch-row"><span><strong>Bewegungen reduzieren</strong><small>Bewegungspräferenz für die Darstellung speichern</small></span><input type="checkbox" checked={form.reducedMotion} onChange={(event) => setForm({ ...form, reducedMotion: event.target.checked })} /><i /></label>
           </section>
 
@@ -158,5 +168,4 @@ export function Settings({ state, theme, visible, onSave, onThemeChange, onDirty
     </div>
   )
 }
-
 

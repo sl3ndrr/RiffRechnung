@@ -319,15 +319,19 @@ test('Theme: Einstellungskarte liefert ihren eigenen Reveal-Ursprung', async ({ 
   const card = page.locator('.theme-picker label').filter({ hasText: 'Dunkel' })
   await card.scrollIntoViewIfNeeded()
   await card.hover()
-  const rect = await card.boundingBox()
+  await card.evaluate((label) => label.addEventListener('pointerdown', () => {
+    const rect = label.getBoundingClientRect()
+    Reflect.set(window, 'expectedCardOrigin', { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
+  }, { once: true }))
   await card.click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await waitForThemeMotion(page)
   const events = await page.evaluate(() => (window as unknown as ThemeMotionWindow).themeEvents)
   if (native) {
     const reveal = events.find((event) => event.kind === 'reveal')!
-    expect(Math.abs(reveal.x - (rect!.x + rect!.width / 2))).toBeLessThan(3)
-    expect(Math.abs(reveal.y - (rect!.y + rect!.height / 2))).toBeLessThan(3)
+    const origin = await page.evaluate(() => Reflect.get(window, 'expectedCardOrigin')) as { x: number; y: number }
+    expect(reveal.x).toBeCloseTo(origin.x, 0)
+    expect(reveal.y).toBeCloseTo(origin.y, 0)
   } else expect(events.map((event) => event.kind)).toContain('fade')
 })
 
