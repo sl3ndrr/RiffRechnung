@@ -1,5 +1,6 @@
 import { decimalInputText, draftAmountChange, previewCents } from '../lib/money'
 import { reassignCorrectionStudent } from '../lib/documents'
+import { toggleDraftStudent } from '../lib/invoiceStudents'
 import { LEGACY_REVIEW_FIELDS } from '../lib/commands'
 import { applyItemNumberInput, itemNumberInput, adjustQuantity as adjustedQuantity, MIN_QUANTITY, MAX_QUANTITY, QUANTITY_INCREMENT } from '../lib/values'
 import { invoiceDraftErrors } from '../lib/invoiceActions'
@@ -36,6 +37,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
   const [form, setForm] = useState<InvoiceDraft>(draft)
   const [numberInputs, setNumberInputs] = useState<Record<string, Partial<Record<'quantity' | 'unitPrice', string>>>>({})
   const [errors, setErrors] = useState<string[]>([])
+  const [selectionNotice, setSelectionNotice] = useState('')
   const [reviewed, setReviewed] = useState<string[]>([])
   const [conversionRecipients, setConversionRecipients] = useState<string[]>([])
   const itemsRef = useRef<HTMLDivElement>(null)
@@ -46,13 +48,16 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
     setForm(structuredClone(draft))
     setNumberInputs({})
     setErrors([])
+    setSelectionNotice('')
     setReviewed([])
     setConversionRecipients(guardianIdsFor(draft.recipients).length === 1 ? [...guardianIdsFor(draft.recipients)] : [])
   }, [draft, open])
 
   const linkedGuardianIds = useMemo(() => new Set(form.studentIds.flatMap((id) => students.find((student) => student.id === id)?.guardianIds ?? [])), [form.studentIds, students])
   const selectedRecipients = recipientRefs(form)
-  const eligibleGuardians = form.studentIds.length ? guardians.filter((guardian) => linkedGuardianIds.has(guardian.id) || selectedRecipients.some((ref) => ref.type === 'guardian' && ref.id === guardian.id)) : guardians
+  const eligibleGuardians = form.studentIds.length ? guardians.filter((guardian) => form.correction
+    ? linkedGuardianIds.has(guardian.id) || selectedRecipients.some((ref) => ref.type === 'guardian' && ref.id === guardian.id)
+    : selectedRecipients.some((ref) => ref.type === 'guardian' && ref.id === guardian.id) || form.studentIds.every((id) => students.find((student) => student.id === id)?.guardianIds.includes(guardian.id))) : guardians
   const eligibleSelfPayers = students.filter((student) => form.studentIds.includes(student.id) && (student.selfPayer || selectedRecipients.some((ref) => ref.type === 'student' && ref.id === student.id)))
   const cents = previewCents(form)
   const total = cents === null ? null : cents / 100
@@ -66,6 +71,19 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
   useEffect(() => () => onDirtyChange(false), [onDirtyChange])
 
   const selectStudent = (student: Student) => {
+    if (!form.correction) {
+      const next = toggleDraftStudent(form, student, students, settings, draft.studentIds)
+      const recipientName = (ref: RecipientRef) => (ref.type === 'guardian' ? guardians : students).find((person) => person.id === ref.id)?.name ?? ref.id
+      const removed = form.recipients.filter((ref) => !next.recipients.some((entry) => recipientKey(entry) === recipientKey(ref)))
+      const added = next.recipients.filter((ref) => !form.recipients.some((entry) => recipientKey(entry) === recipientKey(ref)))
+      setSelectionNotice([
+        next.items.some((item, index) => item.studentId !== form.items[index]?.studentId) && form.items.length ? 'Positionen wurden der Ersatzperson zugeordnet; alle Positionsangaben bleiben erhalten.' : '',
+        removed.length ? `Nicht mehr zulässige Rechnungsempfänger entfernt: ${removed.map(recipientName).join(', ')}.` : '',
+        added.length ? `Rechnungsempfänger ergänzt: ${added.map(recipientName).join(', ')}.` : '',
+      ].filter(Boolean).join(' '))
+      setForm(next)
+      return
+    }
     setForm((current) => {
       const isSelected = current.studentIds.includes(student.id)
       const studentIds = isSelected ? current.studentIds.filter((id) => id !== student.id || Boolean(current.correction && current.items.some((item) => item.studentId === id))) : [...current.studentIds, student.id]
@@ -77,9 +95,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
         })) : [...selected, ...(student.selfPayer ? [{ type: 'student' as const, id: student.id }] : student.guardianIds.map((id) => ({ type: 'guardian' as const, id })))]
         return [...new Map(next.map((ref) => [recipientKey(ref), ref])).values()]
       })()
-      const items = isSelected && !current.correction
-        ? current.items.filter((item) => item.studentId !== student.id)
-        : current.items.length ? current.items : [createLessonItem(student.id, current.invoiceDate, settings)]
+      const items = current.items.length ? current.items : [createLessonItem(student.id, current.invoiceDate, settings)]
       return { ...current, studentIds, recipients, items }
     })
   }
@@ -142,6 +158,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
   const submit = (finalize: boolean) => {
     const issued = form.id && state.invoices.some((invoice) => invoice.id === form.id && Boolean(invoice.number))
     const nextErrors = issued ? [FINALIZED_INVOICE_BLOCKED] : invoiceDraftErrors(state, form, finalize)
+    if (!form.correction && form.items.some((item) => !form.studentIds.includes(item.studentId))) nextErrors.push('Bitte die erhaltenen Positionen einer ausgewählten lernenden Person zuordnen, bevor du speicherst oder finalisierst.')
     if (!validNumbers) nextErrors.push('Bitte die Preise und Mengen vervollständigen. Ungültige Zwischenwerte werden nicht gespeichert.')
     setErrors(nextErrors)
     if (!nextErrors.length) {
@@ -199,6 +216,8 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
         </section>}
         <section className="form-section">
           <div className="form-section__heading"><span>1</span><div><h3>Für wen?</h3><p>Lernende und Rechnungsempfänger auswählen.</p></div></div>
+          {selectionNotice && <p className="field-hint" role="status">{selectionNotice}</p>}
+          {!form.correction && form.items.some((item) => !form.studentIds.includes(item.studentId)) && <p className="field-hint field-hint--warning" role="status">Alle Positionen bleiben erhalten. Wähle eine Ersatzperson oder ordne die Positionen unten ausdrücklich einer ausgewählten Person zu. Speichern und Finalisieren sind erst nach gültiger Zuordnung möglich.</p>}
           <fieldset className="chip-fieldset"><legend>Lernende</legend><div className="choice-chips">{students.filter((student) => student.active || form.studentIds.includes(student.id)).map((student) => <label className={form.studentIds.includes(student.id) ? 'choice-chip is-selected' : 'choice-chip'} key={student.id}><input type="checkbox" checked={form.studentIds.includes(student.id)} onChange={() => selectStudent(student)} /><span className="avatar">{student.name.slice(0, 1)}</span>{student.name}</label>)}</div>{!students.length && <p className="field-hint field-hint--warning">Lege zuerst unter „Personen“ eine lernende Person an.</p>}</fieldset>
           <fieldset className="chip-fieldset"><legend>Rechnungsempfänger</legend><div className="choice-chips">{eligibleGuardians.map((guardian) => { const ref: RecipientRef = { type: 'guardian', id: guardian.id }; return <label className={selectedRecipients.some((entry) => recipientKey(entry) === recipientKey(ref)) ? 'choice-chip is-selected' : 'choice-chip'} key={recipientKey(ref)}><input type="checkbox" checked={selectedRecipients.some((entry) => recipientKey(entry) === recipientKey(ref))} onChange={() => toggleRecipient(ref)} /><span className="avatar avatar--warm">{guardian.name.slice(0, 1)}</span>{guardian.name}</label> })}{eligibleSelfPayers.map((student) => { const ref: RecipientRef = { type: 'student', id: student.id }; return <label className={selectedRecipients.some((entry) => recipientKey(entry) === recipientKey(ref)) ? 'choice-chip is-selected' : 'choice-chip'} key={recipientKey(ref)}><input type="checkbox" checked={selectedRecipients.some((entry) => recipientKey(entry) === recipientKey(ref))} onChange={() => toggleRecipient(ref)} /><span className="avatar">{student.name.slice(0, 1)}</span>{student.name} · {student.selfPayer ? 'zahlt selbst' : 'früher selbstzahlend'}</label> })}</div></fieldset>
           {form.studentIds.length > 1 && selectedRecipients.length > 1 && <p className="field-hint field-hint--warning">Gemeinsame Rechnung: Alle ausgewählten Rechnungsempfänger sehen die Namen und Positionen aller ausgewählten Lernenden. Bitte die Zusammenstellung und Freitexte prüfen.</p>}
@@ -233,7 +252,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
                 <div className="editor-item__additional">
                   <label className="field field--unit"><span>Einheit</span><select value={item.unit} onChange={(event) => updateItem(item.id, 'unit', event.target.value)}><option>Std.</option><option>Pauschale</option><option>Stück</option></select></label>
                   <label className="field field--lesson-type"><span>Art</span><select value={item.lessonType} onChange={(event) => updateLessonType(item.id, event.target.value as LessonType)}><option value="solo">Solo</option><option value="duo">Duo</option></select></label>
-                  {form.studentIds.length > 1 && <label className="field field--student"><span>Lernende Person</span><select value={item.studentId} onChange={(event) => updateItem(item.id, 'studentId', event.target.value)}>{form.studentIds.map((id) => <option key={id} value={id}>{students.find((student) => student.id === id)?.name}</option>)}</select></label>}
+                  {(form.studentIds.length > 1 || !form.correction && !form.studentIds.includes(item.studentId)) && <label className="field field--student"><span>Lernende Person</span><select value={item.studentId} onChange={(event) => updateItem(item.id, 'studentId', event.target.value)}>{!form.studentIds.includes(item.studentId) && <option value={item.studentId}>Nicht ausgewählt: {students.find((student) => student.id === item.studentId)?.name ?? item.studentId}</option>}{form.studentIds.map((id) => <option key={id} value={id}>{students.find((student) => student.id === id)?.name}</option>)}</select></label>}
                 </div>
               </div>
             ))}

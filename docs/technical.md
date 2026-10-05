@@ -3,6 +3,10 @@
 Diese Beschreibung folgt dem integrierten Stand P01–P14 und 3.AP1–3.AP8 für Version 1.2.0.
 Die [Nutzeranleitung](../README.md) beschreibt die Bedienung; [historische Nachweise](evidence.md) ersetzen frühere Paketmatrizen und CI-Protokolle.
 
+### Lernendenwechsel in Rechnungsentwürfen
+
+`invoiceStudents.ts` kapselt die reine Auswahl- und Umhänge-Logik für normale Entwürfe, einschließlich Kopien. Abwählen löscht keine Position; nicht mehr ausgewählte Positionszuordnungen bleiben im Editor sichtbar und verhindern dort Speichern/Finalisieren, bis eine gültige Zuordnung vorliegt (das Speicherschema verlangt weiterhin die Mitgliedschaft in `studentIds`). Eine danach ausgewählte Ersatzperson übernimmt diese offenen Positionen. Wird genau eine gegenüber dem geöffneten Entwurf neue Person zuerst ausgewählt, übernimmt sie beim Abwählen der alten Person nur deren Positionen. Bei mehreren möglichen Ersatzpersonen erfolgt keine automatische Entscheidung; die Positionsauswahl erlaubt eine ausdrückliche Einzelzuordnung auch bei nur einer verbleibenden Person. Ohne ausgewählte Lernende bleiben alle Positionen erhalten. Empfängervorschläge der Ersatzperson werden dedupliziert und mit `recipientCanBillStudent` auf die Berechtigung für alle ausgewählten Lernenden begrenzt; der Editor nennt entfernte/ergänzte Empfänger in einem `role="status"`-Hinweis. Beim erstmaligen Auswählen in einem leeren Entwurf entsteht weiterhin eine Standardposition. Korrekturen behalten den bisherigen Auswahlpfad und `reassignCorrectionStudent`; Kopierregeln, Originalschutz, Nummerierung und Schema bleiben unverändert. Rechnungsdatum ändert weiterhin nur Datum/Fälligkeit, Freitext nur den Hinweis; die ausdrückliche Änderung Solo/Duo setzt wie bisher Beschreibungssuffix und Standardpreis.
+
 ## Stack und Version
 
 React 19, TypeScript 5.7 und Vite 6; Inter, Lucide und `qrcode` bleiben die vorhandenen UI-/GiroCode-Abhängigkeiten. Die genauen aufgelösten Versionen stehen in `package-lock.json`. `.nvmrc` verlangt Node 22.
