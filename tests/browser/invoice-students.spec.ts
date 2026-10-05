@@ -158,3 +158,21 @@ test('Duo: Abwählen ohne Ersatz erhält Positionen bis zur ausdrücklichen Einz
   await expect(editor).not.toBeVisible()
   expect((await stateOf(page)).invoices[0].items[0]).toEqual({ ...draft.items[0], studentId: 's-b' })
 })
+
+test('Bestehender Entwurf: nach Stammdatenänderung ungültige Empfänger sichtbar abwählen', async ({ page }) => {
+  let state = saveInvoiceDraft(documentFamily(), documentDraft(), false, documentAt)
+  state = requireSuccess(saveStudentState(state, { ...state.students[0], guardianIds: ['g-b'] }))
+  await seed(page, state)
+  await page.getByRole('button', { name: 'Entwurf', exact: true }).click()
+  await page.locator('.invoice-detail').getByRole('button', { name: 'Bearbeiten', exact: true }).click()
+  const editor = page.getByRole('dialog', { name: 'Entwurf bearbeiten', exact: true })
+  const audience = editor.getByRole('group', { name: 'Rechnungsempfänger', exact: true })
+  await expect(audience.getByRole('checkbox', { name: /Empfaenger A/ })).toBeChecked()
+  await audience.getByRole('checkbox', { name: /Empfaenger A/ }).uncheck()
+  await audience.getByRole('checkbox', { name: /Empfaenger B/ }).check()
+  await editor.getByRole('button', { name: 'Als Entwurf speichern', exact: true }).click()
+  await expect(editor).not.toBeVisible()
+  const saved = (await stateOf(page)).invoices[0]
+  expect(saved.recipients).toEqual([{ type: 'guardian', id: 'g-b' }])
+  expect(saved.items).toEqual(state.invoices[0].items)
+})

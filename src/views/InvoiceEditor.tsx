@@ -57,7 +57,7 @@ export function InvoiceEditor({ state, open, draft, guardians, students, setting
   const selectedRecipients = recipientRefs(form)
   const eligibleGuardians = form.studentIds.length ? guardians.filter((guardian) => form.correction
     ? linkedGuardianIds.has(guardian.id) || selectedRecipients.some((ref) => ref.type === 'guardian' && ref.id === guardian.id)
-    : form.studentIds.every((id) => students.find((student) => student.id === id)?.guardianIds.includes(guardian.id))) : guardians
+    : selectedRecipients.some((ref) => ref.type === 'guardian' && ref.id === guardian.id) || form.studentIds.every((id) => students.find((student) => student.id === id)?.guardianIds.includes(guardian.id))) : guardians
   const eligibleSelfPayers = students.filter((student) => form.studentIds.includes(student.id) && (student.selfPayer || selectedRecipients.some((ref) => ref.type === 'student' && ref.id === student.id)))
   const cents = previewCents(form)
   const total = cents === null ? null : cents / 100
