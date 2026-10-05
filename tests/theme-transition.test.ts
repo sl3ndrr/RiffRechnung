@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { applyResolvedTheme, resetAppliedTheme, resolveTheme } from '../src/lib/theme'
-import { cancelThemeReveal, centerOf, runThemeReveal } from '../src/lib/themeTransition'
+import { cancelThemeReveal, centerOf, completeThemeReveal, runThemeReveal } from '../src/lib/themeTransition'
 
 function environment() {
   const values = new Map<string, string>()
@@ -97,6 +97,20 @@ test('Theme: both reduced-motion sources bypass native snapshots', () => {
     runThemeReveal(() => updates++, { x: 0, y: 0 })
     assert.equal(updates, 2)
     assert.equal(env.transitions.length, 0)
+    assert.equal(env.root.dataset.transition, undefined)
+  } finally { env.cleanup() }
+})
+
+test('Theme: a preference change completes the pending wish exactly once', () => {
+  const env = environment()
+  try {
+    let updates = 0
+    runThemeReveal(() => updates++, { x: 20, y: 30 })
+    env.setReduced(true)
+    completeThemeReveal()
+    env.transitions[0].update()
+    assert.equal(updates, 1)
+    assert.equal(env.transitions[0].skipped, true)
     assert.equal(env.root.dataset.transition, undefined)
   } finally { env.cleanup() }
 })

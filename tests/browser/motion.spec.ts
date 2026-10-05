@@ -349,7 +349,7 @@ test('Theme: schnelle Klicks vor dem Update und während des Reveals enden konsi
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
   await page.locator('.topbar').getByRole('radio', { name: 'Dunkel', exact: true }).click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
-  await page.evaluate(() => document.querySelector<HTMLInputElement>('.theme-switch input[value="light"]')!.click())
+  await page.locator('.topbar').getByRole('radio', { name: 'Hell', exact: true }).click()
   await expect.poll(stored).toBe('light')
   await waitForThemeMotion(page)
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')

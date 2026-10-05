@@ -6,7 +6,7 @@ import { waitForThemeMotion } from './themeMotion'
 const hintKey = 'riffrechnung-theme-hint'
 const switchGroup = (page: Page) => page.locator('.topbar').getByRole('radiogroup', { name: 'Farbschema' })
 const option = (page: Page, name: string) => switchGroup(page).getByRole('radio', { name, exact: true })
-const storedSettings = (page: Page) => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).data.settings, STORAGE_KEY)
+const storedSettings = (page: Page) => page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? 'null')?.data?.settings, STORAGE_KEY)
 
 async function selectTheme(page: Page, label: string) {
   await option(page, label).click()
@@ -186,4 +186,3 @@ test('3.AP1: bestätigter Bestand korrigiert einen veralteten Starthinweis', asy
   expect((await storedSettings(page)).iban).toBe('DE02 1203')
   await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), hintKey)).toBe('light')
 })
-

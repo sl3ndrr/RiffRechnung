@@ -13,6 +13,7 @@ type TransitionDocument = Document & {
 }
 
 let active: ThemeViewTransition | null = null
+let pendingUpdate: (() => void) | null = null
 let generation = 0
 
 export const canReveal = () => typeof (document as TransitionDocument).startViewTransition === 'function'
@@ -25,9 +26,19 @@ export function centerOf(element: Element | null): RevealOrigin | undefined {
 
 export function cancelThemeReveal() {
   generation++
+  pendingUpdate = null
   active?.skipTransition()
   active = null
   delete document.documentElement.dataset.transition
+}
+
+// Preference/OS changes should end the animation without losing an already
+// requested selection whose native callback has not run yet.
+export function completeThemeReveal() {
+  const hadPendingUpdate = pendingUpdate !== null
+  pendingUpdate?.()
+  cancelThemeReveal()
+  return hadPendingUpdate
 }
 
 export function runThemeReveal(update: () => void, origin: RevealOrigin) {
@@ -43,7 +54,12 @@ export function runThemeReveal(update: () => void, origin: RevealOrigin) {
   root.style.setProperty('--reveal-radius', `${Math.hypot(Math.max(origin.x, innerWidth - origin.x), Math.max(origin.y, innerHeight - origin.y))}px`)
   // Skipping a transition does not cancel its queued update callback. Guard
   // that callback too, so an old click can never overwrite the latest request.
-  const apply = () => { if (generation === current) update() }
+  const apply = () => {
+    if (generation !== current) return
+    pendingUpdate = null
+    update()
+  }
+  pendingUpdate = apply
   try {
     const transition = start.call(document, apply)
     active = transition

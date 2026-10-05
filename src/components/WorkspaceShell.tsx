@@ -5,8 +5,8 @@ import { APP_VERSION } from '../version'
 import { ThemeSwitch } from './ThemeSwitch'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { useMotionPresence } from '../hooks/useMotionPresence'
-import { applyResolvedTheme, resetAppliedTheme, resolveTheme } from '../lib/theme'
-import { cancelThemeReveal, type RevealOrigin } from '../lib/themeTransition'
+import { applyResolvedTheme, clearThemeFade, prefersReducedMotion, resetAppliedTheme, resolveTheme } from '../lib/theme'
+import { completeThemeReveal, type RevealOrigin } from '../lib/themeTransition'
 
 const navItems: Array<{ key: PageKey; label: string; icon: typeof ReceiptText }> = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -55,18 +55,22 @@ export function WorkspaceShell({ children, page, settings, theme, activeTheme, m
 
   useLayoutEffect(() => {
     const root = document.documentElement
+    let listening = true
     root.classList.toggle('reduce-motion', settings.reducedMotion)
-    if (reducedMotion || settings.reducedMotion) cancelThemeReveal()
+    if (reducedMotion || settings.reducedMotion) {
+      clearThemeFade()
+      // A pending update uses flushSync: finish it outside React's layout phase.
+      queueMicrotask(() => { if (listening && prefersReducedMotion()) completeThemeReveal() })
+    }
     const apply = () => applyResolvedTheme(resolveTheme(activeTheme), true)
     apply()
     const media = matchMedia('(prefers-color-scheme: dark)')
     const systemChange = () => {
       if (activeTheme !== 'system') return
-      cancelThemeReveal()
-      apply()
+      if (!completeThemeReveal()) apply()
     }
     media.addEventListener('change', systemChange)
-    return () => media.removeEventListener('change', systemChange)
+    return () => { listening = false; media.removeEventListener('change', systemChange) }
   }, [reducedMotion, settings.reducedMotion, activeTheme])
 
   useLayoutEffect(() => () => resetAppliedTheme(), [])

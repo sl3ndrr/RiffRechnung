@@ -829,6 +829,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .dashboard-open-row:active, .invoice-list-table tbody tr:active { transform: translateX(1px); }
 
 /* Root snapshots use their natural old/new stack, without a cross-fade. */
+html[data-transition='theme']::view-transition { pointer-events: none; }
 html[data-transition='theme']::view-transition-old(root),
 html[data-transition='theme']::view-transition-new(root) { mix-blend-mode: normal; }
 html[data-transition='theme']::view-transition-old(root) { animation: none; }
@@ -1034,4 +1035,3 @@ body { font-size: var(--type-body); }
 
 .theme-picker label, .choice-chip { transition: transform var(--dur-fast) var(--ease-spatial), border-radius var(--dur-base) var(--ease-spatial); }
 .button[aria-pressed='true'] { border-radius: var(--radius-md); }
-
