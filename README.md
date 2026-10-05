@@ -30,6 +30,8 @@ Ein **Rechnungshinweis** ist optional. Die Ausgabe enthält fest „Hiermit stel
 **Als Entwurf speichern** hält den bearbeitbaren Stand fest. **Finalisieren** prüft die Angaben, vergibt die Nummer und sichert den Beleg mit Beträgen, Empfängern, Anschriften, Konto und Leistungsdaten.
 Neue Positionsbeträge werden einzeln exakt dezimal und kaufmännisch auf Cent gerundet; die Summe entsteht aus diesen Centbeträgen. Der Leistungszeitraum folgt den Positionsdaten.
 
+**Duplizieren** erstellt einen normalen, frei bearbeitbaren Entwurf. Beim Austausch von Lernenden bleiben sämtliche Positionsangaben und der Betrag erhalten, unabhängig davon, ob du die alte Person zuerst abwählst oder die Ersatzperson zuerst auswählst. Nur die betroffenen Positionen werden neu zugeordnet. Rechnungsempfänger werden passend ergänzt und auf die gemeinsamen Berechtigungen aller ausgewählten Lernenden begrenzt; ein Hinweis nennt die Änderungen. Ohne Ersatz bleiben die bisherigen Positionszuordnungen sichtbar erhalten: Wähle eine Ersatzperson oder ordne jede betroffene Position ausdrücklich einer verbleibenden Person zu, bevor du speicherst oder finalisierst. Positionen löschst du ausschließlich über ihren Papierkorb. Rechnungsdatum (mit automatischer Fälligkeit) und Freitext bleiben bearbeitbar.
+
 Nummern haben das feste Format **Jahr–Folge–Personenkennung**, zum Beispiel:
 
 | Kreis | Beispiel | Bedeutung |

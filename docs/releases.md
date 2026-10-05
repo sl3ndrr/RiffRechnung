@@ -3,6 +3,10 @@
 Die aktuelle App-Version stammt ausschließlich aus `package.json`.
 Frühere UI-Nummern wurden unabhängig von der Paketversion gepflegt; die folgenden historischen Angaben sind keine aktuellen Versionsvorgaben.
 
+## Fehlerbehebungen ohne Versionswechsel
+
+- Lernendenwechsel in Entwürfen und Rechnungskopien erhält alle Positionen. Ersatzpersonen übernehmen nur betroffene Zuordnungen; Empfängerbereinigung wird sichtbar gemeldet. Ohne Ersatz bleiben Positionen bis zur ausdrücklichen Neuzuordnung erhalten. Zusätzliche Unit- und Browser-Regressionsprüfungen; keine Änderung an Schema, Nummerierung oder Korrekturbelegen.
+
 ## 1.2.0
 
 - Dashboard als Startseite: bestätigte Zahlungseingänge nach Jahr/Monat, offene aktive Ansprüche, Entwürfe, Personen und Backup-Erinnerung.
