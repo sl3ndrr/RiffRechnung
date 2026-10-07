@@ -30,7 +30,7 @@ for (const width of [320, 390, 1280]) {
         }))
         expect(fit).toBe(true)
       }
-      const colors = await page.locator('.dashboard-page h1, .dashboard-page h2, .dashboard-stat__value, .dashboard-stat p, .dashboard-open-row span, .dashboard-open-row strong, .dashboard-open-row small, .dashboard-chart__value').evaluateAll((elements) => elements.map((element) => {
+      const colors = await page.locator('.dashboard-page h1, .dashboard-page h2, .dashboard-stat__value, .dashboard-stat p, .dashboard-open-row span, .dashboard-open-row strong, .dashboard-open-row small, .dashboard-chart__value, .dashboard-chip, .dashboard-average').evaluateAll((elements) => elements.map((element) => {
         let ancestor: Element | null = element
         let background = 'rgba(0, 0, 0, 0)'
         while (ancestor && (background === 'rgba(0, 0, 0, 0)' || background === 'transparent')) {
@@ -60,7 +60,8 @@ for (const width of [320, 390, 1280]) {
       const chart = page.getByRole('group', { name: /Monatsdiagramm/ })
       await tabTo(page, chart)
       await page.keyboard.press('ArrowRight')
-      if (width <= 820) await expect.poll(() => chart.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0)
+      if (width < 480) await expect.poll(() => chart.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0)
+      else expect(await chart.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
     })
   }
 }
@@ -427,5 +428,6 @@ test('P02 Browser: kompakte Einrichtung, ein isolierter Demo-Einstieg und Info-L
   await expect(demo).toHaveCount(1)
   await expect(page.getByRole('region', { name: 'Einrichtung', exact: true })).toBeVisible()
 })
+
 
 

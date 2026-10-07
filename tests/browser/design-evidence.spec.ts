@@ -4,7 +4,7 @@ import { dashboardFixture, dashboardNow } from '../dashboardFixtures'
 
 // Review evidence plus a regression check for unintended page overflow.
 // Screenshots stay in the existing CI artifact directory, never in source.
-for (const width of [1440, 390]) for (const theme of ['light', 'dark'] as const) {
+for (const width of [1440, 1024, 390]) for (const theme of ['light', 'dark'] as const) {
   test(`Design evidence: ${width}px ${theme}`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 960 })
     await page.clock.setFixedTime(dashboardNow)
@@ -53,3 +53,4 @@ for (const width of [1440, 390]) for (const theme of ['light', 'dark'] as const)
     await capture('settings')
   })
 }
+

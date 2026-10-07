@@ -7,6 +7,13 @@ Frühere UI-Nummern wurden unabhängig von der Paketversion gepflegt; die folgen
 
 - Lernendenwechsel in Entwürfen und Rechnungskopien erhält alle Positionen. Ersatzpersonen übernehmen nur betroffene Zuordnungen; Empfängerbereinigung wird sichtbar gemeldet. Ohne Ersatz bleiben Positionen bis zur ausdrücklichen Neuzuordnung erhalten. Zusätzliche Unit- und Browser-Regressionsprüfungen; keine Änderung an Schema, Nummerierung oder Korrekturbelegen.
 
+## 1.2.1
+
+- Dashboard im gemeinsamen responsiven Bento-Grid mit farbigen Kacheln, großem offenen Betrag, verdichteten Überfälligkeitschips und nächster Fälligkeit.
+- Einzeilige, an die Kachelbreite angepasste Kennzahlen; kompakte offene Rechnungen mit Fälligkeitschip und dekorativem Fristbalken.
+- Höhenfüllendes Monatsdiagramm mit exakten Wertbeschriftungen, Durchschnitt und gestrichelten zukünftigen Monaten; ergänzte Unit-, Layout- und Kontrastprüfungen.
+- Ausschließlich Dashboard-Design und Anzeigeableitungen: keine neue Abhängigkeit, Migration oder Änderung an Schema 15, Geldberechnung, Rechnungsnummern, Druck/PDF oder Theme-Reveal.
+
 ## 1.2.0
 
 - Dashboard als Startseite: bestätigte Zahlungseingänge nach Jahr/Monat, offene aktive Ansprüche, Entwürfe, Personen und Backup-Erinnerung.
@@ -32,3 +39,4 @@ Integration, Prüfungen und bekannte Migrationsgrenzen: [Technik](technical.md),
 
 Die damaligen Einträge für 1.0.0 bis 1.4 beschreiben frühere Produkte mit inzwischen entfernten Funktionen.
 Sie bleiben als [unveränderte historische Release-Notizen am Ausgangscommit](https://github.com/sl3ndrr/RiffRechnung/blob/1655a5d74aea11a2e3257b8193960bae56e9dd43/docs/releases.md) erreichbar und sind keine Bedienungsanleitung für den aktuellen Stand.
+

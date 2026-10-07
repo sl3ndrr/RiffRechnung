@@ -5,6 +5,8 @@ import { dashboardStats } from '../../src/lib/dashboardStats'
 import { createDemoState, emptyState } from '../../src/lib/defaults'
 import { parseBackup, serializeBackup, STORAGE_KEY } from '../../src/lib/storage'
 import { euro } from '../../src/lib/utils'
+import { documentAt, documentDraft } from '../documentFixtures'
+import { changeInvoiceStatus, saveInvoiceDraft } from '../../src/lib/invoiceActions'
 import { dashboardFixture, dashboardManyOpen, dashboardNow } from '../dashboardFixtures'
 
 async function seed(page: Page, state: AppState) {
@@ -33,12 +35,12 @@ test('3.AP3: Startseite begrüßt den gespeicherten Vornamen und zeigt exakte Fi
   await expect(amount(page, 'Kinder')).toHaveText('2')
   await expect(page.getByRole('article', { name: 'Kinder', exact: true })).toContainText('davon aktiv: 1')
   await expect(page.getByRole('article', { name: 'Bezahlt', exact: true })).toContainText('1 Zahlung ohne bestätigten Zahlungstag: 5,00')
-  await expect(page.getByRole('article', { name: 'Offen', exact: true })).toContainText('davon überfällig: 30,00')
+  await expect(page.getByRole('article', { name: 'Offen', exact: true })).toContainText('1 Rechnung überfällig · 30,00')
   await expect(page.getByRole('heading', { name: 'Noch nicht gezahlt (2)', exact: true })).toBeVisible()
   await expect(page.locator('.dashboard-open-row__person > strong')).toHaveText(['2026-0001-a', '2026-0002-a'])
   await expect(page.locator('.dashboard-open-row').first()).toContainText('2 Tage überfällig')
   await expect(page.locator('.dashboard-open-row').first()).toContainText('seit 15 Tagen offen')
-  await expect(page.locator('.dashboard-open-row').last()).toContainText('fällig in 4 Tagen')
+  await expect(page.locator('.dashboard-open-row').last()).toContainText('Fällig in 4 Tagen')
   await expect(page.getByRole('button', { name: 'Neue Rechnung', exact: true })).toHaveCount(1)
   await page.getByRole('button', { name: 'Neue Rechnung', exact: true }).click()
   await expect(page.getByRole('dialog', { name: 'Neue Rechnung', exact: true })).toBeVisible()
@@ -158,3 +160,59 @@ test('3.AP3: Wiederherstellung und Zurücksetzen führen auf das Dashboard', asy
   } finally { await context.close() }
 })
 
+
+
+for (const width of [320, 390, 768, 1024, 1280, 1440, 1920]) for (const theme of ['light', 'dark'] as const) {
+  test(`Dashboard: große Kennzahlen passen einzeilig bei ${width}px in ${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 960 })
+    const state = dashboardFixture()
+    state.settings.theme = theme
+    // Echte React-Kennzahlen aus gültigen Belegen statt nachträglicher DOM-Texte.
+    const draft = documentDraft()
+    draft.items = [{ ...draft.items[0], id: 'large-dashboard', quantity: 1, unitPrice: 1234567.89 }]
+    let large = saveInvoiceDraft(state, draft, true, documentAt)
+    large = saveInvoiceDraft(large, { ...draft, items: [{ ...draft.items[0], id: 'large-paid' }] }, true, documentAt)
+    large = changeInvoiceStatus(large, large.invoices.at(-1)!.id, 'paid', documentAt, '2026-09-16')
+    large = saveInvoiceDraft(large, { ...draft, items: [{ ...draft.items[0], id: 'large-draft' }] }, false, documentAt)
+    await seed(page, large)
+    const stats = dashboardStats(large, dashboardNow)
+    const values = [stats.open.totalCents, stats.paid.yearCents, stats.drafts.totalCents].map((cents) => euro.format(cents / 100)).concat('2', '2')
+    await expect(page.locator('.dashboard-stat__value')).toHaveText(values)
+    await page.evaluate(() => document.fonts.ready)
+    expect(await page.locator('.dashboard-stat__value').evaluateAll((nodes) => nodes.every((node) => {
+      const element = node as HTMLElement
+      const range = document.createRange()
+      range.selectNodeContents(element)
+      const card = element.closest('.dashboard-stat')!.getBoundingClientRect()
+      const rect = range.getBoundingClientRect()
+      return element.scrollWidth <= element.clientWidth && range.getClientRects().length === 1
+        && rect.left >= card.left && rect.right <= card.right
+        && getComputedStyle(element).whiteSpace === 'nowrap'
+    }))).toBe(true)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  })
+}
+
+test('Dashboard: Bento, Diagrammhöhe, Zukunftsmonate und verdichtete Fälligkeit', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 960 })
+  await seed(page, dashboardFixture())
+  await expect(page.locator('.dashboard-stat__next')).toContainText('20.09.26 · in 4 Tagen')
+  await expect(page.locator('.dashboard-average')).toContainText('Ø 1,11')
+  await expect(page.locator('.dashboard-chart__month--future')).toHaveCount(3)
+  await expect(page.locator('.dashboard-chart__month--empty')).toHaveCount(11)
+  const geometry = await page.locator('.dashboard-grid').evaluate((grid) => {
+    const rect = (selector: string) => grid.querySelector(selector)!.getBoundingClientRect()
+    return { list: rect('.dashboard-unpaid').height, chart: rect('.dashboard-monthly').height, plot: rect('.dashboard-chart__track').height,
+      hero: rect('.dashboard-stat--open'), paid: rect('.dashboard-stat--paid'), people: rect('.dashboard-people') }
+  })
+  expect(geometry.list).toBe(geometry.chart)
+  expect(geometry.plot).toBeGreaterThanOrEqual(260)
+  expect(geometry.hero.top).toBe(geometry.paid.top)
+  expect(geometry.hero.bottom).toBe(geometry.people.bottom)
+  await expect(page.locator('.dashboard-chart__value').nth(1)).toHaveText('10,00')
+  await expect(page.locator('.dashboard-chart__bar').nth(1)).toHaveAttribute('title', 'Februar: 10,00 €')
+  expect(await page.locator('.dashboard-chart-scroll').evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true)
+  await page.getByRole('combobox', { name: 'Jahr für Zahlungseingang', exact: true }).selectOption('2025')
+  await expect(page.locator('.dashboard-chart__month--future')).toHaveCount(0)
+  await expect(page.locator('.dashboard-average')).toContainText('Ø 4,17')
+})

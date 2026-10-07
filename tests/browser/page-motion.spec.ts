@@ -33,15 +33,15 @@ const navigation = (page: Page) => page.locator('.sidebar')
 test('3.AP7: Dashboard-Endwerte sind sofort zugänglich und erreichen exakt die AP2-Kennzahlen', async ({ page }) => {
   await seed(page)
   const expected = dashboardStats(dashboardFixture(), dashboardNow)
-  const values = [expected.paid.yearCents, expected.open.totalCents, expected.drafts.totalCents].map((value) => euro.format(value / 100)).concat(String(expected.people.guardians), String(expected.people.students))
+  const values = [expected.open.totalCents, expected.paid.yearCents, expected.drafts.totalCents].map((value) => euro.format(value / 100)).concat(String(expected.people.guardians), String(expected.people.students))
   await expect(page.locator('.dashboard-stat__end')).toHaveText(values)
   expect(await page.locator('.dashboard-stat__value').evaluateAll((nodes) => nodes.every((node) => node.getAttribute('aria-hidden') === 'true'))).toBe(true)
   await expect(page.locator('.dashboard-stat__value')).toHaveText(values)
   const before = await events(page, 'stat')
   const bars = await events(page, 'bar')
   await page.getByRole('combobox', { name: 'Jahr für Zahlungseingang', exact: true }).selectOption('2025')
-  await expect(page.locator('.dashboard-stat__value').first()).toHaveText(euro.format(50))
-  await expect(page.locator('.dashboard-stat__end').first()).toHaveText(euro.format(50))
+  await expect(page.locator('.dashboard-stat--paid .dashboard-stat__value')).toHaveText(euro.format(50))
+  await expect(page.locator('.dashboard-stat--paid .dashboard-stat__end')).toHaveText(euro.format(50))
   expect(await events(page, 'stat')).toBe(before)
   const duration = await page.locator('.dashboard-chart__bar').first().evaluate((node) => parseFloat(getComputedStyle(node).animationDuration))
   if (duration > 0) await expect.poll(() => events(page, 'bar')).toBeGreaterThan(bars)
@@ -153,4 +153,5 @@ test('3.AP7: Chromium unter CPU-Drosselung begrenzt Eintritte und beendet die An
     await expect.poll(() => page.locator('.invoice-list-table').evaluate((node) => node.getAnimations({ subtree: true }).filter((animation) => animation.playState === 'running').length)).toBe(0)
   } finally { await session.send('Emulation.setCPUThrottlingRate', { rate: 1 }); await session.detach() }
 })
+
 
