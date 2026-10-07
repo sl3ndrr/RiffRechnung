@@ -23,7 +23,7 @@ async function seed(page: Page, state: AppState) {
 }
 async function openDraft(page: Page, name: string) {
   await navigateToInvoices(page)
-  await page.locator('.invoice-list-table tbody tr').filter({ hasText: name }).getByRole('button', { name: 'Entwurf', exact: true }).click()
+  await page.locator('.invoice-list-table .invoice-data-row').filter({ hasText: name }).getByRole('button', { name: 'Entwurf', exact: true }).click()
   await page.locator('.invoice-detail').getByRole('button', { name: 'Bearbeiten', exact: true }).click()
   return page.getByRole('dialog', { name: 'Entwurf bearbeiten', exact: true })
 }
@@ -143,4 +143,5 @@ test('P03 Browser: unabhängige Entwürfe überstehen Speicherkonflikt und Quota
   expect(saved.invoices.find((invoice) => invoice.id === 'duo-invoice-1')?.status).toBe('draft')
   await second.close()
 })
+
 

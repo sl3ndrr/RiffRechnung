@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AppState, AuditEvent, ToastMessage } from '../types'
-import { recordActivity, resetUnissuedState } from '../lib/commands'
+import { recordActivity } from '../lib/commands'
 import { loadLastBackupAt, StorageSession, StorageConflict, recordBackupExport, STORAGE_KEY, LEGACY_STORAGE_KEY, type StorageRecoveryState } from '../lib/storage'
-import { assertOriginalsPreserved, assertReplacementAllowed } from '../lib/safety'
-import { requireSuccess } from '../lib/result'
+import { assertOriginalsPreserved } from '../lib/safety'
 import { downloadText } from '../lib/downloads'
 import { uid } from '../lib/identities'
 
@@ -92,10 +91,22 @@ export function useLocalWorkspace(mode: 'real' | 'demo', toast: (message: string
   }
 
   const reset = async () => {
-    assertReplacementAllowed(session.state)
-    const next = await session.change((current) => requireSuccess(resetUnissuedState(current)), 'reset')
-    stateRef.current = next
-    setState(next)
+    pendingWrites.current++
+    setSaveStateLabel('saving')
+    try {
+      const next = await session.resetAllLocalData()
+      stateRef.current = next
+      setState(next)
+      setLocalSaveError(null)
+      setExternalChangeDetected(false)
+      setLastBackupAt(null)
+      setSavedAt(new Date())
+      setSaveStateLabel('saved')
+    } catch (error) {
+      setSaveStateLabel('error')
+      setLocalSaveError(error instanceof Error ? error.message : 'Zurücksetzen fehlgeschlagen.')
+      throw error
+    } finally { pendingWrites.current-- }
   }
 
   const exportBackup = () => {

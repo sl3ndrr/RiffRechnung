@@ -39,6 +39,7 @@ export function Invoices({ state, initialStatus = 'all', onNavigate, onLoadDemo,
   const invoices = useMemo(() => selectedInvoices(state), [state])
   const [status, setStatus] = useState<'all' | 'unpaid' | InvoiceStatus>(initialStatus)
   const [year, setYear] = useState('all')
+  const [collapsedMonths, setCollapsedMonths] = useState<Record<string, boolean>>({})
   const [menu, setMenu] = useState<{ invoiceId: string; trigger: HTMLButtonElement } | null>(null)
   const [menuPosition, setMenuPosition] = useState<InvoiceMenuPosition | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -47,22 +48,40 @@ export function Invoices({ state, initialStatus = 'all', onNavigate, onLoadDemo,
   const menuInvoice = menu ? invoices.find((invoice) => invoice.id === menu.invoiceId) ?? null : null
   const years = [...new Set(invoices.map((invoice) => String(invoice.year)))].sort().reverse()
 
-  const filtered = useMemo(() => {
+  const searched = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase('de-DE')
-    const matches = invoices
-      .filter((invoice) => {
-        if (!showArchived && state.invoiceAdministration.some((admin) => admin.versionId === invoice.versionId && admin.archived)) return false
-        const actualStatus = effectiveStatus(invoice)
-        if (status === 'unpaid') {
-          if (invoice.archived || !isActiveClaim(state, invoice) || openCents(state, invoice) <= 0) return false
-        } else if (status !== 'all' && actualStatus !== status) return false
-        if (year !== 'all' && String(invoice.year) !== year) return false
-        if (!needle) return true
-        const haystack = [invoice.number, billingPeriodFromItems(invoice.items, invoice.invoiceDate), guardianName(invoice, state.guardians, state.students), studentName(invoice, state.students), ...invoice.items.map((item) => item.description)].join(' ').toLocaleLowerCase('de-DE')
-        return haystack.includes(needle)
-      })
-    return sortInvoices(matches)
-  }, [search, state, invoices, status, year, showArchived])
+    return sortInvoices(invoices.filter((invoice) => {
+      if (!showArchived && state.invoiceAdministration.some((admin) => admin.versionId === invoice.versionId && admin.archived)) return false
+      if (year !== 'all' && String(invoice.year) !== year) return false
+      if (!needle) return true
+      const haystack = [invoice.number, billingPeriodFromItems(invoice.items, invoice.invoiceDate), guardianName(invoice, state.guardians, state.students), studentName(invoice, state.students), ...invoice.items.map((item) => item.description)].join(' ').toLocaleLowerCase('de-DE')
+      return haystack.includes(needle)
+    }))
+  }, [search, state, invoices, year, showArchived])
+  const matchesStatus = useCallback((invoice: Invoice, filter: typeof status) => {
+    if (filter === 'all') return true
+    if (filter === 'unpaid') return !invoice.archived && isActiveClaim(state, invoice) && openCents(state, invoice) > 0
+    return effectiveStatus(invoice) === filter
+  }, [state])
+  const filtered = useMemo(() => searched.filter((invoice) => matchesStatus(invoice, status)), [searched, status, matchesStatus])
+  const statusFilters: Array<{ value: typeof status; label: string }> = [
+    { value: 'all', label: 'Alle' }, { value: 'unpaid', label: 'Offen' },
+    ...Object.entries(statusLabel).map(([value, label]) => ({ value: value as InvoiceStatus, label })),
+  ]
+  const statusCounts = new Map(statusFilters.map(({ value }) => [value, searched.filter((invoice) => matchesStatus(invoice, value)).length]))
+  const months = useMemo(() => {
+    const groups = new Map<string, Invoice[]>()
+    for (const invoice of filtered) {
+      const key = invoice.invoiceDate.slice(0, 7)
+      const group = groups.get(key) ?? []
+      group.push(invoice)
+      groups.set(key, group)
+    }
+    return [...groups].map(([key, entries]) => ({ key, entries, total: sumCents(entries.map(invoiceTotalCents)) / 100,
+      label: new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' }).format(new Date(`${key}-01T12:00:00`)) }))
+  }, [filtered])
+  const invoiceIndices = useMemo(() => new Map(filtered.map((invoice, index) => [invoice.id, index])), [filtered])
+  const currentMonth = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0')
 
   const entrance = usePageEntrance(filtered)
 
@@ -169,6 +188,11 @@ export function Invoices({ state, initialStatus = 'all', onNavigate, onLoadDemo,
         <label className="select-field select-field--compact"><span className="sr-only">Jahr</span><select value={year} onChange={(event) => setYear(event.target.value)}><option value="all">Alle Jahre</option>{years.map((item) => <option value={item} key={item}>{item}</option>)}</select><ChevronDown aria-hidden="true" /></label>
       </section>
 
+      <div className="invoice-status-filters" role="group" aria-label="Statusfilter" aria-describedby="invoice-status-count-hint">
+        {statusFilters.map(({ value, label }) => <button key={value} type="button" className={`invoice-filter-chip invoice-filter-chip--${value}`} aria-pressed={status === value} onClick={() => setStatus(value)}>{label} <span>{statusCounts.get(value)}</span></button>)}
+      </div>
+      <p className="sr-only" id="invoice-status-count-hint">Die Statuszähler berücksichtigen Suche, Jahr und Archivfilter. Wähle einen Status, um die entsprechenden Rechnungen anzuzeigen.</p>
+
       {!state.invoices.length ? (
         <section className="surface">
           <EmptyState icon={FilePlus2} title="Die erste Rechnung wartet" description="Sobald eine lernende Person angelegt ist, kannst du Unterrichtspositionen erfassen und die Rechnung finalisieren." />
@@ -176,16 +200,21 @@ export function Invoices({ state, initialStatus = 'all', onNavigate, onLoadDemo,
       ) : (
         <div className={`invoice-workspace ${selected ? 'invoice-workspace--detail' : ''}`}>
           <section className="surface invoice-list-card">
-            <div className="invoice-list-summary"><span>{filtered.length} Ergebnisse</span>{(search || status !== 'all' || year !== 'all') && <button className="button button--text" onClick={() => { setSearch(''); setStatus('all'); setYear('all') }}>Filter zurücksetzen</button>}</div>
-            <div className="table-scroll">
+            <div className="invoice-list-summary"><span role="status">{filtered.length} Ergebnisse · {months.length} {months.length === 1 ? 'Monat' : 'Monate'}</span><div className="button-row">{months.length > 1 && <><button className="button button--text" type="button" onClick={() => setCollapsedMonths({})}>Alle Monate öffnen</button><button className="button button--text" type="button" onClick={() => setCollapsedMonths((current) => ({ ...current, ...Object.fromEntries(months.map(({ key }) => [key, key !== currentMonth])) }))}>Ältere Monate einklappen</button></>}{(search || status !== 'all' || year !== 'all' || showArchived) && <button className="button button--text" onClick={() => { setSearch(''); setStatus('all'); setYear('all'); setShowArchived(false) }}>Filter zurücksetzen</button>}</div></div>
+            <div className="table-scroll invoice-month-scroll" tabIndex={0} role="region" aria-label="Rechnungsliste nach Monaten">
               <table className="data-table invoice-list-table">
                 <thead><tr><th>Rechnung <span className="sr-only">(Rechnungsdatum, neueste zuerst)</span></th><th>Empfänger / Lernende</th><th>Zeitraum</th><th>Status</th><th className="align-right">Betrag</th><th><span className="sr-only">Aktion</span></th></tr></thead>
-                <tbody>{filtered.map((invoice, index) => {
+                {months.map((month) => <tbody key={month.key}>
+                  <tr className="invoice-month-heading"><th colSpan={6} scope="rowgroup"><button type="button" aria-expanded={!collapsedMonths[month.key]} aria-label={`${month.label}: ${month.entries.length} Rechnungen, ${euro.format(month.total)}`} onClick={() => setCollapsedMonths((current) => ({ ...current, [month.key]: !current[month.key] }))}>
+                    <ChevronDown aria-hidden="true" /><strong>{month.label}</strong><span>{month.entries.length} {month.entries.length === 1 ? 'Rechnung' : 'Rechnungen'}</span><b>{euro.format(month.total)}</b>
+                  </button></th></tr>
+                  {!collapsedMonths[month.key] && month.entries.map((invoice) => {
+                  const index = invoiceIndices.get(invoice.id) ?? 0
                   const actualStatus = effectiveStatus(invoice)
                   const period = invoice.versionId ? invoice.period : billingPeriodFromItems(invoice.items, invoice.invoiceDate)
                   return (
-                    <tr style={staggerStyle(index)} className={`${invoice.id === selectedId ? 'is-selected' : ''}${entrance && index < 8 ? ' motion-fade motion-stagger page-entry' : ''}`} key={invoice.id} onClick={() => openDetails(invoice)}>
-                      <td><button ref={(node) => { if (node && invoice.id === selectedId && !detailTriggerRef.current) detailTriggerRef.current = node }} className="button button--text invoice-detail-link" type="button" onClick={(event) => { event.stopPropagation(); openDetails(invoice, event.currentTarget) }}>{invoice.number ?? 'Entwurf'}</button>{invoice.versionId && !isActiveClaim(state, invoice) && <small>Ersetzt</small>}<small>{formatDate(invoice.invoiceDate)}</small><StatusChip className="invoice-cell-status" status={actualStatus}><i />{actualStatus === 'sent' ? 'Offen' : statusLabel[actualStatus]}</StatusChip></td>
+                    <tr style={staggerStyle(index)} className={`invoice-data-row ${invoice.id === selectedId ? 'is-selected' : ''}${entrance && index < 8 ? ' motion-fade motion-stagger page-entry' : ''}`} key={invoice.id} onClick={() => openDetails(invoice)}>
+                      <td><button ref={(node) => { if (node && invoice.id === selectedId && !detailTriggerRef.current) detailTriggerRef.current = node }} className="button button--text invoice-detail-link" type="button" onClick={(event) => { event.stopPropagation(); openDetails(invoice, event.currentTarget) }}>{invoice.number ?? 'Entwurf'}</button>{invoice.versionId && !isActiveClaim(state, invoice) && <small>Ersetzt</small>}<small>{formatDate(invoice.invoiceDate)}</small><StatusChip className="invoice-cell-status" status={actualStatus}><i />{statusLabel[actualStatus]}</StatusChip></td>
                       <td>{guardianName(invoice, state.guardians, state.students)}<small>{studentName(invoice, state.students)}</small></td>
                       <td>{period}</td>
                       <td><StatusChip status={actualStatus}><i />{statusLabel[actualStatus]}</StatusChip></td>
@@ -197,7 +226,7 @@ export function Invoices({ state, initialStatus = 'all', onNavigate, onLoadDemo,
                       </td>
                     </tr>
                   )
-                })}</tbody>
+                })}</tbody>)}
               </table>
             </div>
             {!filtered.length && <EmptyState icon={Search} title="Nichts gefunden" description="Passe Suche oder Filter an, um andere Rechnungen zu sehen." />}
@@ -335,3 +364,4 @@ function InvoiceDetail({ invoice, state, onClose, onEdit, onDuplicate, onDelete,
     </aside>
   )
 }
+
