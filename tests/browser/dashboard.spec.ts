@@ -104,7 +104,7 @@ test('3.AP3: acht Vorschauzeilen führen zur vollständigen offenen Liste mit St
   await expect(page.locator('.dashboard-open-row')).toHaveCount(8)
   await page.getByRole('button', { name: 'Alle in Rechnungen anzeigen', exact: true }).click()
   await expect(page.getByRole('combobox', { name: 'Status', exact: true })).toHaveValue('unpaid')
-  await expect(page.locator('.invoice-list-table tbody tr')).toHaveCount(10)
+  await expect(page.locator('.invoice-list-table .invoice-data-row')).toHaveCount(10)
   await expect(page.locator('.invoice-detail')).toHaveCount(0)
 })
 
@@ -145,14 +145,16 @@ test('3.AP3: Wiederherstellung und Zurücksetzen führen auf das Dashboard', asy
   await page.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
   await expect(page.locator('.dashboard-page')).toBeVisible()
   await expect(amount(page, 'Offen')).toHaveText(euro.format(55))
-  // Reset is permitted only for an unissued workspace; use a fresh profile.
+  // Exercise the explicit confirmation in a fresh profile as well.
   const context = await browser.newContext({ baseURL: 'http://127.0.0.1:4173' })
   try {
     const fresh = await context.newPage()
     await fresh.goto('/')
     await navigation(fresh).getByRole('button', { name: 'Einstellungen', exact: true }).click()
     await fresh.getByRole('button', { name: 'Daten zurücksetzen', exact: true }).click()
-    await fresh.getByRole('alertdialog').getByRole('button', { name: 'Zurücksetzen', exact: true }).click()
+    await fresh.getByRole('alertdialog').getByRole('checkbox').check()
+    await fresh.getByRole('alertdialog').getByRole('button', { name: 'Endgültig zurücksetzen', exact: true }).click()
     await expect(fresh.locator('.dashboard-page')).toBeVisible()
   } finally { await context.close() }
 })
+

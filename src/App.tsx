@@ -12,6 +12,7 @@ import { ImportReview, type ImportReviewData } from './views/ImportReview'
 import { inspectImportBytes, type ImportPreview } from './lib/importState'
 import { requireSuccess } from './lib/result'
 import { prepareInvoiceCopy, prepareNewInvoice, saveGuardianState, saveInvoiceState, saveSettingsState, changeThemeState, saveStudentState, convertLegacyDraftState } from './lib/commands'
+import { ResetDialog } from './components/ResetDialog'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { ToastRegion } from './components/ToastRegion'
 import { InvoicePrint } from './components/InvoicePrint'
@@ -56,6 +57,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const [editorDirty, setEditorDirty] = useState(false)
   const { toasts, toast, dismissToast, clearUndoToasts } = useToasts()
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null)
+  const [resetOpen, setResetOpen] = useState(false)
   const [importReview, setImportReview] = useState<ImportReviewData | null>(null)
   const mainContentRef = useRef<HTMLElement | null>(null)
 
@@ -265,19 +267,24 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     })
   }
 
-  const resetAll = () => setConfirmation({
-    title: 'Lokalen Bestand zurücksetzen?', message: 'Der bisherige Stand bleibt als vorherige lokale Version erhalten. Ungespeicherte Einstellungen werden bei erfolgreichem Zurücksetzen verworfen.', label: 'Zurücksetzen', danger: true,
-    action: async () => {
-      try {
-        await reset()
-        clearUndoToasts()
-        setSettingsEpoch((value) => value + 1)
-        setSelectedInvoiceId(null)
-        setPage('dashboard')
-        toast('Zurücksetzen lokal gespeichert.', 'success')
-      } catch (error) { toast(error instanceof Error ? error.message : 'Zurücksetzen fehlgeschlagen.', 'error') }
-    },
-  })
+  const resetAll = () => {
+    if (pendingWrites.current) { toast('Bitte den laufenden Speichervorgang abwarten.', 'info'); return }
+    setResetOpen(true)
+  }
+  const confirmReset = async () => {
+    await reset()
+    clearUndoToasts()
+    setSettingsDirty(false)
+    setEditorDirty(false)
+    setEditor({ open: false, draft: createEmptyInvoiceDraft(stateRef.current.settings), editing: false })
+    setSettingsEpoch((value) => value + 1)
+    setSelectedInvoiceId(null)
+    setInvoiceInitialStatus('all')
+    setCreatePerson(false)
+    setPage('dashboard')
+    requestAnimationFrame(() => mainContentRef.current?.querySelector<HTMLElement>('h1')?.focus())
+    toast(mode === 'demo' ? 'Beispieldaten zurückgesetzt.' : 'Alle lokalen Daten wurden gelöscht.', 'success')
+  }
 
   const saveSettings = useCallback((settings: Omit<SettingsType, 'theme'>) => commit((current) => requireSuccess(saveSettingsState(current, { ...settings, theme: current.settings.theme })), 'Einstellungen aktualisiert', 'settings'), [commit])
   const persistTheme = useCallback((theme: ThemeMode) => commit((current) => requireSuccess(changeThemeState(current, theme)), 'Farbschema geändert', 'settings'), [commit])
@@ -368,6 +375,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
         </main>
       </WorkspaceShell>
 
+      {resetOpen && <ResetDialog open demo={mode === 'demo'} onClose={() => setResetOpen(false)} onExport={exportBackup} onReset={confirmReset} />}
       <ImportReview review={importReview} onClose={() => setImportReview(null)} onApply={confirmImport} />
       <InvoiceEditor state={state} open={editor.open} draft={editor.draft} editing={editor.editing} guardians={state.guardians} students={state.students} settings={state.settings} onClose={requestCloseEditor} onDirtyChange={setEditorDirty} onSave={saveInvoice} onConvert={convertLegacyDraft} />
       <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} cancelLabel={confirmation?.cancelLabel} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />
@@ -378,5 +386,6 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
 }
 
 export default App
+
 
 

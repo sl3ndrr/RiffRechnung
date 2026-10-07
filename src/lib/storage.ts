@@ -184,6 +184,32 @@ export class StorageSession {
     })
   }
 
+  // Deliberate full deletion is separate from edits/restores: their original-
+  // preservation rules must never be weakened to implement a profile reset.
+  resetAllLocalData(): Promise<AppState> {
+    return this.run(async () => {
+      this.checkCurrent()
+      if (this.recovery) throw new Error('Geschützte Rohdaten zuerst prüfen und sichern.')
+      const next = emptyState()
+      validateBackupState(next)
+      if (this.mode === 'real') {
+        if (!this.storage) throw new Error('Lokaler Speicher nicht verfügbar.')
+        const keys = new Set([STORAGE_KEY, LEGACY_STORAGE_KEY, PREVIOUS_STORAGE_KEY, LEGACY_GUARD_KEY, LAST_BACKUP_AT_KEY, 'riffrechnung-theme-hint'])
+        for (let index = 0; index < this.storage.length; index++) {
+          const key = this.storage.key(index)
+          if (key?.startsWith(`${STORAGE_KEY}-recovery-`)) keys.add(key)
+        }
+        // Reuse the rollback boundary; unrelated origin storage is untouched.
+        writeStorageBatch(this.storage, new Map([...keys].map((key) => [key, null])))
+      }
+      this.token = null
+      this.legacy = null
+      this.envelope = null
+      this.current = next
+      return this.state
+    })
+  }
+
   restore(rawData: string): Promise<AppState> {
     return this.run(async () => {
       this.checkCurrent()

@@ -15,7 +15,7 @@ async function seed(page: Page, many = false) {
     motion.pageMotion = []
     document.addEventListener('animationstart', (event) => {
       const node = event.target as HTMLElement
-      motion.pageMotion.push({ name: event.animationName, target: node.matches('.invoice-list-table tbody tr') ? 'invoice-row' : node.matches('.student-card, .guardian-row') ? 'person-row' : node.matches('.dashboard-stat') ? 'stat' : node.matches('.dashboard-chart__bar') ? 'bar' : 'other' })
+      motion.pageMotion.push({ name: event.animationName, target: node.matches('.invoice-list-table .invoice-data-row') ? 'invoice-row' : node.matches('.student-card, .guardian-row') ? 'person-row' : node.matches('.dashboard-stat') ? 'stat' : node.matches('.dashboard-chart__bar') ? 'bar' : 'other' })
     })
   })
   await page.goto('/')
@@ -50,7 +50,7 @@ test('3.AP7: Dashboard-Endwerte sind sofort zugänglich und erreichen exakt die 
 test('3.AP7: Rechnungszeilen treten einmal ein und starten nach Suche, Filter und Zahlung nicht erneut', async ({ page }) => {
   await seed(page, true)
   await navigateToInvoices(page)
-  const animated = page.locator('.invoice-list-table tbody tr.page-entry')
+  const animated = page.locator('.invoice-list-table .invoice-data-row.page-entry')
   const reduced = await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)
   if (!reduced) await expect.poll(() => events(page, 'invoice-row')).toBeGreaterThan(0)
   await page.getByRole('searchbox', { name: 'Rechnungen durchsuchen', exact: true }).fill('2026')
@@ -146,10 +146,11 @@ test('3.AP7: Chromium unter CPU-Drosselung begrenzt Eintritte und beendet die An
   try {
     await seed(page, true)
     await navigateToInvoices(page)
-    expect(await page.locator('.invoice-list-table tbody tr.page-entry').count()).toBeLessThanOrEqual(8)
+    expect(await page.locator('.invoice-list-table .invoice-data-row.page-entry').count()).toBeLessThanOrEqual(8)
     await page.getByRole('searchbox', { name: 'Rechnungen durchsuchen', exact: true }).fill('2026-0001-a')
-    await expect(page.locator('.invoice-list-table tbody tr')).toHaveCount(1)
+    await expect(page.locator('.invoice-list-table .invoice-data-row')).toHaveCount(1)
     await expect(page.locator('.invoice-list-table .page-entry')).toHaveCount(0)
     await expect.poll(() => page.locator('.invoice-list-table').evaluate((node) => node.getAnimations({ subtree: true }).filter((animation) => animation.playState === 'running').length)).toBe(0)
   } finally { await session.send('Emulation.setCPUThrottlingRate', { rate: 1 }); await session.detach() }
 })
+

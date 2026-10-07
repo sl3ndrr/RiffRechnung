@@ -395,7 +395,7 @@ for (const width of [390, 1280]) {
     await expect(page.getByRole('heading', { name: 'Einstellungen', exact: true })).toBeVisible()
     await navigation.getByRole('button', { name: 'Rechnungen', exact: true }).click()
     const search = page.getByRole('searchbox', { name: 'Rechnungen durchsuchen' })
-    const rows = page.locator('.invoice-list-table tbody tr')
+    const rows = page.locator('.invoice-list-table .invoice-data-row')
     await search.fill('fehlt-in-allen-rechnungen')
     await expect(rows).toHaveCount(0)
     await search.fill('2026-0001-a')
@@ -427,4 +427,5 @@ test('P02 Browser: kompakte Einrichtung, ein isolierter Demo-Einstieg und Info-L
   await expect(demo).toHaveCount(1)
   await expect(page.getByRole('region', { name: 'Einrichtung', exact: true })).toBeVisible()
 })
+
 

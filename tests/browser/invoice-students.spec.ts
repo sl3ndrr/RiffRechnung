@@ -95,7 +95,7 @@ for (const newFirst of [false, true]) test(`Kopie: ${newFirst ? 'neue Person zue
   expect(saved.invoices.find((invoice) => invoice.id === source.id)).toEqual(source)
   await page.reload()
   await navigateToInvoices(page)
-  await page.locator('.invoice-list-table tbody tr').filter({ hasText: 'Testkind B' }).getByRole('button', { name: 'Entwurf', exact: true }).click()
+  await page.locator('.invoice-list-table .invoice-data-row').filter({ hasText: 'Testkind B' }).getByRole('button', { name: 'Entwurf', exact: true }).click()
   await page.locator('.invoice-detail').getByRole('button', { name: 'Bearbeiten', exact: true }).click()
   const reopened = page.getByRole('dialog', { name: 'Entwurf bearbeiten', exact: true })
   expect(await itemValues(reopened)).toEqual(values)
@@ -176,3 +176,4 @@ test('Bestehender Entwurf: nach Stammdatenänderung ungültige Empfänger sichtb
   expect(saved.recipients).toEqual([{ type: 'guardian', id: 'g-b' }])
   expect(saved.items).toEqual(state.invoices[0].items)
 })
+

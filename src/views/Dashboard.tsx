@@ -44,7 +44,7 @@ export function Dashboard({ state, mode, lastBackupAt, clock = systemClock, onNa
 
   return <div className="page dashboard-page">
     <header className="page-header dashboard-header">
-      <div><p className="eyebrow">Dashboard</p><h1>{dashboardGreeting(state.settings.issuer.name, now)}</h1><p><time dateTime={localToday(now)}>{todayFormatter.format(now)}</time></p>
+      <div><p className="eyebrow">Dashboard</p><h1 tabIndex={-1}>{dashboardGreeting(state.settings.issuer.name, now)}</h1><p><time dateTime={localToday(now)}>{todayFormatter.format(now)}</time></p>
         {!state.settings.issuer.name.trim() && <p className="dashboard-name-hint">Deinen Namen kannst du in den <button className="button button--text" aria-label="Namen in den Einstellungen hinterlegen" onClick={() => onNavigate('settings')}>Einstellungen</button> hinterlegen.</p>}
       </div>
       {stats.people.students > 0 && <button className="button button--primary button--large" onClick={onNew}><FilePlus2 aria-hidden="true" /> Neue Rechnung</button>}
@@ -82,4 +82,5 @@ export function Dashboard({ state, mode, lastBackupAt, clock = systemClock, onNa
     {showBackup && <section className="surface dashboard-backup" aria-labelledby="dashboard-backup-title"><div><h2 id="dashboard-backup-title">Zeit für ein Backup</h2><p>Sichere deinen gespeicherten Bestand als JSON-Datei außerhalb dieses Browserprofils.</p></div><button className="button button--tonal" onClick={onExport}><Download aria-hidden="true" /> JSON exportieren</button></section>}
   </div>
 }
+
 

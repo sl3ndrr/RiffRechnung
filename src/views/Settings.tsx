@@ -9,7 +9,6 @@ import { formatInvoiceNumber } from '../lib/invoiceNumbering'
 import { formatIban, germanIbanError } from '../lib/paymentData'
 
 import { parseStandardRate, settingsChangeErrors, STANDARD_RATE_ERROR } from '../lib/settings'
-import { isFinalizedInvoice } from '../lib/safety'
 
 import { canonical } from '../lib/envelope'
 import { invoiceSetupErrors } from '../lib/invoiceSetup'
@@ -50,7 +49,6 @@ export function Settings({ state, theme, visible, onSave, onThemeChange, onDirty
 
   const ibanError = form.iban.trim() ? germanIbanError(form.iban) : null
   const currentBicError = form.bic.trim() ? bicError(form.bic) : null
-  const replacementBlocked = state.invoices.some(isFinalizedInvoice) || state.voidedInvoiceNumbers.length > 0 || state.documentVersions.length > 0 || state.historicalSnapshotCorrections.length > 0 || state.payments.length > 0
   const emailError = mailboxError(form.issuer.email)
   const paymentTermError = parsePaymentTermInput(paymentTermInput) === null
   const invalidRateInput = Object.values(rateInputs).some((raw) => parseStandardRate(raw) === null)
@@ -162,7 +160,7 @@ export function Settings({ state, theme, visible, onSave, onThemeChange, onDirty
             {state.voidedInvoiceNumbers.length > 0 && <div className="number-register"><div><h3>Reservierte Rechnungsnummern</h3><p>Nummern gelöschter oder zurück in Entwurf versetzter Rechnungen bleiben dauerhaft belegt.</p></div>{state.voidedInvoiceNumbers.map((entry) => <div className="number-register__row" key={`${entry.number}-${entry.deletedAt}`}><span><strong>{entry.number}</strong><small>{entry.recipient} · {entry.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</small></span><time dateTime={entry.deletedAt}>{entry.reason === 'reopened' ? 'zurückgesetzt' : 'gelöscht'} {new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(entry.deletedAt))}</time></div>)}</div>}
           </section>
 
-          <section className="danger-zone"><div><ArchiveRestore aria-hidden="true" /><span><strong>Alle lokalen Daten zurücksetzen</strong><p>Nur für Bestände ohne ausgestellte Belege, historische Dokumentation oder reservierte Nummern. Bestehende Originale bleiben über Archivierung und geprüfte Wiederherstellung erhalten.</p></span></div><button className="button button--danger-outline" onClick={onReset} disabled={replacementBlocked}>Daten zurücksetzen</button></section>
+          <section className="danger-zone"><div><ArchiveRestore aria-hidden="true" /><span><strong>Alle lokalen Daten zurücksetzen</strong><p>Löscht Rechnungen, Personen, Einstellungen und lokale Wiederherstellungskopien nach ausdrücklicher Bestätigung. Erstelle vorher ein JSON-Backup.</p></span></div><button className="button button--danger-outline" onClick={onReset}>Daten zurücksetzen</button></section>
         </div>
       </div>
     </div>
