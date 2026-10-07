@@ -36,6 +36,7 @@ interface InvoicesProps extends DocumentHistoryActions {
 export function Invoices({ state, initialStatus = 'all', onNavigate, onLoadDemo, selectedId, onSelect, onNew, onEdit, onDuplicate, onDelete, onSetStatus, onPrint, onCorrection, onAllocatePayment, onResolveConflicts }: InvoicesProps) {
   const [search, setSearch] = useState('')
   const [showArchived, setShowArchived] = useState(false)
+  const [compactList, setCompactList] = useState(() => window.matchMedia('(max-width: 640px)').matches)
   const invoices = useMemo(() => selectedInvoices(state), [state])
   const [status, setStatus] = useState<'all' | 'unpaid' | InvoiceStatus>(initialStatus)
   const [year, setYear] = useState('all')
@@ -84,6 +85,13 @@ export function Invoices({ state, initialStatus = 'all', onNavigate, onLoadDemo,
   const currentMonth = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0')
 
   const entrance = usePageEntrance(filtered)
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 640px)')
+    const update = () => setCompactList(media.matches)
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
 
   const updateMenuPosition = useCallback(() => {
     if (!menu || !menuRef.current) return
@@ -211,7 +219,7 @@ export function Invoices({ state, initialStatus = 'all', onNavigate, onLoadDemo,
               <table className="data-table invoice-list-table">
                 <thead><tr><th>Rechnung <span className="sr-only">(Rechnungsdatum, neueste zuerst)</span></th><th>Empfänger / Lernende</th><th>Zeitraum</th><th>Status</th><th className="align-right">Betrag</th><th><span className="sr-only">Aktion</span></th></tr></thead>
                 {months.map((month) => <tbody key={month.key}>
-                  <tr className="invoice-month-heading"><th colSpan={6} scope="rowgroup"><button type="button" aria-expanded={!collapsedMonths[month.key]} aria-label={`${month.label}: ${month.entries.length} Rechnungen, ${euro.format(month.total)}`} onClick={(event) => toggleMonth(month.key, month.entries, event.currentTarget)}>
+                  <tr className="invoice-month-heading"><th colSpan={compactList ? 4 : 6} scope="rowgroup"><button type="button" aria-expanded={!collapsedMonths[month.key]} aria-label={`${month.label}: ${month.entries.length} Rechnungen, ${euro.format(month.total)}`} onClick={(event) => toggleMonth(month.key, month.entries, event.currentTarget)}>
                     <ChevronDown aria-hidden="true" /><strong>{month.label}</strong><span>{month.entries.length} {month.entries.length === 1 ? 'Rechnung' : 'Rechnungen'}</span><b>{euro.format(month.total)}</b>
                   </button></th></tr>
                   {!collapsedMonths[month.key] && month.entries.map((invoice) => {

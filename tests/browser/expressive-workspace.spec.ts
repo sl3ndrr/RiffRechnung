@@ -80,10 +80,10 @@ for (const width of [1440, 390]) for (const theme of ['light', 'dark'] as const)
     await scroll.evaluate((node) => { node.scrollTop = 60 })
     expect(await headers.first().evaluate((node) => {
       const header = node.closest('th')!
-      const tableHeader = node.closest('table')!.querySelector('thead')!
+      const tableHeader = node.closest('table')!.querySelector('thead th')!
       return Math.abs(header.getBoundingClientRect().top - tableHeader.getBoundingClientRect().bottom) < 3
     })).toBe(true)
-    await page.getByRole('searchbox', { name: 'Rechnungen durchsuchen' }).fill('Becker')
+    await page.getByRole('searchbox', { name: 'Rechnungen durchsuchen' }).fill('Nguyen')
     const chips = page.getByRole('group', { name: 'Statusfilter', exact: true })
     const all = chips.getByRole('button', { name: /^Alle / })
     const count = Number((await all.textContent())!.match(/\d+$/)![0])
