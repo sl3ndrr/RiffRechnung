@@ -140,6 +140,12 @@ export function Invoices({ state, initialStatus = 'all', onNavigate, onLoadDemo,
     setMenu({ invoiceId: invoice.id, trigger: button })
   }
 
+  const toggleMonth = (key: string, entries: Invoice[], trigger: HTMLButtonElement) => {
+    if (entries.some((invoice) => invoice.id === selectedId)) detailTriggerRef.current = trigger
+    if (entries.some((invoice) => invoice.id === menu?.invoiceId)) setMenu(null)
+    setCollapsedMonths((current) => ({ ...current, [key]: !current[key] }))
+  }
+
   const chooseMenuAction = (action: InvoiceMenuAction, invoice: Invoice) => {
     setMenu(null)
     runInvoiceMenuAction(action, invoice, { onEdit, onPrint, onDuplicate, onDelete })
@@ -200,12 +206,12 @@ export function Invoices({ state, initialStatus = 'all', onNavigate, onLoadDemo,
       ) : (
         <div className={`invoice-workspace ${selected ? 'invoice-workspace--detail' : ''}`}>
           <section className="surface invoice-list-card">
-            <div className="invoice-list-summary"><span role="status">{filtered.length} Ergebnisse · {months.length} {months.length === 1 ? 'Monat' : 'Monate'}</span><div className="button-row">{months.length > 1 && <><button className="button button--text" type="button" onClick={() => setCollapsedMonths({})}>Alle Monate öffnen</button><button className="button button--text" type="button" onClick={() => setCollapsedMonths((current) => ({ ...current, ...Object.fromEntries(months.map(({ key }) => [key, key !== currentMonth])) }))}>Ältere Monate einklappen</button></>}{(search || status !== 'all' || year !== 'all' || showArchived) && <button className="button button--text" onClick={() => { setSearch(''); setStatus('all'); setYear('all'); setShowArchived(false) }}>Filter zurücksetzen</button>}</div></div>
+            <div className="invoice-list-summary"><span role="status">{filtered.length} Ergebnisse · {months.length} {months.length === 1 ? 'Monat' : 'Monate'}</span><div className="button-row">{months.length > 1 && <><button className="button button--text" type="button" onClick={() => setCollapsedMonths({})}>Alle Monate öffnen</button><button className="button button--text" type="button" onClick={(event) => { setMenu(null); detailTriggerRef.current = event.currentTarget; setCollapsedMonths((current) => ({ ...current, ...Object.fromEntries(months.map(({ key }) => [key, key !== currentMonth])) })) }}>Ältere Monate einklappen</button></>}{(search || status !== 'all' || year !== 'all' || showArchived) && <button className="button button--text" onClick={() => { setSearch(''); setStatus('all'); setYear('all'); setShowArchived(false) }}>Filter zurücksetzen</button>}</div></div>
             <div className="table-scroll invoice-month-scroll" tabIndex={0} role="region" aria-label="Rechnungsliste nach Monaten">
               <table className="data-table invoice-list-table">
                 <thead><tr><th>Rechnung <span className="sr-only">(Rechnungsdatum, neueste zuerst)</span></th><th>Empfänger / Lernende</th><th>Zeitraum</th><th>Status</th><th className="align-right">Betrag</th><th><span className="sr-only">Aktion</span></th></tr></thead>
                 {months.map((month) => <tbody key={month.key}>
-                  <tr className="invoice-month-heading"><th colSpan={6} scope="rowgroup"><button type="button" aria-expanded={!collapsedMonths[month.key]} aria-label={`${month.label}: ${month.entries.length} Rechnungen, ${euro.format(month.total)}`} onClick={() => setCollapsedMonths((current) => ({ ...current, [month.key]: !current[month.key] }))}>
+                  <tr className="invoice-month-heading"><th colSpan={6} scope="rowgroup"><button type="button" aria-expanded={!collapsedMonths[month.key]} aria-label={`${month.label}: ${month.entries.length} Rechnungen, ${euro.format(month.total)}`} onClick={(event) => toggleMonth(month.key, month.entries, event.currentTarget)}>
                     <ChevronDown aria-hidden="true" /><strong>{month.label}</strong><span>{month.entries.length} {month.entries.length === 1 ? 'Rechnung' : 'Rechnungen'}</span><b>{euro.format(month.total)}</b>
                   </button></th></tr>
                   {!collapsedMonths[month.key] && month.entries.map((invoice) => {

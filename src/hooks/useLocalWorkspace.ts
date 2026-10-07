@@ -105,6 +105,7 @@ export function useLocalWorkspace(mode: 'real' | 'demo', toast: (message: string
     } catch (error) {
       setSaveStateLabel('error')
       setLocalSaveError(error instanceof Error ? error.message : 'Zurücksetzen fehlgeschlagen.')
+      if (error instanceof StorageConflict) setExternalChangeDetected(true)
       throw error
     } finally { pendingWrites.current-- }
   }

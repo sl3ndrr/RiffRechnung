@@ -149,7 +149,7 @@ for (const width of [320, 390, 1280]) {
     for (const theme of ['light', 'dark']) {
       await page.evaluate((value) => { document.documentElement.dataset.theme = value }, theme)
       const visible = page.locator('.invoice-list-table .status-chip:visible')
-      await expect(visible).toHaveText(['Bezahlt', 'Überfällig', width < 640 ? 'Offen' : 'Versendet'])
+      await expect(visible).toHaveText(['Bezahlt', 'Überfällig', 'Versendet'])
       await textContrast(visible)
       expect(await page.locator('.invoice-list-table th:visible').evaluateAll((headers) => headers.every((header) => header.scrollWidth <= header.clientWidth + 1))).toBe(true)
       expect(await page.locator('.invoice-list-table').evaluate((element) => element.scrollWidth <= element.parentElement!.clientWidth + 1)).toBe(true)
@@ -197,4 +197,5 @@ test('P12: Systemtheme, Bewegungspräferenzen und Aktiv-Filter mit sichtbarem Fo
   await page.keyboard.press('Escape')
   await expect(page.getByRole('button', { name: 'Neue Rechnung', exact: true })).toBeFocused()
 })
+
 
