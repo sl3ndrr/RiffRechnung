@@ -162,7 +162,7 @@ test('3.AP3: Wiederherstellung und Zurücksetzen führen auf das Dashboard', asy
 
 
 
-for (const width of [320, 390, 768, 1024, 1280, 1440, 1920]) for (const theme of ['light', 'dark'] as const) {
+for (const width of [320, 390, 768, 1024, 1181, 1280, 1440, 1920]) for (const theme of ['light', 'dark'] as const) {
   test(`Dashboard: große Kennzahlen passen einzeilig bei ${width}px in ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 960 })
     const state = dashboardFixture()
@@ -190,6 +190,12 @@ for (const width of [320, 390, 768, 1024, 1280, 1440, 1920]) for (const theme of
         && getComputedStyle(element).whiteSpace === 'nowrap'
     }))).toBe(true)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    if (width >= 480) expect(await page.locator('.dashboard-chart-scroll').evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true)
+    expect(await page.locator('.dashboard-chart__value').evaluateAll((nodes) => nodes.every((node) => {
+      const range = document.createRange()
+      range.selectNodeContents(node)
+      return range.getClientRects().length === 1 && (node as HTMLElement).scrollWidth <= (node as HTMLElement).clientWidth
+    }))).toBe(true)
   })
 }
 
@@ -203,7 +209,7 @@ test('Dashboard: Bento, Diagrammhöhe, Zukunftsmonate und verdichtete Fälligkei
   const geometry = await page.locator('.dashboard-grid').evaluate((grid) => {
     const rect = (selector: string) => grid.querySelector(selector)!.getBoundingClientRect()
     return { list: rect('.dashboard-unpaid').height, chart: rect('.dashboard-monthly').height, plot: rect('.dashboard-chart__track').height,
-      hero: rect('.dashboard-stat--open'), paid: rect('.dashboard-stat--paid'), people: rect('.dashboard-people') }
+      hero: { top: rect('.dashboard-stat--open').top, bottom: rect('.dashboard-stat--open').bottom }, paid: { top: rect('.dashboard-stat--paid').top }, people: { bottom: rect('.dashboard-people').bottom } }
   })
   expect(geometry.list).toBe(geometry.chart)
   expect(geometry.plot).toBeGreaterThanOrEqual(260)

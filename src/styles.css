@@ -927,7 +927,7 @@ html.theme-changing .theme-switch svg { transition: rotate var(--dur-spatial-fas
 .dashboard-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--space-4); align-items: stretch; margin-bottom: var(--space-6); }
 .dashboard-stat { position: relative; min-width: 0; container-type: inline-size; padding: var(--space-6); border: 0; --metric-max: 44px; }
 .dashboard-stat h2 { margin-bottom: var(--space-4); font-size: var(--type-label); font-weight: 650; }
-.dashboard-stat__value, .dashboard-number__sizer { display: block; min-width: 0; white-space: nowrap; overflow-wrap: normal; font-size: clamp(22px, calc(100cqi / (var(--chars) * .62)), var(--metric-max)); font-weight: 720; line-height: 1.15; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.dashboard-stat__value, .dashboard-number__sizer { display: block; min-width: 0; white-space: nowrap; overflow-wrap: normal; font-size: min(var(--metric-max), calc(100cqi / (var(--chars) * .62))); font-weight: 720; line-height: 1.15; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
 .dashboard-number { min-width: 0; }
 .dashboard-stat p { margin: var(--space-2) 0 0; color: inherit; font-size: var(--type-label); line-height: 1.55; overflow-wrap: break-word; }
 .dashboard-stat .dashboard-stat__note { margin-top: var(--space-4); font-size: var(--type-caption); }
