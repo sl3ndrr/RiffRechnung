@@ -17,14 +17,14 @@ der jeweiligen `surface`; die Shell liest dafür den CSS-Token.
 
 ## Formen und Schrift
 
-Radien: 8, 12, 16, 20, 28 px und vollrund. Karten verwenden 20 px, Dialoge
+Radien: 8, 12, 16, 20, 28, 44 px und vollrund. Karten verwenden 20 px, Dialoge
 28 px, Felder 16 px. Navigation, Suchfeld und Buttons sind Pills; gedrückte
 Buttons und ausgewählte Toggles wechseln auf 16 px. Nur die drei großen
 Dashboardkarten nutzen unterschiedliche dekorative Iconformen.
 
 Inter Variable wird lokal geladen. Die kleine `type-*`-Skala reicht von
 12-px-Hilfstext über 14/15-px-Labels und Fließtext bis zu 32–40-px-Seitentiteln
-und 36–44-px-Kennzahlen. Betonte Werte verwenden Gewicht 700 und tabellarische
+und bis zu 76-px-Hero-Kennzahlen. Dashboardwerte verwenden Gewicht 720, −0,04 em Laufweite und tabellarische
 Ziffern. Schatten sind auf Menüs, Toasts und den dezenten Theme-Thumb beschränkt; Dialoge erhalten
 Tiefe durch den Scrim und die getönte Fläche.
 
@@ -49,7 +49,7 @@ Der Topbar-Theme-Schalter besteht aus drei runden 44 × 44-px-Iconsegmenten (Hel
 
 Offene Rechnungen und Personenlisten bilden segmentierte Tonalflächen mit
 2 px Abstand. Die Rechnungsliste bleibt eine Tabelle. Im Dashboard bleiben
-die vorhandenen Personenzähler als kompakte ergänzende Zeile erhalten;
+Eltern und Kinder gemeinsam auf einer Warnungsfläche mit gestrichelter Trennung;
 die Geldwerte stammen unverändert aus `dashboardStats`. Native Auswahllisten
 bleiben erhalten. Sie sind von der gemeinsamen Fokus-Translation der Textfelder
 ausgenommen: ein animiert verschobener Select-Anker kann die separate native
@@ -86,10 +86,20 @@ Die kleine Endsumme besitzt einen kräftigen Rahmen und einen monochromen
 Fallback. In einem realen Druckdialog sind zusätzlich Graustufen und die
 Option für Hintergrundgrafiken zu prüfen.
 
+## Dashboard-Bento
+
+Ein gemeinsames 12-Spalten-Grid nutzt `--space-4`: Offen belegt sechs Spalten und zwei Reihen, Bezahlt und Entwürfe je drei, Personen sechs; darunter stehen offene Rechnungen (fünf) und Monatsdiagramm (sieben) gleich hoch. Bis 1180 px belegen Hero und Personen zwölf Spalten, Bezahlt/Entwürfe je sechs. Bis 860 px folgt eine Spalte; die bestehende Bottom-Navigation bleibt.
+
+Offen nutzt `primary`/`on-primary` und die Form 44/44/44/14 px; Bezahlt `secondary-container`/`on-secondary-container` mit 28/28/14/28 px, Entwürfe `tertiary-container`/`on-tertiary-container` mit 28/28/28/14 px. Personen nutzen `warning-container`/`on-warning-container`. Erfolgs- und Fehlerchips verwenden jeweils ein geprüftes Container-/On-Paar in beiden Themes. Die vorhandenen Kreis-/Sternformen der Icons bleiben erhalten.
+
+Kennzahlen umbrechen nie. Jede `.dashboard-stat` ist ein Inline-Size-Container; `--chars` folgt dem formatierten Endwert und `--metric-max` beträgt 76/44/32 px für Hero/Beträge/Personen. Faktor 0,62 reserviert Breite für Inter Variable bei Gewicht 720. Es gibt keine feste Mindestschriftgröße, die lange Endwerte knapp oberhalb des 1180-px-Breakpoints aus der Kachel drücken könnte. Der unsichtbare Sizer stabilisiert die Count-up-Geometrie. Alle vorhandenen Bewegungs-Hooks und Tokens bleiben.
+
+Die offene Liste zeigt links Nummer, Empfänger und Lernende, rechts Betrag, darunter einen Fälligkeitschip mit Datum, eine kleine Ausstellungs-/Dauerzeile und einen dekorativen Fristbalken. Der ganze Eintrag öffnet weiterhin die Rechnung. Das Diagramm streckt sich zur Höhe der Liste; die Plotfläche wächst mit mindestens 260 px. Balken skalieren prozentual zum höchsten Monat, zukünftige Monate sind gestrichelte Umrisse. Sichtbare Werte behalten zwei exakte Dezimalstellen ohne €; Titel und sr-only-Tabelle enthalten die vollständigen Beträge. Der Durchschnitt erscheint als Chip und gestrichelte Linie. Horizontaler Scroll-Fallback gilt nur unter 480 px.
+
 ## Prüfung
 
-`design-evidence.spec.ts` erzeugt 16 Playwright-Screenshots: Dashboard,
-Rechnungsliste, Editor und Einstellungen bei 1440/390 px in Hell/Dunkel.
+`design-evidence.spec.ts` erzeugt 24 Playwright-Screenshots: Dashboard,
+Rechnungsliste, Editor und Einstellungen bei 1440/1024/390 px in Hell/Dunkel.
 Die bestehende PDF-Suite prüft die unterschiedlichen Rechnungsszenarien
 einschließlich mehrseitiger Ausgabe und unveränderter Daten. Bilder und PDFs
 liegen ausschließlich in den CI-Artefakten, nicht im Repository.
@@ -102,3 +112,4 @@ Facettenzähler, Sticky-Köpfe und unverformte native Dropdown-Anker in Hell/Dun
 bei 1440/390 px. Die Token-Paare für normalen Text erreichen mindestens 5,26:1
 (hell) bzw. 5,38:1 (dunkel). Native Popup-Darstellung muss zusätzlich im betroffenen
 Browser mit Mausöffnung, Pfeilen, Enter, Escape und Buchstabensuche geprüft werden.
+

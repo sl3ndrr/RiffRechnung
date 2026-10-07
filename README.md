@@ -73,4 +73,5 @@ Bei Speicher-/Tabkonflikten die Meldung befolgen und den aktuellen Stand neu lad
 
 [Technik, Migration und Prüfungen](docs/technical.md) · [Historische Nachweise](docs/evidence.md) · [Kurze Release-Notizen](docs/releases.md)
 
-Vor Freigabe von 1.2.0: [Prüfbericht und manuelle Checkliste](docs/release-1.2.0.md).
+Historische Releaseprüfung 1.2.0: [Prüfbericht und manuelle Checkliste](docs/release-1.2.0.md).
+
