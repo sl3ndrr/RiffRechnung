@@ -1,77 +1,54 @@
 # RiffRechnung
 
-RiffRechnung verwaltet Privatrechnungen für Unterricht lokal im Browser.
-Die Arbeitsoberfläche startet im **Dashboard** und bietet **Rechnungen**, **Personen** und **Einstellungen**.
-Der Demo-Einstieg arbeitet mit Beispieldaten getrennt vom echten Bestand.
-
-Das Dashboard zeigt Zahlungseingänge im gewählten Jahr, offene Restbeträge, Entwürfe und Personenzahlen. Die Monatsansicht verwendet bestätigte Zahlungstage; Zahlungen ohne bestätigten Tag erscheinen als gesonderter Hinweis. Offene Rechnungen stehen mit überfälligen zuerst und lassen sich direkt öffnen. Bei mehr als acht Einträgen führt **Alle in Rechnungen anzeigen** zur vollständigen Liste mit dem Filter **Noch nicht gezahlt**. Eine dezente Erinnerung bietet den JSON-Export an, wenn Rechnungen vorhanden sind und das letzte Backup mehr als 30 Tage zurückliegt oder fehlt.
-
-**Bezahlt** zählt tatsächliche Zahlungseingänge nach ihrem bestätigten Zahlungstag, auch Teilzahlungen sowie Zahlungen zu inzwischen ersetzten oder archivierten Belegen. Rechnungsdatum und Erfassungszeit bestimmen diese Zahl nicht. **Offen** zeigt die Restbeträge aktiver, nicht archivierter finaler Ansprüche; ersetzte Originale zählen nicht zusätzlich, ein Korrekturentwurf ersetzt den Anspruch noch nicht. **Entwürfe** zählt alle nicht finalisierten Rechnungen, im Betrag nur berechenbare Entwürfe. Die Personenzähler umfassen alle gespeicherten Erziehungsberechtigten und Lernenden, mit aktiven Lernenden als zusätzlicher Angabe. Die Jahresauswahl verändert nur Zahlungseingang und Monatsdiagramm.
+RiffRechnung verwaltet Privatrechnungen für Unterricht lokal im Browser. Die Oberfläche startet im **Dashboard** und bietet **Rechnungen**, **Personen** und **Einstellungen**. Der Demo-Einstieg verwendet Beispieldaten getrennt vom echten Bestand.
 
 ## Einrichten und Personen anlegen
 
-1. Unter **Einstellungen** den Rechnungsstellernamen, Kontoinhaber und eine gültige deutsche IBAN eintragen. Anschrift, Kontaktangaben, Bankname und BIC sind optional; eine eingetragene BIC muss gültig sein. Standardpreise und Zahlungsziel nach Bedarf setzen.
-2. Änderungen mit **Jetzt speichern** bestätigen. Rechnungsdaten bleiben im selben Browserprofil und unter derselben Webadresse. Das Gerät und Browserprofil selbst müssen geschützt werden; die Speicherung ist keine Verschlüsselung.
-3. Unter **Personen** Erziehungsberechtigte mit einem Namen anlegen, dann Lernende zuordnen. Für eine gemeinsame Rechnung können beispielsweise ein oder zwei gemeinsame Erziehungsberechtigte ausgewählt werden. Erwachsene Lernende können **Zahlt selbst** verwenden und eigene Kontaktangaben hinterlegen.
+1. Unter **Einstellungen** Rechnungsstellername, Kontoinhaber und gültige deutsche IBAN eintragen. Anschrift, Kontaktangaben, Bankname und BIC sind optional; eine eingetragene BIC muss gültig sein. Standardpreise und Zahlungsziel nach Bedarf setzen.
+2. Mit **Jetzt speichern** bestätigen. Daten bleiben im selben Browserprofil unter derselben Webadresse; sie sind nicht verschlüsselt. Gerät, Profil und Sicherungen müssen geschützt werden.
+3. Unter **Personen** Erziehungsberechtigte anlegen und Lernende zuordnen. Eine gemeinsame Rechnung kann beispielsweise ein oder zwei gemeinsame Erziehungsberechtigte haben. Erwachsene Lernende wählen **Zahlt selbst** und hinterlegen eigene Kontaktangaben.
 
-Das Farbschema lässt sich oben rechts oder unter **Einstellungen → Darstellung** mit **Hell · System · Dunkel** sofort wechseln. **System** folgt der Gerätepräferenz. Die Auswahl wird sofort gespeichert und verändert keine ungespeicherten Formulareingaben; im Demo-Modus gilt sie nur für die Sitzung. Das Rechnungs-PDF bleibt immer hell.
+Anschriften dürfen unvollständig sein. Personen stehen A–Z; Suche und Aktivfilter bleiben verfügbar. Lernende erhalten bleibende Kennungen in Anlagereihenfolge: `a`, `b`, …, `z`, `aa`, `ab`, … . Umbenennen oder Deaktivieren verschiebt sie nicht.
+**Hell · System · Dunkel** lässt sich oben rechts oder unter **Einstellungen → Darstellung** sofort wechseln; ungespeicherte Formularwerte bleiben erhalten. **System** folgt der Gerätepräferenz, im Demo-Modus gilt die Auswahl nur für die Sitzung. Das Rechnungs-PDF bleibt hell. **Bewegungen reduzieren** und die Gerätepräferenz schalten Animationen ab.
 
-Anschriften sind optional, auch unvollständige Angaben werden verwendet.
-Personen stehen fest A–Z; Suche und der Filter für aktive Lernende bleiben verfügbar.
-Jede lernende Person erhält eine bleibende Kennung in Anlagereihenfolge: `a`, `b`, …, `z`, `aa`, `ab`, … . Umbenennen oder Deaktivieren verschiebt sie nicht.
+## Dashboard
+
+**Bezahlt** und das Monatsdiagramm zählen tatsächliche Zahlungseingänge nach bestätigtem Zahlungstag, einschließlich Teilzahlungen und Zahlungen zu ersetzten oder archivierten Belegen. Unbekannte Zahlungstage stehen separat. Die Jahreswahl verändert nur diese Zahlungseingänge und das Diagramm.
+**Offen** summiert Restbeträge aktiver, nicht archivierter finaler Ansprüche; ersetzte Originale zählen nicht zusätzlich, Korrekturentwürfe ersetzen den Anspruch noch nicht. **Entwürfe** zählt alle nicht finalisierten Rechnungen, im Betrag nur berechenbare. Die Personenzähler umfassen alle gespeicherten Personen und nennen aktive Lernende zusätzlich.
+Offene Rechnungen lassen sich direkt öffnen, überfällige stehen zuerst. Bei mehr als acht führt **Alle in Rechnungen anzeigen** zur vollständigen Liste mit **Noch nicht gezahlt**. Im Echtmodus erinnert das Dashboard bei vorhandenen Rechnungen an den JSON-Export, wenn ein Backup fehlt oder mehr als 30 Tage zurückliegt.
 
 ## Rechnung erstellen und Nummern verstehen
 
-Unter **Rechnungen → Neue Rechnung** Lernende und berechtigte Rechnungsempfänger auswählen.
-Jeder ausgewählte Empfänger muss allen ausgewählten Lernenden zugeordnet sein.
-Datum, Fälligkeit und Positionen mit Leistungsdatum, Beschreibung, Menge, Einheit und Einzelpreis prüfen. Solo-/Duo-Unterricht wählt den passenden Standardpreis; Positionen bleiben einzeln bearbeitbar.
+Unter **Rechnungen → Neue Rechnung** Lernende und Empfänger auswählen. Jeder Empfänger muss allen ausgewählten Lernenden zugeordnet sein. Datum, Fälligkeit und Positionen mit Leistungsdatum, Beschreibung, Menge, Einheit und Preis prüfen. Solo-/Duo-Unterricht setzt den passenden Standardpreis; Positionen bleiben bearbeitbar.
+Ein **Rechnungshinweis** ist optional. Die Ausgabe enthält fest „Hiermit stelle ich die folgenden Leistungen in Rechnung.“ und „Privatrechnung“. **Als Entwurf speichern** hält den bearbeitbaren Stand fest. **Finalisieren** prüft die Angaben, vergibt die Nummer und sichert Beträge, Empfänger, Anschriften, Konto und Leistungsdaten. Neue Positionsbeträge werden einzeln kaufmännisch auf Cent gerundet und danach summiert; der Leistungszeitraum folgt den Positionsdaten.
 
-Ein **Rechnungshinweis** ist optional. Die Ausgabe enthält fest „Hiermit stelle ich die folgenden Leistungen in Rechnung.“ und die kurze Zeile „Privatrechnung“.
-**Als Entwurf speichern** hält den bearbeitbaren Stand fest. **Finalisieren** prüft die Angaben, vergibt die Nummer und sichert den Beleg mit Beträgen, Empfängern, Anschriften, Konto und Leistungsdaten.
-Neue Positionsbeträge werden einzeln exakt dezimal und kaufmännisch auf Cent gerundet; die Summe entsteht aus diesen Centbeträgen. Der Leistungszeitraum folgt den Positionsdaten.
+**Duplizieren** erzeugt einen bearbeitbaren Entwurf. Beim Lernendenwechsel bleiben Positionen und Betrag in beiden Auswahlreihenfolgen erhalten; eindeutige Ersatzpersonen übernehmen nur betroffene Zuordnungen. Änderungen an Empfängern werden gemeldet. Ohne eindeutigen Ersatz musst du die Positionen vor Speichern/Finalisieren ausdrücklich neu zuordnen. Löschen erfolgt nur über den Papierkorb. Rechnungsdatum mit automatischer Fälligkeit und Rechnungshinweis bleiben bearbeitbar.
 
-**Duplizieren** erstellt einen normalen, frei bearbeitbaren Entwurf. Beim Austausch von Lernenden bleiben sämtliche Positionsangaben und der Betrag erhalten, unabhängig davon, ob du die alte Person zuerst abwählst oder die Ersatzperson zuerst auswählst. Nur die betroffenen Positionen werden neu zugeordnet. Rechnungsempfänger werden passend ergänzt und auf die gemeinsamen Berechtigungen aller ausgewählten Lernenden begrenzt; ein Hinweis nennt die Änderungen. Ohne Ersatz bleiben die bisherigen Positionszuordnungen sichtbar erhalten: Wähle eine Ersatzperson oder ordne jede betroffene Position ausdrücklich einer verbleibenden Person zu, bevor du speicherst oder finalisierst. Positionen löschst du ausschließlich über ihren Papierkorb. Rechnungsdatum (mit automatischer Fälligkeit) und Freitext bleiben bearbeitbar.
-
-Nummern haben das feste Format **Jahr–Folge–Personenkennung**, zum Beispiel:
+Nummern folgen **Jahr–Folge–Personenkennung**:
 
 | Kreis | Beispiel | Bedeutung |
 | --- | --- | --- |
-| Person a | `2026-0001-a` | erste Folge für a im Rechnungsjahr 2026 |
+| Person a | `2026-0001-a` | erste jährliche Folge für a |
 | Person b | `2026-0001-b` | eigener jährlicher Zähler für b |
 | Kombination a+b | `2026-0001-a+b` | eigener jährlicher Zähler für diese Kombination |
 
-Auswahlreihenfolge und Zahl der Empfänger ändern die Kennung nicht. `ab` bezeichnet eine einzelne später angelegte Person, `a+b` eine Kombination. Neue Jahreskreise beginnen regulär bei 1; übernommene Mindeststände und reservierte Nummern können die Folge erhöhen. Bestehende historische Nummern werden nicht umgeschrieben oder erneut vergeben.
+Auswahlreihenfolge und Empfängerzahl ändern die Kennung nicht. `ab` ist eine einzelne Person, `a+b` eine Kombination. Neue Jahreskreise beginnen bei 1; übernommene Mindeststände und reservierte Nummern können die Folge erhöhen. Historische Nummern werden weder umgeschrieben noch erneut vergeben.
 
-## PDF und GiroCode
+## PDF, Zahlung und Korrektur
 
-In den Rechnungsdetails **PDF / Drucken** wählen und im Browser als PDF speichern oder drucken. Entwürfe haben eine Vorschau mit Wasserzeichen.
-Die neue Darstellung ordnet Leistungen nach Kalendermonaten; innerhalb eines Monats bleibt ihre ursprüngliche Reihenfolge erhalten. Bei mehreren Gruppen erscheinen Zwischensummen, bei einem Monat nur die Endsumme. Fehlende oder ungültige Leistungsdaten stehen in einer eigenen letzten Gruppe. Stimmen historische Positionsbeträge nicht mit der eingefrorenen Gesamtsumme überein oder lässt sich die Gruppensumme nicht sicher berechnen, bleibt die Ausgabe in der ursprünglichen flachen Reihenfolge ohne Zwischensummen. Gesicherte Beträge werden dabei unverändert gedruckt.
-Bei zwei ausgewählten Empfängern erscheinen beide Namen und jeweils die eigene vorhandene Anschrift, auch bei identischen Anschriften. Fehlende Anschriftteile entfallen. Die gemeinsame Rechnung hat einen Gesamtbetrag.
+In den Details **PDF / Drucken** wählen und im Browser speichern oder drucken. Entwürfe tragen ein Wasserzeichen. Leistungen werden nach Kalendermonaten mit ursprünglicher Reihenfolge innerhalb des Monats ausgegeben; mehrere Monate erhalten Zwischensummen, fehlende/ungültige Daten eine letzte Gruppe. Bei widersprüchlichen historischen Beträgen oder unsicherer Gruppensumme bleibt die Ausgabe flach in Originalreihenfolge mit gesicherten Beträgen.
+Bei zwei Empfängern erscheinen beide Namen und deren eigene vorhandene Anschriften, auch bei identischen Adressen. Die gemeinsame Rechnung hat einen Gesamtbetrag. Finale Ausgaben und GiroCode verwenden gesicherte Belegdaten; spätere Stammdatenänderungen verändern das Original nicht, historische Lücken werden nicht mit heutigen Angaben gefüllt.
+Der GiroCode enthält Konto, Betrag und Rechnungsnummer. Bei QR-Fehlern ist Druck ohne GiroCode ausdrücklich zu bestätigen. Gescannte Angaben vor einer Überweisung in der Banking-App prüfen. Automatisierte PDF-Prüfungen laufen in Chromium; weitere Grenzen stehen unter [Technik und manueller Prüfung](docs/technical.md#manuelle-prüfung).
 
-Finale Ausgaben und GiroCode verwenden die gesicherten Belegdaten. Spätere Änderungen an Stammdaten oder Einstellungen verändern das Original nicht. Historische Lücken werden nicht mit heutigen Konten oder Anschriften gefüllt.
-Der GiroCode enthält Empfängerkonto, Betrag und Rechnungsnummer. Bei einem QR-Fehler bietet der bestehende Druckablauf einen ausdrücklich zu bestätigenden Druck ohne GiroCode an. Eine Banking-App muss die gescannten Angaben vor einer Überweisung prüfen.
-Die automatisierten PDF-Prüfungen laufen in Chromium; weitere Druckgrenzen stehen in der [Technikdokumentation](docs/technical.md).
-
-## Zahlung und Korrektur
-
-Rechnung öffnen, den **Tatsächlichen Zahlungstag** eintragen und **Vollzahlung erfassen** wählen.
-Bei einer bereits erfassten Zahlung lässt sich der bestätigte Tag über **Zahlungstag korrigieren** ändern. Ein unbekannter historischer Zahlungstag bleibt unbekannt, bis er ausdrücklich bestätigt wird.
-Offen/bezahlt wird aus den Zahlungszuordnungen abgeleitet; überfällig aus Fälligkeit und offenem Anspruch. Die Liste steht fest nach Rechnungsdatum, neueste zuerst; Suche und Statusfilter bleiben.
-
-Nach dem Löschen eines Entwurfs oder einer Person sowie nach Archivieren/Zurückholen bietet die Meldung für **10 Sekunden** **Rückgängig** an. Maus über der Meldung oder Tastaturfokus darin pausieren die Restzeit. Es erscheinen höchstens die letzten drei Meldungen. Rückgängig erhält zwischenzeitliche andere Änderungen; fehlen zugehörige Personen oder Entwürfe oder wurden betroffene Zuordnungen geändert, erscheint eine Fehlermeldung ohne Änderung am Bestand. Finalisieren, Zahlungen, Wiederherstellung und Zurücksetzen haben keinen solchen Rückgängig-Weg.
-Die Aktion ist einmalig und nur in dieser Sitzung verfügbar; Schließen der Meldung, Reload oder Verlassen des Demo-Modus beendet diese Möglichkeit. **Bewegungen reduzieren** und die Gerätepräferenz schalten Animationen ab, ohne die Rückgängig-Frist zu verändern.
-
-Für Änderungen an finalen Belegen **Korrektur** mit Begründung anlegen, den neuen Entwurf prüfen und finalisieren. Original und ursprüngliche Nummer bleiben erhalten; die Korrektur erhält einen neuen Beleg und eine neue Nummer. Bestehende Zahlungen werden nicht automatisch auf eine Korrektur übertragen. Historie, Klärung und Zahlungszuordnung liegen unter **Details**.
+Zum Bezahlen **Tatsächlichen Zahlungstag** eintragen und **Vollzahlung erfassen** wählen; **Zahlungstag korrigieren** berichtigt einen bestätigten Tag. Unbekannte historische Tage bleiben bis zur Bestätigung unbekannt. Zahlungszuordnungen bestimmen offen/bezahlt, Fälligkeit und offener Anspruch bestimmen überfällig. Die Liste steht nach Rechnungsdatum, neueste zuerst, mit Suche und Statusfiltern.
+Nach Entwurfs-/Personenlöschung oder Archivwechsel ist **Rückgängig** einmalig für **10 Sekunden** verfügbar. Hover/Fokus pausieren die Frist; höchstens drei Meldungen erscheinen. Andere Änderungen bleiben erhalten, widersprüchliche Zuordnungen verhindern die Umkehr ohne Bestandsänderung. Schließen, Reload oder Verlassen der Demo beendet die Möglichkeit. Finalisieren, Zahlungen, Wiederherstellung und Zurücksetzen haben keinen solchen Rückgängig-Weg; Bewegungsabschaltung ändert die Frist nicht.
+Für Änderungen an finalen Belegen **Korrektur** mit Begründung anlegen und den Entwurf finalisieren. Original und Nummer bleiben erhalten; die Korrektur erhält einen neuen Beleg und eine neue Nummer. Zahlungen werden nicht automatisch übertragen. Historie, Klärung und Zahlungszuordnung stehen unter **Details**.
 
 ## JSON sichern und wiederherstellen
 
-Unter **Einstellungen → Backup & Import → JSON exportieren** den zuletzt gespeicherten Stand herunterladen. Ungespeicherte Formulareingaben gehören nicht dazu. Backups sind Klartextdateien mit Personen, Rechnungshinweisen, Belegen, Einstellungen, Zahlungen und Historie; bewahre sie geschützt und außerhalb des Browserprofils auf. Es gibt keinen automatischen Dateibackup-Ablauf.
+**Einstellungen → Backup & Import → JSON exportieren** lädt ausschließlich den gespeicherten Stand herunter. Die Klartextdatei enthält Personen, Rechnungshinweise, Belege, Einstellungen, Zahlungen und Historie. Geschützt außerhalb des Browserprofils aufbewahren; es gibt kein automatisches Dateibackup.
+**JSON importieren** prüft zunächst ohne Übernahme. Vorschau lesen und Wiederherstellung ausdrücklich bestätigen. Bekannte Originale, Zahlungen, Kennungen und Nummernreservierungen bleiben geschützt; widersprüchliche Bestände lassen sich nicht frei zusammenführen. Alte Tabs vor dem Umstieg schließen. Fehlgeschlagene Importe verändern den Ausgangsbestand nicht.
+Bei Speicher-/Tabkonflikten der Meldung folgen und neu laden. Im Wiederherstellungsmodus können Rohdaten gesichert und vorherige Stände geprüft werden. **Wiederherstellungsarchiv exportieren** ist ein separater technischer Nachweisexport mit [bekannten Bereinigungslücken](docs/technical.md#bekannte-bereinigungslücken).
+**Daten zurücksetzen** entfernt nach ausdrücklicher Bestätigung alle bekannten lokalen App-Daten einschließlich Wiederherstellungskopien. Vorher ein JSON-Backup exportieren; in der Demo bleibt der echte Bestand unangetastet.
 
-**JSON importieren** prüft die Datei zunächst ohne Übernahme. Vorschau und Meldungen lesen, dann die Wiederherstellung vorbereiten und ausdrücklich bestätigen. Bekannte Originale, Zahlungen, Kennungen und Nummernreservierungen bleiben geschützt; ein Backup ist kein freies Zusammenführen widersprüchlicher Bestände. Alte Tabs vor einem Umstieg schließen. Ein fehlgeschlagener Import verändert den Ausgangsbestand nicht.
-
-Bei Speicher-/Tabkonflikten die Meldung befolgen und den aktuellen Stand neu laden. Im Wiederherstellungsmodus lassen sich Rohdaten sichern und ein vorhandener vorheriger Stand prüfen. **Wiederherstellungsarchiv exportieren** ist ein separater technischer Nachweisexport; bekannte Bereinigungslücken dieses Altpfads sind in der [Migrationsdokumentation](docs/technical.md#bekannte-bereinigungslücken) genannt.
-
-[Technik, Migration und Prüfungen](docs/technical.md) · [Historische Nachweise](docs/evidence.md) · [Kurze Release-Notizen](docs/releases.md)
-
-Historische Releaseprüfung 1.2.0: [Prüfbericht und manuelle Checkliste](docs/release-1.2.0.md).
-
+[Technik, Migration und Prüfungen](docs/technical.md) · [Historische Nachweise](docs/evidence.md) · [Release-Notizen](docs/releases.md)
