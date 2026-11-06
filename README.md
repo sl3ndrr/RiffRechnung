@@ -52,3 +52,9 @@ Bei Speicher-/Tabkonflikten der Meldung folgen und neu laden. Im Wiederherstellu
 **Daten zurücksetzen** entfernt nach ausdrücklicher Bestätigung alle bekannten lokalen App-Daten einschließlich Wiederherstellungskopien. Vorher ein JSON-Backup exportieren; in der Demo bleibt der echte Bestand unangetastet.
 
 [Technik, Migration und Prüfungen](docs/technical.md) · [Historische Nachweise](docs/evidence.md) · [Release-Notizen](docs/releases.md)
+
+## Mitwirkende
+
+[<img src="https://avatars.githubusercontent.com/u/267193182?s=64&v=4" width="32" height="32" alt="Codex-Profilbild">](https://github.com/codex)
+
+[Codex](https://github.com/codex) hat zu diesem Projekt beigetragen.
