@@ -1,0 +1,14 @@
+dist
+.test-dist
+test-results
+package-lock.json
+tests/fixtures
+*.css
+*.md
+src/App.tsx
+src/components/DocumentHistory.tsx
+src/views/Dashboard.tsx
+src/views/ImportReview.tsx
+src/views/InvoiceEditor.tsx
+src/views/Invoices.tsx
+src/views/Settings.tsx
