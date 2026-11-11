@@ -12,7 +12,8 @@ export function useThemeChange(confirmed: ThemeMode, readConfirmed: () => ThemeM
 
   useEffect(() => {
     mounted.current = true
-    return () => { mounted.current = false; requestId.current++; cancelThemeReveal() }
+    const currentRequestId = requestId
+    return () => { mounted.current = false; currentRequestId.current++; cancelThemeReveal() }
   }, [])
 
   const changeTheme = useCallback((theme: ThemeMode, origin?: RevealOrigin) => {

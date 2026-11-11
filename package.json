@@ -12,6 +12,7 @@
     "test": "npm run test:bundle && node --test .test-dist/unit/*.test.mjs",
     "test:bundle": "node scripts/bundle-tests.mjs",
     "test:browser": "playwright test",
+    "test:smoke": "playwright test --config=playwright.smoke.config.ts",
     "test:migrations": "node scripts/migration-tests.mjs"
   },
   "dependencies": {
