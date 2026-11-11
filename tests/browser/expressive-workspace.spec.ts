@@ -101,16 +101,12 @@ for (const width of [1440, 390])
         (await chips.getByRole('button', { name: /^Entwurf / }).textContent())!.match(/\d+$/)![0],
       )
       await expect(rows).toHaveCount(draftCount)
-      const status = page.getByRole('combobox', { name: 'Status', exact: true })
-      await expect(status).toHaveValue('draft')
+      await expect(chips.getByRole('button', { name: /^Entwurf / })).toHaveAttribute('aria-pressed', 'true')
       await year.selectOption('2025')
       await expect(rows).toHaveCount(0)
       await expect(page.getByRole('heading', { name: 'Nichts gefunden', exact: true })).toBeVisible()
       await page.getByRole('button', { name: 'Filter zurücksetzen', exact: true }).click()
-      for (const [name, select] of [
-        ['status', status],
-        ['year', year],
-      ] as const) {
+      for (const [name, select] of [['year', year]] as const) {
         await select.focus()
         expect(await select.evaluate((node) => getComputedStyle(node).transform)).toBe('none')
         expect(await select.evaluate((node) => getComputedStyle(node).colorScheme)).toBe(theme)

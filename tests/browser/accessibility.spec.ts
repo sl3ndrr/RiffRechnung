@@ -481,9 +481,15 @@ for (const width of [390, 1280]) {
     await expect(rows).toHaveCount(0)
     await search.fill('2026-0001-a')
     await expect(rows).toHaveCount(1)
-    await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('paid')
+    await page
+      .getByRole('group', { name: 'Statusfilter' })
+      .getByRole('button', { name: /^Bezahlt / })
+      .click()
     await expect(rows).toHaveCount(0)
-    await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('all')
+    await page
+      .getByRole('group', { name: 'Statusfilter' })
+      .getByRole('button', { name: /^Alle / })
+      .click()
     await page.getByRole('button', { name: '2026-0001-a', exact: true }).click()
     await expect(page.getByRole('button', { name: 'PDF / Drucken', exact: true })).toBeVisible()
     await expect(page.getByLabel('Tatsächlicher Zahlungstag', { exact: true })).toBeVisible()

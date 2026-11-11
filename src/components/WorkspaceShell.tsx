@@ -187,12 +187,21 @@ export function WorkspaceShell({
               className={page === key ? 'is-active' : ''}
               aria-current={page === key ? 'page' : undefined}
               aria-label={label}
+              aria-describedby={key === 'invoices' && draftCount > 0 ? 'nav-draft-count' : undefined}
               key={key}
               onClick={() => navigate(key)}
             >
               <Icon aria-hidden="true" />
               <span>{label}</span>
-              {key === 'invoices' && draftCount > 0 && <b>{draftCount}</b>}
+              {key === 'invoices' && draftCount > 0 && (
+                <b
+                  id="nav-draft-count"
+                  aria-label={`${draftCount} ${draftCount === 1 ? 'Entwurf' : 'Entwürfe'}`}
+                  title={`${draftCount} ${draftCount === 1 ? 'Entwurf' : 'Entwürfe'}`}
+                >
+                  {draftCount}
+                </b>
+              )}
             </button>
           ))}
         </nav>

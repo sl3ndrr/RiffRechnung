@@ -196,9 +196,8 @@ export function Invoices({ state, initialStatus = 'all', onNavigate, onLoadDemo,
         <label className="search-field">
           <Search aria-hidden="true" />
           <span className="sr-only">Rechnungen durchsuchen</span>
-          <input id="invoice-search" type="search" placeholder="Nummer, Rechnungsempfänger, Lernende oder Thema …" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <input id="invoice-search" type="search" placeholder="Suchen …" value={search} onChange={(event) => setSearch(event.target.value)} />
         </label>
-        <label className="select-field select-field--compact"><span className="sr-only">Status</span><select value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="all">Alle Status</option><option value="unpaid">Noch nicht gezahlt</option>{Object.entries(statusLabel).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select><ChevronDown aria-hidden="true" /></label>
         <label className="select-field select-field--compact"><span className="sr-only">Jahr</span><select value={year} onChange={(event) => setYear(event.target.value)}><option value="all">Alle Jahre</option>{years.map((item) => <option value={item} key={item}>{item}</option>)}</select><ChevronDown aria-hidden="true" /></label>
       </section>
 
@@ -229,7 +228,7 @@ export function Invoices({ state, initialStatus = 'all', onNavigate, onLoadDemo,
                   return (
                     <tr style={staggerStyle(index)} className={`invoice-data-row ${invoice.id === selectedId ? 'is-selected' : ''}${entrance && index < 8 ? ' motion-fade motion-stagger page-entry' : ''}`} key={invoice.id} onClick={() => openDetails(invoice)}>
                       <td><button ref={(node) => { if (node && invoice.id === selectedId && !detailTriggerRef.current) detailTriggerRef.current = node }} className="button button--text invoice-detail-link" type="button" onClick={(event) => { event.stopPropagation(); openDetails(invoice, event.currentTarget) }}>{invoice.number ?? 'Entwurf'}</button>{invoice.versionId && !isActiveClaim(state, invoice) && <small>Ersetzt</small>}<small>{formatDate(invoice.invoiceDate)}</small><StatusChip className="invoice-cell-status" status={actualStatus}><i />{statusLabel[actualStatus]}</StatusChip></td>
-                      <td>{guardianName(invoice, state.guardians, state.students)}<small>{studentName(invoice, state.students)}</small></td>
+                      <td>{guardianName(invoice, state.guardians, state.students)}<small>{invoice.status === 'draft' && !(invoice.snapshot ?? invoice.draftPrintSnapshot)?.students.some((student) => student.name) ? 'Noch keine Lernenden gewählt' : studentName(invoice, state.students)}</small></td>
                       <td>{period}</td>
                       <td><StatusChip status={actualStatus}><i />{statusLabel[actualStatus]}</StatusChip></td>
                       <td className="align-right"><strong>{euro.format(invoiceTotal(invoice))}</strong></td>

@@ -1125,3 +1125,10 @@ select option { background: var(--surface-container-lowest); color: var(--on-sur
   .modal-layer:has(.toast--action) .toast-region { margin-inline: 16px; }
 }
 
+/* AP4: Kompakte Filter und Statusanzeige auf schmalen Bildschirmen. */
+@media (max-width: 479px) {
+  .topbar__storage-status .save-indicator, .topbar__storage-status .backup-indicator { white-space: nowrap; font-size: 10px; }
+  .invoice-page .filter-bar > label:first-child { white-space: nowrap; }
+  .invoice-status-filters { flex-wrap: nowrap; overflow-x: auto; padding: 4px; }
+  .invoice-filter-chip { flex: 0 0 auto; }
+}

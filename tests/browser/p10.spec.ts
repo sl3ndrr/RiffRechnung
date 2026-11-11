@@ -50,9 +50,15 @@ for (const width of [390, 1280]) {
     await search.fill('2026-0001-a')
     await expect(page.locator('tbody .invoice-detail-link')).toHaveText(['2026-0001-a'])
     await search.fill('')
-    await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('paid')
+    await page
+      .getByRole('group', { name: 'Statusfilter' })
+      .getByRole('button', { name: /^Bezahlt / })
+      .click()
     await expect(page.getByText('Nichts gefunden', { exact: true })).toBeVisible()
-    await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('all')
+    await page
+      .getByRole('group', { name: 'Statusfilter' })
+      .getByRole('button', { name: /^Alle / })
+      .click()
     const navigation = width === 390 ? page.locator('.mobile-bottom-nav') : page.locator('.sidebar')
     await navigation.getByRole('button', { name: 'Personen', exact: true }).click()
     await expect(page.locator('.student-card h3')).toHaveText(['Anna', 'Zora'])
