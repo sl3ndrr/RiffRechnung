@@ -1,6 +1,17 @@
 # Release-Notizen
 
-Die App-Version wird ausschließlich in `package.json` festgelegt; `src/version.ts` übernimmt sie für die Anzeige. Datumsangaben unten bezeichnen die Integration auf `main`, keine Veröffentlichung als GitHub-Release. Frühere UI-/Releasebezeichnungen gehören zu einer getrennten historischen Reihe und werden nicht rückwirkend umnummeriert.
+Die App-Version wird ausschließlich in `package.json` festgelegt; `src/version.ts` übernimmt sie für die Anzeige. Datumsangaben unten bezeichnen die Integration auf `main`, keine Veröffentlichung als GitHub-Release. Ein Eintrag ohne Datum behauptet noch keine Integration. Frühere UI-/Releasebezeichnungen gehören zu einer getrennten historischen Reihe und werden nicht rückwirkend umnummeriert.
+
+## 1.2.2
+
+- Backups lassen sich nach der Dateiauswahl in einem Dialog prüfen und wiederherstellen; technische Details bleiben bei Bedarf erreichbar. Exportdateien tragen Datum und Uhrzeit.
+- Die Rechnungsliste nutzt Statuschips; der Dashboard-Sprung wählt „Offen“. Die mobile Navigation und der Einstieg in einen leeren Bestand sind übersichtlicher.
+- Im Rechnungseditor stehen Hinweise direkt an Menge und Preis. Bei mehr als zwölf angebotenen Personen hilft eine Suche bei der Auswahl.
+- Wartung: Abhängigkeiten und CI-Prüfungen aktualisiert, gebauter Stand mit einem Smoke-Test geprüft und Prettier für weite Teile des Quellcodes eingerichtet.
+
+Das Datenschema bleibt bei 15. AP6 zur Formularentdopplung wurde nicht übernommen, weil der untersuchte Umbau das Einsparziel nicht erreichte.
+
+Nachweise: [CI und Abhängigkeiten #74](https://github.com/sl3ndrr/RiffRechnung/pull/74), [Formatierung #75](https://github.com/sl3ndrr/RiffRechnung/pull/75), [Backup #76](https://github.com/sl3ndrr/RiffRechnung/pull/76), [Liste und Navigation #77](https://github.com/sl3ndrr/RiffRechnung/pull/77), [Editor #78](https://github.com/sl3ndrr/RiffRechnung/pull/78).
 
 ## 1.2.1 — integriert am 07.10.2026
 
