@@ -16,7 +16,13 @@ export function validPrice(value: unknown): value is number {
 }
 
 export function validQuantity(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= MIN_QUANTITY && value <= MAX_QUANTITY && Math.round(value * 100) / 100 === value
+  return (
+    typeof value === 'number' &&
+    Number.isFinite(value) &&
+    value >= MIN_QUANTITY &&
+    value <= MAX_QUANTITY &&
+    Math.round(value * 100) / 100 === value
+  )
 }
 
 export function parseDecimalInput(raw: string): number | null {
@@ -24,11 +30,18 @@ export function parseDecimalInput(raw: string): number | null {
   if (!/^\d+(?:[.,]\d+)?$/.test(text)) return null
   const value = Number(text.replace(',', '.'))
   if (!Number.isFinite(value) || (value === 0 && /[1-9]/.test(text))) return null
-  try { return sameDecimal(text.replace(',', '.'), value) ? value : null } catch { return null }
+  try {
+    return sameDecimal(text.replace(',', '.'), value) ? value : null
+  } catch {
+    return null
+  }
 }
 
 export function adjustQuantity(quantity: number, direction: 1 | -1): number {
-  return Math.min(MAX_QUANTITY, Math.max(MIN_QUANTITY, Math.round((quantity + direction * QUANTITY_INCREMENT) * 100) / 100))
+  return Math.min(
+    MAX_QUANTITY,
+    Math.max(MIN_QUANTITY, Math.round((quantity + direction * QUANTITY_INCREMENT) * 100) / 100),
+  )
 }
 
 export function itemNumberInput(raw: string, field: 'quantity' | 'unitPrice'): number | null {
@@ -46,4 +59,3 @@ export function parsePaymentTermInput(raw: string): number | null {
   const value = Number(raw)
   return Number.isSafeInteger(value) && value >= 0 ? value : null
 }
-

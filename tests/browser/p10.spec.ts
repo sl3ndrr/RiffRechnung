@@ -25,11 +25,22 @@ for (const width of [390, 1280]) {
     await page.setViewportSize({ width, height: 900 })
     await page.clock.setFixedTime(new Date('2026-09-10T12:00:00Z'))
     const family = documentFamily()
-    family.students[0].name = 'Zora'; family.students[1].name = 'Anna'
-    family.guardians[0].name = 'Zora Familie'; family.guardians[1].name = 'Anna Familie'
+    family.students[0].name = 'Zora'
+    family.students[1].name = 'Anna'
+    family.guardians[0].name = 'Zora Familie'
+    family.guardians[1].name = 'Anna Familie'
     let state = saveInvoiceDraft(family, documentDraft(), true, documentAt)
     const second = documentDraft()
-    state = saveInvoiceDraft(state, { ...second, invoiceDate: '2026-09-02', items: second.items.map((item) => ({ ...item, id: `${item.id}-second` })) }, true, documentAt)
+    state = saveInvoiceDraft(
+      state,
+      {
+        ...second,
+        invoiceDate: '2026-09-02',
+        items: second.items.map((item) => ({ ...item, id: `${item.id}-second` })),
+      },
+      true,
+      documentAt,
+    )
     await seed(page, state)
     await expect(page.getByRole('button', { name: 'Neue Rechnung', exact: true })).toHaveCount(1)
     await expect(page.getByRole('searchbox', { name: 'Rechnungen durchsuchen', exact: true })).toHaveCount(1)
@@ -105,7 +116,11 @@ for (const width of [390, 1280]) {
 
 test('P10: erforderliche historische Klärung ist sichtbar und Details bleiben erreichbar', async ({ page }) => {
   const state = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
-  state.documentVersions[0].conflicts.push({ path: 'snapshot.iban', message: 'Historische Kontoabweichung', values: ['"Alt"', '"Neu"'] })
+  state.documentVersions[0].conflicts.push({
+    path: 'snapshot.iban',
+    message: 'Historische Kontoabweichung',
+    values: ['"Alt"', '"Neu"'],
+  })
   await seed(page, state)
   await page.getByRole('button', { name: '2026-0001-a', exact: true }).click()
   const detail = page.locator('.invoice-detail')

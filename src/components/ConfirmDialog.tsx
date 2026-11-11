@@ -13,7 +13,16 @@ interface ConfirmDialogProps {
   onConfirm: () => void
 }
 
-export function ConfirmDialog({ open, title, message, cancelLabel = 'Abbrechen', confirmLabel = 'Bestätigen', danger = false, onCancel, onConfirm }: ConfirmDialogProps) {
+export function ConfirmDialog({
+  open,
+  title,
+  message,
+  cancelLabel = 'Abbrechen',
+  confirmLabel = 'Bestätigen',
+  danger = false,
+  onCancel,
+  onConfirm,
+}: ConfirmDialogProps) {
   const descriptionId = useId()
   return (
     <Modal
@@ -25,13 +34,23 @@ export function ConfirmDialog({ open, title, message, cancelLabel = 'Abbrechen',
       describedBy={descriptionId}
       footer={
         <>
-          <button className="button button--text" type="button" data-dialog-initial-focus onClick={onCancel}>{cancelLabel}</button>
-          <button className={`button ${danger ? 'button--danger' : 'button--primary'}`} type="button" onClick={onConfirm}>{confirmLabel}</button>
+          <button className="button button--text" type="button" data-dialog-initial-focus onClick={onCancel}>
+            {cancelLabel}
+          </button>
+          <button
+            className={`button ${danger ? 'button--danger' : 'button--primary'}`}
+            type="button"
+            onClick={onConfirm}
+          >
+            {confirmLabel}
+          </button>
         </>
       }
     >
       <div className="confirm-message">
-        <span className={`confirm-icon ${danger ? 'confirm-icon--danger' : ''}`}><AlertTriangle aria-hidden="true" /></span>
+        <span className={`confirm-icon ${danger ? 'confirm-icon--danger' : ''}`}>
+          <AlertTriangle aria-hidden="true" />
+        </span>
         <p id={descriptionId}>{message}</p>
       </div>
     </Modal>

@@ -21,6 +21,8 @@ export function formatDateLong(value: string): string {
 }
 
 export function sortPeople<T extends { id: string; name: string; createdAt: string }>(entries: T[]): T[] {
-  return [...entries].sort((a, b) => germanCollator.compare(a.name, b.name)
-    || a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
+  return [...entries].sort(
+    (a, b) =>
+      germanCollator.compare(a.name, b.name) || a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
+  )
 }

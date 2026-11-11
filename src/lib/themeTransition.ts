@@ -1,6 +1,9 @@
 import { clearThemeFade, prefersReducedMotion } from './theme'
 
-export interface RevealOrigin { x: number; y: number }
+export interface RevealOrigin {
+  x: number
+  y: number
+}
 
 interface ThemeViewTransition {
   skipTransition: () => void
@@ -46,12 +49,18 @@ export function runThemeReveal(update: () => void, origin: RevealOrigin) {
   const current = generation
   const root = document.documentElement
   const start = (document as TransitionDocument).startViewTransition
-  if (!start || prefersReducedMotion()) { update(); return }
+  if (!start || prefersReducedMotion()) {
+    update()
+    return
+  }
   clearThemeFade()
   root.dataset.transition = 'theme'
   root.style.setProperty('--reveal-x', `${origin.x}px`)
   root.style.setProperty('--reveal-y', `${origin.y}px`)
-  root.style.setProperty('--reveal-radius', `${Math.hypot(Math.max(origin.x, innerWidth - origin.x), Math.max(origin.y, innerHeight - origin.y))}px`)
+  root.style.setProperty(
+    '--reveal-radius',
+    `${Math.hypot(Math.max(origin.x, innerWidth - origin.x), Math.max(origin.y, innerHeight - origin.y))}px`,
+  )
   // Skipping a transition does not cancel its queued update callback. Guard
   // that callback too, so an old click can never overwrite the latest request.
   const apply = () => {
@@ -64,11 +73,13 @@ export function runThemeReveal(update: () => void, origin: RevealOrigin) {
     const transition = start.call(document, apply)
     active = transition
     void transition.ready.catch(() => {})
-    void transition.finished.catch(() => {}).finally(() => {
-      if (active !== transition) return
-      active = null
-      delete root.dataset.transition
-    })
+    void transition.finished
+      .catch(() => {})
+      .finally(() => {
+        if (active !== transition) return
+        active = null
+        delete root.dataset.transition
+      })
   } catch {
     cancelThemeReveal()
     update()

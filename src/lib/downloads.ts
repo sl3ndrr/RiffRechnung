@@ -15,7 +15,10 @@ function downloadBlob(filename: string, blob: Blob): void {
   }
   // Some engines finish initiating the download after click() returns. Keep
   // both the attached anchor and its blob alive until they have consumed it.
-  window.setTimeout(() => { link.remove(); URL.revokeObjectURL(url) }, 60_000)
+  window.setTimeout(() => {
+    link.remove()
+    URL.revokeObjectURL(url)
+  }, 60_000)
 }
 
 export function downloadText(filename: string, content: string, type = 'application/json'): void {
@@ -25,4 +28,3 @@ export function downloadText(filename: string, content: string, type = 'applicat
 export function downloadBytes(fileName: string, bytes: Uint8Array): void {
   downloadBlob(fileName, new Blob([bytes.slice().buffer], { type: 'application/octet-stream' }))
 }
-

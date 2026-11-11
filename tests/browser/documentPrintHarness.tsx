@@ -15,12 +15,20 @@ export function mountDocument(state: AppState, invoiceId: string, options: Mount
   mountInvoiceDocument(invoice, state.settings, state.guardians, state.students, options)
 }
 
-export function mountInvoiceDocument(invoice: Invoice, settings: Settings, guardians: Guardian[], students: Student[], options: MountOptions = {}) {
+export function mountInvoiceDocument(
+  invoice: Invoice,
+  settings: Settings,
+  guardians: Guardian[],
+  students: Student[],
+  options: MountOptions = {},
+) {
   const root = document.createElement('div')
   root.className = 'print-root'
   document.body.append(root)
   const qrEncoder: GiroCodeEncoder | undefined = options.rejectGiroCode
-    ? async () => { throw new Error('Synthetische QR-Erzeugung abgelehnt') }
+    ? async () => {
+        throw new Error('Synthetische QR-Erzeugung abgelehnt')
+      }
     : undefined
   createRoot(root).render(
     <InvoicePrint
@@ -33,7 +41,9 @@ export function mountInvoiceDocument(invoice: Invoice, settings: Settings, guard
         document.documentElement.dataset.documentReady = invoiceId
         document.documentElement.dataset.giroPayload = payload ?? ''
       }}
-      onPrintError={(_request, _invoice, message) => { document.documentElement.dataset.documentError = message }}
+      onPrintError={(_request, _invoice, message) => {
+        document.documentElement.dataset.documentError = message
+      }}
       qrEncoder={qrEncoder}
     />,
   )
@@ -47,11 +57,12 @@ export function mountDocumentRace(state: AppState, firstInvoiceId: string, secon
   document.body.append(root)
   const reactRoot = createRoot(root)
   let resolveFirst: (value: string) => void = () => {}
-  const delayedEncoder: GiroCodeEncoder = () => new Promise((resolve) => {
-    resolveFirst = resolve
-    document.documentElement.dataset.firstEncoderStarted = 'yes'
-    window.setTimeout(renderSecond, 0)
-  })
+  const delayedEncoder: GiroCodeEncoder = () =>
+    new Promise((resolve) => {
+      resolveFirst = resolve
+      document.documentElement.dataset.firstEncoderStarted = 'yes'
+      window.setTimeout(renderSecond, 0)
+    })
 
   reactRoot.render(
     <InvoicePrint
@@ -64,7 +75,9 @@ export function mountDocumentRace(state: AppState, firstInvoiceId: string, secon
         document.documentElement.dataset.documentReady = invoiceId
         document.documentElement.dataset.giroPayload = payload ?? ''
       }}
-      onPrintError={(_request, _invoice, message) => { document.documentElement.dataset.documentError = message }}
+      onPrintError={(_request, _invoice, message) => {
+        document.documentElement.dataset.documentError = message
+      }}
       qrEncoder={delayedEncoder}
     />,
   )
@@ -80,7 +93,9 @@ export function mountDocumentRace(state: AppState, firstInvoiceId: string, secon
           document.documentElement.dataset.documentReady = invoiceId
           document.documentElement.dataset.giroPayload = payload ?? ''
         }}
-        onPrintError={(_request, _invoice, message) => { document.documentElement.dataset.documentError = message }}
+        onPrintError={(_request, _invoice, message) => {
+          document.documentElement.dataset.documentError = message
+        }}
       />,
     )
     window.setTimeout(() => {

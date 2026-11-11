@@ -1,10 +1,20 @@
-import { backupArray, backupObject, backupCalendarDate, backupString, backupEnum, backupInteger, knownKeys, invalidBackup } from './validation'
+import {
+  backupArray,
+  backupObject,
+  backupCalendarDate,
+  backupString,
+  backupEnum,
+  backupInteger,
+  knownKeys,
+  invalidBackup,
+} from './validation'
 import { validId, validQuantity } from './values'
 
 /** Schema 8/9 only: group metadata is evidence, never a working model. */
 export function detachLegacyDuoGroups(value: unknown): Record<string, unknown> {
   const state = structuredClone(backupObject(value, 'data'))
-  if (state.schemaVersion !== 8 && state.schemaVersion !== 9) throw new Error('Duo-Altformatadapter unterstützt nur Schema 8/9.')
+  if (state.schemaVersion !== 8 && state.schemaVersion !== 9)
+    throw new Error('Duo-Altformatadapter unterstützt nur Schema 8/9.')
   if (state.duoGroups !== undefined) validateDuoGroups(state.duoGroups)
   Reflect.deleteProperty(state, 'duoGroups')
   return state
@@ -16,15 +26,19 @@ function registerId(value: unknown, path: string, ids: Set<string>): void {
 }
 
 function validateDuoGroups(value: unknown): void {
-  const groups = new Set<string>(), invoices = new Set<string>(), items = new Set<string>()
+  const groups = new Set<string>(),
+    invoices = new Set<string>(),
+    items = new Set<string>()
   backupArray(value, 'duoGroups').forEach((entry, index) => {
-    const path = `duoGroups[${index}]`, group = backupObject(entry, path)
+    const path = `duoGroups[${index}]`,
+      group = backupObject(entry, path)
     knownKeys(group, path, 'id targets lesson totalCents')
     registerId(group.id, `${path}.id`, groups)
     const targets = backupArray(group.targets, `${path}.targets`)
     if (targets.length !== 2) invalidBackup(`${path}.targets`, 'benötigt genau zwei verschiedene Zielrechnungen')
     targets.forEach((entry, i) => {
-      const p = `${path}.targets[${i}]`, target = backupObject(entry, p)
+      const p = `${path}.targets[${i}]`,
+        target = backupObject(entry, p)
       knownKeys(target, p, 'invoiceId itemId')
       registerId(target.invoiceId, `${p}.invoiceId`, invoices)
       registerId(target.itemId, `${p}.itemId`, items)

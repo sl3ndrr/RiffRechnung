@@ -48,7 +48,9 @@ test('3.AP1: gespeicherte Formulardaten übernehmen das Theme aus der aktuellen 
   const session = new StorageSession({ storage, lock: sharedLock() })
   const form = { ...session.state.settings, issuer: { ...session.state.settings.issuer, name: 'Neue Eingabe' } }
   const themeSave = session.change((current) => requireSuccess(changeThemeState(current, 'dark')))
-  const formSave = session.change((current) => requireSuccess(saveSettingsState(current, { ...form, theme: current.settings.theme })))
+  const formSave = session.change((current) =>
+    requireSuccess(saveSettingsState(current, { ...form, theme: current.settings.theme })),
+  )
   await themeSave
   const saved = await formSave
   assert.equal(saved.settings.theme, 'dark')

@@ -40,7 +40,12 @@ export function saveGuardianState(state: AppState, guardian: Guardian): CommandR
     const saved = structuredClone(guardian)
     const error = existing?.name === saved.name ? null : contactNameError(saved.name, 'Name')
     if (error) throw new Error(error)
-    const next = { ...state, guardians: existing ? state.guardians.map((entry) => entry.id === saved.id ? saved : entry) : [...state.guardians, saved] }
+    const next = {
+      ...state,
+      guardians: existing
+        ? state.guardians.map((entry) => (entry.id === saved.id ? saved : entry))
+        : [...state.guardians, saved],
+    }
     validateBackupState(next)
     return next
   })
@@ -55,9 +60,15 @@ export function saveStudentState(state: AppState, student: Student): CommandResu
     while (used.has(studentCodeForIndex(cursor))) cursor++
     const saved = { ...structuredClone(student), billingCode: existing?.billingCode ?? studentCodeForIndex(cursor) }
     if (!saved.selfPayer) Reflect.deleteProperty(saved, 'selfPayer')
-    if (saved.selfPayer ? saved.guardianIds.length > 0 : saved.guardianIds.length === 0) throw new Error('Eine lernende Person zahlt selbst oder hat mindestens eine erziehungsberechtigte Person; beides gleichzeitig ist nicht zulässig.')
+    if (saved.selfPayer ? saved.guardianIds.length > 0 : saved.guardianIds.length === 0)
+      throw new Error(
+        'Eine lernende Person zahlt selbst oder hat mindestens eine erziehungsberechtigte Person; beides gleichzeitig ist nicht zulässig.',
+      )
     const next = {
-      ...state, students: existing ? state.students.map((entry) => entry.id === saved.id ? saved : entry) : [...state.students, saved],
+      ...state,
+      students: existing
+        ? state.students.map((entry) => (entry.id === saved.id ? saved : entry))
+        : [...state.students, saved],
       nextStudentCodeIndex: existing ? state.nextStudentCodeIndex : cursor + 1,
     }
     validateBackupState(next)
@@ -72,24 +83,45 @@ export function prepareNewInvoice(state: AppState): CommandResult<InvoiceDraft> 
   })
 }
 
-export function prepareInvoiceCopy(state: AppState, invoiceId: string, targetDate = new Date(), createId = uid): CommandResult<InvoiceDraft> {
+export function prepareInvoiceCopy(
+  state: AppState,
+  invoiceId: string,
+  targetDate = new Date(),
+  createId = uid,
+): CommandResult<InvoiceDraft> {
   return commandResult(() => {
     validateBackupState(state)
     const invoice = state.invoices.find((entry) => entry.id === invoiceId)
     if (!invoice) throw new Error('Die zu kopierende Rechnung ist nicht mehr vorhanden.')
-    if (invoice.recipientStrategy === 'separate') throw new Error('Kopieren gesperrt: Dieser historische aufgeteilte Beleg enthält möglicherweise Teilbetragspositionen oder gemeinsame Texte. Bitte eine neue gemeinsame Rechnung erstellen und alle Angaben ausdrücklich prüfen.')
-    if (recipientRefs(invoice).some((ref) => !state[ref.type === 'guardian' ? 'guardians' : 'students'].some((person) => person.id === ref.id))
-      || invoice.studentIds.some((id) => !state.students.some((student) => student.id === id))) {
-      throw new Error('Kopieren gesperrt: Historische Rechnungsempfänger oder Lernende fehlen in den aktuellen Stammdaten. Die Zuordnung muss ausdrücklich geklärt werden; keine Position oder Referenz wurde entfernt.')
+    if (invoice.recipientStrategy === 'separate')
+      throw new Error(
+        'Kopieren gesperrt: Dieser historische aufgeteilte Beleg enthält möglicherweise Teilbetragspositionen oder gemeinsame Texte. Bitte eine neue gemeinsame Rechnung erstellen und alle Angaben ausdrücklich prüfen.',
+      )
+    if (
+      recipientRefs(invoice).some(
+        (ref) => !state[ref.type === 'guardian' ? 'guardians' : 'students'].some((person) => person.id === ref.id),
+      ) ||
+      invoice.studentIds.some((id) => !state.students.some((student) => student.id === id))
+    ) {
+      throw new Error(
+        'Kopieren gesperrt: Historische Rechnungsempfänger oder Lernende fehlen in den aktuellen Stammdaten. Die Zuordnung muss ausdrücklich geklärt werden; keine Position oder Referenz wurde entfernt.',
+      )
     }
     // Shift service days relative to the invoice month; clamp month ends.
     const sourceDate = parseDate(invoice.invoiceDate)
-    const monthDelta = (targetDate.getFullYear() - sourceDate.getFullYear()) * 12 + targetDate.getMonth() - sourceDate.getMonth()
-    const items = copyItemsWithFreshIds(invoice.items, new Set(state.invoices.flatMap((entry) => entry.items.map((item) => item.id))), createId).map((item) => {
+    const monthDelta =
+      (targetDate.getFullYear() - sourceDate.getFullYear()) * 12 + targetDate.getMonth() - sourceDate.getMonth()
+    const items = copyItemsWithFreshIds(
+      invoice.items,
+      new Set(state.invoices.flatMap((entry) => entry.items.map((item) => item.id))),
+      createId,
+    ).map((item) => {
       return { ...item, serviceDate: shiftCalendarMonths(item.serviceDate, monthDelta) }
     })
     const draft: InvoiceDraft = {
-      ...invoiceDraftFields(invoice), invoiceDate: localToday(targetDate), dueDate: calculateDueDate(localToday(targetDate), state.settings.paymentTermDays),
+      ...invoiceDraftFields(invoice),
+      invoiceDate: localToday(targetDate),
+      dueDate: calculateDueDate(localToday(targetDate), state.settings.paymentTermDays),
       items,
     }
     // Preview uses the same draft rules; no generated invoice ID or full stock write.
@@ -99,26 +131,77 @@ export function prepareInvoiceCopy(state: AppState, invoiceId: string, targetDat
   })
 }
 
-export function saveInvoiceState(state: AppState, draft: InvoiceDraft, finalize: boolean, at?: string): CommandResult<AppState> {
+export function saveInvoiceState(
+  state: AppState,
+  draft: InvoiceDraft,
+  finalize: boolean,
+  at?: string,
+): CommandResult<AppState> {
   return commandResult(() => saveInvoiceDraft(state, draft, finalize, at))
 }
 
 export const LEGACY_REVIEW_FIELDS = ['Empfänger', 'Lernende', 'Positionen', 'Freitext'] as const
 
-export function convertLegacyDraftState(state: AppState, sourceId: string, reviewed: readonly string[], guardianIds: string[], edited: InvoiceDraft, at?: string): CommandResult<AppState> {
+export function convertLegacyDraftState(
+  state: AppState,
+  sourceId: string,
+  reviewed: readonly string[],
+  guardianIds: string[],
+  edited: InvoiceDraft,
+  at?: string,
+): CommandResult<AppState> {
   return commandResult(() => {
     validateBackupState(state)
     const source = state.invoices.find((invoice) => invoice.id === sourceId)
-    if (!source || source.status !== 'draft' || source.recipientStrategy !== 'separate' || source.correction || source.number || source.versionId) throw new Error('Nur ein offener historischer Aufteilungsentwurf kann umgewandelt werden.')
-    if (!LEGACY_REVIEW_FIELDS.every((field) => reviewed.includes(field))) throw new Error('Bitte Empfänger, Lernende, Positionen und Freitext einzeln sichtbar prüfen und bestätigen.')
-    if (guardianIdsFor(source.recipients).length === 1 && (guardianIds.length !== 1 || guardianIds[0] !== guardianIdsFor(source.recipients)[0])) throw new Error('Der einzelne Altentwurf wird nur mit seinem bisherigen Empfänger übernommen.')
-    if (!guardianIds.length || new Set(guardianIds).size !== guardianIds.length || guardianIds.some((id) => !state.guardians.some((guardian) => guardian.id === id))) throw new Error('Bitte die empfangenden Personen ausdrücklich auswählen.')
-    if (edited.id !== sourceId || edited.correction || edited.recipientStrategy !== 'separate') throw new Error('Der zu prüfende Altentwurf hat sich geändert. Bitte neu laden.')
-    if (guardianIds.some((id) => edited.studentIds.some((studentId) => !state.students.find((student) => student.id === studentId)?.guardianIds.includes(id)))) throw new Error('Alle ausgewählten Empfänger müssen jedem ausgewählten Lernenden zugeordnet sein.')
-    const sourceRemoved = guardianIdsFor(source.recipients).length === 1 ? state : { ...state, invoices: state.invoices.filter((invoice) => invoice.id !== sourceId) }
-    const converted: InvoiceDraft = { ...edited, id: guardianIdsFor(source.recipients).length === 1 ? sourceId : undefined, recipients: guardianIds.map((id) => ({ type: 'guardian', id })), recipientStrategy: 'joint' }
+    if (
+      !source ||
+      source.status !== 'draft' ||
+      source.recipientStrategy !== 'separate' ||
+      source.correction ||
+      source.number ||
+      source.versionId
+    )
+      throw new Error('Nur ein offener historischer Aufteilungsentwurf kann umgewandelt werden.')
+    if (!LEGACY_REVIEW_FIELDS.every((field) => reviewed.includes(field)))
+      throw new Error('Bitte Empfänger, Lernende, Positionen und Freitext einzeln sichtbar prüfen und bestätigen.')
+    if (
+      guardianIdsFor(source.recipients).length === 1 &&
+      (guardianIds.length !== 1 || guardianIds[0] !== guardianIdsFor(source.recipients)[0])
+    )
+      throw new Error('Der einzelne Altentwurf wird nur mit seinem bisherigen Empfänger übernommen.')
+    if (
+      !guardianIds.length ||
+      new Set(guardianIds).size !== guardianIds.length ||
+      guardianIds.some((id) => !state.guardians.some((guardian) => guardian.id === id))
+    )
+      throw new Error('Bitte die empfangenden Personen ausdrücklich auswählen.')
+    if (edited.id !== sourceId || edited.correction || edited.recipientStrategy !== 'separate')
+      throw new Error('Der zu prüfende Altentwurf hat sich geändert. Bitte neu laden.')
+    if (
+      guardianIds.some((id) =>
+        edited.studentIds.some(
+          (studentId) => !state.students.find((student) => student.id === studentId)?.guardianIds.includes(id),
+        ),
+      )
+    )
+      throw new Error('Alle ausgewählten Empfänger müssen jedem ausgewählten Lernenden zugeordnet sein.')
+    const sourceRemoved =
+      guardianIdsFor(source.recipients).length === 1
+        ? state
+        : { ...state, invoices: state.invoices.filter((invoice) => invoice.id !== sourceId) }
+    const converted: InvoiceDraft = {
+      ...edited,
+      id: guardianIdsFor(source.recipients).length === 1 ? sourceId : undefined,
+      recipients: guardianIds.map((id) => ({ type: 'guardian', id })),
+      recipientStrategy: 'joint',
+    }
     const next = saveInvoiceDraft(sourceRemoved, converted, false, at)
-    if (next.counters !== state.counters || next.invoices.length !== state.invoices.length || next.invoices.some((invoice) => invoice.number !== null && !state.invoices.some((old) => old.id === invoice.id))) throw new Error('Die Umwandlung darf keine Rechnungsnummer verbrauchen.')
+    if (
+      next.counters !== state.counters ||
+      next.invoices.length !== state.invoices.length ||
+      next.invoices.some((invoice) => invoice.number !== null && !state.invoices.some((old) => old.id === invoice.id))
+    )
+      throw new Error('Die Umwandlung darf keine Rechnungsnummer verbrauchen.')
     return next
   })
 }
@@ -127,10 +210,17 @@ export function deleteGuardianState(state: AppState, id: string): CommandResult<
   return commandResult(() => {
     validateBackupState(state)
     const next = {
-      ...state, guardians: state.guardians.filter((guardian) => guardian.id !== id),
-      students: state.students.map((student) => ({ ...student, guardianIds: student.guardianIds.filter((value) => value !== id) })),
-      invoices: state.invoices.map((invoice) => invoice.status === 'draft' && !invoice.correction ? { ...invoice,
-        recipients: invoice.recipients.filter((ref) => ref.type !== 'guardian' || ref.id !== id) } : invoice),
+      ...state,
+      guardians: state.guardians.filter((guardian) => guardian.id !== id),
+      students: state.students.map((student) => ({
+        ...student,
+        guardianIds: student.guardianIds.filter((value) => value !== id),
+      })),
+      invoices: state.invoices.map((invoice) =>
+        invoice.status === 'draft' && !invoice.correction
+          ? { ...invoice, recipients: invoice.recipients.filter((ref) => ref.type !== 'guardian' || ref.id !== id) }
+          : invoice,
+      ),
     }
     validateBackupState(next)
     return next
@@ -141,9 +231,18 @@ export function deleteStudentState(state: AppState, id: string): CommandResult<A
   return commandResult(() => {
     validateBackupState(state)
     const next = {
-      ...state, students: state.students.filter((student) => student.id !== id),
-      invoices: state.invoices.map((invoice) => invoice.status === 'draft' && !invoice.correction ? { ...invoice, studentIds: invoice.studentIds.filter((value) => value !== id), items: invoice.items.filter((item) => item.studentId !== id),
-        recipients: invoice.recipients.filter((ref) => ref.type !== 'student' || ref.id !== id) } : invoice),
+      ...state,
+      students: state.students.filter((student) => student.id !== id),
+      invoices: state.invoices.map((invoice) =>
+        invoice.status === 'draft' && !invoice.correction
+          ? {
+              ...invoice,
+              studentIds: invoice.studentIds.filter((value) => value !== id),
+              items: invoice.items.filter((item) => item.studentId !== id),
+              recipients: invoice.recipients.filter((ref) => ref.type !== 'student' || ref.id !== id),
+            }
+          : invoice,
+      ),
     }
     validateBackupState(next)
     return next

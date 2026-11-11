@@ -11,14 +11,16 @@ export async function observeThemeMotion(page: Page) {
     motion.themeEvents = []
     motion.squashes = []
     const root = document.documentElement
-    const record = (kind: string) => motion.themeEvents.push({
-      kind,
-      x: parseFloat(root.style.getPropertyValue('--reveal-x')),
-      y: parseFloat(root.style.getPropertyValue('--reveal-y')),
-      radius: parseFloat(root.style.getPropertyValue('--reveal-radius')),
-    })
+    const record = (kind: string) =>
+      motion.themeEvents.push({
+        kind,
+        x: parseFloat(root.style.getPropertyValue('--reveal-x')),
+        y: parseFloat(root.style.getPropertyValue('--reveal-y')),
+        radius: parseFloat(root.style.getPropertyValue('--reveal-radius')),
+      })
     new MutationObserver((records) => {
-      if (records.some((r) => r.attributeName === 'data-transition') && root.dataset.transition === 'theme') record('reveal')
+      if (records.some((r) => r.attributeName === 'data-transition') && root.dataset.transition === 'theme')
+        record('reveal')
       if (records.some((r) => r.attributeName === 'class') && root.classList.contains('theme-changing')) record('fade')
     }).observe(root, { attributes: true, attributeFilter: ['class', 'data-transition'] })
     const thumb = document.querySelector<HTMLElement>('.theme-switch__thumb')!

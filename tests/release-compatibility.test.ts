@@ -31,7 +31,8 @@ test('AP8: Backup aus 1.1.3 benötigt keine Migration und bewahrt den gesamten D
 })
 
 test('AP8: bestätigter Restore, Export und Reload erhalten Belege, Zahlungen und Dashboard', async () => {
-  const storage = memoryStorage(), lock = sharedLock()
+  const storage = memoryStorage(),
+    lock = sharedLock()
   const session = new StorageSession({ storage, lock })
   await session.restore(raw)
   const backup = JSON.parse(session.export())

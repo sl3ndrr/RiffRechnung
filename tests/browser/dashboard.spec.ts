@@ -20,21 +20,28 @@ async function seed(page: Page, state: AppState) {
   await page.reload()
 }
 
-const amount = (page: Page, title: string) => page.getByRole('article', { name: title, exact: true }).locator('.dashboard-stat__value')
-const navigation = (page: Page) => page.locator((page.viewportSize()?.width ?? 1280) <= 820 ? '.mobile-bottom-nav' : '.sidebar')
+const amount = (page: Page, title: string) =>
+  page.getByRole('article', { name: title, exact: true }).locator('.dashboard-stat__value')
+const navigation = (page: Page) =>
+  page.locator((page.viewportSize()?.width ?? 1280) <= 820 ? '.mobile-bottom-nav' : '.sidebar')
 
 test('3.AP3: Startseite begrüßt den gespeicherten Vornamen und zeigt exakte Fixture-Zahlen', async ({ page }) => {
   await seed(page, dashboardFixture())
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Guten Morgen, Anna')
   await expect(page.locator('.dashboard-header time')).toHaveText('Mittwoch, 16. September 2026')
-  await expect(navigation(page).getByRole('button', { name: 'Dashboard', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(navigation(page).getByRole('button', { name: 'Dashboard', exact: true })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
   await expect(amount(page, 'Bezahlt')).toHaveText(euro.format(10))
   await expect(amount(page, 'Offen')).toHaveText(euro.format(55))
   await expect(amount(page, 'Entwürfe (nicht finalisiert)')).toHaveText(euro.format(7.58))
   await expect(amount(page, 'Eltern')).toHaveText('2')
   await expect(amount(page, 'Kinder')).toHaveText('2')
   await expect(page.getByRole('article', { name: 'Kinder', exact: true })).toContainText('davon aktiv: 1')
-  await expect(page.getByRole('article', { name: 'Bezahlt', exact: true })).toContainText('1 Zahlung ohne bestätigten Zahlungstag: 5,00')
+  await expect(page.getByRole('article', { name: 'Bezahlt', exact: true })).toContainText(
+    '1 Zahlung ohne bestätigten Zahlungstag: 5,00',
+  )
   await expect(page.getByRole('article', { name: 'Offen', exact: true })).toContainText('1 Rechnung überfällig · 30,00')
   await expect(page.getByRole('heading', { name: 'Noch nicht gezahlt (2)', exact: true })).toBeVisible()
   await expect(page.locator('.dashboard-open-row__person > strong')).toHaveText(['2026-0001-a', '2026-0002-a'])
@@ -80,13 +87,18 @@ test('3.AP3: leerer Einstieg, Namenshinweis und Person anlegen sind bedienbar', 
   await page.goto('/')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Guten Morgen')
   await expect(page.getByRole('heading', { name: 'Willkommen bei RiffRechnung', exact: true })).toBeVisible()
-  await expect(page.getByRole('combobox', { name: 'Jahr für Zahlungseingang', exact: true }).locator('option')).toHaveText(['2026'])
+  await expect(
+    page.getByRole('combobox', { name: 'Jahr für Zahlungseingang', exact: true }).locator('option'),
+  ).toHaveText(['2026'])
   await expect(page.locator('.dashboard-chart__month--empty')).toHaveCount(12)
   await expect(page.locator('.dashboard-backup')).toHaveCount(0)
   await page.getByRole('button', { name: 'Neue Rechnung', exact: true }).click()
   await expect(page.getByRole('dialog', { name: 'Neue Rechnung', exact: true })).toBeVisible()
   await page.keyboard.press('Escape')
-  await page.locator('.dashboard-name-hint').getByRole('button', { name: 'Namen in den Einstellungen hinterlegen', exact: true }).click()
+  await page
+    .locator('.dashboard-name-hint')
+    .getByRole('button', { name: 'Namen in den Einstellungen hinterlegen', exact: true })
+    .click()
   await expect(page.getByRole('heading', { name: 'Einstellungen', exact: true })).toBeVisible()
   await navigation(page).getByRole('button', { name: 'Dashboard', exact: true }).click()
   await page.getByRole('button', { name: 'Person anlegen', exact: true }).click()
@@ -97,7 +109,9 @@ test('3.AP3: leerer Einstieg, Namenshinweis und Person anlegen sind bedienbar', 
   await expect(dialog).not.toBeVisible()
   await navigation(page).getByRole('button', { name: 'Dashboard', exact: true }).click()
   await expect(amount(page, 'Eltern')).toHaveText('1')
-  expect(parseBackup((await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY))!).guardians[0].name).toBe('Neue Familie')
+  expect(parseBackup((await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY))!).guardians[0].name).toBe(
+    'Neue Familie',
+  )
 })
 
 test('3.AP3: acht Vorschauzeilen führen zur vollständigen offenen Liste mit Statusfilter', async ({ page }) => {
@@ -120,7 +134,9 @@ test('3.AP3: Dashboard-Backup exportiert den bestätigten Bestand und entfernt d
   await expect(page.locator('.dashboard-backup')).toHaveCount(0)
   await page.reload()
   await expect(page.locator('.dashboard-backup')).toHaveCount(0)
-  await page.evaluate(() => localStorage.setItem('riffrechnung-v4-last-export-at', new Date('2026-08-16T12:00:00').toISOString()))
+  await page.evaluate(() =>
+    localStorage.setItem('riffrechnung-v4-last-export-at', new Date('2026-08-16T12:00:00').toISOString()),
+  )
   await page.reload()
   await expect(page.locator('.dashboard-backup')).toBeVisible()
 })
@@ -142,7 +158,11 @@ test('3.AP3: Wiederherstellung und Zurücksetzen führen auf das Dashboard', asy
   await seed(page, emptyState())
   await navigation(page).getByRole('button', { name: 'Einstellungen', exact: true }).click()
   const fixture = dashboardFixture()
-  await page.locator('#backup input[type=file]').setInputFiles({ name: 'dashboard.json', mimeType: 'application/json', buffer: Buffer.from(serializeBackup(fixture)) })
+  await page.locator('#backup input[type=file]').setInputFiles({
+    name: 'dashboard.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(serializeBackup(fixture)),
+  })
   await page.getByRole('button', { name: 'Wiederherstellung vorbereiten', exact: true }).click()
   await page.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
   await expect(page.locator('.dashboard-page')).toBeVisible()
@@ -157,47 +177,73 @@ test('3.AP3: Wiederherstellung und Zurücksetzen führen auf das Dashboard', asy
     await fresh.getByRole('alertdialog').getByRole('checkbox').check()
     await fresh.getByRole('alertdialog').getByRole('button', { name: 'Endgültig zurücksetzen', exact: true }).click()
     await expect(fresh.locator('.dashboard-page')).toBeVisible()
-  } finally { await context.close() }
+  } finally {
+    await context.close()
+  }
 })
 
-
-
-for (const width of [320, 390, 768, 1024, 1181, 1280, 1440, 1920]) for (const theme of ['light', 'dark'] as const) {
-  test(`Dashboard: große Kennzahlen passen einzeilig bei ${width}px in ${theme}`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 960 })
-    const state = dashboardFixture()
-    state.settings.theme = theme
-    // Echte React-Kennzahlen aus gültigen Belegen statt nachträglicher DOM-Texte.
-    const draft = documentDraft()
-    draft.items = [{ ...draft.items[0], id: 'large-dashboard', quantity: 1, unitPrice: 1234567.89 }]
-    let large = saveInvoiceDraft(state, draft, true, documentAt)
-    large = saveInvoiceDraft(large, { ...draft, items: [{ ...draft.items[0], id: 'large-paid' }] }, true, documentAt)
-    large = changeInvoiceStatus(large, large.invoices.at(-1)!.id, 'paid', documentAt, '2026-09-16')
-    large = saveInvoiceDraft(large, { ...draft, items: [{ ...draft.items[0], id: 'large-draft' }] }, false, documentAt)
-    await seed(page, large)
-    const stats = dashboardStats(large, dashboardNow)
-    const values = [stats.open.totalCents, stats.paid.yearCents, stats.drafts.totalCents].map((cents) => euro.format(cents / 100)).concat('2', '2')
-    await expect(page.locator('.dashboard-stat__value')).toHaveText(values)
-    await page.evaluate(() => document.fonts.ready)
-    expect(await page.locator('.dashboard-stat__value').evaluateAll((nodes) => nodes.every((node) => {
-      const element = node as HTMLElement
-      const range = document.createRange()
-      range.selectNodeContents(element)
-      const card = element.closest('.dashboard-stat')!.getBoundingClientRect()
-      const rect = range.getBoundingClientRect()
-      return element.scrollWidth <= element.clientWidth && range.getClientRects().length === 1
-        && rect.left >= card.left && rect.right <= card.right
-        && getComputedStyle(element).whiteSpace === 'nowrap'
-    }))).toBe(true)
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    if (width >= 480) expect(await page.locator('.dashboard-chart-scroll').evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true)
-    expect(await page.locator('.dashboard-chart__value').evaluateAll((nodes) => nodes.every((node) => {
-      const range = document.createRange()
-      range.selectNodeContents(node)
-      return range.getClientRects().length === 1 && (node as HTMLElement).scrollWidth <= (node as HTMLElement).clientWidth
-    }))).toBe(true)
-  })
-}
+for (const width of [320, 390, 768, 1024, 1181, 1280, 1440, 1920])
+  for (const theme of ['light', 'dark'] as const) {
+    test(`Dashboard: große Kennzahlen passen einzeilig bei ${width}px in ${theme}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 960 })
+      const state = dashboardFixture()
+      state.settings.theme = theme
+      // Echte React-Kennzahlen aus gültigen Belegen statt nachträglicher DOM-Texte.
+      const draft = documentDraft()
+      draft.items = [{ ...draft.items[0], id: 'large-dashboard', quantity: 1, unitPrice: 1234567.89 }]
+      let large = saveInvoiceDraft(state, draft, true, documentAt)
+      large = saveInvoiceDraft(large, { ...draft, items: [{ ...draft.items[0], id: 'large-paid' }] }, true, documentAt)
+      large = changeInvoiceStatus(large, large.invoices.at(-1)!.id, 'paid', documentAt, '2026-09-16')
+      large = saveInvoiceDraft(
+        large,
+        { ...draft, items: [{ ...draft.items[0], id: 'large-draft' }] },
+        false,
+        documentAt,
+      )
+      await seed(page, large)
+      const stats = dashboardStats(large, dashboardNow)
+      const values = [stats.open.totalCents, stats.paid.yearCents, stats.drafts.totalCents]
+        .map((cents) => euro.format(cents / 100))
+        .concat('2', '2')
+      await expect(page.locator('.dashboard-stat__value')).toHaveText(values)
+      await page.evaluate(() => document.fonts.ready)
+      expect(
+        await page.locator('.dashboard-stat__value').evaluateAll((nodes) =>
+          nodes.every((node) => {
+            const element = node as HTMLElement
+            const range = document.createRange()
+            range.selectNodeContents(element)
+            const card = element.closest('.dashboard-stat')!.getBoundingClientRect()
+            const rect = range.getBoundingClientRect()
+            return (
+              element.scrollWidth <= element.clientWidth &&
+              range.getClientRects().length === 1 &&
+              rect.left >= card.left &&
+              rect.right <= card.right &&
+              getComputedStyle(element).whiteSpace === 'nowrap'
+            )
+          }),
+        ),
+      ).toBe(true)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      if (width >= 480)
+        expect(
+          await page.locator('.dashboard-chart-scroll').evaluate((node) => node.scrollWidth <= node.clientWidth),
+        ).toBe(true)
+      expect(
+        await page.locator('.dashboard-chart__value').evaluateAll((nodes) =>
+          nodes.every((node) => {
+            const range = document.createRange()
+            range.selectNodeContents(node)
+            return (
+              range.getClientRects().length === 1 &&
+              (node as HTMLElement).scrollWidth <= (node as HTMLElement).clientWidth
+            )
+          }),
+        ),
+      ).toBe(true)
+    })
+  }
 
 test('Dashboard: Bento, Diagrammhöhe, Zukunftsmonate und verdichtete Fälligkeit', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 960 })
@@ -208,8 +254,14 @@ test('Dashboard: Bento, Diagrammhöhe, Zukunftsmonate und verdichtete Fälligkei
   await expect(page.locator('.dashboard-chart__month--empty')).toHaveCount(11)
   const geometry = await page.locator('.dashboard-grid').evaluate((grid) => {
     const rect = (selector: string) => grid.querySelector(selector)!.getBoundingClientRect()
-    return { list: rect('.dashboard-unpaid').height, chart: rect('.dashboard-monthly').height, plot: rect('.dashboard-chart__track').height,
-      hero: { top: rect('.dashboard-stat--open').top, bottom: rect('.dashboard-stat--open').bottom }, paid: { top: rect('.dashboard-stat--paid').top }, people: { bottom: rect('.dashboard-people').bottom } }
+    return {
+      list: rect('.dashboard-unpaid').height,
+      chart: rect('.dashboard-monthly').height,
+      plot: rect('.dashboard-chart__track').height,
+      hero: { top: rect('.dashboard-stat--open').top, bottom: rect('.dashboard-stat--open').bottom },
+      paid: { top: rect('.dashboard-stat--paid').top },
+      people: { bottom: rect('.dashboard-people').bottom },
+    }
   })
   expect(geometry.list).toBe(geometry.chart)
   expect(geometry.plot).toBeGreaterThanOrEqual(260)
@@ -217,7 +269,9 @@ test('Dashboard: Bento, Diagrammhöhe, Zukunftsmonate und verdichtete Fälligkei
   expect(geometry.hero.bottom).toBe(geometry.people.bottom)
   await expect(page.locator('.dashboard-chart__value').nth(1)).toHaveText('10,00')
   await expect(page.locator('.dashboard-chart__bar').nth(1)).toHaveAttribute('title', 'Februar: 10,00 €')
-  expect(await page.locator('.dashboard-chart-scroll').evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true)
+  expect(await page.locator('.dashboard-chart-scroll').evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(
+    true,
+  )
   await page.getByRole('combobox', { name: 'Jahr für Zahlungseingang', exact: true }).selectOption('2025')
   await expect(page.locator('.dashboard-chart__month--future')).toHaveCount(0)
   await expect(page.locator('.dashboard-average')).toContainText('Ø 4,17')

@@ -33,12 +33,12 @@ function synchronizeModalState() {
 }
 
 function focusableElements(dialog: HTMLElement) {
-  const selector = 'a[href], button, input:not([type="hidden"]), select, textarea, summary, [contenteditable="true"], [tabindex]:not([tabindex="-1"])'
-  return [...dialog.querySelectorAll<HTMLElement>(selector)].filter((element) => (
-    !element.matches(':disabled')
-    && !element.closest('[hidden], [inert]')
-    && element.getClientRects().length > 0
-  ))
+  const selector =
+    'a[href], button, input:not([type="hidden"]), select, textarea, summary, [contenteditable="true"], [tabindex]:not([tabindex="-1"])'
+  return [...dialog.querySelectorAll<HTMLElement>(selector)].filter(
+    (element) =>
+      !element.matches(':disabled') && !element.closest('[hidden], [inert]') && element.getClientRects().length > 0,
+  )
 }
 
 function returnFocus(dialog: HTMLDivElement, target: HTMLElement | null) {
@@ -48,12 +48,23 @@ function returnFocus(dialog: HTMLDivElement, target: HTMLElement | null) {
     if (visited.has(candidate)) return
     visited.add(candidate)
     const owner = candidate.closest<HTMLDivElement>('.modal-layer')
-    candidate = owner ? dialogReturnTargets.get(owner) ?? null : dialogFallbackTargets.get(dialog) ?? null
+    candidate = owner ? (dialogReturnTargets.get(owner) ?? null) : (dialogFallbackTargets.get(dialog) ?? null)
   }
   candidate?.focus()
 }
 
-export function Modal({ open, title, eyebrow, onClose, children, footer, size = 'medium', role = 'dialog', describedBy, initialFocus = 'first' }: ModalProps) {
+export function Modal({
+  open,
+  title,
+  eyebrow,
+  onClose,
+  children,
+  footer,
+  size = 'medium',
+  role = 'dialog',
+  describedBy,
+  initialFocus = 'first',
+}: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const present = useMotionPresence(open, dialogRef)
   const content = useRef({ title, eyebrow, children, footer, size, role, describedBy, initialFocus })
@@ -61,7 +72,9 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
   const displayed = content.current
   const previousFocus = useRef<HTMLElement | null>(null)
   const onCloseRef = useRef(onClose)
-  onCloseRef.current = () => { if (open) onClose() }
+  onCloseRef.current = () => {
+    if (open) onClose()
+  }
   const titleId = useId()
 
   useLayoutEffect(() => {
@@ -72,7 +85,10 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
     if (dialogStack.length === 0) appRootWasInert = document.getElementById('root')?.inert ?? false
     dialogReturnTargets.set(dialog, previousFocus.current)
     const owner = previousFocus.current?.closest<HTMLDivElement>('.modal-layer')
-    dialogFallbackTargets.set(dialog, owner ? dialogFallbackTargets.get(owner) ?? dialogReturnTargets.get(owner) ?? null : previousFocus.current)
+    dialogFallbackTargets.set(
+      dialog,
+      owner ? (dialogFallbackTargets.get(owner) ?? dialogReturnTargets.get(owner) ?? null) : previousFocus.current,
+    )
     dialogStack.push(dialog)
     synchronizeModalState()
     const target = dialog.querySelector<HTMLElement>('[data-dialog-initial-focus]') ?? focusableElements(dialog).at(0)
@@ -90,15 +106,24 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
       const focusable = focusableElements(dialog)
       const first = focusable.at(0)
       const last = focusable.at(-1)
-      if (!first || !last) { event.preventDefault(); return }
+      if (!first || !last) {
+        event.preventDefault()
+        return
+      }
       if (!focusable.includes(document.activeElement as HTMLElement)) {
         event.preventDefault()
         const destination = event.shiftKey ? last : first
         destination.focus()
         return
       }
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
-      if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      }
+      if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
     dialog.addEventListener('keydown', handleKeyDown)
 
@@ -126,14 +151,30 @@ export function Modal({ open, title, eyebrow, onClose, children, footer, size = 
       onMouseDown={(event) => {
         if (open && event.target === event.currentTarget && dialogStack.at(-1) === event.currentTarget) onClose()
       }}
-      onClickCapture={(event) => { if (!open) { event.preventDefault(); event.stopPropagation() } }}
-      onSubmitCapture={(event) => { if (!open) { event.preventDefault(); event.stopPropagation() } }}
+      onClickCapture={(event) => {
+        if (!open) {
+          event.preventDefault()
+          event.stopPropagation()
+        }
+      }}
+      onSubmitCapture={(event) => {
+        if (!open) {
+          event.preventDefault()
+          event.stopPropagation()
+        }
+      }}
     >
       <section className={`modal modal--${displayed.size}`} role="document">
         <header className="modal__header">
           <div>
             {displayed.eyebrow && <p className="eyebrow">{displayed.eyebrow}</p>}
-            <h2 id={titleId} tabIndex={displayed.initialFocus === 'title' ? -1 : undefined} data-dialog-initial-focus={displayed.initialFocus === 'title' ? '' : undefined}>{displayed.title}</h2>
+            <h2
+              id={titleId}
+              tabIndex={displayed.initialFocus === 'title' ? -1 : undefined}
+              data-dialog-initial-focus={displayed.initialFocus === 'title' ? '' : undefined}
+            >
+              {displayed.title}
+            </h2>
           </div>
           <button className="icon-button" type="button" onClick={onClose} aria-label="Dialog schließen">
             <X aria-hidden="true" />

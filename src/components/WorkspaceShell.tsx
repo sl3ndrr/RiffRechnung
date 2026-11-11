@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+  type RefObject,
+} from 'react'
 import { BookUser, LayoutDashboard, Menu, ReceiptText, Settings as SettingsIcon, X } from 'lucide-react'
 import type { PageKey, Settings, ThemeMode } from '../types'
 import { APP_VERSION } from '../version'
@@ -15,7 +24,13 @@ const navItems: Array<{ key: PageKey; label: string; icon: typeof ReceiptText }>
   { key: 'settings', label: 'Einstellungen', icon: SettingsIcon },
 ]
 
-const backupDateFormatter = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+const backupDateFormatter = new Intl.DateTimeFormat('de-DE', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+})
 
 interface WorkspaceShellProps {
   children: ReactNode
@@ -33,7 +48,21 @@ interface WorkspaceShellProps {
   onThemeChange: (theme: ThemeMode, origin?: RevealOrigin) => void
 }
 
-export function WorkspaceShell({ children, page, settings, theme, activeTheme, mode, draftCount, lastBackupAt, saveStateLabel, saveStatus, mainContentRef, onNavigate, onThemeChange }: WorkspaceShellProps) {
+export function WorkspaceShell({
+  children,
+  page,
+  settings,
+  theme,
+  activeTheme,
+  mode,
+  draftCount,
+  lastBackupAt,
+  saveStateLabel,
+  saveStatus,
+  mainContentRef,
+  onNavigate,
+  onThemeChange,
+}: WorkspaceShellProps) {
   const [mobileNav, setMobileNav] = useState(false)
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 820px)').matches)
   const reducedMotion = useReducedMotion()
@@ -60,7 +89,9 @@ export function WorkspaceShell({ children, page, settings, theme, activeTheme, m
     if (reducedMotion || settings.reducedMotion) {
       clearThemeFade()
       // A pending update uses flushSync: finish it outside React's layout phase.
-      queueMicrotask(() => { if (listening && prefersReducedMotion()) completeThemeReveal() })
+      queueMicrotask(() => {
+        if (listening && prefersReducedMotion()) completeThemeReveal()
+      })
     }
     const apply = () => applyResolvedTheme(resolveTheme(activeTheme), true)
     apply()
@@ -70,7 +101,10 @@ export function WorkspaceShell({ children, page, settings, theme, activeTheme, m
       if (!completeThemeReveal()) apply()
     }
     media.addEventListener('change', systemChange)
-    return () => { listening = false; media.removeEventListener('change', systemChange) }
+    return () => {
+      listening = false
+      media.removeEventListener('change', systemChange)
+    }
   }, [reducedMotion, settings.reducedMotion, activeTheme])
 
   useLayoutEffect(() => () => resetAppliedTheme(), [])
@@ -86,14 +120,18 @@ export function WorkspaceShell({ children, page, settings, theme, activeTheme, m
 
   useEffect(() => {
     if (mode !== 'real') return
-    try { localStorage.setItem('riffrechnung-theme-hint', settings.theme) }
-    catch { /* The hint is optional; the confirmed settings remain authoritative. */ }
+    try {
+      localStorage.setItem('riffrechnung-theme-hint', settings.theme)
+    } catch {
+      /* The hint is optional; the confirmed settings remain authoritative. */
+    }
   }, [mode, settings.theme])
 
-  const navigate = (next: PageKey) => onNavigate(next, () => {
-    setMobileNav(false)
-    if (isMobile && mobileNav) requestAnimationFrame(() => mainContentRef.current?.focus())
-  })
+  const navigate = (next: PageKey) =>
+    onNavigate(next, () => {
+      setMobileNav(false)
+      if (isMobile && mobileNav) requestAnimationFrame(() => mainContentRef.current?.focus())
+    })
   const openMobileNav = useCallback(() => {
     setMobileNav(true)
     requestAnimationFrame(() => mobileCloseButtonRef.current?.focus())
@@ -112,29 +150,138 @@ export function WorkspaceShell({ children, page, settings, theme, activeTheme, m
     document.addEventListener('keydown', closeOnEscape)
     return () => document.removeEventListener('keydown', closeOnEscape)
   }, [closeMobileNav, mobileNav])
-  const backupStatusLabel = lastBackupAt ? `Letzter JSON-Export: ${backupDateFormatter.format(new Date(lastBackupAt))}` : 'Noch kein Backup'
-  return <>
-      <a href="#main-content" className="skip-link">Zum Inhalt springen</a>
-      <aside id="mobile-sidebar" className={`sidebar ${mobileNav ? 'sidebar--open' : ''}`} inert={isMobile && !mobileNav}>
-        <div className="brand"><span className="brand__mark" aria-hidden="true"><ReceiptText /></span><div><strong>RiffRechnung</strong><small>Rechnungen</small></div><button ref={mobileCloseButtonRef} className="icon-button mobile-only" onClick={closeMobileNav} aria-label="Navigation schließen"><X aria-hidden="true" /></button></div>
-        <nav aria-label="Hauptnavigation" style={navStyle}><span className="nav-indicator" aria-hidden="true" />{navItems.map(({ key, label, icon: Icon }) => <button className={page === key ? 'is-active' : ''} aria-current={page === key ? 'page' : undefined} aria-label={label} key={key} onClick={() => navigate(key)}><Icon aria-hidden="true" /><span>{label}</span>{key === 'invoices' && draftCount > 0 && <b>{draftCount}</b>}</button>)}</nav>
-        <div className="sidebar__privacy"><span><ShieldDot /></span><div><strong>Nur auf diesem Gerät</strong><small>Keine automatische Cloud-Übertragung</small></div></div>
-        <a className="sidebar__version" href="https://github.com/sl3ndrr/RiffRechnung/blob/main/docs/about.md" target="_blank" rel="noreferrer" aria-label={`Info öffnen (neuer Tab), aktuelle Version ${APP_VERSION}`}>Info · Version {APP_VERSION}</a>
+  const backupStatusLabel = lastBackupAt
+    ? `Letzter JSON-Export: ${backupDateFormatter.format(new Date(lastBackupAt))}`
+    : 'Noch kein Backup'
+  return (
+    <>
+      <a href="#main-content" className="skip-link">
+        Zum Inhalt springen
+      </a>
+      <aside
+        id="mobile-sidebar"
+        className={`sidebar ${mobileNav ? 'sidebar--open' : ''}`}
+        inert={isMobile && !mobileNav}
+      >
+        <div className="brand">
+          <span className="brand__mark" aria-hidden="true">
+            <ReceiptText />
+          </span>
+          <div>
+            <strong>RiffRechnung</strong>
+            <small>Rechnungen</small>
+          </div>
+          <button
+            ref={mobileCloseButtonRef}
+            className="icon-button mobile-only"
+            onClick={closeMobileNav}
+            aria-label="Navigation schließen"
+          >
+            <X aria-hidden="true" />
+          </button>
+        </div>
+        <nav aria-label="Hauptnavigation" style={navStyle}>
+          <span className="nav-indicator" aria-hidden="true" />
+          {navItems.map(({ key, label, icon: Icon }) => (
+            <button
+              className={page === key ? 'is-active' : ''}
+              aria-current={page === key ? 'page' : undefined}
+              aria-label={label}
+              key={key}
+              onClick={() => navigate(key)}
+            >
+              <Icon aria-hidden="true" />
+              <span>{label}</span>
+              {key === 'invoices' && draftCount > 0 && <b>{draftCount}</b>}
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar__privacy">
+          <span>
+            <ShieldDot />
+          </span>
+          <div>
+            <strong>Nur auf diesem Gerät</strong>
+            <small>Keine automatische Cloud-Übertragung</small>
+          </div>
+        </div>
+        <a
+          className="sidebar__version"
+          href="https://github.com/sl3ndrr/RiffRechnung/blob/main/docs/about.md"
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`Info öffnen (neuer Tab), aktuelle Version ${APP_VERSION}`}
+        >
+          Info · Version {APP_VERSION}
+        </a>
       </aside>
-      {isMobile && scrimPresent && <button ref={scrimRef} className="nav-scrim" data-motion={mobileNav ? 'enter' : 'exit'} inert={!mobileNav} aria-label="Navigation schließen" onClick={closeMobileNav} />}
+      {isMobile && scrimPresent && (
+        <button
+          ref={scrimRef}
+          className="nav-scrim"
+          data-motion={mobileNav ? 'enter' : 'exit'}
+          inert={!mobileNav}
+          aria-label="Navigation schließen"
+          onClick={closeMobileNav}
+        />
+      )}
 
       <div className="app-main" inert={isMobile && mobileNav}>
         <header className="topbar">
-          <button ref={mobileMenuButtonRef} className="icon-button mobile-only" onClick={openMobileNav} aria-label="Navigation öffnen" aria-controls="mobile-sidebar" aria-expanded={mobileNav}><Menu aria-hidden="true" /></button>
-          <div className="topbar__end"><div className="topbar__storage-status" role="status" aria-live="polite"><span className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : saveStateLabel === 'error' ? 'is-error' : ''}`}><i key={saveStateLabel} className="motion-scale" />{saveStatus}</span><span className="backup-indicator">{backupStatusLabel}</span></div><ThemeSwitch theme={theme} onChange={onThemeChange} /></div>
+          <button
+            ref={mobileMenuButtonRef}
+            className="icon-button mobile-only"
+            onClick={openMobileNav}
+            aria-label="Navigation öffnen"
+            aria-controls="mobile-sidebar"
+            aria-expanded={mobileNav}
+          >
+            <Menu aria-hidden="true" />
+          </button>
+          <div className="topbar__end">
+            <div className="topbar__storage-status" role="status" aria-live="polite">
+              <span
+                className={`save-indicator ${saveStateLabel === 'saving' ? 'is-saving' : saveStateLabel === 'error' ? 'is-error' : ''}`}
+              >
+                <i key={saveStateLabel} className="motion-scale" />
+                {saveStatus}
+              </span>
+              <span className="backup-indicator">{backupStatusLabel}</span>
+            </div>
+            <ThemeSwitch theme={theme} onChange={onThemeChange} />
+          </div>
         </header>
 
         {children}
       </div>
-      <nav className="mobile-bottom-nav" aria-label="Mobile Hauptnavigation" style={navStyle} inert={isMobile && mobileNav}><span className="nav-indicator" aria-hidden="true" />{navItems.map(({ key, label, icon: Icon }) => <button className={page === key ? 'is-active' : ''} aria-current={page === key ? 'page' : undefined} aria-label={label} key={key} onClick={() => navigate(key)}><Icon aria-hidden="true" /><span>{label}</span></button>)}</nav>
-  </>
+      <nav
+        className="mobile-bottom-nav"
+        aria-label="Mobile Hauptnavigation"
+        style={navStyle}
+        inert={isMobile && mobileNav}
+      >
+        <span className="nav-indicator" aria-hidden="true" />
+        {navItems.map(({ key, label, icon: Icon }) => (
+          <button
+            className={page === key ? 'is-active' : ''}
+            aria-current={page === key ? 'page' : undefined}
+            aria-label={label}
+            key={key}
+            onClick={() => navigate(key)}
+          >
+            <Icon aria-hidden="true" />
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
+    </>
+  )
 }
 
 function ShieldDot() {
-  return <span className="shield-dot" aria-hidden="true"><i /></span>
+  return (
+    <span className="shield-dot" aria-hidden="true">
+      <i />
+    </span>
+  )
 }

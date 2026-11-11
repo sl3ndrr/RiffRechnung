@@ -11,11 +11,14 @@ async function stateOf(page: Page): Promise<AppState> {
 }
 async function seed(page: Page, state: AppState | string) {
   await page.goto('/')
-  await page.evaluate(async (raw) => {
-    const path = '/src/lib/storage.ts'
-    const { StorageSession } = await import(path)
-    await new StorageSession().restore(raw)
-  }, typeof state === 'string' ? state : serializeBackup(state))
+  await page.evaluate(
+    async (raw) => {
+      const path = '/src/lib/storage.ts'
+      const { StorageSession } = await import(path)
+      await new StorageSession().restore(raw)
+    },
+    typeof state === 'string' ? state : serializeBackup(state),
+  )
   await page.reload()
 }
 const detail = (page: Page) => page.locator('.invoice-detail')
@@ -25,11 +28,15 @@ async function open(page: Page, number = '2026-0001-a') {
   await expect(detail(page)).toBeVisible()
 }
 function assertDerived(state: AppState) {
-  for (const invoice of state.invoices) for (const field of ['year', 'period', 'paidAt', 'openAmountCents']) expect(Object.hasOwn(invoice, field)).toBe(false)
+  for (const invoice of state.invoices)
+    for (const field of ['year', 'period', 'paidAt', 'openAmountCents'])
+      expect(Object.hasOwn(invoice, field)).toBe(false)
   for (const version of state.documentVersions) expect(Object.hasOwn(version.content, 'year')).toBe(false)
 }
 
-test('P08 Browser: Fälligkeit, bestätigter Zahlungstag, Korrektur des Tages und Rücknahme bleiben nach Reload konsistent', async ({ page }) => {
+test('P08 Browser: Fälligkeit, bestätigter Zahlungstag, Korrektur des Tages und Rücknahme bleiben nach Reload konsistent', async ({
+  page,
+}) => {
   await page.clock.setFixedTime(new Date('2026-09-16T12:00:00.000Z'))
   const initial = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
   await seed(page, initial)
@@ -48,7 +55,8 @@ test('P08 Browser: Fälligkeit, bestätigter Zahlungstag, Korrektur des Tages un
   expect(paid.payments[0].paidAt).toBe('2026-09-14')
   expect(paid.documentVersions).toEqual(initial.documentVersions)
   expect(paid.counters).toEqual(initial.counters)
-  await page.reload(); await open(page)
+  await page.reload()
+  await open(page)
   await expect(detail(page).locator('.status-chip')).toHaveText('Bezahlt')
   await expect(page.getByLabel('Tatsächlicher Zahlungstag', { exact: true })).toHaveValue('2026-09-14')
   await page.getByLabel('Tatsächlicher Zahlungstag', { exact: true }).fill('2026-09-13')
@@ -56,7 +64,8 @@ test('P08 Browser: Fälligkeit, bestätigter Zahlungstag, Korrektur des Tages un
   await expect.poll(async () => (await stateOf(page)).payments[0].paidAt).toBe('2026-09-13')
   await page.getByRole('button', { name: 'Versendet / offen', exact: true }).click()
   await expect(detail(page).locator('.status-chip')).toHaveText('Überfällig')
-  await page.reload(); await open(page)
+  await page.reload()
+  await open(page)
   await expect(page.getByLabel('Tatsächlicher Zahlungstag', { exact: true })).toHaveValue('')
   const released = await stateOf(page)
   expect(released.payments).toHaveLength(1)
@@ -68,25 +77,30 @@ test('P08 Browser: Fälligkeit, bestätigter Zahlungstag, Korrektur des Tages un
   await expect(page.getByRole('button', { name: initial.invoices[0].number!, exact: true })).toBeVisible()
 })
 
-test('P08 Browser: unbekannter Schema-13-Zahlungstag wird erst durch ausdrückliche Nachpflege bestätigt', async ({ page }) => {
+test('P08 Browser: unbekannter Schema-13-Zahlungstag wird erst durch ausdrückliche Nachpflege bestätigt', async ({
+  page,
+}) => {
   await page.clock.setFixedTime(new Date('2026-09-16T12:00:00.000Z'))
   let state = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
   state = changeInvoiceStatus(state, state.invoices[0].id, 'paid', documentAt, '2026-09-05')
   const legacy = legacyVersionedFixture(state, 13)
   legacy.payments[0].legacyPaymentDay = legacy.payments[0].paidAt
-  legacy.payments[0].paidAt = null; legacy.payments[0].paymentDayStatus = 'unknown'
+  legacy.payments[0].paidAt = null
+  legacy.payments[0].paymentDayStatus = 'unknown'
   await seed(page, JSON.stringify(legacy))
   await open(page)
   await expect(detail(page).locator('.status-chip')).toHaveText('Bezahlt')
   await expect(page.getByLabel('Tatsächlicher Zahlungstag', { exact: true })).toHaveValue('')
   await expect(page.getByRole('button', { name: 'Zahlungstag korrigieren', exact: true })).toBeDisabled()
   await expect(detail(page)).toContainText('Zahlungsdatum unbekannt')
-  await page.reload(); await open(page)
+  await page.reload()
+  await open(page)
   await expect(page.getByLabel('Tatsächlicher Zahlungstag', { exact: true })).toHaveValue('')
   await page.getByLabel('Tatsächlicher Zahlungstag', { exact: true }).fill('2026-09-04')
   await page.getByRole('button', { name: 'Zahlungstag korrigieren', exact: true }).click()
   await expect.poll(async () => (await stateOf(page)).payments[0].paymentDayStatus).toBe('confirmed')
-  await page.reload(); await open(page)
+  await page.reload()
+  await open(page)
   await expect(page.getByLabel('Tatsächlicher Zahlungstag', { exact: true })).toHaveValue('2026-09-04')
   const confirmed = await stateOf(page)
   expect(confirmed.invoices[0].paidAt).toBe('2026-09-05')
@@ -94,7 +108,9 @@ test('P08 Browser: unbekannter Schema-13-Zahlungstag wird erst durch ausdrückli
   expect(confirmed.documentVersions).toEqual(legacy.documentVersions)
 })
 
-test('P08 Browser: bestehende Zahlung auf Korrektur zuordnen und lösen aktualisiert Offen/Bezahlt nach Reload', async ({ page }) => {
+test('P08 Browser: bestehende Zahlung auf Korrektur zuordnen und lösen aktualisiert Offen/Bezahlt nach Reload', async ({
+  page,
+}) => {
   await page.clock.setFixedTime(new Date('2026-09-16T12:00:00.000Z'))
   let state = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
   state = changeInvoiceStatus(state, state.invoices[0].id, 'paid', documentAt, '2026-09-05')
@@ -110,7 +126,8 @@ test('P08 Browser: bestehende Zahlung auf Korrektur zuordnen und lösen aktualis
   await page.getByLabel('Zuordnungsgrund', { exact: true }).fill('Bestehende Zahlung auf Korrektur übertragen')
   await page.getByRole('button', { name: 'Zuordnung speichern', exact: true }).click()
   await expect(detail(page).locator('.status-chip')).toHaveText('Bezahlt')
-  await page.reload(); await open(page, target.content.number!)
+  await page.reload()
+  await open(page, target.content.number!)
   await expect(detail(page).locator('.status-chip')).toHaveText('Bezahlt')
   await expect(page.getByLabel('Tatsächlicher Zahlungstag', { exact: true })).toHaveValue('2026-09-05')
   await detail(page).getByText('Details', { exact: true }).click()
@@ -118,7 +135,8 @@ test('P08 Browser: bestehende Zahlung auf Korrektur zuordnen und lösen aktualis
   await page.getByLabel('Zuordnungsgrund', { exact: true }).fill('Zuordnung zur Klärung lösen')
   await page.getByRole('button', { name: 'Zuordnung speichern', exact: true }).click()
   await expect(detail(page).locator('.status-chip')).toHaveText('Überfällig')
-  await page.reload(); await open(page, target.content.number!)
+  await page.reload()
+  await open(page, target.content.number!)
   await expect(detail(page).locator('.status-chip')).toHaveText('Überfällig')
   const released = await stateOf(page)
   expect(released.payments).toHaveLength(1)

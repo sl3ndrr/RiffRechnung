@@ -1,17 +1,30 @@
-import { RETIRED_INVOICE_FIELDS, RETIRED_SETTINGS_FIELDS, RETIRED_SNAPSHOT_FIELDS, stripLegacyTaxFields } from './legacyTaxFields'
+import {
+  RETIRED_INVOICE_FIELDS,
+  RETIRED_SETTINGS_FIELDS,
+  RETIRED_SNAPSHOT_FIELDS,
+  stripLegacyTaxFields,
+} from './legacyTaxFields'
 
-const object = (value: unknown): Record<string, unknown> | null => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
+const object = (value: unknown): Record<string, unknown> | null =>
+  value !== null && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null
 
 /** Clean only documented internal copies. Unreadable copies stop the migration. */
 export function cleanRecoveryTaxFields(raw: string): string {
   let value: unknown
-  try { value = JSON.parse(raw.replace(/^\uFEFF/, '')) } catch {
+  try {
+    value = JSON.parse(raw.replace(/^\uFEFF/, ''))
+  } catch {
     // A broken copy with no retired field-name tokens contains no structured
     // tax evidence. Otherwise fail closed, including escaped JSON key names.
     const retired = new Set<string>([...RETIRED_SETTINGS_FIELDS, ...RETIRED_INVOICE_FIELDS, ...RETIRED_SNAPSHOT_FIELDS])
     for (const match of raw.matchAll(/"(?:[^"\\]|\\.)*"/gsu)) {
-      try { if (retired.has(JSON.parse(match[0]))) throw new Error('retired-field') } catch (error) {
-        if (error instanceof Error && error.message === 'retired-field') throw new Error('Interne Wiederherstellungskopie ist nicht lesbar und enthält mögliche Steuerfelder. Der Umstieg wurde ohne Speicherung abgebrochen.')
+      try {
+        if (retired.has(JSON.parse(match[0]))) throw new Error('retired-field')
+      } catch (error) {
+        if (error instanceof Error && error.message === 'retired-field')
+          throw new Error(
+            'Interne Wiederherstellungskopie ist nicht lesbar und enthält mögliche Steuerfelder. Der Umstieg wurde ohne Speicherung abgebrochen.',
+          )
       }
     }
     return raw
@@ -44,10 +57,13 @@ function cleanReport(raw: unknown): unknown {
     for (const field of ['before', 'after']) {
       const value = change[field]
       if (change.path === 'settings') change[field] = stripLegacyTaxFields({ settings: value }).value.settings
-      else if (change.path.startsWith('documentVersions.')) change[field] = stripLegacyTaxFields({ documentVersions: [value] }).value.documentVersions[0]
-      else if (change.path === 'historicalSnapshotCorrections' || change.path === 'audit') change[field] = stripLegacyTaxFields({ audit: value }).value.audit
+      else if (change.path.startsWith('documentVersions.'))
+        change[field] = stripLegacyTaxFields({ documentVersions: [value] }).value.documentVersions[0]
+      else if (change.path === 'historicalSnapshotCorrections' || change.path === 'audit')
+        change[field] = stripLegacyTaxFields({ audit: value }).value.audit
       else if (change.path.startsWith('invoices.') && !change.path.includes('.items')) {
-        if (change.path.endsWith('.snapshot') || change.path.endsWith('.draftPrintSnapshot')) change[field] = stripLegacyTaxFields({ invoices: [{ snapshot: value }] }).value.invoices[0].snapshot
+        if (change.path.endsWith('.snapshot') || change.path.endsWith('.draftPrintSnapshot'))
+          change[field] = stripLegacyTaxFields({ invoices: [{ snapshot: value }] }).value.invoices[0].snapshot
         else if (object(value)?.items) change[field] = stripLegacyTaxFields({ invoices: [value] }).value.invoices[0]
       }
     }

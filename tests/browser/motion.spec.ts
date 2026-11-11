@@ -29,8 +29,13 @@ async function seed(page: Page, reduced = false) {
 async function durations(element: Locator, pseudo: string | null = null) {
   return element.evaluate((node, pseudo) => {
     const style = getComputedStyle(node, pseudo)
-    const ms = (values: string) => values.split(',').map((value) => parseFloat(value) * (value.trim().endsWith('ms') ? 1 : 1000))
-    return { animations: ms(style.animationDuration), transitions: ms(style.transitionDuration), delays: ms(style.animationDelay) }
+    const ms = (values: string) =>
+      values.split(',').map((value) => parseFloat(value) * (value.trim().endsWith('ms') ? 1 : 1000))
+    return {
+      animations: ms(style.animationDuration),
+      transitions: ms(style.transitionDuration),
+      delays: ms(style.animationDelay),
+    }
   }, pseudo)
 }
 
@@ -56,7 +61,9 @@ test('3.AP6: Dialog und Bestätigung animieren, behalten Fokusfalle und geben Fo
   await page.keyboard.press('Escape')
   await expectReleased(page)
   await expect(trigger).toBeFocused()
-  expect(await page.evaluate(() => (window as unknown as MotionWindow).motionEvents)).toEqual(expect.arrayContaining(['motion-fade-in', 'motion-fade-out']))
+  expect(await page.evaluate(() => (window as unknown as MotionWindow).motionEvents)).toEqual(
+    expect.arrayContaining(['motion-fade-in', 'motion-fade-out']),
+  )
 
   await page.locator('.sidebar').getByRole('button', { name: 'Einstellungen', exact: true }).click()
   const issuer = page.getByLabel('Name / Geschäftsbezeichnung', { exact: true })
@@ -77,17 +84,28 @@ test('3.AP6: Meldungen blockieren keine Dialogaktionen; Schließen bleibt bedien
   await page.setViewportSize({ width: 1280, height: 720 })
   await seed(page)
   await page.locator('.sidebar').getByRole('button', { name: 'Einstellungen', exact: true }).click()
-  for (let index = 0; index < 3; index++) await page.getByRole('button', { name: 'JSON exportieren', exact: true }).click()
+  for (let index = 0; index < 3; index++)
+    await page.getByRole('button', { name: 'JSON exportieren', exact: true }).click()
   await navigateToInvoices(page)
   await page.getByRole('button', { name: 'Neue Rechnung', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Neue Rechnung', exact: true })
-  await dialog.getByRole('group', { name: 'Lernende', exact: true }).locator('label').filter({ hasText: 'Kind s1' }).click()
+  await dialog
+    .getByRole('group', { name: 'Lernende', exact: true })
+    .locator('label')
+    .filter({ hasText: 'Kind s1' })
+    .click()
   await expect(page.locator('.toast')).toHaveCount(3)
   const save = dialog.getByRole('button', { name: 'Als Entwurf speichern', exact: true })
-  await expect.poll(() => save.evaluate((button) => {
-    const rect = button.getBoundingClientRect()
-    return document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)?.closest('button') === button
-  })).toBe(true)
+  await expect
+    .poll(() =>
+      save.evaluate((button) => {
+        const rect = button.getBoundingClientRect()
+        return (
+          document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)?.closest('button') === button
+        )
+      }),
+    )
+    .toBe(true)
   // A toast's close button remains part of the modal's focus trap and hit area.
   await page.getByRole('button', { name: 'Meldung schließen', exact: true }).first().click()
   await expect(page.locator('.toast')).toHaveCount(2)
@@ -101,10 +119,12 @@ test('3.AP6: ausgefallenes animationend entfernt Dialog und Toast über den Time
   await navigateToInvoices(page)
   await page.getByRole('button', { name: 'Neue Rechnung', exact: true }).click()
   // Cancel each exit at animationstart: no animationend can reach the hook.
-  await page.evaluate(() => document.addEventListener('animationstart', (event) => {
-    if (!event.animationName.endsWith('-out') || !(event.target instanceof HTMLElement)) return
-    for (const animation of event.target.getAnimations()) animation.cancel()
-  }))
+  await page.evaluate(() =>
+    document.addEventListener('animationstart', (event) => {
+      if (!event.animationName.endsWith('-out') || !(event.target instanceof HTMLElement)) return
+      for (const animation of event.target.getAnimations()) animation.cancel()
+    }),
+  )
   await page.keyboard.press('Escape')
   await expectReleased(page)
   await page.getByRole('button', { name: 'Neue Rechnung', exact: true }).click()
@@ -121,12 +141,19 @@ test('3.AP6: ausgefallenes animationend entfernt Dialog und Toast über den Time
   expect(await page.evaluate(() => (window as unknown as MotionWindow).motionEvents)).toContain('motion-rise-out')
 })
 
-test('3.AP6: Navigation bewegt Indikator und blendet nur den neuen Inhalt ein; Theme bleibt kurzzeitig', async ({ page }) => {
+test('3.AP6: Navigation bewegt Indikator und blendet nur den neuen Inhalt ein; Theme bleibt kurzzeitig', async ({
+  page,
+}) => {
   await seed(page)
   const main = await page.locator('#main-content').elementHandle()
   const indicator = page.locator('.sidebar .nav-indicator')
   expect((await durations(indicator)).transitions[0]).toBe(220)
-  for (const [name, index] of [['Rechnungen', 1], ['Personen', 2], ['Einstellungen', 3], ['Dashboard', 0]] as const) {
+  for (const [name, index] of [
+    ['Rechnungen', 1],
+    ['Personen', 2],
+    ['Einstellungen', 3],
+    ['Dashboard', 0],
+  ] as const) {
     await page.locator('.sidebar').getByRole('button', { name, exact: true }).click()
     await expect(page.locator('#main-content')).toHaveClass(/motion-fade/)
     expect(await main!.evaluate((node) => node === document.getElementById('main-content'))).toBe(true)
@@ -148,7 +175,10 @@ test('3.AP6: Navigation bewegt Indikator und blendet nur den neuen Inhalt ein; T
     expect(reveal.x).toBeCloseTo(thumb!.x + thumb!.width / 2, 0)
     expect(reveal.y).toBeCloseTo(thumb!.y + thumb!.height / 2, 0)
     const viewport = page.viewportSize()!
-    expect(reveal.radius).toBeCloseTo(Math.hypot(Math.max(reveal.x, viewport.width - reveal.x), Math.max(reveal.y, viewport.height - reveal.y)), 0)
+    expect(reveal.radius).toBeCloseTo(
+      Math.hypot(Math.max(reveal.x, viewport.width - reveal.x), Math.max(reveal.y, viewport.height - reveal.y)),
+      0,
+    )
   } else expect(events.map((event) => event.kind)).toContain('fade')
   expect((await durations(page.locator('.theme-switch__thumb'))).transitions[0]).toBe(350)
   const squashes = await page.evaluate(() => (window as unknown as ThemeMotionWindow).squashes)
@@ -157,11 +187,15 @@ test('3.AP6: Navigation bewegt Indikator und blendet nur den neuen Inhalt ein; T
   await page.locator('.topbar').getByRole('radio', { name: 'System', exact: true }).click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
   await waitForThemeMotion(page)
-  await page.evaluate(() => { (window as unknown as ThemeMotionWindow).themeEvents = [] })
+  await page.evaluate(() => {
+    ;(window as unknown as ThemeMotionWindow).themeEvents = []
+  })
   await page.emulateMedia({ colorScheme: 'dark' })
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await waitForThemeMotion(page)
-  const osEvents = await page.evaluate(() => (window as unknown as ThemeMotionWindow).themeEvents.map((event) => event.kind))
+  const osEvents = await page.evaluate(() =>
+    (window as unknown as ThemeMotionWindow).themeEvents.map((event) => event.kind),
+  )
   expect(osEvents).toContain('fade')
   expect(osEvents).not.toContain('reveal')
 })
@@ -236,7 +270,15 @@ for (const preference of ['setting', 'media'] as const) {
     expect(await page.evaluate(() => (window as unknown as ThemeMotionWindow).squashes)).toEqual([])
     await navigateToInvoices(page)
     await page.getByRole('button', { name: 'Neue Rechnung', exact: true }).click()
-    for (const selector of ['.modal-layer', '.modal', '.theme-switch__thumb', '.sidebar .nav-indicator', '#main-content', '.motion-sample', '.button']) {
+    for (const selector of [
+      '.modal-layer',
+      '.modal',
+      '.theme-switch__thumb',
+      '.sidebar .nav-indicator',
+      '#main-content',
+      '.motion-sample',
+      '.button',
+    ]) {
       const values = await durations(page.locator(selector).first())
       for (const ms of [...values.animations, ...values.transitions, ...values.delays]) expect(ms).toBe(0)
     }
@@ -257,7 +299,9 @@ test('3.AP6: Druck und print-root bleiben ohne Motion und ohne transparenten Sta
   await seed(page)
   await navigateToInvoices(page)
   await page.locator('.invoice-list-table').getByRole('button', { name: 'Entwurf', exact: true }).click()
-  await page.evaluate(() => { window.print = () => {} })
+  await page.evaluate(() => {
+    window.print = () => {}
+  })
   await page.getByRole('button', { name: 'Vorschau', exact: true }).click()
   await expect(page.locator('.invoice-paper')).toHaveCount(1)
   await page.evaluate(() => {
@@ -275,10 +319,14 @@ test('3.AP6: Druck und print-root bleiben ohne Motion und ohne transparenten Sta
     await expect(page.locator(selector).first()).toHaveCSS('opacity', '1')
   }
   await page.emulateMedia({ media: 'print' })
-  const styles = await page.locator('body *').evaluateAll((nodes) => nodes.flatMap((node) => [null, '::before', '::after'].map((pseudo) => {
-    const style = getComputedStyle(node, pseudo)
-    return [style.animationName, style.animationDuration, style.transitionDuration]
-  })))
+  const styles = await page.locator('body *').evaluateAll((nodes) =>
+    nodes.flatMap((node) =>
+      [null, '::before', '::after'].map((pseudo) => {
+        const style = getComputedStyle(node, pseudo)
+        return [style.animationName, style.animationDuration, style.transitionDuration]
+      }),
+    ),
+  )
   for (const [name, animation, transition] of styles) {
     expect(name).toBe('none')
     expect(animation).toBe('0s')
@@ -286,7 +334,6 @@ test('3.AP6: Druck und print-root bleiben ohne Motion und ohne transparenten Sta
   }
   await expect(page.locator('.print-motion-sample')).toHaveCSS('opacity', '1')
 })
-
 
 test('Theme: Hell → System bewegt und quetscht den Thumb ohne Farb-Reveal', async ({ page }) => {
   await seed(page)
@@ -302,12 +349,16 @@ test('Theme: Hell → System bewegt und quetscht den Thumb ohne Farb-Reveal', as
 
 test('Theme: erzwungener Fallback erhält 250-ms-Fade und 350-ms-Thumb', async ({ page }) => {
   await seed(page)
-  await page.evaluate(() => Object.defineProperty(document, 'startViewTransition', { value: undefined, configurable: true }))
+  await page.evaluate(() =>
+    Object.defineProperty(document, 'startViewTransition', { value: undefined, configurable: true }),
+  )
   expect(await observeThemeMotion(page)).toBe(false)
   await page.locator('.topbar').getByRole('radio', { name: 'Dunkel', exact: true }).click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await waitForThemeMotion(page)
-  expect(await page.evaluate(() => (window as unknown as ThemeMotionWindow).themeEvents.map((event) => event.kind))).toContain('fade')
+  expect(
+    await page.evaluate(() => (window as unknown as ThemeMotionWindow).themeEvents.map((event) => event.kind)),
+  ).toContain('fade')
   expect((await durations(page.locator('.theme-switch__thumb'))).transitions[0]).toBe(350)
   await expect(page.locator('.theme-switch__thumb')).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 88, 0)')
 })
@@ -319,17 +370,23 @@ test('Theme: Einstellungskarte liefert ihren eigenen Reveal-Ursprung', async ({ 
   const card = page.locator('.theme-picker label').filter({ hasText: 'Dunkel' })
   await card.scrollIntoViewIfNeeded()
   await card.hover()
-  await card.evaluate((label) => label.addEventListener('pointerdown', () => {
-    const rect = label.getBoundingClientRect()
-    Reflect.set(window, 'expectedCardOrigin', { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
-  }, { once: true }))
+  await card.evaluate((label) =>
+    label.addEventListener(
+      'pointerdown',
+      () => {
+        const rect = label.getBoundingClientRect()
+        Reflect.set(window, 'expectedCardOrigin', { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
+      },
+      { once: true },
+    ),
+  )
   await card.click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await waitForThemeMotion(page)
   const events = await page.evaluate(() => (window as unknown as ThemeMotionWindow).themeEvents)
   if (native) {
     const reveal = events.find((event) => event.kind === 'reveal')!
-    const origin = await page.evaluate(() => Reflect.get(window, 'expectedCardOrigin')) as { x: number; y: number }
+    const origin = (await page.evaluate(() => Reflect.get(window, 'expectedCardOrigin'))) as { x: number; y: number }
     expect(reveal.x).toBeCloseTo(origin.x, 0)
     expect(reveal.y).toBeCloseTo(origin.y, 0)
   } else expect(events.map((event) => event.kind)).toContain('fade')
@@ -344,11 +401,12 @@ test('Theme: schnelle Klicks vor dem Update und während des Reveals enden konsi
   })
   await expect(page.locator('.theme-switch')).toHaveAttribute('data-mode', 'system')
   await waitForThemeMotion(page)
-  const stored = () => page.evaluate(async () => {
-    const path = '/src/lib/storage.ts'
-    const { StorageSession } = await import(path)
-    return new StorageSession().state.settings.theme
-  })
+  const stored = () =>
+    page.evaluate(async () => {
+      const path = '/src/lib/storage.ts'
+      const { StorageSession } = await import(path)
+      return new StorageSession().state.settings.theme
+    })
   await expect.poll(stored).toBe('system')
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
   await page.locator('.topbar').getByRole('radio', { name: 'Dunkel', exact: true }).click()
@@ -385,6 +443,8 @@ test('Theme: fehlgeschlagener Commit setzt DOM und Auswahl ohne Fade zurück', a
   })
   expect(state).toBe('light')
   // The optional fallback fade may occur on the initial request; rollback adds none.
-  const events = await page.evaluate(() => (window as unknown as ThemeMotionWindow).themeEvents.map((event) => event.kind))
+  const events = await page.evaluate(() =>
+    (window as unknown as ThemeMotionWindow).themeEvents.map((event) => event.kind),
+  )
   expect(events.filter((kind) => kind === 'fade').length).toBeLessThanOrEqual(1)
 })

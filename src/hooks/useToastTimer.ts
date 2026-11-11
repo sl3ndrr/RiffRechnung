@@ -26,15 +26,24 @@ export function useToastTimer(durationMs: number, onExpire: () => void, enabled 
   }, [onExpire])
 
   useEffect(() => {
-    if (!enabled) { stop(); active.current = false; return }
+    if (!enabled) {
+      stop()
+      active.current = false
+      return
+    }
     active.current = true
     start()
-    return () => { stop(); active.current = false }
+    return () => {
+      stop()
+      active.current = false
+    }
   }, [enabled, start, stop])
 
   const pause = (reason: 'hover' | 'focus', value: boolean) => {
-    if (value) { reasons.current.add(reason); stop() }
-    else reasons.current.delete(reason)
+    if (value) {
+      reasons.current.add(reason)
+      stop()
+    } else reasons.current.delete(reason)
     setPaused(reasons.current.size > 0)
     start()
   }

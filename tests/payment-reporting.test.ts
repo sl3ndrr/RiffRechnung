@@ -16,23 +16,56 @@ function readyState(invoiceDate = '2025-12-20'): AppState {
   const state = emptyState()
   state.settings = {
     ...state.settings,
-    issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', email: 'studio@example.de', phone: '' },
+    issuer: {
+      name: 'Synthetisches Studio',
+      street: 'Testweg 1',
+      postalCode: '12345',
+      city: 'Teststadt',
+      email: 'studio@example.de',
+      phone: '',
+    },
     accountHolder: 'Synthetisches Studio',
     iban: 'DE02120300000000202051',
   }
-  state.guardians = [{ id: 'guardian-a', name: 'Familie Beispiel', email: 'familie@example.de', phone: '', address: { street: 'Testweg 2', postalCode: '12345', city: 'Teststadt' },   createdAt: issuedAt, updatedAt: issuedAt }]
-  state.students = [{ id: 'student-a', name: 'Anna Beispiel', billingCode: 'a', guardianIds: ['guardian-a'],  active: true, createdAt: issuedAt, updatedAt: issuedAt }]
+  state.guardians = [
+    {
+      id: 'guardian-a',
+      name: 'Familie Beispiel',
+      email: 'familie@example.de',
+      phone: '',
+      address: { street: 'Testweg 2', postalCode: '12345', city: 'Teststadt' },
+      createdAt: issuedAt,
+      updatedAt: issuedAt,
+    },
+  ]
+  state.students = [
+    {
+      id: 'student-a',
+      name: 'Anna Beispiel',
+      billingCode: 'a',
+      guardianIds: ['guardian-a'],
+      active: true,
+      createdAt: issuedAt,
+      updatedAt: issuedAt,
+    },
+  ]
   state.nextStudentCodeIndex = 1
   const draft: InvoiceDraft = {
     invoiceDate,
     dueDate: '2026-01-03',
     period: 'Dezember 2025',
-    recipients: (['guardian-a']).map((id) => ({ type: 'guardian' as const, id })),
+    recipients: ['guardian-a'].map((id) => ({ type: 'guardian' as const, id })),
     studentIds: ['student-a'],
     recipientStrategy: 'joint',
-    items: [{ ...createLessonItem('student-a', invoiceDate, state.settings, 'item-payment-report'), quantity: 1, unitPrice: 30 }],
+    items: [
+      {
+        ...createLessonItem('student-a', invoiceDate, state.settings, 'item-payment-report'),
+        quantity: 1,
+        unitPrice: 30,
+      },
+    ],
     freeText: '',
-    }
+  }
   return saveInvoiceDraft(state, draft, true, issuedAt)
 }
 
@@ -46,13 +79,15 @@ test('P08: tatsächlicher Zahlungstag bleibt über den Jahreswechsel getrennt vo
   assert.equal(state.payments[0].paidAt, '2026-01-03')
   assert.equal(state.payments[0].recordedAt, '2026-01-04T08:15:00.000Z')
   assert.equal(state.payments[0].paymentDayStatus, 'confirmed')
-
 })
 
 test('P08: Nachpflege, Datumskorrektur und Statusrücknahme behalten den Geldfluss ohne Doppelzählung', () => {
   let state = readyState()
   const invoice = state.invoices[0]
-  assert.throws(() => changeInvoiceStatus(state, invoice.id, 'paid', '2026-01-04T08:15:00.000Z'), /tatsächlichen Zahlungstag/)
+  assert.throws(
+    () => changeInvoiceStatus(state, invoice.id, 'paid', '2026-01-04T08:15:00.000Z'),
+    /tatsächlichen Zahlungstag/,
+  )
   state = changeInvoiceStatus(state, invoice.id, 'paid', '2026-01-04T08:15:00.000Z', '2026-01-03')
   state = changeInvoiceStatus(state, invoice.id, 'paid', '2026-02-03T08:15:00.000Z', '2026-02-02')
   assert.equal(state.payments[0].paidAt, '2026-02-02')
@@ -113,7 +148,4 @@ test('P08: korrigierte Belege ersetzen die Forderung ohne Zahlungsnachweise zu v
   assert.equal(activeInvoices(state)[0].id, state.invoices.at(-1)!.id)
   assert.equal(state.payments[0].amountCents, 3000)
   assert.equal(state.payments.length, 1)
-
 })
-
-

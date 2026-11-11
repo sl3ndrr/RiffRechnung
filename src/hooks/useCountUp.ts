@@ -6,11 +6,19 @@ export function useCountUp(value: number, duration = 750) {
   const reduced = useReducedMotion()
   const [initialValue] = useState(value)
   const [displayed, setDisplayed] = useState(reduced ? value : 0)
-  const [animation] = useState(() => createCountUp(value, reduced, setDisplayed, {
-    now: () => performance.now(),
-    request: (callback) => requestAnimationFrame(callback),
-    cancel: (id) => cancelAnimationFrame(id),
-  }, duration))
+  const [animation] = useState(() =>
+    createCountUp(
+      value,
+      reduced,
+      setDisplayed,
+      {
+        now: () => performance.now(),
+        request: (callback) => requestAnimationFrame(callback),
+        cancel: (id) => cancelAnimationFrame(id),
+      },
+      duration,
+    ),
+  )
   useEffect(() => {
     animation.update(value, reduced)
     animation.start()

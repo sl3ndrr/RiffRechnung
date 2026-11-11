@@ -21,10 +21,21 @@ function invoice(overrides: Partial<Invoice> = {}): Invoice {
     dueDate: '2026-09-15',
     period: 'September 2026',
     status: 'sent',
-    recipients: ([]).map((id) => ({ type: 'guardian' as const, id })),
+    recipients: [].map((id) => ({ type: 'guardian' as const, id })),
     studentIds: [],
     recipientStrategy: 'joint',
-    items: [{ id: 'item-a', studentId: '', serviceDate: '2026-09-01', lessonType: 'solo', description: 'Synthetischer Unterricht', quantity: 1, unit: 'Std.', unitPrice: 42 }],
+    items: [
+      {
+        id: 'item-a',
+        studentId: '',
+        serviceDate: '2026-09-01',
+        lessonType: 'solo',
+        description: 'Synthetischer Unterricht',
+        quantity: 1,
+        unit: 'Std.',
+        unitPrice: 42,
+      },
+    ],
     freeText: '',
     createdAt: '2026-09-01T12:00:00.000Z',
     updatedAt: '2026-09-01T12:00:00.000Z',
@@ -53,7 +64,9 @@ test('P09: GiroCode-Fehler sind optional, fachliche Unvollständigkeit bleibt ge
 
 test('P09: abgelehnte QR-Erzeugung liefert einen prüfbaren Fehler statt eines alten Bildes', async () => {
   await assert.rejects(
-    generateGiroCode('synthetic payload', async () => { throw new Error('Encoder lehnt Payload ab') }),
+    generateGiroCode('synthetic payload', async () => {
+      throw new Error('Encoder lehnt Payload ab')
+    }),
     /GiroCode konnte nicht erzeugt werden: Encoder lehnt Payload ab/,
   )
 })
@@ -70,7 +83,11 @@ test('P09: verspätete Resultate dürfen nur den gleichen Druckauftrag freigeben
   const second: PrintRequest = {
     ...first,
     id: 'print-second',
-    invoice: invoice({ id: 'invoice-second', number: '2026-b-0001', items: [{ ...invoice().items[0], id: 'item-b', unitPrice: 81 }] }),
+    invoice: invoice({
+      id: 'invoice-second',
+      number: '2026-b-0001',
+      items: [{ ...invoice().items[0], id: 'item-b', unitPrice: 81 }],
+    }),
   }
 
   assert.equal(isCurrentPrintRequest(first, 'print-first', 'invoice-first'), true)
@@ -78,4 +95,3 @@ test('P09: verspätete Resultate dürfen nur den gleichen Druckauftrag freigeben
   assert.equal(isCurrentPrintRequest(second, 'print-second', 'invoice-first'), false)
   assert.equal(isCurrentPrintRequest(second, 'print-second', 'invoice-second'), true)
 })
-

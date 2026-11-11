@@ -19,15 +19,24 @@ export const LEGACY_GUARD_KEY = 'riffrechnung-state-v4-legacy-original'
 const LAST_BACKUP_AT_KEY = 'riffrechnung-v4-last-export-at'
 export const STATE_WRITE_LOCK = 'riffrechnung-write-v4'
 
-export interface StorageRecoveryState { status: 'recovery'; rawData: string; error: string; readOnly: boolean }
-export type StateLoadResult = { status: 'ready'; state: AppState; envelope: StorageEnvelope | null; rawData: string | null } | StorageRecoveryState
+export interface StorageRecoveryState {
+  status: 'recovery'
+  rawData: string
+  error: string
+  readOnly: boolean
+}
+export type StateLoadResult =
+  | { status: 'ready'; state: AppState; envelope: StorageEnvelope | null; rawData: string | null }
+  | StorageRecoveryState
 export type WriteLock = <T>(action: () => Promise<T>) => Promise<T>
 
 export function newerFormat(raw: string): boolean {
   try {
     const root = JSON.parse(raw)
     return root.storageVersion > 4 || root.schemaVersion > 15 || root.data?.schemaVersion > 15
-  } catch { return false }
+  } catch {
+    return false
+  }
 }
 
 export function loadState(storage: Storage = localStorage): StateLoadResult {
@@ -37,24 +46,49 @@ export function loadState(storage: Storage = localStorage): StateLoadResult {
     if (raw !== null) {
       const inspected = inspectImport(raw)
       if (!inspected.ok) throw new Error(inspected.errors.map((error) => error.message).join(' '))
-      if (inspected.value.report) throw new Error('Das ältere Datenformat benötigt einen kontrollierten Umstieg. Bitte Altformat und Reparatur prüfen und die Übernahme ausdrücklich bestätigen.')
-      if (!inspected.value.envelope) throw new Error('Der Speicherumschlag fehlt. Bitte Übernahme ausdrücklich bestätigen.')
+      if (inspected.value.report)
+        throw new Error(
+          'Das ältere Datenformat benötigt einen kontrollierten Umstieg. Bitte Altformat und Reparatur prüfen und die Übernahme ausdrücklich bestätigen.',
+        )
+      if (!inspected.value.envelope)
+        throw new Error('Der Speicherumschlag fehlt. Bitte Übernahme ausdrücklich bestätigen.')
       return { status: 'ready', state: inspected.value.state, envelope: inspected.value.envelope, rawData: raw }
     }
     raw = storage.getItem(LEGACY_STORAGE_KEY)
-    if (raw !== null) return { status: 'recovery', rawData: raw, readOnly: newerFormat(raw), error: 'Bisheriger Speicher gefunden. Alle alten Tabs schließen, Originaldaten exportieren und den kontrollierten Umstieg bestätigen. Der bisherige Bestand bleibt bis zur erfolgreichen Übernahme unverändert.' }
+    if (raw !== null)
+      return {
+        status: 'recovery',
+        rawData: raw,
+        readOnly: newerFormat(raw),
+        error:
+          'Bisheriger Speicher gefunden. Alle alten Tabs schließen, Originaldaten exportieren und den kontrollierten Umstieg bestätigen. Der bisherige Bestand bleibt bis zur erfolgreichen Übernahme unverändert.',
+      }
     return { status: 'ready', state: emptyState(), envelope: null, rawData: null }
   } catch (error) {
-    return { status: 'recovery', rawData: raw ?? '', readOnly: newerFormat(raw ?? ''), error: error instanceof Error ? error.message : 'Der lokale Speicher ist nicht verfügbar.' }
+    return {
+      status: 'recovery',
+      rawData: raw ?? '',
+      readOnly: newerFormat(raw ?? ''),
+      error: error instanceof Error ? error.message : 'Der lokale Speicher ist nicht verfügbar.',
+    }
   }
 }
 
 const browserLock: WriteLock = (action) => {
-  if (typeof navigator === 'undefined' || !navigator.locks) return Promise.reject(new Error('Sicheres Speichern benötigt Web Locks. Dieser Browser bleibt schreibgeschützt; JSON-Export ist möglich.'))
+  if (typeof navigator === 'undefined' || !navigator.locks)
+    return Promise.reject(
+      new Error(
+        'Sicheres Speichern benötigt Web Locks. Dieser Browser bleibt schreibgeschützt; JSON-Export ist möglich.',
+      ),
+    )
   return navigator.locks.request(STATE_WRITE_LOCK, action)
 }
 
-interface SessionOptions { mode?: 'real' | 'demo'; storage?: Storage; lock?: WriteLock }
+interface SessionOptions {
+  mode?: 'real' | 'demo'
+  storage?: Storage
+  lock?: WriteLock
+}
 
 // All application writes go through one queue and one origin-wide Web Lock.
 // Demo never accesses real Storage or the origin-wide write lock.
@@ -84,19 +118,30 @@ export class StorageSession {
       this.token = this.storage.getItem(STORAGE_KEY)
       this.legacy = this.storage.getItem(LEGACY_STORAGE_KEY)
     } catch (error) {
-      this.initial = { status: 'recovery', rawData: '', readOnly: false, error: error instanceof Error ? error.message : 'Lokaler Speicher nicht verfügbar.' }
+      this.initial = {
+        status: 'recovery',
+        rawData: '',
+        readOnly: false,
+        error: error instanceof Error ? error.message : 'Lokaler Speicher nicht verfügbar.',
+      }
     }
     this.current = this.initial.status === 'ready' ? this.initial.state : emptyState()
     this.envelope = this.initial.status === 'ready' ? this.initial.envelope : null
     this.recovery = this.initial.status === 'recovery' ? this.initial : null
   }
 
-  get state(): AppState { return structuredClone(this.current) }
-  get revision(): StorageEnvelope | null { return this.envelope ? structuredClone(this.envelope) : null }
-  async idle(): Promise<void> { await this.queue }
+  get state(): AppState {
+    return structuredClone(this.current)
+  }
+  get revision(): StorageEnvelope | null {
+    return this.envelope ? structuredClone(this.envelope) : null
+  }
+  async idle(): Promise<void> {
+    await this.queue
+  }
 
   private run<T>(action: () => Promise<T>): Promise<T> {
-    const task = this.queue.then(() => this.mode === 'demo' ? action() : this.lock(action))
+    const task = this.queue.then(() => (this.mode === 'demo' ? action() : this.lock(action)))
     this.queue = task.catch(() => undefined)
     return task
   }
@@ -104,37 +149,68 @@ export class StorageSession {
   checkCurrent = (): void => {
     if (this.mode === 'demo') return
     if (!this.storage) throw new Error('Lokaler Speicher nicht verfügbar.')
-    if (this.storage.getItem(STORAGE_KEY) !== this.token) throw new StorageConflict('Der Inhalt wurde in einem anderen Tab geändert. Bitte aktuellen Stand neu laden; dieser Tab überschreibt ihn nicht.')
+    if (this.storage.getItem(STORAGE_KEY) !== this.token)
+      throw new StorageConflict(
+        'Der Inhalt wurde in einem anderen Tab geändert. Bitte aktuellen Stand neu laden; dieser Tab überschreibt ihn nicht.',
+      )
     const guard = this.storage.getItem(LEGACY_GUARD_KEY)
     const actualLegacy = this.storage.getItem(LEGACY_STORAGE_KEY)
-    if (actualLegacy !== this.legacy || (guard !== null && guard !== JSON.stringify(actualLegacy))) throw new StorageConflict('Eine alte Anwendungsversion hat den bisherigen Speicher geändert. Alte Tabs schließen; beide Stände separat sichern und bewusst prüfen.')
+    if (actualLegacy !== this.legacy || (guard !== null && guard !== JSON.stringify(actualLegacy)))
+      throw new StorageConflict(
+        'Eine alte Anwendungsversion hat den bisherigen Speicher geändert. Alte Tabs schließen; beide Stände separat sichern und bewusst prüfen.',
+      )
   }
 
-  private async write(next: AppState, operation: StorageEnvelope['operation'], preview?: ImportPreview, localRecovery?: ImportPreview): Promise<AppState> {
+  private async write(
+    next: AppState,
+    operation: StorageEnvelope['operation'],
+    preview?: ImportPreview,
+    localRecovery?: ImportPreview,
+  ): Promise<AppState> {
     validateBackupState(next)
-    if (this.mode === 'demo') { this.current = structuredClone(next); return this.state }
+    if (this.mode === 'demo') {
+      this.current = structuredClone(next)
+      return this.state
+    }
     this.checkCurrent()
     if (!this.storage) throw new Error('Lokaler Speicher nicht verfügbar.')
-    if (this.recovery && !preview) throw new Error('Geschützte Rohdaten: bitte eine Wiederherstellung prüfen und bestätigen.')
-    if (this.recovery?.readOnly || newerFormat(this.token ?? this.legacy ?? '')) throw new Error('Unbekannte neuere Formate bleiben schreibgeschützt. Bitte eine passende Anwendungsversion verwenden.')
+    if (this.recovery && !preview)
+      throw new Error('Geschützte Rohdaten: bitte eine Wiederherstellung prüfen und bestätigen.')
+    if (this.recovery?.readOnly || newerFormat(this.token ?? this.legacy ?? ''))
+      throw new Error(
+        'Unbekannte neuere Formate bleiben schreibgeschützt. Bitte eine passende Anwendungsversion verwenden.',
+      )
     const previous = this.envelope ?? localRecovery?.envelope ?? null
     const source = preview?.envelope ?? null
     // An empty/recovery profile can adopt a known source identity. A populated
     // valid profile keeps its identity when restoring a foreign backup.
     const base = previous ?? source
     const maxRevision = Math.max(previous?.revision ?? 0, source?.revision ?? 0)
-    if (!Number.isSafeInteger(maxRevision + 1)) throw new Error('Revisionszähler ausgeschöpft. Der Bestand bleibt unverändert.')
+    if (!Number.isSafeInteger(maxRevision + 1))
+      throw new Error('Revisionszähler ausgeschöpft. Der Bestand bleibt unverändert.')
     const envelope: StorageEnvelope = {
-      app: 'riffrechnung', storageVersion: 4, schemaVersion: 15,
-      datasetId: base?.datasetId ?? crypto.randomUUID(), commitId: crypto.randomUUID(), revision: maxRevision + 1,
-      savedAt: new Date().toISOString(), operation,
+      app: 'riffrechnung',
+      storageVersion: 4,
+      schemaVersion: 15,
+      datasetId: base?.datasetId ?? crypto.randomUUID(),
+      commitId: crypto.randomUUID(),
+      revision: maxRevision + 1,
+      savedAt: new Date().toISOString(),
+      operation,
       ancestors: base ? [...base.ancestors, await reference(base)] : [],
-      source: preview ? { datasetId: source?.datasetId ?? null, revision: source?.revision ?? null, fingerprint: await fingerprint(preview.rawData) } : null,
+      source: preview
+        ? {
+            datasetId: source?.datasetId ?? null,
+            revision: source?.revision ?? null,
+            fingerprint: await fingerprint(preview.rawData),
+          }
+        : null,
       data: structuredClone(next),
     }
     // An explicitly restored newer branch of the SAME dataset becomes the base;
     // divergent existing branches remain conflicts, not an invented common history.
-    if (previous && source && await descendsFrom(source, previous)) envelope.ancestors = [...source.ancestors, await reference(source)]
+    if (previous && source && (await descendsFrom(source, previous)))
+      envelope.ancestors = [...source.ancestors, await reference(source)]
     const raw = JSON.stringify(envelope)
     this.checkCurrent()
     const updates = new Map<string, string | null>()
@@ -142,19 +218,48 @@ export class StorageSession {
       // Preflight every internal copy before the first mutation. External files are untouched.
       for (let index = 0; index < this.storage.length; index++) {
         const key = this.storage.key(index)
-        if (key && (key === PREVIOUS_STORAGE_KEY || key === LEGACY_STORAGE_KEY || key.startsWith(`${STORAGE_KEY}-recovery-`))) {
+        if (
+          key &&
+          (key === PREVIOUS_STORAGE_KEY || key === LEGACY_STORAGE_KEY || key.startsWith(`${STORAGE_KEY}-recovery-`))
+        ) {
           const copy = this.storage.getItem(key)
           if (copy !== null) updates.set(key, cleanRecoveryFields(copy))
         }
       }
     }
-    const cleanCopy = (copy: string | null): string | null => copy === null ? null : preview ? cleanRecoveryFields(copy) : copy
+    const cleanCopy = (copy: string | null): string | null =>
+      copy === null ? null : preview ? cleanRecoveryFields(copy) : copy
     if (preview) {
-      const archive = { version: 1, at: envelope.savedAt, previousRaw: cleanCopy(this.token), legacyRaw: cleanCopy(this.legacy), sourceRaw: cleanCopy(preview.rawData), report: preview.report, storageMigration: { algorithm: 'riffrechnung-storage-v4', version: 1, fromStorageVersion: preview.envelope?.storageVersion ?? null, toStorageVersion: 4, datasetId: envelope.datasetId, identity: base ? 'existing-identity' : 'explicit-new-assignment', revision: envelope.revision }, reservations: { before: preview.state.counters, after: next.counters, voidedNumbersBefore: preview.state.voidedInvoiceNumbers, voidedNumbersAfter: next.voidedInvoiceNumbers } }
+      const archive = {
+        version: 1,
+        at: envelope.savedAt,
+        previousRaw: cleanCopy(this.token),
+        legacyRaw: cleanCopy(this.legacy),
+        sourceRaw: cleanCopy(preview.rawData),
+        report: preview.report,
+        storageMigration: {
+          algorithm: 'riffrechnung-storage-v4',
+          version: 1,
+          fromStorageVersion: preview.envelope?.storageVersion ?? null,
+          toStorageVersion: 4,
+          datasetId: envelope.datasetId,
+          identity: base ? 'existing-identity' : 'explicit-new-assignment',
+          revision: envelope.revision,
+        },
+        reservations: {
+          before: preview.state.counters,
+          after: next.counters,
+          voidedNumbersBefore: preview.state.voidedInvoiceNumbers,
+          voidedNumbersAfter: next.voidedInvoiceNumbers,
+        },
+      }
       // A valid previous copy may be the recovery basis behind a damaged main
       // copy. Preserve its non-tax input too, using the existing archive format.
       if (localRecovery && ![this.token, this.legacy, preview.rawData].includes(localRecovery.rawData)) {
-        updates.set(`${STORAGE_KEY}-recovery-${envelope.commitId}-fallback`, JSON.stringify({ ...archive, previousRaw: cleanCopy(localRecovery.rawData), report: localRecovery.report }))
+        updates.set(
+          `${STORAGE_KEY}-recovery-${envelope.commitId}-fallback`,
+          JSON.stringify({ ...archive, previousRaw: cleanCopy(localRecovery.rawData), report: localRecovery.report }),
+        )
       }
       updates.set(`${STORAGE_KEY}-recovery-${envelope.commitId}`, JSON.stringify(archive))
     }
@@ -163,7 +268,8 @@ export class StorageSession {
     const previousRaw = localRecovery?.rawData ?? this.token
     if (previous && previousRaw !== null) updates.set(PREVIOUS_STORAGE_KEY, cleanCopy(previousRaw))
     const nextLegacy = updates.get(LEGACY_STORAGE_KEY) ?? this.legacy
-    if (preview || this.storage.getItem(LEGACY_GUARD_KEY) === null) updates.set(LEGACY_GUARD_KEY, JSON.stringify(nextLegacy))
+    if (preview || this.storage.getItem(LEGACY_GUARD_KEY) === null)
+      updates.set(LEGACY_GUARD_KEY, JSON.stringify(nextLegacy))
     updates.set(STORAGE_KEY, raw)
     writeStorageBatch(this.storage, updates)
     this.legacy = nextLegacy
@@ -194,7 +300,14 @@ export class StorageSession {
       validateBackupState(next)
       if (this.mode === 'real') {
         if (!this.storage) throw new Error('Lokaler Speicher nicht verfügbar.')
-        const keys = new Set([STORAGE_KEY, LEGACY_STORAGE_KEY, PREVIOUS_STORAGE_KEY, LEGACY_GUARD_KEY, LAST_BACKUP_AT_KEY, 'riffrechnung-theme-hint'])
+        const keys = new Set([
+          STORAGE_KEY,
+          LEGACY_STORAGE_KEY,
+          PREVIOUS_STORAGE_KEY,
+          LEGACY_GUARD_KEY,
+          LAST_BACKUP_AT_KEY,
+          'riffrechnung-theme-hint',
+        ])
         for (let index = 0; index < this.storage.length; index++) {
           const key = this.storage.key(index)
           if (key?.startsWith(`${STORAGE_KEY}-recovery-`)) keys.add(key)
@@ -224,19 +337,30 @@ export class StorageSession {
         for (const localRaw of [this.token, this.previousRaw(), this.legacy]) {
           if (localRaw === null) continue
           const inspectedLocal = inspectImport(localRaw)
-          if (inspectedLocal.ok) { localRecovery = inspectedLocal.value; break }
+          if (inspectedLocal.ok) {
+            localRecovery = inspectedLocal.value
+            break
+          }
         }
       }
       const current = localRecovery?.state ?? this.current
       for (const student of current.students) {
         const incoming = preview.state.students.find((entry) => entry.id === student.id)
-        if (incoming && incoming.billingCode !== student.billingCode) throw new Error('Wiederherstellung würde eine bestehende Personenkennung ändern. Beide Stände separat prüfen; Kennungen bleiben geschützt.')
+        if (incoming && incoming.billingCode !== student.billingCode)
+          throw new Error(
+            'Wiederherstellung würde eine bestehende Personenkennung ändern. Beide Stände separat prüfen; Kennungen bleiben geschützt.',
+          )
       }
       assertOriginalsPreserved(current, preview.state)
       const next = structuredClone(preview.state)
       // Reserve known counters/numbers even when an older backup is restored.
-      for (const [key, count] of Object.entries(current.counters)) next.counters[key] = Math.max(count, next.counters[key] ?? 0)
-      next.voidedInvoiceNumbers = [...new Map([...next.voidedInvoiceNumbers, ...current.voidedInvoiceNumbers].map((entry) => [entry.number, entry])).values()]
+      for (const [key, count] of Object.entries(current.counters))
+        next.counters[key] = Math.max(count, next.counters[key] ?? 0)
+      next.voidedInvoiceNumbers = [
+        ...new Map(
+          [...next.voidedInvoiceNumbers, ...current.voidedInvoiceNumbers].map((entry) => [entry.number, entry]),
+        ).values(),
+      ]
       next.nextStudentCodeIndex = Math.max(next.nextStudentCodeIndex, current.nextStudentCodeIndex)
       return this.write(next, this.token === null && this.legacy !== null ? 'adopt' : 'restore', preview, localRecovery)
     })
@@ -255,7 +379,9 @@ export class StorageSession {
       const key = this.storage.key(index)
       if (key?.startsWith(`${STORAGE_KEY}-recovery-`)) recoveries.push({ key, raw: this.storage.getItem(key) })
     }
-    return cleanRecoveryInvoiceTexts(JSON.stringify({ version: 1, previousRaw: this.previousRaw(), recoveries }, null, 2))
+    return cleanRecoveryInvoiceTexts(
+      JSON.stringify({ version: 1, previousRaw: this.previousRaw(), recoveries }, null, 2),
+    )
   }
 
   export(): string {
@@ -266,16 +392,23 @@ export class StorageSession {
 export function serializeBackup(state: AppState): string {
   validateBackupState(state)
   // A detached export is deliberately unidentified: it cannot prove lineage.
-  return JSON.stringify({ app: 'riffrechnung', exportedAt: new Date().toISOString(), schemaVersion: state.schemaVersion, data: state }, null, 2)
+  return JSON.stringify(
+    { app: 'riffrechnung', exportedAt: new Date().toISOString(), schemaVersion: state.schemaVersion, data: state },
+    null,
+    2,
+  )
 }
 
 export function loadLastBackupAt(): string | null {
-  try { const value = localStorage.getItem(LAST_BACKUP_AT_KEY); return value && !Number.isNaN(Date.parse(value)) ? value : null } catch { return null }
+  try {
+    const value = localStorage.getItem(LAST_BACKUP_AT_KEY)
+    return value && !Number.isNaN(Date.parse(value)) ? value : null
+  } catch {
+    return null
+  }
 }
 export function recordBackupExport(at = new Date()): string {
   const value = at.toISOString()
   localStorage.setItem(LAST_BACKUP_AT_KEY, value)
   return value
 }
-
-

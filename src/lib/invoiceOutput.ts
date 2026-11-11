@@ -25,7 +25,12 @@ export function billingPeriodFromItems(items: Array<Pick<InvoiceItem, 'serviceDa
 }
 
 export function effectiveStatus(invoice: Invoice, reference = new Date()): InvoiceStatus {
-  if (invoice.status === 'sent' && invoice.claimState !== 'replaced' && invoice.openAmountCents !== 0 && invoice.dueDate) {
+  if (
+    invoice.status === 'sent' &&
+    invoice.claimState !== 'replaced' &&
+    invoice.openAmountCents !== 0 &&
+    invoice.dueDate
+  ) {
     const dueDate = parseDate(invoice.dueDate)
     if (!Number.isNaN(dueDate.getTime()) && localToday(dueDate) < localToday(reference)) return 'overdue'
   }
@@ -40,7 +45,11 @@ export const statusLabel: Record<InvoiceStatus, string> = {
 }
 
 export function guardianName(invoice: Invoice, guardians: Guardian[], students: Student[] = []): string {
-  const snapshot = invoice.snapshot && snapshotRecipients(invoice.snapshot).map((item) => item.name).filter(Boolean)
+  const snapshot =
+    invoice.snapshot &&
+    snapshotRecipients(invoice.snapshot)
+      .map((item) => item.name)
+      .filter(Boolean)
   if (snapshot) return snapshot.join(' & ') || 'Ohne Empfänger'
   const names = recipientRefs(invoice)
     .map((ref) => liveRecipient(ref, guardians, students)?.name)
@@ -52,19 +61,21 @@ export function studentName(invoice: Invoice, students: Student[]): string {
   const snapshot = (invoice.snapshot ?? invoice.draftPrintSnapshot)?.students.map((item) => item.name).filter(Boolean)
   if (snapshot) return snapshot.join(', ') || 'Ohne Lernende'
   if (invoice.status === 'draft') return 'Ohne Lernende'
-  const names = invoice.studentIds
-    .map((id) => students.find((student) => student.id === id)?.name)
-    .filter(Boolean)
+  const names = invoice.studentIds.map((id) => students.find((student) => student.id === id)?.name).filter(Boolean)
   return names.join(', ') || 'Ohne Lernende'
 }
 
 export function sortInvoices(invoices: Invoice[]): Invoice[] {
-  return [...invoices].sort((a, b) => b.invoiceDate.localeCompare(a.invoiceDate)
-    || b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id))
+  return [...invoices].sort(
+    (a, b) =>
+      b.invoiceDate.localeCompare(a.invoiceDate) || b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id),
+  )
 }
 
 function filenamePart(value: string, fallback: string): string {
-  const normalized = Array.from(value.normalize('NFKC'), (character) => character.charCodeAt(0) < 32 ? '-' : character).join('')
+  const normalized = Array.from(value.normalize('NFKC'), (character) =>
+    character.charCodeAt(0) < 32 ? '-' : character,
+  ).join('')
   const sanitized = normalized
     .replace(/[<>:"/\\|?*]/g, '-')
     .replace(/-+/g, '-')
@@ -84,9 +95,10 @@ function cssContentString(value: string): string {
   let escaped = ''
   for (const character of value) {
     const codePoint = character.codePointAt(0) ?? 0
-    escaped += character === '\\' || character === '"' || character === '<' || codePoint < 32 || codePoint === 127
-      ? `\\${codePoint.toString(16)} `
-      : character
+    escaped +=
+      character === '\\' || character === '"' || character === '<' || codePoint < 32 || codePoint === 127
+        ? `\\${codePoint.toString(16)} `
+        : character
   }
   return `"${escaped}"`
 }
@@ -146,7 +158,6 @@ export function outputItemTotal(invoice: Invoice, item: InvoiceItem): number {
   return outputItemCents(invoice, item) / 100
 }
 
-
 export function outputItemCents(invoice: Invoice, item: InvoiceItem): number {
   const index = invoice.items.findIndex((entry) => entry.id === item.id)
   return invoice.issuedAmounts && index >= 0 ? invoice.issuedAmounts.itemCents[index] : itemTotalCents(item)
@@ -165,20 +176,27 @@ export function invoicePrintGroups(invoice: Invoice): InvoicePrintGroup[] | null
   const months = new Map<string, InvoiceItem[]>()
   for (const item of invoice.items) {
     let key = ''
-    try { calendarParts(item.serviceDate); key = item.serviceDate.slice(0, 7) } catch { /* Undated positions follow all months. */ }
+    try {
+      calendarParts(item.serviceDate)
+      key = item.serviceDate.slice(0, 7)
+    } catch {
+      /* Undated positions follow all months. */
+    }
     const items = months.get(key) ?? []
     items.push(item)
     months.set(key, items)
   }
   try {
     const groups = [...months.entries()]
-      .sort(([a], [b]) => a === '' ? 1 : b === '' ? -1 : a.localeCompare(b))
+      .sort(([a], [b]) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)))
       .map(([key, items]) => {
         const date = key ? parseDate(`${key}-01`) : null
         const month = date ? new Intl.DateTimeFormat('de-DE', { month: 'long' }).format(date) : ''
         return {
           key,
-          title: date ? new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' }).format(date) : 'Ohne gültiges Leistungsdatum',
+          title: date
+            ? new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' }).format(date)
+            : 'Ohne gültiges Leistungsdatum',
           subtotalLabel: month ? `Zwischensumme ${month}:` : 'Zwischensumme ohne Leistungsdatum:',
           items,
           totalCents: sumCents(items.map((item) => outputItemCents(invoice, item))),
@@ -192,7 +210,12 @@ export function invoicePrintGroups(invoice: Invoice): InvoicePrintGroup[] | null
 }
 
 export function invoiceServiceDate(value: string): string {
-  try { calendarParts(value); return `${value.slice(8, 10)}.${value.slice(5, 7)}.` } catch { return value }
+  try {
+    calendarParts(value)
+    return `${value.slice(8, 10)}.${value.slice(5, 7)}.`
+  } catch {
+    return value
+  }
 }
 
 export function outputUnitPrice(invoice: Invoice, item: InvoiceItem): string {
@@ -201,5 +224,3 @@ export function outputUnitPrice(invoice: Invoice, item: InvoiceItem): string {
   const [whole, fraction = ''] = decimalInputText(item.unitPrice).split('.')
   return `${new Intl.NumberFormat('de-DE').format(BigInt(whole))},${fraction.padEnd(2, '0')}\u00a0€`
 }
-
-

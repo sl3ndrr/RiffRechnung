@@ -4,7 +4,18 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { InvoicePrint } from '../src/components/InvoicePrint'
 import { HistoricalSnapshotEvidence } from '../src/components/DocumentHistory'
-import { activeInvoices, allocatedCents, allocatePayment, archiveInvoice, createCorrectionDraft, openCents, reassignCorrectionStudent, resolveDocumentConflicts, selectInvoice, snapshotDifferences } from '../src/lib/documents'
+import {
+  activeInvoices,
+  allocatedCents,
+  allocatePayment,
+  archiveInvoice,
+  createCorrectionDraft,
+  openCents,
+  reassignCorrectionStudent,
+  resolveDocumentConflicts,
+  selectInvoice,
+  snapshotDifferences,
+} from '../src/lib/documents'
 import { deleteGuardianState, deleteStudentState, recordActivity } from '../src/lib/commands'
 import { changeInvoiceStatus, saveInvoiceDraft } from '../src/lib/invoiceActions'
 import { inspectImport, parseBackup, serializeMigrationReport } from '../src/lib/importState'
@@ -21,9 +32,18 @@ import { documentAt as at, documentDraft, documentFamily, editable, legacyFixtur
 import { memoryStorage, sharedLock } from './storageHarness'
 import type { AppState, Invoice } from '../src/types'
 
-function issued(): AppState { return saveInvoiceDraft(documentFamily(), documentDraft(), true, at) }
+function issued(): AppState {
+  return saveInvoiceDraft(documentFamily(), documentDraft(), true, at)
+}
 function printContent(state: AppState, invoice: Invoice): string {
-  return renderToStaticMarkup(createElement(InvoicePrint, { invoice: selectInvoice(state, invoice), settings: state.settings, guardians: state.guardians, students: state.students }))
+  return renderToStaticMarkup(
+    createElement(InvoicePrint, {
+      invoice: selectInvoice(state, invoice),
+      settings: state.settings,
+      guardians: state.guardians,
+      students: state.students,
+    }),
+  )
 }
 async function persistReload(state: AppState): Promise<AppState> {
   const storage = memoryStorage()
@@ -52,7 +72,13 @@ test('P04: finalisieren, Stammdaten löschen, Original ausgeben, Korrektur speic
   assert.equal(state.invoices.at(-1)!.items.length, original.items.length)
   assert.throws(() => changeInvoiceStatus(state, correctionId, 'sent', at), /Stammdaten|zugeordnet/)
   let draft = reassignCorrectionStudent(editable(state.invoices.at(-1)!), 's-a', 's-b')
-  draft = { ...draft, recipients: (['g-b']).map((id) => ({ type: 'guardian' as const, id })), freeText: 'Korrigierter Hinweis', invoiceDate: '2026-09-02', items: draft.items.map((item) => ({ ...item, serviceDate: '2026-09-01', unitPrice: 20 })) }
+  draft = {
+    ...draft,
+    recipients: ['g-b'].map((id) => ({ type: 'guardian' as const, id })),
+    freeText: 'Korrigierter Hinweis',
+    invoiceDate: '2026-09-02',
+    items: draft.items.map((item) => ({ ...item, serviceDate: '2026-09-01', unitPrice: 20 })),
+  }
   state = saveInvoiceDraft(state, draft, true, at)
   state = await persistReload(state)
   assert.equal(canonical(state.documentVersions[0]), bytes)
@@ -65,14 +91,29 @@ test('P04: finalisieren, Stammdaten löschen, Original ausgeben, Korrektur speic
   assertOriginalsPreserved(issuedFromOriginal(state), state)
 })
 function issuedFromOriginal(state: AppState): AppState {
-  return { ...state, invoices: [state.invoices[0]], documentVersions: [state.documentVersions[0]], invoiceAdministration: [state.invoiceAdministration[0]], payments: [] }
+  return {
+    ...state,
+    invoices: [state.invoices[0]],
+    documentVersions: [state.documentVersions[0]],
+    invoiceAdministration: [state.invoiceAdministration[0]],
+    payments: [],
+  }
 }
 
 test('P04: Betrag, Datum, Texte und Empfaenger dürfen keine ausgestellte Version überschreiben', () => {
-  const state = issued(); const original = state.invoices[0]
-  for (const field of [{ freeText: 'geändert' }, { invoiceDate: '2026-10-01' }, { recipients: (['g-b']).map((id) => ({ type: 'guardian' as const, id })) }, { items: [{ ...original.items[0], unitPrice: 99 }] }]) {
+  const state = issued()
+  const original = state.invoices[0]
+  for (const field of [
+    { freeText: 'geändert' },
+    { invoiceDate: '2026-10-01' },
+    { recipients: ['g-b'].map((id) => ({ type: 'guardian' as const, id })) },
+    { items: [{ ...original.items[0], unitPrice: 99 }] },
+  ]) {
     assert.throws(() => saveInvoiceDraft(state, { ...editable(original), ...field }, false, at), /Finalisierte/)
-    assert.throws(() => assertOriginalsPreserved(state, { ...state, invoices: [{ ...original, ...field }] }), /Finalisierte/)
+    assert.throws(
+      () => assertOriginalsPreserved(state, { ...state, invoices: [{ ...original, ...field }] }),
+      /Finalisierte/,
+    )
   }
   const altered = structuredClone(state)
   altered.documentVersions[0].amounts.totalCents++
@@ -83,20 +124,34 @@ test('P04: Betrag, Datum, Texte und Empfaenger dürfen keine ausgestellte Versio
 test('P04: Empfaenger A/B und leere historische Kontofelder sind für alle Ausgaben identisch', async () => {
   const raw = legacyFixture(issued())
   raw.invoices[0].guardianIds = ['g-b']
-  Object.assign(raw.invoices[0].snapshot!, { accountHolder: 'HISTORISCHES KONTO', iban: 'DE02120300000000202051', bic: '', bankName: '' })
-  raw.settings.bic = 'MARKDEF1100'; raw.settings.accountHolder = 'HEUTIGES KONTO'
+  Object.assign(raw.invoices[0].snapshot!, {
+    accountHolder: 'HISTORISCHES KONTO',
+    iban: 'DE02120300000000202051',
+    bic: '',
+    bankName: '',
+  })
+  raw.settings.bic = 'MARKDEF1100'
+  raw.settings.accountHolder = 'HEUTIGES KONTO'
   let state = requireSuccess(inspectImport(JSON.stringify(raw))).state
   const version = state.documentVersions[0]
   assert.ok(version.conflicts.some((conflict) => conflict.path === 'recipients'))
   const invoice = selectInvoice(state, state.invoices[0])
   assert.equal(guardianName(invoice, state.guardians), 'Empfaenger A')
   const markup = printContent(state, state.invoices[0])
-  assert.match(markup, /Empfaenger A/); assert.doesNotMatch(markup, /HEUTIGES KONTO|MARKDEF1100/)
+  assert.match(markup, /Empfaenger A/)
+  assert.doesNotMatch(markup, /HEUTIGES KONTO|MARKDEF1100/)
   const epc = buildEpcPayload(invoice, state.settings, invoiceTotal(invoice)).split('\n')
-  assert.equal(epc[4], ''); assert.equal(epc[5], 'HISTORISCHES KONTO'); assert.equal(epc[6], 'DE02120300000000202051')
+  assert.equal(epc[4], '')
+  assert.equal(epc[5], 'HISTORISCHES KONTO')
+  assert.equal(epc[6], 'DE02120300000000202051')
   state = createCorrectionDraft(state, invoice.id, 'Empfaenger B bestätigen', at)
   assert.throws(() => changeInvoiceStatus(state, state.invoices.at(-1)!.id, 'sent', at), /Abweichungen/)
-  state = resolveDocumentConflicts(state, version.id, 'Snapshot zeigt A. Neue Rechnung ausdrücklich an B; keine Änderung des alten Snapshots.', at)
+  state = resolveDocumentConflicts(
+    state,
+    version.id,
+    'Snapshot zeigt A. Neue Rechnung ausdrücklich an B; keine Änderung des alten Snapshots.',
+    at,
+  )
   state = saveInvoiceDraft(state, editable(state.invoices.at(-1)!), true, at)
   state = await persistReload(state)
   const corrected = selectInvoice(state, state.invoices.at(-1)!)
@@ -108,11 +163,26 @@ test('P04: Empfaenger A/B und leere historische Kontofelder sind für alle Ausga
 test('P04: alte Ausgabebeträge und vorrangige Registerwerte werden ohne Rechenumstellung gesichert', async () => {
   const legacy = legacyFixture(issued())
   const invoice = legacy.invoices[0]
-  legacy.voidedInvoiceNumbers = [{ number: invoice.number!, sequence: invoice.sequence, year: invoice.year, invoiceDate: invoice.invoiceDate, deletedAt: at, amount: 9, recipient: 'Anderer Registerempfaenger', reason: 'reopened' }]
+  legacy.voidedInvoiceNumbers = [
+    {
+      number: invoice.number!,
+      sequence: invoice.sequence,
+      year: invoice.year,
+      invoiceDate: invoice.invoiceDate,
+      deletedAt: at,
+      amount: 9,
+      recipient: 'Anderer Registerempfaenger',
+      reason: 'reopened',
+    },
+  ]
   const raw = '\uFEFF ' + JSON.stringify(legacy) + '\r\n'
   const preview = requireSuccess(inspectImport(raw))
   assert.equal(preview.state.documentVersions[0].amounts.totalCents, 900)
-  assert.equal(preview.state.documentVersions[0].amounts.legacyCalculatedTotalCents, 757, 'bisheriger Halbcentfehler wird gesichert, erst Paket 05 ändert neue Berechnung')
+  assert.equal(
+    preview.state.documentVersions[0].amounts.legacyCalculatedTotalCents,
+    757,
+    'bisheriger Halbcentfehler wird gesichert, erst Paket 05 ändert neue Berechnung',
+  )
   assert.equal(outputItemTotal(selectInvoice(preview.state, preview.state.invoices[0]), invoice.items[0]), 7.57)
   assert.equal(invoiceTotal(selectInvoice(preview.state, preview.state.invoices[0])), 9)
   assert.ok(preview.state.documentVersions[0].conflicts.some((conflict) => conflict.path === 'amounts'))
@@ -124,18 +194,34 @@ test('P04: alte Ausgabebeträge und vorrangige Registerwerte werden ohne Rechenu
 
 test('P04: kontrollierte Migration eines Protokoll-4/Schema-3-Bestands bewahrt Rohtext und Revision', async () => {
   const storage = memoryStorage()
-  const old = { app: 'riffrechnung', storageVersion: 4, schemaVersion: 3, datasetId: 'synthetic-dataset', commitId: 'old-commit', revision: 7, savedAt: at, operation: 'edit', ancestors: [], source: null, data: legacyFixture(issued()) }
+  const old = {
+    app: 'riffrechnung',
+    storageVersion: 4,
+    schemaVersion: 3,
+    datasetId: 'synthetic-dataset',
+    commitId: 'old-commit',
+    revision: 7,
+    savedAt: at,
+    operation: 'edit',
+    ancestors: [],
+    source: null,
+    data: legacyFixture(issued()),
+  }
   const raw = JSON.stringify(old, null, 2)
   storage.setItem(STORAGE_KEY, raw)
   assert.equal(loadState(storage).status, 'recovery')
   assert.equal(storage.getItem(STORAGE_KEY), raw)
   const session = new StorageSession({ storage, lock: sharedLock() })
-  await assert.rejects(session.change((state) => state), /Rohdaten/)
+  await assert.rejects(
+    session.change((state) => state),
+    /Rohdaten/,
+  )
   await session.restore(raw)
   assert.equal(session.revision!.revision, 8)
   assert.equal(session.revision!.datasetId, old.datasetId)
   const archive = JSON.parse(JSON.parse(session.exportRecoveryArchive()).recoveries[0].raw)
-  assert.equal(archive.previousRaw, raw); assert.equal(archive.sourceRaw, raw)
+  assert.equal(archive.previousRaw, raw)
+  assert.equal(archive.sourceRaw, raw)
   assert.equal(archive.report.toSchema, 15)
   assert.equal(new StorageSession({ storage, lock: sharedLock() }).initial.status, 'ready')
   const future = JSON.stringify({ ...old, schemaVersion: 16, data: { ...old.data, schemaVersion: 16 } })
@@ -151,10 +237,22 @@ test('P04: mehr als 200 Aktivitäten, Archivierung und Export–Import erhalten 
   state = saveInvoiceDraft(state, { ...editable(state.invoices.at(-1)!), freeText: '=Hinweis Test' }, true, at)
   const savedVersions = canonical(state.documentVersions)
   const savedCounters = canonical(state.counters)
-  const storage = memoryStorage(); const session = new StorageSession({ storage, lock: sharedLock() })
+  const storage = memoryStorage()
+  const session = new StorageSession({ storage, lock: sharedLock() })
   await session.restore(serializeBackup(state))
-  for (let i = 0; i < 205; i++) await session.change((current) => recordActivity(changeInvoiceStatus(current, original.id, 'sent', at), { id: `action-${i}`, at, label: `Verwaltung ${i}`, entityType: 'invoice', entityId: original.id }))
-  state = await session.change((current) => archiveInvoice(archiveInvoice(current, original.id), current.invoices[1].id))
+  for (let i = 0; i < 205; i++)
+    await session.change((current) =>
+      recordActivity(changeInvoiceStatus(current, original.id, 'sent', at), {
+        id: `action-${i}`,
+        at,
+        label: `Verwaltung ${i}`,
+        entityType: 'invoice',
+        entityId: original.id,
+      }),
+    )
+  state = await session.change((current) =>
+    archiveInvoice(archiveInvoice(current, original.id), current.invoices[1].id),
+  )
   assert.equal(state.audit.length, 200)
   assert.equal(canonical(state.documentVersions), savedVersions)
   assert.equal(canonical(state.counters), savedCounters)
@@ -168,11 +266,12 @@ test('P04: mehr als 200 Aktivitäten, Archivierung und Export–Import erhalten 
 })
 
 test('P04: bezahlte Korrekturen zählen genau einmal; Zahlungen werden nur manuell zugeordnet', async () => {
-  let state = issued(); const first = state.invoices[0]
+  let state = issued()
+  const first = state.invoices[0]
   state = changeInvoiceStatus(state, first.id, 'paid', at, '2026-09-05')
   const originalPayment = structuredClone(state.payments[0])
   state = createCorrectionDraft(state, first.id, 'Textkorrektur nach Zahlung', at)
-  state = saveInvoiceDraft(state, { ...editable(state.invoices.at(-1)!), }, true, at)
+  state = saveInvoiceDraft(state, { ...editable(state.invoices.at(-1)!) }, true, at)
   const replacement = state.invoices.at(-1)!
   assert.equal(state.payments.length, 1)
   assert.deepEqual(state.payments[0], originalPayment)
@@ -182,8 +281,17 @@ test('P04: bezahlte Korrekturen zählen genau einmal; Zahlungen werden nur manue
   assert.throws(() => changeInvoiceStatus(state, replacement.id, 'paid', at, '2026-09-05'), /zuordnen/)
   const before = state
   const another = createCorrectionDraft(state, replacement.id, 'Weitere Korrektur', at)
-  assert.throws(() => changeInvoiceStatus(another, another.invoices.at(-1)!.id, 'paid', at, '2026-09-05'), /manuell zugeordnet/)
-  state = allocatePayment(state, originalPayment.id, replacement.versionId!, 'Zahlung gehört zur ersetzenden Rechnung', at)
+  assert.throws(
+    () => changeInvoiceStatus(another, another.invoices.at(-1)!.id, 'paid', at, '2026-09-05'),
+    /manuell zugeordnet/,
+  )
+  state = allocatePayment(
+    state,
+    originalPayment.id,
+    replacement.versionId!,
+    'Zahlung gehört zur ersetzenden Rechnung',
+    at,
+  )
   assertOriginalsPreserved(before, state)
   assert.equal(allocatedCents(state, first.versionId!), 0)
   assert.equal(openCents(state, replacement), 0)
@@ -200,40 +308,81 @@ test('P04: bezahlte Korrekturen zählen genau einmal; Zahlungen werden nur manue
 
 test('P04: Betragsdifferenz bleibt als Restforderung oder Überzahlung sichtbar, ohne Zahlungen zu kopieren', async () => {
   for (const price of [5, 20]) {
-    let state = issued(); const first = state.invoices[0]
+    let state = issued()
+    const first = state.invoices[0]
     state = changeInvoiceStatus(state, first.id, 'paid', at, '2026-09-05')
     state = createCorrectionDraft(state, first.id, 'Betrag berichtigen', at)
-    const draft = editable(state.invoices.at(-1)!); draft.items[0].unitPrice = price
+    const draft = editable(state.invoices.at(-1)!)
+    draft.items[0].unitPrice = price
     state = saveInvoiceDraft(state, draft, true, at)
     const last = state.invoices.at(-1)!
-    state = allocatePayment(state, state.payments[0].id, last.versionId!, 'Alte Vollzahlung auf Korrektur anrechnen; Differenz separat klären', at)
+    state = allocatePayment(
+      state,
+      state.payments[0].id,
+      last.versionId!,
+      'Alte Vollzahlung auf Korrektur anrechnen; Differenz separat klären',
+      at,
+    )
     assert.equal(state.payments.length, 1)
     assert.equal(openCents(state, last), price === 20 ? 742 : 0)
-    assert.equal(state.documentVersions.at(-1)!.amounts.totalCents - allocatedCents(state, last.versionId!), price === 20 ? 742 : -383)
+    assert.equal(
+      state.documentVersions.at(-1)!.amounts.totalCents - allocatedCents(state, last.versionId!),
+      price === 20 ? 742 : -383,
+    )
     await persistReload(state)
   }
 })
 
 test('P04: dauerhafte Snapshot-Differenzen überleben das Abschneiden der Aktivitätsliste', async () => {
-  const legacy = legacyFixture(issued()); const snapshot = legacy.invoices[0].snapshot!
-  legacy.audit = [{ id: 'old-snapshot-change', at, label: 'Empfaengerkorrektur', entityType: 'invoice', entityId: legacy.invoices[0].id, snapshotCorrection: { oldValue: { ...snapshot, bic: 'MARKDEF1100' }, newValue: snapshot } }]
+  const legacy = legacyFixture(issued())
+  const snapshot = legacy.invoices[0].snapshot!
+  legacy.audit = [
+    {
+      id: 'old-snapshot-change',
+      at,
+      label: 'Empfaengerkorrektur',
+      entityType: 'invoice',
+      entityId: legacy.invoices[0].id,
+      snapshotCorrection: { oldValue: { ...snapshot, bic: 'MARKDEF1100' }, newValue: snapshot },
+    },
+  ]
   let state = parseBackup(JSON.stringify(legacy))
   const evidence = canonical(state.documentVersions[0].snapshotHistory)
-  for (let i = 0; i < 201; i++) state = recordActivity(state, { id: `later-${i}`, at, label: 'Spätere Aktion', entityType: 'system' })
-  assert.equal(state.audit.some((event) => event.id === 'old-snapshot-change'), false)
+  for (let i = 0; i < 201; i++)
+    state = recordActivity(state, { id: `later-${i}`, at, label: 'Spätere Aktion', entityType: 'system' })
+  assert.equal(
+    state.audit.some((event) => event.id === 'old-snapshot-change'),
+    false,
+  )
   assert.equal(canonical((await persistReload(state)).documentVersions[0].snapshotHistory), evidence)
-  assert.deepEqual(snapshotDifferences({ bic: 'MARKDEF1100' }, { bic: '' }), [{ path: 'bic', before: '"MARKDEF1100"', after: '""' }])
+  assert.deepEqual(snapshotDifferences({ bic: 'MARKDEF1100' }, { bic: '' }), [
+    { path: 'bic', before: '"MARKDEF1100"', after: '""' },
+  ])
 })
 
 test('P04: Validatoren schützen Graph, Identitäten, Verwaltungsreferenzen und vollständige Versionen', () => {
   const state = issued()
   for (const mutate of [
-    (s: AppState) => { s.documentVersions.push(structuredClone(s.documentVersions[0])) },
-    (s: AppState) => { s.documentVersions[0].replacesId = s.documentVersions[0].id },
-    (s: AppState) => { s.invoiceAdministration[0].versionId = 'missing' },
-    (s: AppState) => { s.documentVersions = [] },
-    (s: AppState) => { s.invoices[0].snapshot!.recipients[0].id = 'g-b' },
-  ]) { const altered = structuredClone(state); mutate(altered); assert.equal(inspectImport(JSON.stringify(altered)).ok, false) }
+    (s: AppState) => {
+      s.documentVersions.push(structuredClone(s.documentVersions[0]))
+    },
+    (s: AppState) => {
+      s.documentVersions[0].replacesId = s.documentVersions[0].id
+    },
+    (s: AppState) => {
+      s.invoiceAdministration[0].versionId = 'missing'
+    },
+    (s: AppState) => {
+      s.documentVersions = []
+    },
+    (s: AppState) => {
+      s.invoices[0].snapshot!.recipients[0].id = 'g-b'
+    },
+  ]) {
+    const altered = structuredClone(state)
+    mutate(altered)
+    assert.equal(inspectImport(JSON.stringify(altered)).ok, false)
+  }
   const corrected = createCorrectionDraft(state, state.invoices[0].id, 'Referenzprüfung', at)
   corrected.invoices.at(-1)!.items[0].studentId = 'invented-student'
   assert.throws(() => validateBackupState(corrected), /unbekannte lernende Person|zugeordnet/)
@@ -241,15 +390,19 @@ test('P04: Validatoren schützen Graph, Identitäten, Verwaltungsreferenzen und 
 })
 
 test('P04: zwei schreibende Sitzungen verlieren keine Belegversion oder Zahlung', async () => {
-  const storage = memoryStorage(); const lock = sharedLock()
-  const first = new StorageSession({ storage, lock }); await first.restore(serializeBackup(issued()))
+  const storage = memoryStorage()
+  const lock = sharedLock()
+  const first = new StorageSession({ storage, lock })
+  await first.restore(serializeBackup(issued()))
   const stale = new StorageSession({ storage, lock })
   await first.change((state) => createCorrectionDraft(state, state.invoices[0].id, 'Erste Sitzung', at))
   const before = storage.getItem(STORAGE_KEY)
-  await assert.rejects(stale.change((state) => changeInvoiceStatus(state, state.invoices[0].id, 'paid', at, '2026-09-05')), /anderen Tab/)
+  await assert.rejects(
+    stale.change((state) => changeInvoiceStatus(state, state.invoices[0].id, 'paid', at, '2026-09-05')),
+    /anderen Tab/,
+  )
   assert.equal(storage.getItem(STORAGE_KEY), before)
 })
-
 
 test('P04: nach Migration ohne früheren Snapshot dürfen Stammdaten gelöscht werden; Ausgabe bleibt erhalten', async () => {
   const legacy = legacyFixture(issued())
@@ -261,7 +414,11 @@ test('P04: nach Migration ohne früheren Snapshot dürfen Stammdaten gelöscht w
   state = requireSuccess(deleteGuardianState(state, 'g-a'))
   state = await persistReload(state)
   assert.equal(printContent(state, original), output)
-  assert.equal(Reflect.get(state.documentVersions[0].content, 'snapshot'), undefined, 'fehlender damaliger Snapshot wird nicht erfunden')
+  assert.equal(
+    Reflect.get(state.documentVersions[0].content, 'snapshot'),
+    undefined,
+    'fehlender damaliger Snapshot wird nicht erfunden',
+  )
   assert.ok(state.documentVersions[0].conflicts.some((conflict) => conflict.path === 'snapshot'))
   assert.equal(state.documentVersions[0].outputSnapshot.recipients[0].name, 'Empfaenger A')
 })
@@ -274,7 +431,15 @@ test('P04: Vollzahlung, Zuordnung und Nummernregister werden bei Import gemeinsa
   assert.equal(selectInvoice(withoutPayment, withoutPayment.invoices[0]).status, 'sent')
   assert.equal(openCents(withoutPayment, withoutPayment.invoices[0]), 758)
   const duplicate = structuredClone(state)
-  duplicate.voidedInvoiceNumbers.push({ number: state.invoices[0].number!, sequence: 1, year: 2026, invoiceDate: '2026-09-01', deletedAt: at, amount: 7.57, recipient: 'Empfaenger A' })
+  duplicate.voidedInvoiceNumbers.push({
+    number: state.invoices[0].number!,
+    sequence: 1,
+    year: 2026,
+    invoiceDate: '2026-09-01',
+    deletedAt: at,
+    amount: 7.57,
+    recipient: 'Empfaenger A',
+  })
   assert.throws(() => validateBackupState(duplicate), /doppelt/)
 })
 
@@ -285,23 +450,53 @@ test('P04: Korrekturentwurf mit nur gelöschter empfangender Person bleibt speic
   const draft = editable(state.invoices.at(-1)!)
   state = saveInvoiceDraft(state, draft, false, at)
   state = await persistReload(state)
-  assert.deepEqual(state.invoices.at(-1)!.recipients.map((ref) => ref.id), ['g-a'])
+  assert.deepEqual(
+    state.invoices.at(-1)!.recipients.map((ref) => ref.id),
+    ['g-a'],
+  )
   assert.deepEqual(state.invoices.at(-1)!.items, draft.items)
   assert.throws(() => saveInvoiceDraft(state, draft, true, at), /Stammdaten|zugeordnet/)
-  state = saveInvoiceDraft(state, { ...draft, recipients: (['g-b']).map((id) => ({ type: 'guardian' as const, id })) }, true, at)
+  state = saveInvoiceDraft(
+    state,
+    { ...draft, recipients: ['g-b'].map((id) => ({ type: 'guardian' as const, id })) },
+    true,
+    at,
+  )
   await persistReload(state)
   assert.equal(state.documentVersions[1].outputSnapshot.recipients[0].id, 'g-b')
 })
 
 test('P04: Snapshot-Differenzen gelöschter Altrechnungen bleiben sichtbar, ohne Belege zu erfinden', async () => {
   const legacy = legacyFixture(issued())
-  const invoice = legacy.invoices[0]; const snapshot = invoice.snapshot!
-  legacy.audit = [{ id: 'remaining-evidence', at, label: 'Frühere Adresskorrektur', entityType: 'invoice', entityId: invoice.id, snapshotCorrection: { oldValue: { ...snapshot, bic: 'MARKDEF1100' }, newValue: snapshot } }]
-  legacy.voidedInvoiceNumbers = [{ number: invoice.number!, sequence: invoice.sequence, year: invoice.year, invoiceDate: invoice.invoiceDate, deletedAt: at, reason: 'deleted', amount: 7.57, recipient: 'Empfaenger A' }]
+  const invoice = legacy.invoices[0]
+  const snapshot = invoice.snapshot!
+  legacy.audit = [
+    {
+      id: 'remaining-evidence',
+      at,
+      label: 'Frühere Adresskorrektur',
+      entityType: 'invoice',
+      entityId: invoice.id,
+      snapshotCorrection: { oldValue: { ...snapshot, bic: 'MARKDEF1100' }, newValue: snapshot },
+    },
+  ]
+  legacy.voidedInvoiceNumbers = [
+    {
+      number: invoice.number!,
+      sequence: invoice.sequence,
+      year: invoice.year,
+      invoiceDate: invoice.invoiceDate,
+      deletedAt: at,
+      reason: 'deleted',
+      amount: 7.57,
+      recipient: 'Empfaenger A',
+    },
+  ]
   legacy.invoices = []
   let state = parseBackup(JSON.stringify(legacy))
   const evidence = structuredClone(state.historicalSnapshotCorrections)
-  for (let i = 0; i < 205; i++) state = recordActivity(state, { id: `orphan-${i}`, at, label: 'Aktivität', entityType: 'system' })
+  for (let i = 0; i < 205; i++)
+    state = recordActivity(state, { id: `orphan-${i}`, at, label: 'Aktivität', entityType: 'system' })
   state = await persistReload(state)
   assert.equal(state.documentVersions.length, 0)
   assert.equal(state.audit.length, 200)
@@ -311,6 +506,8 @@ test('P04: Snapshot-Differenzen gelöschter Altrechnungen bleiben sichtbar, ohne
   assert.match(markup, /Frühere Adresskorrektur/)
   assert.match(markup, /MARKDEF1100/)
   assert.match(markup, /nicht rekonstruiert/)
-  assert.throws(() => assertOriginalsPreserved(state, { ...state, historicalSnapshotCorrections: [] }), /Snapshot-Differenzen/)
+  assert.throws(
+    () => assertOriginalsPreserved(state, { ...state, historicalSnapshotCorrections: [] }),
+    /Snapshot-Differenzen/,
+  )
 })
-

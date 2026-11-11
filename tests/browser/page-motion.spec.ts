@@ -6,7 +6,10 @@ import { dashboardFixture, dashboardManyOpen, dashboardNow } from '../dashboardF
 import { navigateToInvoices } from './navigation'
 
 type MotionEvent = { name: string; target: string }
-type MotionWindow = Window & { pageMotion: MotionEvent[]; countUpProbe: { update: (value: number) => void; unmount: () => void } }
+type MotionWindow = Window & {
+  pageMotion: MotionEvent[]
+  countUpProbe: { update: (value: number) => void; unmount: () => void }
+}
 
 async function seed(page: Page, many = false) {
   await page.clock.setFixedTime(dashboardNow)
@@ -15,27 +18,51 @@ async function seed(page: Page, many = false) {
     motion.pageMotion = []
     document.addEventListener('animationstart', (event) => {
       const node = event.target as HTMLElement
-      motion.pageMotion.push({ name: event.animationName, target: node.matches('.invoice-list-table .invoice-data-row') ? 'invoice-row' : node.matches('.student-card, .guardian-row') ? 'person-row' : node.matches('.dashboard-stat') ? 'stat' : node.matches('.dashboard-chart__bar') ? 'bar' : 'other' })
+      motion.pageMotion.push({
+        name: event.animationName,
+        target: node.matches('.invoice-list-table .invoice-data-row')
+          ? 'invoice-row'
+          : node.matches('.student-card, .guardian-row')
+            ? 'person-row'
+            : node.matches('.dashboard-stat')
+              ? 'stat'
+              : node.matches('.dashboard-chart__bar')
+                ? 'bar'
+                : 'other',
+      })
     })
   })
   await page.goto('/')
-  await page.evaluate(async (raw) => {
-    const path = '/src/lib/storage.ts'
-    const { StorageSession } = await import(path)
-    await new StorageSession().restore(raw)
-  }, serializeBackup(many ? dashboardManyOpen() : dashboardFixture()))
+  await page.evaluate(
+    async (raw) => {
+      const path = '/src/lib/storage.ts'
+      const { StorageSession } = await import(path)
+      await new StorageSession().restore(raw)
+    },
+    serializeBackup(many ? dashboardManyOpen() : dashboardFixture()),
+  )
   await page.reload()
 }
 
-const events = (page: Page, target: string) => page.evaluate((target) => (window as unknown as MotionWindow).pageMotion.filter((event) => event.target === target).length, target)
+const events = (page: Page, target: string) =>
+  page.evaluate(
+    (target) => (window as unknown as MotionWindow).pageMotion.filter((event) => event.target === target).length,
+    target,
+  )
 const navigation = (page: Page) => page.locator('.sidebar')
 
 test('3.AP7: Dashboard-Endwerte sind sofort zugänglich und erreichen exakt die AP2-Kennzahlen', async ({ page }) => {
   await seed(page)
   const expected = dashboardStats(dashboardFixture(), dashboardNow)
-  const values = [expected.open.totalCents, expected.paid.yearCents, expected.drafts.totalCents].map((value) => euro.format(value / 100)).concat(String(expected.people.guardians), String(expected.people.students))
+  const values = [expected.open.totalCents, expected.paid.yearCents, expected.drafts.totalCents]
+    .map((value) => euro.format(value / 100))
+    .concat(String(expected.people.guardians), String(expected.people.students))
   await expect(page.locator('.dashboard-stat__end')).toHaveText(values)
-  expect(await page.locator('.dashboard-stat__value').evaluateAll((nodes) => nodes.every((node) => node.getAttribute('aria-hidden') === 'true'))).toBe(true)
+  expect(
+    await page
+      .locator('.dashboard-stat__value')
+      .evaluateAll((nodes) => nodes.every((node) => node.getAttribute('aria-hidden') === 'true')),
+  ).toBe(true)
   await expect(page.locator('.dashboard-stat__value')).toHaveText(values)
   const before = await events(page, 'stat')
   const bars = await events(page, 'bar')
@@ -43,11 +70,16 @@ test('3.AP7: Dashboard-Endwerte sind sofort zugänglich und erreichen exakt die 
   await expect(page.locator('.dashboard-stat--paid .dashboard-stat__value')).toHaveText(euro.format(50))
   await expect(page.locator('.dashboard-stat--paid .dashboard-stat__end')).toHaveText(euro.format(50))
   expect(await events(page, 'stat')).toBe(before)
-  const duration = await page.locator('.dashboard-chart__bar').first().evaluate((node) => parseFloat(getComputedStyle(node).animationDuration))
+  const duration = await page
+    .locator('.dashboard-chart__bar')
+    .first()
+    .evaluate((node) => parseFloat(getComputedStyle(node).animationDuration))
   if (duration > 0) await expect.poll(() => events(page, 'bar')).toBeGreaterThan(bars)
 })
 
-test('3.AP7: Rechnungszeilen treten einmal ein und starten nach Suche, Filter und Zahlung nicht erneut', async ({ page }) => {
+test('3.AP7: Rechnungszeilen treten einmal ein und starten nach Suche, Filter und Zahlung nicht erneut', async ({
+  page,
+}) => {
   await seed(page, true)
   await navigateToInvoices(page)
   const animated = page.locator('.invoice-list-table .invoice-data-row.page-entry')
@@ -100,7 +132,9 @@ test('3.AP7: Detailwechsel hält nur einen bedienbaren Bereich und Eingaben sind
   await expect(page.getByLabel('Tatsächlicher Zahlungstag', { exact: true })).toHaveValue('2026-09-16')
 })
 
-test('3.AP7: Editor entfernt Daten sofort, begrenzt dekorative Exits und lässt neue Zeilen bedienbar', async ({ page }) => {
+test('3.AP7: Editor entfernt Daten sofort, begrenzt dekorative Exits und lässt neue Zeilen bedienbar', async ({
+  page,
+}) => {
   await seed(page)
   await page.getByRole('button', { name: 'Neue Rechnung', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Neue Rechnung', exact: true })
@@ -113,33 +147,39 @@ test('3.AP7: Editor entfernt Daten sofort, begrenzt dekorative Exits und lässt 
   await dialog.locator('[data-item-id]').last().getByLabel('Beschreibung', { exact: true }).fill('Sofort bedienbar')
   await dialog.getByRole('button', { name: 'Position 1 löschen', exact: true }).click()
   await expect(dialog.locator('[data-item-id]')).toHaveCount(1)
-  await expect(dialog.locator('[data-item-id]').getByLabel('Beschreibung', { exact: true })).toHaveValue('Sofort bedienbar')
+  await expect(dialog.locator('[data-item-id]').getByLabel('Beschreibung', { exact: true })).toHaveValue(
+    'Sofort bedienbar',
+  )
   await expect(dialog.locator('.editor-item--exit')).toHaveCount(0)
 })
 
-for (const preference of ['reduce', 'no-preference'] as const) test(`3.AP7: useCountUp-Hook-Lifecycle mit ${preference}`, async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: preference })
-  await page.goto('/')
-  await page.clock.install({ time: dashboardNow })
-  await page.clock.pauseAt(new Date(dashboardNow.getTime() + 1000))
-  await page.evaluate(async () => {
-    const path = '/tests/browser/countUpHarness.tsx'
-    const { mountCountUp } = await import(path)
-    ;(window as unknown as MotionWindow).countUpProbe = mountCountUp(123457)
+for (const preference of ['reduce', 'no-preference'] as const)
+  test(`3.AP7: useCountUp-Hook-Lifecycle mit ${preference}`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: preference })
+    await page.goto('/')
+    await page.clock.install({ time: dashboardNow })
+    await page.clock.pauseAt(new Date(dashboardNow.getTime() + 1000))
+    await page.evaluate(async () => {
+      const path = '/tests/browser/countUpHarness.tsx'
+      const { mountCountUp } = await import(path)
+      ;(window as unknown as MotionWindow).countUpProbe = mountCountUp(123457)
+    })
+    const probe = page.locator('.count-up-probe')
+    await expect(probe).toHaveText(preference === 'reduce' ? '123457' : '0')
+    await page.clock.runFor(200)
+    await page.evaluate(() => (window as unknown as MotionWindow).countUpProbe.update(990001))
+    await expect(probe).toHaveText('990001')
+    await page.clock.runFor(1000)
+    await expect(probe).toHaveText('990001')
+    await page.evaluate(() => (window as unknown as MotionWindow).countUpProbe.unmount())
+    await page.clock.runFor(1000)
+    await expect(probe).toHaveCount(0)
   })
-  const probe = page.locator('.count-up-probe')
-  await expect(probe).toHaveText(preference === 'reduce' ? '123457' : '0')
-  await page.clock.runFor(200)
-  await page.evaluate(() => (window as unknown as MotionWindow).countUpProbe.update(990001))
-  await expect(probe).toHaveText('990001')
-  await page.clock.runFor(1000)
-  await expect(probe).toHaveText('990001')
-  await page.evaluate(() => (window as unknown as MotionWindow).countUpProbe.unmount())
-  await page.clock.runFor(1000)
-  await expect(probe).toHaveCount(0)
-})
 
-test('3.AP7: Chromium unter CPU-Drosselung begrenzt Eintritte und beendet die Animationen', async ({ page, browserName }) => {
+test('3.AP7: Chromium unter CPU-Drosselung begrenzt Eintritte und beendet die Animationen', async ({
+  page,
+  browserName,
+}) => {
   test.skip(browserName !== 'chromium', 'CPU-Drosselung verwendet CDP')
   const session = await page.context().newCDPSession(page)
   await session.send('Emulation.setCPUThrottlingRate', { rate: 6 })
@@ -150,8 +190,18 @@ test('3.AP7: Chromium unter CPU-Drosselung begrenzt Eintritte und beendet die An
     await page.getByRole('searchbox', { name: 'Rechnungen durchsuchen', exact: true }).fill('2026-0001-a')
     await expect(page.locator('.invoice-list-table .invoice-data-row')).toHaveCount(1)
     await expect(page.locator('.invoice-list-table .page-entry')).toHaveCount(0)
-    await expect.poll(() => page.locator('.invoice-list-table').evaluate((node) => node.getAnimations({ subtree: true }).filter((animation) => animation.playState === 'running').length)).toBe(0)
-  } finally { await session.send('Emulation.setCPUThrottlingRate', { rate: 1 }); await session.detach() }
+    await expect
+      .poll(() =>
+        page
+          .locator('.invoice-list-table')
+          .evaluate(
+            (node) =>
+              node.getAnimations({ subtree: true }).filter((animation) => animation.playState === 'running').length,
+          ),
+      )
+      .toBe(0)
+  } finally {
+    await session.send('Emulation.setCPUThrottlingRate', { rate: 1 })
+    await session.detach()
+  }
 })
-
-

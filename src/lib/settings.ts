@@ -3,7 +3,8 @@ import { mailboxError } from './mailbox'
 import type { Settings } from '../types'
 import { bicError, cleanIban, germanIbanError, normalizePaymentData } from './paymentData'
 
-export const STANDARD_RATE_ERROR = 'Bitte einen vollständigen, endlichen Preis ab 0 eingeben. Der letzte gültige Preis bleibt erhalten.'
+export const STANDARD_RATE_ERROR =
+  'Bitte einen vollständigen, endlichen Preis ab 0 eingeben. Der letzte gültige Preis bleibt erhalten.'
 
 export function parseStandardRate(raw: string): number | null {
   const value = parseDecimalInput(raw)
@@ -20,8 +21,11 @@ export function settingsChangeErrors(previous: Settings, next: Settings): string
   if (![next.privateRate, next.duoRate].every(validPrice)) errors.push(STANDARD_RATE_ERROR)
   const emailError = mailboxError(next.issuer.email)
   if (emailError) errors.push(emailError)
-  if (!Number.isSafeInteger(next.paymentTermDays) || next.paymentTermDays < 0) errors.push('Das Zahlungsziel muss eine ganze Zahl ab 0 sein.')
-  const accountChanged = (['accountHolder', 'iban', 'bic', 'bankName'] as const).some((key) => previous[key] !== next[key])
+  if (!Number.isSafeInteger(next.paymentTermDays) || next.paymentTermDays < 0)
+    errors.push('Das Zahlungsziel muss eine ganze Zahl ab 0 sein.')
+  const accountChanged = (['accountHolder', 'iban', 'bic', 'bankName'] as const).some(
+    (key) => previous[key] !== next[key],
+  )
   // An empty IBAN is an incomplete setup, never a finalizable bank account.
   if (accountChanged && cleanIban(next.iban)) {
     const error = germanIbanError(next.iban)
@@ -39,5 +43,3 @@ export function updateSettings(previous: Settings, next: Settings): Settings {
   if (errors.length) throw new Error(errors.join(' '))
   return { ...next, ...normalizePaymentData(next) }
 }
-
-
