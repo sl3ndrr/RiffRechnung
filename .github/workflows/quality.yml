@@ -70,19 +70,30 @@ jobs:
               path.rename(path.with_suffix(path.suffix + '.disabled'))
               print(f'Disabled unrelated runner Chrome source: {path.name}')
           PY
-      - name: Configure bounded Ubuntu APT downloads
-        # Azure mirror DNS failures exhausted the job before any browser tests ran.
-        # Keep the runner's signed sources and use its official Ubuntu fallbacks.
+      - name: Select reachable Ubuntu APT mirror
+        # Probe the runner's network before APT; mirror+file failover also stalled.
+        # Keep the existing suites, components and Ubuntu signing key.
         run: |
-          test -f /etc/apt/apt-mirrors.txt
-          printf 'https://archive.ubuntu.com/ubuntu/\tpriority:1\nhttps://security.ubuntu.com/ubuntu/\tpriority:2\n' | sudo tee /etc/apt/apt-mirrors.txt
+          source=/etc/apt/sources.list.d/ubuntu.sources
+          grep -q 'mirror+file:/etc/apt/apt-mirrors.txt' "$source"
+          mirror=''
+          for candidate in https://archive.ubuntu.com/ubuntu https://security.ubuntu.com/ubuntu https://mirrors.edge.kernel.org/ubuntu; do
+            if curl --ipv4 --fail --silent --show-error --connect-timeout 5 --max-time 15 --output /dev/null "$candidate/dists/noble/InRelease"; then
+              mirror="$candidate"
+              break
+            fi
+          done
+          test -n "$mirror"
+          printf 'Ubuntu APT mirror: %s\n' "$mirror"
+          sudo sed -i "s|mirror+file:/etc/apt/apt-mirrors.txt|$mirror|g" "$source"
           sudo tee /etc/apt/apt.conf.d/zz-riffrechnung-acquire <<'EOF'
           Acquire::Retries "1";
+          Acquire::ForceIPv4 "true";
           Acquire::http::Timeout "15";
           Acquire::https::Timeout "15";
           APT::Update::Error-Mode "any";
           EOF
-          apt-config dump Acquire::Retries Acquire::http::Timeout Acquire::https::Timeout APT::Update::Error-Mode
+          apt-config dump Acquire::Retries Acquire::ForceIPv4 Acquire::http::Timeout Acquire::https::Timeout APT::Update::Error-Mode
       - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run test:smoke
       - name: Install PDF text verification
