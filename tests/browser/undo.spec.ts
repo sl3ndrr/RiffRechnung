@@ -284,6 +284,58 @@ test('3.AP5: Dialog und Mobilnavigation verdecken Undo nicht; Dialog-Tab erreich
   await expect.poll(async () => (await stateOf(page)).invoices.length).toBe(1)
 })
 
+for (const viewport of [
+  { width: 1280, height: 720 },
+  { width: 390, height: 844 },
+])
+  test(`Dialogaktionen bleiben neben drei pausierten Undo-Meldungen bedienbar bei ${viewport.width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 720 })
+    let state = undoFixture()
+    for (let index = 0; index < 2; index++)
+      state = requireSuccess(
+        saveInvoiceState(
+          state,
+          {
+            ...invoiceDraftFields(state.invoices[0]),
+            items: state.invoices[0].items.map((item) => ({ ...item, id: `overlap-${index}-${item.id}` })),
+          },
+          false,
+          undoAt,
+        ),
+      )
+    await seed(page, state)
+    await navigateToInvoices(page)
+    for (let index = 0; index < 3; index++) await deleteDraft(page)
+    await page.setViewportSize(viewport)
+    await page.getByRole('button', { name: 'Neue Rechnung', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: 'Neue Rechnung', exact: true })
+    await expect(dialog).toBeVisible()
+    await expect(undoButton(page)).toHaveCount(3)
+    const footer = (await dialog.locator('.modal__footer').boundingBox())!
+    for (const toast of await page.locator('.toast').all()) {
+      const box = (await toast.boundingBox())!
+      expect(
+        box.y + box.height <= footer.y ||
+          box.y >= footer.y + footer.height ||
+          box.x + box.width <= footer.x ||
+          box.x >= footer.x + footer.width,
+      ).toBe(true)
+    }
+    await dialog
+      .getByRole('group', { name: 'Lernende', exact: true })
+      .locator('label')
+      .filter({ hasText: 'Kind s1' })
+      .click()
+    await dialog.getByRole('button', { name: 'Als Entwurf speichern', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    expect((await stateOf(page)).invoices).toHaveLength(1)
+    // The save confirmation occupies the third slot; the two newest Undo actions remain.
+    await expect(undoButton(page)).toHaveCount(2)
+    await expect(page.locator('.toast').filter({ hasText: 'Entwurf gespeichert.' })).toBeVisible()
+  })
+
 test('3.AP5: reduzierte Bewegung versteckt Fortschritt, Dauer bleibt 10 Sekunden', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await seed(page)
