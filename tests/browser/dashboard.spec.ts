@@ -88,6 +88,9 @@ test('3.AP3: leerer Einstieg, Namenshinweis und Person anlegen sind bedienbar', 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Guten Morgen')
   await expect(page.getByRole('heading', { name: 'Willkommen bei RiffRechnung', exact: true })).toBeVisible()
   await expect(
+    page.getByText('1 Einstellungen ausfüllen · 2 Person anlegen · 3 Erste Rechnung erstellen'),
+  ).toBeVisible()
+  await expect(
     page.getByRole('combobox', { name: 'Jahr für Zahlungseingang', exact: true }).locator('option'),
   ).toHaveText(['2026'])
   await expect(page.locator('.dashboard-chart__month--empty')).toHaveCount(12)
@@ -119,7 +122,9 @@ test('3.AP3: acht Vorschauzeilen führen zur vollständigen offenen Liste mit St
   await expect(page.getByRole('heading', { name: 'Noch nicht gezahlt (10)', exact: true })).toBeVisible()
   await expect(page.locator('.dashboard-open-row')).toHaveCount(8)
   await page.getByRole('button', { name: 'Alle in Rechnungen anzeigen', exact: true }).click()
-  await expect(page.getByRole('combobox', { name: 'Status', exact: true })).toHaveValue('unpaid')
+  await expect(
+    page.getByRole('group', { name: 'Statusfilter' }).getByRole('button', { name: /^Offen / }),
+  ).toHaveAttribute('aria-pressed', 'true')
   await expect(page.locator('.invoice-list-table .invoice-data-row')).toHaveCount(10)
   await expect(page.locator('.invoice-detail')).toHaveCount(0)
 })
@@ -275,4 +280,32 @@ test('Dashboard: Bento, Diagrammhöhe, Zukunftsmonate und verdichtete Fälligkei
   await page.getByRole('combobox', { name: 'Jahr für Zahlungseingang', exact: true }).selectOption('2025')
   await expect(page.locator('.dashboard-chart__month--future')).toHaveCount(0)
   await expect(page.locator('.dashboard-average')).toContainText('Ø 4,17')
+})
+
+test('AP4: Entwurfszahl und schmale Statusfilter sind zugänglich', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await seed(page, dashboardFixture())
+  await page.getByRole('button', { name: 'Navigation öffnen' }).click()
+  const invoices = page.locator('.sidebar').getByRole('button', { name: 'Rechnungen', exact: true })
+  await expect(invoices).toHaveAccessibleDescription('1 Entwurf')
+  await expect(invoices.locator('b')).toHaveAttribute('title', '1 Entwurf')
+  await invoices.click()
+  const filters = page.getByRole('group', { name: 'Statusfilter' })
+  const last = filters.getByRole('button', { name: /^Überfällig / })
+  await last.focus()
+  await expect(last).toBeInViewport()
+  await last.press('Enter')
+  await expect(last).toHaveAttribute('aria-pressed', 'true')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+})
+
+test('AP4: leerer Entwurf benennt fehlende Lernende in der Liste', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Neue Rechnung', exact: true }).click()
+  await page
+    .getByRole('dialog', { name: 'Neue Rechnung' })
+    .getByRole('button', { name: 'Als Entwurf speichern' })
+    .click()
+  await navigation(page).getByRole('button', { name: 'Rechnungen', exact: true }).click()
+  await expect(page.locator('.invoice-data-row').getByText('Noch keine Lernenden gewählt')).toBeVisible()
 })

@@ -89,7 +89,10 @@ test('3.AP7: Rechnungszeilen treten einmal ein und starten nach Suche, Filter un
   await expect(animated).toHaveCount(0)
   const before = await events(page, 'invoice-row')
   await page.getByRole('searchbox', { name: 'Rechnungen durchsuchen', exact: true }).fill('')
-  await page.getByRole('combobox', { name: 'Status', exact: true }).selectOption('unpaid')
+  await page
+    .getByRole('group', { name: 'Statusfilter' })
+    .getByRole('button', { name: /^Offen / })
+    .click()
   await expect(animated).toHaveCount(0)
   await page.getByRole('button', { name: '2026-0001-a', exact: true }).click()
   await page.getByLabel('Tatsächlicher Zahlungstag', { exact: true }).fill('2026-09-16')

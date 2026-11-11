@@ -52,7 +52,7 @@ export function Dashboard({ state, mode, lastBackupAt, clock = systemClock, onNa
       {stats.people.students > 0 && <button className="button button--primary button--large" onClick={onNew}><FilePlus2 aria-hidden="true" /> Neue Rechnung</button>}
     </header>
 
-    {empty && <section className="surface dashboard-empty" aria-label="Einrichtung"><EmptyState icon={LayoutDashboard} title="Willkommen bei RiffRechnung" description="Lege deine erste Person an und hinterlege Absender und Konto in den Einstellungen. Dann kann die erste Rechnung starten." action={<div className="button-row"><button className="button button--primary" onClick={onNewPerson}><Plus aria-hidden="true" /> Person anlegen</button><button className="button button--tonal" onClick={onNew}><FilePlus2 aria-hidden="true" /> Neue Rechnung</button></div>} /></section>}
+    {empty && <section className="surface dashboard-empty" aria-label="Einrichtung"><EmptyState icon={LayoutDashboard} title="Willkommen bei RiffRechnung" description="Lege deine erste Person an und hinterlege Absender und Konto in den Einstellungen. Dann kann die erste Rechnung starten." action={<><p>1 Einstellungen ausfüllen · 2 Person anlegen · 3 Erste Rechnung erstellen</p><div className="button-row"><button className="button button--primary" onClick={onNewPerson}><Plus aria-hidden="true" /> Person anlegen</button><button className="button button--tonal" onClick={onNew}><FilePlus2 aria-hidden="true" /> Neue Rechnung</button></div></>} /></section>}
     {onLoadDemo && <button className="button button--text dashboard-demo" onClick={onLoadDemo}>Mit Beispieldaten testen</button>}
 
     <div className="dashboard-grid">
