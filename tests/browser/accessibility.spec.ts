@@ -299,29 +299,33 @@ test('P10 Browser: interne Navigation schützt alle Editorwerte und Verwerfen sp
   await expect(editor.getByLabel('Freitext / Hinweis', { exact: true })).not.toHaveValue('Ungespeicherter Freitext')
 })
 
-test('P10 Browser: Importbestätigung bleibt als oberster Dialog erreichbar', async ({ page }) => {
+test('AP3 Browser: ein Importdialog hält den Fokus, Escape gibt ihn zurück', async ({ page }) => {
   const state = saveInvoiceDraft(documentFamily(), documentDraft(), false, documentAt)
   await seed(page, state)
   await page.getByRole('button', { name: 'Einstellungen', exact: true }).click()
-  await page.locator('#backup input[type=file]').setInputFiles({
+  const trigger = page.locator('#backup input[type=file]')
+  await trigger.focus()
+  await trigger.setInputFiles({
     name: 'synthetische-sicherung.json',
     mimeType: 'application/json',
     buffer: Buffer.from(serializeBackup(state)),
   })
-  const review = page.getByRole('dialog', { name: 'Import und Reparatur prüfen' })
-  await review.getByRole('button', { name: 'Wiederherstellung vorbereiten', exact: true }).click()
-  const confirmation = page.getByRole('alertdialog', { name: 'Backup als neuen Stand wiederherstellen?' })
-  await expect(confirmation).toBeVisible()
-  await expect(confirmation.getByRole('button', { name: 'Abbrechen' })).toBeFocused()
-  await expect(review).toHaveAttribute('inert', '')
+  const review = page.getByRole('dialog', { name: 'Backup wiederherstellen' })
+  await expect(review).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(1)
+  await expect(page.getByRole('alertdialog')).toHaveCount(0)
+  await expect(review.getByRole('heading')).toBeFocused()
   await expect(page.locator('#root')).toHaveAttribute('inert', '')
   await expect(page.locator('body')).toHaveClass(/modal-open/)
+  await page.keyboard.press('Shift+Tab')
+  await expect(review.getByRole('button', { name: 'Wiederherstellen', exact: true })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(review.getByRole('button', { name: 'Dialog schließen' })).toBeFocused()
   await page.keyboard.press('Escape')
-  await expect(confirmation).toHaveCount(0)
-  await expect(review).toBeVisible()
-  await expect(review).not.toHaveAttribute('inert', '')
-  await expect(review.getByRole('button', { name: 'Wiederherstellung vorbereiten', exact: true })).toBeFocused()
-  await expect(page.locator('body')).toHaveClass(/modal-open/)
+  await expect(review).toHaveCount(0)
+  await expect(trigger).toBeFocused()
+  await expect(page.locator('#root')).not.toHaveAttribute('inert', '')
+  await expect(page.locator('body')).not.toHaveClass(/modal-open/)
 })
 
 test('P10 Browser: mobile Navigation ist geschlossen inert und stellt Fokus wieder her', async ({ page }) => {

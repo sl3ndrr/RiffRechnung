@@ -1,8 +1,11 @@
+import { confirmBackupImport } from './navigation'
 import { test, expect, type Page } from '@playwright/test'
 import { waitForThemeMotion } from './themeMotion'
 import { readFile } from 'node:fs/promises'
 import { emptyState } from '../../src/lib/defaults'
 import { serializeBackup, STORAGE_KEY } from '../../src/lib/storage'
+import { documentAt, documentDraft, documentFamily, legacyVersionedFixture } from '../documentFixtures'
+import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
 
 async function settings(page: Page) {
   await page.getByRole('button', { name: 'Einstellungen', exact: true }).click()
@@ -14,6 +17,122 @@ async function save(page: Page) {
 async function stored(page: Page) {
   return page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)
 }
+
+test('AP3: Dateiimport ersetzt den Bestand mit einem Dialog; Abbrechen und Fehler erhalten ihn', async ({ page }) => {
+  const current = saveInvoiceDraft(documentFamily(), documentDraft(), false, documentAt)
+  await page.goto('/')
+  await page.evaluate(async (raw) => {
+    const path = '/src/lib/storage.ts'
+    const { StorageSession } = await import(path)
+    await new StorageSession().restore(raw)
+  }, serializeBackup(current))
+  await page.reload()
+  await settings(page)
+  const before = await stored(page)
+  const next = emptyState()
+  next.settings.issuer.name = 'AP3 wiederhergestellt'
+  const file = { name: 'mein-backup.json', mimeType: 'application/json', buffer: Buffer.from(serializeBackup(next)) }
+  const input = page.locator('#backup input[type=file]')
+  const dialog = page.getByRole('dialog', { name: 'Backup wiederherstellen', exact: true })
+  await input.setInputFiles(file)
+  await expect(dialog.getByText('mein-backup.json', { exact: true })).toBeVisible()
+  await expect(dialog.getByText('0 Rechnungen, 0 Personen', { exact: true })).toBeVisible()
+  await expect(
+    dialog.getByText('Ersetzt den aktuellen Stand (1 Rechnungen, 4 Personen).', { exact: true }),
+  ).toBeVisible()
+  await expect(dialog.getByText(/Ohne Bestands-ID/)).toBeVisible()
+  await expect(dialog.locator('details')).toHaveCount(0)
+  await dialog.getByRole('button', { name: 'Abbrechen', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(await stored(page)).toBe(before)
+
+  await input.setInputFiles({ ...file, name: 'defekt.json', buffer: Buffer.from('{kaputt') })
+  await expect(dialog.getByText('Keine Übernahme möglich', { exact: true })).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Wiederherstellen', exact: true })).toHaveCount(0)
+  expect(await stored(page)).toBe(before)
+  await dialog.getByRole('button', { name: 'Abbrechen', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+
+  await input.setInputFiles({
+    ...file,
+    name: 'altformat.json',
+    buffer: Buffer.from(JSON.stringify(legacyVersionedFixture(current, 10))),
+  })
+  const details = dialog.locator('details').filter({ has: page.getByText('Details', { exact: true }) })
+  await expect(details).not.toHaveAttribute('open')
+  await expect(dialog.getByRole('button', { name: 'Unveränderte Originaldatei exportieren' })).not.toBeVisible()
+  await dialog.getByText('Details', { exact: true }).click()
+  await expect(dialog.getByRole('table')).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Unveränderte Originaldatei exportieren' })).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Bericht mit bereinigten Daten exportieren' })).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Geprüften Bestand separat exportieren' })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Abbrechen', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(await stored(page)).toBe(before)
+
+  await input.setInputFiles(file)
+  await confirmBackupImport(page)
+  await expect(dialog).toHaveCount(0)
+  await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
+  await page.reload()
+  await settings(page)
+  await expect(page.getByLabel('Name / Geschäftsbezeichnung', { exact: true })).toHaveValue(next.settings.issuer.name)
+  expect(JSON.parse((await stored(page))!).data.invoices).toEqual([])
+  const restored = (await stored(page))!
+  const envelope = JSON.parse(restored)
+  await input.setInputFiles({ ...file, buffer: Buffer.from(restored) })
+  await expect(
+    dialog.getByText(new RegExp(`Bestand ${envelope.datasetId}, Revision ${envelope.revision}`)),
+  ).toBeVisible()
+  await dialog.getByRole('button', { name: 'Abbrechen', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(await stored(page)).toBe(restored)
+})
+
+test('AP3: Warnungen bleiben vor den eingeklappten Migrationsdetails sichtbar', async ({ page }) => {
+  const issued = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
+  const old = legacyVersionedFixture(issued, 14)
+  old.invoices[0].snapshot.recipients[0].email = 'ungültig@@example.org'
+  old.documentVersions[0].outputSnapshot.recipients[0].email = 'ungültig@@example.org'
+  await page.goto('/')
+  await settings(page)
+  await page.locator('#backup input[type=file]').setInputFiles({
+    name: 'historische-mailbox.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(old)),
+  })
+  const dialog = page.getByRole('dialog', { name: 'Backup wiederherstellen', exact: true })
+  await expect(dialog.getByRole('alert')).toContainText('ist keine unterstützte Mailbox')
+  await expect(dialog.getByRole('alert')).toBeVisible()
+  await expect(dialog.getByText('Details', { exact: true })).toBeVisible()
+  await expect(dialog.locator('details').first()).not.toHaveAttribute('open')
+  await expect(dialog.getByRole('button', { name: 'Wiederherstellen', exact: true })).toBeVisible()
+})
+
+test.describe('AP3: Backup-Export in lokaler Zeit', () => {
+  test.use({ timezoneId: 'Asia/Tokyo' })
+  test('Dateiname enthält lokale Minute, Toast und Exportzeitpunkt bleiben erhalten', async ({ page }) => {
+    await page.clock.setFixedTime('2026-01-01T15:04:00Z')
+    await page.goto('/')
+    await settings(page)
+    const advanced = page.locator('#backup details')
+    await expect(advanced).not.toHaveAttribute('open')
+    await expect(page.getByRole('button', { name: 'Vorherigen lokalen Stand prüfen' })).not.toBeVisible()
+    await advanced.getByText('Erweitert', { exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Vorherigen lokalen Stand prüfen' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Wiederherstellungsarchiv exportieren' })).toBeVisible()
+    const downloading = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'JSON exportieren', exact: true }).click()
+    expect((await downloading).suggestedFilename()).toBe('riffrechnung-backup-2026-01-02-0004.json')
+    await expect(
+      page.getByText('Backup-Datei wird heruntergeladen. Bitte im Download-Ordner prüfen.', { exact: true }),
+    ).toBeVisible()
+    await expect(page.locator('.backup-indicator')).toContainText('Letzter JSON-Export:')
+    expect(await page.evaluate(() => localStorage.getItem('riffrechnung-v4-last-export-at'))).toBe(
+      '2026-01-01T15:04:00.000Z',
+    )
+  })
+})
 
 test('echter Browser: Einstellung, sofortiger Ansichtswechsel, Schließen und erneutes Öffnen', async ({
   page,
@@ -90,8 +209,7 @@ test('echter Browser: beschädigte Rohdaten exportieren, Backup bestätigen, per
     mimeType: 'application/json',
     buffer: Buffer.from(serializeBackup(next)),
   })
-  await page.getByRole('button', { name: 'Wiederherstellung vorbereiten', exact: true }).click()
-  await page.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
+  await confirmBackupImport(page)
   await expect(page.getByText(/Wiederherstellung lokal gespeichert, Revision/)).toBeVisible()
   const raw = await stored(page)
   await page.reload()

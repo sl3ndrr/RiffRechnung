@@ -45,7 +45,7 @@ test('Reset: issued stock, cancel focus/trap, Escape, JSON backup, explicit conf
   await dialog.getByRole('checkbox').check()
   const download = page.waitForEvent('download')
   await dialog.getByRole('button', { name: 'Erst Backup erstellen', exact: true }).click()
-  expect((await download).suggestedFilename()).toMatch(/riffrechnung-backup-.*\.json/)
+  expect((await download).suggestedFilename()).toMatch(/^riffrechnung-backup-\d{4}-\d{2}-\d{2}-\d{4}\.json$/)
   await expect(dialog).toBeVisible()
   await expect(cancel).toBeFocused()
   await expect(final).toBeDisabled()

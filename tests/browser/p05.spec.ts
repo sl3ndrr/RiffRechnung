@@ -1,3 +1,4 @@
+import { confirmBackupImport } from './navigation'
 import { test, expect } from '@playwright/test'
 import { documentAt, documentDraft, documentFamily, legacyVersionedFixture } from '../documentFixtures'
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
@@ -42,8 +43,7 @@ test('P05 Browser: kontrollierter Umstieg bereinigt Kopien; ein Namensfeld erhä
     page.getByText(/Entfernte Kontaktfelder werden nach erfolgreicher Übernahme nicht archiviert/),
   ).toBeVisible()
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(raw)
-  await page.getByRole('button', { name: 'Wiederherstellung vorbereiten' }).click()
-  await page.getByRole('button', { name: 'Wiederherstellung bestätigen' }).click()
+  await confirmBackupImport(page)
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
   await page.reload()
   const migrated = parseBackup((await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY))!)

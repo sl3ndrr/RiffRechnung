@@ -8,6 +8,7 @@ import { InvoiceEditor } from './views/InvoiceEditor'
 import { People } from './views/People'
 import { Settings } from './views/Settings'
 import { StorageRecovery } from './views/StorageRecovery'
+import { restoreMessage } from './lib/restoreMessage'
 import { ImportReview, type ImportReviewData } from './views/ImportReview'
 import { inspectImportBytes, type ImportPreview } from './lib/importState'
 import { requireSuccess } from './lib/result'
@@ -244,7 +245,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
   const importBackup = async (file: File) => {
     try {
       const bytes = new Uint8Array(await file.arrayBuffer())
-      setImportReview({ bytes, result: inspectImportBytes(bytes) })
+      setImportReview({ bytes, result: inspectImportBytes(bytes), fileName: recovery ? undefined : file.name })
     } catch (error) { toast(error instanceof Error ? error.message : 'Die Backup-Datei konnte nicht gelesen werden.', 'error') }
   }
 
@@ -258,12 +259,16 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     return true
   }
 
+  const restoreImport = async (preview: ImportPreview) => {
+    if (await applyRestore(preview)) setImportReview(null)
+  }
+
   const confirmImport = (preview: ImportPreview) => {
     setConfirmation({
       title: 'Backup als neuen Stand wiederherstellen?',
-      message: `${preview.state.students.length} Lernende, ${preview.state.invoices.length} Rechnungen. ${preview.envelope ? `Bestand ${preview.envelope.datasetId}, Revision ${preview.envelope.revision}.` : 'Ohne Bestands-ID: Mit der Bestätigung ordnest du dieses Altbackup ausdrücklich zu; eine gemeinsame Herkunft ist nicht nachgewiesen.'} Ungespeicherte Einstellungen werden bei erfolgreicher Wiederherstellung verworfen. Der aktuelle Stand und die Eingangsdaten werden bereinigt lokal aufbewahrt. Abgeschaffte Zahler-IBAN sowie interne Personen- und Zahlungsnotizen werden auch aus internen Kopien endgültig entfernt. Ausstellerkonto, Rechnungshinweis und bekannte Originalbelege bleiben erhalten.`,
+      message: `${preview.state.students.length} Lernende, ${preview.state.invoices.length} Rechnungen. ${restoreMessage(preview)}`,
       label: 'Wiederherstellung bestätigen', danger: true,
-      action: async () => { if (await applyRestore(preview)) setImportReview(null) },
+      action: () => restoreImport(preview),
     })
   }
 
@@ -354,7 +359,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
     <>
       {localSaveError && <p role="alert">{localSaveError}</p>}
       <StorageRecovery recovery={recovery} onExport={exportRecoveryData} onImport={importBackup} onReview={reviewRecovery} onPrevious={reviewPrevious} onArchive={exportRecoveryArchive} />
-      <ImportReview review={importReview} onClose={() => setImportReview(null)} onApply={recovery.readOnly ? undefined : confirmImport} />
+      <ImportReview review={importReview} onClose={() => setImportReview(null)} current={{ invoices: state.invoices.length, people: state.students.length + state.guardians.length }} onApply={recovery.readOnly ? undefined : confirmImport} />
       <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} cancelLabel={confirmation?.cancelLabel} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />
       <ToastRegion messages={toasts} onDismiss={dismissToast} />
     </>
@@ -376,7 +381,7 @@ function Workspace({ mode, onModeChange }: { mode: 'real' | 'demo'; onModeChange
       </WorkspaceShell>
 
       {resetOpen && <ResetDialog open demo={mode === 'demo'} onClose={() => setResetOpen(false)} onExport={exportBackup} onReset={confirmReset} />}
-      <ImportReview review={importReview} onClose={() => setImportReview(null)} onApply={confirmImport} />
+      <ImportReview review={importReview} onClose={() => setImportReview(null)} current={{ invoices: state.invoices.length, people: state.students.length + state.guardians.length }} onApply={importReview?.fileName !== undefined ? restoreImport : confirmImport} />
       <InvoiceEditor state={state} open={editor.open} draft={editor.draft} editing={editor.editing} guardians={state.guardians} students={state.students} settings={state.settings} onClose={requestCloseEditor} onDirtyChange={setEditorDirty} onSave={saveInvoice} onConvert={convertLegacyDraft} />
       <ConfirmDialog open={Boolean(confirmation)} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} cancelLabel={confirmation?.cancelLabel} confirmLabel={confirmation?.label} danger={confirmation?.danger} onCancel={() => setConfirmation(null)} onConfirm={() => { const action = confirmation?.action; setConfirmation(null); action?.() }} />
       <ToastRegion messages={toasts} onDismiss={dismissToast} />

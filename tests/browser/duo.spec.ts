@@ -1,3 +1,4 @@
+import { confirmBackupImport } from './navigation'
 import { navigateToInvoices } from './navigation'
 import { expectedTextless } from '../documentFixtures'
 import { test, expect, type Page } from '@playwright/test'
@@ -77,8 +78,7 @@ test('P03 Browser: alte Gruppenentwürfe im lokalen Klärungspfad übernehmen un
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(raw)
   await page.getByRole('button', { name: 'Altformat und Reparatur prüfen' }).click()
   await expect(page.getByText('Altformat 9 → Format 15:', { exact: false })).toBeVisible()
-  await page.getByRole('button', { name: 'Wiederherstellung vorbereiten' }).click()
-  await page.getByRole('button', { name: 'Wiederherstellung bestätigen' }).click()
+  await confirmBackupImport(page)
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
   await page.reload()
   const imported = await stateOf(page)

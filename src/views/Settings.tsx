@@ -144,11 +144,11 @@ export function Settings({ state, theme, visible, onSave, onThemeChange, onDirty
 
           <section id="backup" className={`surface settings-section settings-section--backup${entryClass}`} style={staggerStyle(4)}>
             <div className="settings-section__heading"><span><Download aria-hidden="true" /></span><div><h2>Backup & Import</h2><p>JSON-Export bleibt verfügbar. Eine Wiederherstellung erhält bekannte Originalbelege und Nummernreservierungen.</p></div></div>
-            <div className="button-row"><button className="button button--tonal" onClick={onPrevious}>Vorherigen lokalen Stand prüfen</button><button className="button button--tonal" onClick={onArchive}>Wiederherstellungsarchiv exportieren</button></div>
             <div className="backup-grid">
               <article><span className="backup-icon"><Download aria-hidden="true" /></span><h3>Manuelles Backup</h3><p>Exportiert den zuletzt gespeicherten Stand als Klartext-JSON-Datei mit Personen, Rechnungen, Rechnungshinweisen, Einstellungen, Belegversionen, Zahlungen und Änderungsverlauf.</p><button className="button button--tonal" onClick={onExport}><Download aria-hidden="true" /> JSON exportieren</button></article>
               <article><span className="backup-icon"><Upload aria-hidden="true" /></span><h3>Backup wiederherstellen</h3><p>Führt eine geprüfte Sicherung nach Bestätigung als neuen Stand ein. Bekannte Originale bleiben geschützt.</p><label className="button button--tonal file-button"><Upload aria-hidden="true" /> JSON importieren<input type="file" accept="application/json,.json" onChange={(event) => { const file = event.target.files?.[0]; if (file) onImport(file); event.target.value = '' }} /></label></article>
             </div>
+            <details><summary>Erweitert</summary><div className="button-row"><button className="button button--tonal" onClick={onPrevious}>Vorherigen lokalen Stand prüfen</button><button className="button button--tonal" onClick={onArchive}>Wiederherstellungsarchiv exportieren</button></div></details>
           </section>
 
           <section id="history" className={`surface settings-section${entryClass}`} style={staggerStyle(5)}>

@@ -1,3 +1,4 @@
+import { confirmBackupImport } from './navigation'
 import { test, expect } from '@playwright/test'
 import { documentFamily, documentDraft, documentAt, legacyVersionedFixture } from '../documentFixtures'
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
@@ -16,8 +17,7 @@ test('P06 Browser: geschützter Schema-11-Umstieg, festes Format, gemeinsame Emp
   await expect(page.getByRole('heading', { name: 'Lokale Daten benötigen Wiederherstellung' })).toBeVisible()
   await page.getByRole('button', { name: 'Altformat und Reparatur prüfen' }).click()
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(raw)
-  await page.getByRole('button', { name: 'Wiederherstellung vorbereiten' }).click()
-  await page.getByRole('button', { name: 'Wiederherstellung bestätigen' }).click()
+  await confirmBackupImport(page)
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
   await page.reload()
   await page.getByRole('button', { name: 'Einstellungen', exact: true }).first().click()

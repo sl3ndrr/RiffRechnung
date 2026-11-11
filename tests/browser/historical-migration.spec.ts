@@ -1,3 +1,4 @@
+import { confirmBackupImport } from './navigation'
 import { test, expect, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { documentAt, documentDraft, documentFamily, expectedTextless, legacyFixture } from '../documentFixtures'
@@ -18,8 +19,7 @@ async function stateOf(page: Page) {
 }
 async function confirmMigration(page: Page) {
   await page.getByRole('button', { name: 'Altformat und Reparatur prüfen', exact: true }).click()
-  await page.getByRole('button', { name: 'Wiederherstellung vorbereiten', exact: true }).click()
-  await page.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
+  await confirmBackupImport(page)
 }
 
 test('tatsächlich geöffnete Altversion: kontrollierter Umstieg schützt den neuen Schlüssel auch nach Reload', async ({
@@ -39,8 +39,7 @@ test('tatsächlich geöffnete Altversion: kontrollierter Umstieg schützt den ne
   const current = await context.newPage()
   await current.goto('/')
   await current.getByRole('button', { name: 'Altformat und Reparatur prüfen', exact: true }).click()
-  await current.getByRole('button', { name: 'Wiederherstellung vorbereiten', exact: true }).click()
-  await current.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
+  await confirmBackupImport(current)
   await expect(current.locator('.save-indicator')).toContainText('Lokal gespeichert')
   const migrated = await stored(current)
   expect(await page.evaluate((key) => localStorage.getItem(key), LEGACY_STORAGE_KEY)).toBe(
