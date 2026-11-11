@@ -28,10 +28,18 @@ test('P06: festes Format, getrennte Jahreskreise und zwei Erziehungsberechtigte'
   const state = documentFamily()
   state.counters = { '2026:a': 7, '2026:b': 4, '2026:a+b': 3, '2026:ab': 100 }
   assert.deepEqual(allocation(state, ['s-b', 's-a']), allocation(state, ['s-a', 's-b']))
-  const both = [{ type: 'guardian' as const, id: 'g-a' }, { type: 'guardian' as const, id: 'g-b' }]
+  const both = [
+    { type: 'guardian' as const, id: 'g-a' },
+    { type: 'guardian' as const, id: 'g-b' },
+  ]
   const single = saveInvoiceDraft(state, { ...documentDraft(), recipients: both }, true, documentAt)
   assert.equal(single.invoices[0].number, '2026-0007-a')
-  const combo = saveInvoiceDraft(single, { ...documentDraft(), studentIds: ['s-b', 's-a'], items: [{ ...documentDraft().items[0], id: 'combo-item' }] }, true, documentAt)
+  const combo = saveInvoiceDraft(
+    single,
+    { ...documentDraft(), studentIds: ['s-b', 's-a'], items: [{ ...documentDraft().items[0], id: 'combo-item' }] },
+    true,
+    documentAt,
+  )
   assert.equal(combo.invoices[1].number, '2026-0003-a+b')
   assert.equal(combo.counters['2026:a'], 8)
   assert.equal(combo.counters['2026:b'], 4)
@@ -42,13 +50,24 @@ test('P06: festes Format, getrennte Jahreskreise und zwei Erziehungsberechtigte'
 
 test('P06: mehrstellige Kennungen behalten Vergabereihenfolge unabhängig von Namen, Aktivierung und Sortierung', async () => {
   let state = documentFamily()
-  state.students[0].billingCode = 'z'; state.students[1].billingCode = 'aa'; state.nextStudentCodeIndex = 27
-  const renamed = requireSuccess(saveStudentState(state, { ...state.students[0], name: 'Anderer Name', active: false, billingCode: 'b', guardianIds: ['g-b'] }))
+  state.students[0].billingCode = 'z'
+  state.students[1].billingCode = 'aa'
+  state.nextStudentCodeIndex = 27
+  const renamed = requireSuccess(
+    saveStudentState(state, {
+      ...state.students[0],
+      name: 'Anderer Name',
+      active: false,
+      billingCode: 'b',
+      guardianIds: ['g-b'],
+    }),
+  )
   assert.equal(renamed.students[0].billingCode, 'z')
   state = { ...renamed, students: sortPeople(renamed.students).reverse() }
   assert.equal(invoiceStudentCode(state, ['s-b', 's-a']), 'z+aa')
   const long = structuredClone(state)
-  const firstCode = 'a'.repeat(20) + 'b', secondCode = 'a'.repeat(20) + 'c'
+  const firstCode = 'a'.repeat(20) + 'b',
+    secondCode = 'a'.repeat(20) + 'c'
   long.students.find((person) => person.id === 's-a')!.billingCode = firstCode
   long.students.find((person) => person.id === 's-b')!.billingCode = secondCode
   assert.equal(invoiceStudentCode(long, ['s-b', 's-a']), `${firstCode}+${secondCode}`)
@@ -62,12 +81,23 @@ test('P06: mehrstellige Kennungen behalten Vergabereihenfolge unabhängig von Na
 test('P06: Schema 11 migriert geschützt, behält Originale und Reservierungen exakt und ist idempotent', async () => {
   const issued = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
   const old = oldV11(issued)
-  old.invoices[0].number = '2026-a-0001'; old.documentVersions[0].content.number = '2026-a-0001'
+  old.invoices[0].number = '2026-a-0001'
+  old.documentVersions[0].content.number = '2026-a-0001'
   old.counters = { '2026:a': 7, '2026:b+a': 4, '2026:ab': 9 }
-  old.voidedInvoiceNumbers.push({ number: '2026-a-0011', sequence: 11, year: 2026, invoiceDate: '2026-09-01', deletedAt: documentAt, amount: 30, recipient: 'Synthetisch' })
-  const raw = JSON.stringify(old), before = structuredClone(old)
+  old.voidedInvoiceNumbers.push({
+    number: '2026-a-0011',
+    sequence: 11,
+    year: 2026,
+    invoiceDate: '2026-09-01',
+    deletedAt: documentAt,
+    amount: 30,
+    recipient: 'Synthetisch',
+  })
+  const raw = JSON.stringify(old),
+    before = structuredClone(old)
   const preview = requireSuccess(inspectImport(raw))
-  assert.equal(preview.report?.fromSchema, 11); assert.equal(preview.report?.toSchema, 15)
+  assert.equal(preview.report?.fromSchema, 11)
+  assert.equal(preview.report?.toSchema, 15)
   assert.equal(preview.state.schemaVersion, 15)
   assert.deepEqual(preview.state.documentVersions, expectedConsolidatedVersions(before.documentVersions))
   assert.deepEqual(preview.state.invoices, before.invoices)
@@ -79,7 +109,8 @@ test('P06: Schema 11 migriert geschützt, behält Originale und Reservierungen e
   assert.equal(preview.state.counters['2026:ab'], 9)
   assert.equal(Reflect.has(preview.state.settings, 'numberPattern'), false)
   assert.equal(Reflect.has(preview.state.settings, 'resetNumberAnnually'), false)
-  const storage = memoryStorage(); storage.setItem(STORAGE_KEY, raw)
+  const storage = memoryStorage()
+  storage.setItem(STORAGE_KEY, raw)
   assert.equal(loadState(storage).status, 'recovery')
   const session = new StorageSession({ storage, lock: sharedLock() })
   await session.restore(raw)
@@ -92,8 +123,18 @@ test('P06: Schema 11 migriert geschützt, behält Originale und Reservierungen e
 test('P06: globale und unbekannte Altzähler werden als konservative Jahres-Mindeststände übernommen', () => {
   const old = oldV11()
   old.settings.resetNumberAnnually = false
-  old.counters = { 'global:a': 23, global: 12, '2025': 8, 'unbekannt': 15 }
-  old.voidedInvoiceNumbers = [{ number: 'ALT-22', sequence: 22, year: 2024, invoiceDate: '2024-09-01', deletedAt: documentAt, amount: 1, recipient: 'Synthetisch' }]
+  old.counters = { 'global:a': 23, global: 12, '2025': 8, unbekannt: 15 }
+  old.voidedInvoiceNumbers = [
+    {
+      number: 'ALT-22',
+      sequence: 22,
+      year: 2024,
+      invoiceDate: '2024-09-01',
+      deletedAt: documentAt,
+      amount: 1,
+      recipient: 'Synthetisch',
+    },
+  ]
   const state = migrateInvoiceNumbering(old, [], 2026)
   assert.equal(allocation(state).sequence, 23)
   assert.equal(allocation(state, ['s-b']).sequence, 23)
@@ -107,7 +148,17 @@ test('P06: globale und unbekannte Altzähler werden als konservative Jahres-Mind
 test('P06: alte freie Muster dienen nur zur Zuordnung reservierter Folgen', () => {
   const old = oldV11()
   old.settings.numberPattern = 'RG/{YY}/{NNNN}/{K}'
-  old.voidedInvoiceNumbers = [{ number: 'RG/26/0031/b+a', sequence: null, year: 2026, invoiceDate: '2026-09-01', deletedAt: documentAt, amount: 1, recipient: 'Synthetisch' }]
+  old.voidedInvoiceNumbers = [
+    {
+      number: 'RG/26/0031/b+a',
+      sequence: null,
+      year: 2026,
+      invoiceDate: '2026-09-01',
+      deletedAt: documentAt,
+      amount: 1,
+      recipient: 'Synthetisch',
+    },
+  ]
   const state = parseBackup(JSON.stringify(old))
   assert.equal(allocation(state, ['s-a', 's-b']).number, '2026-0032-a+b')
   assert.equal(allocation(state).sequence, 1)
@@ -116,7 +167,17 @@ test('P06: alte freie Muster dienen nur zur Zuordnung reservierter Folgen', () =
 
 test('P06: niedrigere Zähler, alte und feste Reservierungen sowie Korrekturen kollidieren nicht', () => {
   let state = documentFamily()
-  state.voidedInvoiceNumbers = [{ number: '2026-0001-a', sequence: 1, year: 2026, invoiceDate: '2026-09-01', deletedAt: documentAt, amount: 1, recipient: 'Synthetisch' }]
+  state.voidedInvoiceNumbers = [
+    {
+      number: '2026-0001-a',
+      sequence: 1,
+      year: 2026,
+      invoiceDate: '2026-09-01',
+      deletedAt: documentAt,
+      amount: 1,
+      recipient: 'Synthetisch',
+    },
+  ]
   state = saveInvoiceDraft(state, documentDraft(), true, documentAt)
   assert.equal(state.invoices[0].number, '2026-0002-a')
   state = createCorrectionDraft(state, state.invoices[0].id, 'Leistung berichtigt', documentAt)
@@ -128,35 +189,62 @@ test('P06: niedrigere Zähler, alte und feste Reservierungen sowie Korrekturen k
 })
 
 test('P06: Restore bewahrt höhere Folgen und sperrt geänderte Kennungen', async () => {
-  const storage = memoryStorage(), session = new StorageSession({ storage, lock: sharedLock() })
-  const state = documentFamily(); state.counters['2026:a+b'] = 40
+  const storage = memoryStorage(),
+    session = new StorageSession({ storage, lock: sharedLock() })
+  const state = documentFamily()
+  state.counters['2026:a+b'] = 40
   await session.restore(serializeBackup(state))
   await session.restore(JSON.stringify(oldV11()))
   assert.equal(allocation(session.state, ['s-b', 's-a']).sequence, 40)
-  const changed = session.state; changed.students[0].billingCode = 'z'
+  const changed = session.state
+  changed.students[0].billingCode = 'z'
   const raw = storage.getItem(STORAGE_KEY)
   await assert.rejects(session.restore(serializeBackup(changed)), /Personenkennung/)
   assert.equal(storage.getItem(STORAGE_KEY), raw)
 })
 
 test('P06: fehlgeschlagene Migration verändert den gespeicherten Bestand nicht; Schema 12 lehnt Altoptionen ab', async () => {
-  const raw = JSON.stringify(oldV11()), storage = memoryStorage(); storage.setItem(STORAGE_KEY, raw)
+  const raw = JSON.stringify(oldV11()),
+    storage = memoryStorage()
+  storage.setItem(STORAGE_KEY, raw)
   const before = new Map(storage.entries)
   storage.fail = STORAGE_KEY
   await assert.rejects(new StorageSession({ storage, lock: sharedLock() }).restore(raw))
   assert.deepEqual(storage.entries, before)
-  const invalid = documentFamily(); Reflect.set(invalid.settings, 'numberPattern', '{NNNN}')
+  const invalid = documentFamily()
+  Reflect.set(invalid.settings, 'numberPattern', '{NNNN}')
   assert.equal(inspectImport(JSON.stringify(invalid)).ok, false)
 })
 
-
 test('P06: nichtjährliche Konfiguration schützt bekannte Folgen auch ohne globalen Zählerschlüssel', () => {
   const draft = documentDraft()
-  const issued = saveInvoiceDraft(documentFamily(), { ...draft, invoiceDate: '2025-09-01', dueDate: '2025-09-15', items: draft.items.map((item) => ({ ...item, serviceDate: '2025-08-15' })) }, true, documentAt)
+  const issued = saveInvoiceDraft(
+    documentFamily(),
+    {
+      ...draft,
+      invoiceDate: '2025-09-01',
+      dueDate: '2025-09-15',
+      items: draft.items.map((item) => ({ ...item, serviceDate: '2025-08-15' })),
+    },
+    true,
+    documentAt,
+  )
   const old = oldV11(issued)
-  old.settings.resetNumberAnnually = false; old.counters = {}
-  for (const invoice of [old.invoices[0], old.documentVersions[0].content]) { invoice.number = '2025-a-0017'; invoice.sequence = 17 }
-  old.voidedInvoiceNumbers.push({ number: 'ALT-19', sequence: 19, year: 2025, invoiceDate: '2025-09-01', deletedAt: documentAt, amount: 1, recipient: 'Synthetisch' })
+  old.settings.resetNumberAnnually = false
+  old.counters = {}
+  for (const invoice of [old.invoices[0], old.documentVersions[0].content]) {
+    invoice.number = '2025-a-0017'
+    invoice.sequence = 17
+  }
+  old.voidedInvoiceNumbers.push({
+    number: 'ALT-19',
+    sequence: 19,
+    year: 2025,
+    invoiceDate: '2025-09-01',
+    deletedAt: documentAt,
+    amount: 1,
+    recipient: 'Synthetisch',
+  })
   const state = migrateInvoiceNumbering(old, [], 2026)
   assert.equal(allocation(state).sequence, 20)
   assert.equal(allocation(state, ['s-b']).sequence, 20)
@@ -166,12 +254,15 @@ test('P06: nichtjährliche Konfiguration schützt bekannte Folgen auch ohne glob
   assert.deepEqual(state.voidedInvoiceNumbers, old.voidedInvoiceNumbers)
 })
 
-
 test('P06: gesicherte Originale ohne heutige Stammdaten schützen erkennbare oder unklare Folgen', () => {
   const issued = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
   const old = oldV11(issued)
-  old.students = []; old.counters = {}
-  for (const invoice of [old.invoices[0], old.documentVersions[0].content]) { invoice.number = '2026-a-0017'; invoice.sequence = 17 }
+  old.students = []
+  old.counters = {}
+  for (const invoice of [old.invoices[0], old.documentVersions[0].content]) {
+    invoice.number = '2026-a-0017'
+    invoice.sequence = 17
+  }
   const state = parseBackup(JSON.stringify(old))
   assert.equal(state.counters['2026:a'], 18)
   assert.equal(state.invoices[0].number, '2026-a-0017')
@@ -180,4 +271,3 @@ test('P06: gesicherte Originale ohne heutige Stammdaten schützen erkennbare ode
   assert.equal(unclear.counters['2026:*'], 18)
   assert.deepEqual(unclear.documentVersions, expectedConsolidatedVersions(old.documentVersions))
 })
-

@@ -4,7 +4,12 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { createElement } from 'react'
 import { documentAt, documentDraft, documentFamily, editable } from './documentFixtures'
 import { saveInvoiceDraft, changeInvoiceStatus } from '../src/lib/invoiceActions'
-import { convertLegacyDraftState, prepareInvoiceCopy, saveInvoiceState, LEGACY_REVIEW_FIELDS } from '../src/lib/commands'
+import {
+  convertLegacyDraftState,
+  prepareInvoiceCopy,
+  saveInvoiceState,
+  LEGACY_REVIEW_FIELDS,
+} from '../src/lib/commands'
 import { createCorrectionDraft, activeInvoices, selectInvoice } from '../src/lib/documents'
 import { needsHistoricalSplitReview } from '../src/lib/historicalSplit'
 import { InvoicePrint } from '../src/components/InvoicePrint'
@@ -13,8 +18,31 @@ import { seedState, memoryStorage } from './storageHarness'
 import { requireSuccess } from '../src/lib/result'
 import type { AppState, Invoice, InvoiceDraft } from '../src/types'
 
-const resultDraft = (): InvoiceDraft => ({ ...documentDraft(), recipientStrategy: 'separate', freeText: 'Text aus Aufteilung', items: [{ ...documentDraft().items[0], description: 'Unterricht (bestätigter Teilbetrag 5,00 € von 10,00 €)', quantity: 1, unit: 'Pauschale', unitPrice: 5 }] })
-const legacy = (draft: InvoiceDraft, id: string): Invoice => ({ ...draft, id, number: null, sequence: null, year: 2026, status: 'draft', calculation: 'decimal-v1', createdAt: documentAt, updatedAt: documentAt })
+const resultDraft = (): InvoiceDraft => ({
+  ...documentDraft(),
+  recipientStrategy: 'separate',
+  freeText: 'Text aus Aufteilung',
+  items: [
+    {
+      ...documentDraft().items[0],
+      description: 'Unterricht (bestätigter Teilbetrag 5,00 € von 10,00 €)',
+      quantity: 1,
+      unit: 'Pauschale',
+      unitPrice: 5,
+    },
+  ],
+})
+const legacy = (draft: InvoiceDraft, id: string): Invoice => ({
+  ...draft,
+  id,
+  number: null,
+  sequence: null,
+  year: 2026,
+  status: 'draft',
+  calculation: 'decimal-v1',
+  createdAt: documentAt,
+  updatedAt: documentAt,
+})
 function reload(state: AppState) {
   const imported = parseBackup(serializeBackup(state))
   const storage = memoryStorage()
@@ -28,7 +56,7 @@ function reload(state: AppState) {
 test('AP1: frühere Ergebnisrechnung mit einem oder mehreren Empfängern erreicht weder Entwurf noch Forderung', () => {
   for (const guardianIds of [['g-a'], ['g-a', 'g-b']]) {
     const state = documentFamily()
-    const draft = { ...resultDraft(), recipients: (guardianIds).map((id) => ({ type: 'guardian' as const, id })) }
+    const draft = { ...resultDraft(), recipients: guardianIds.map((id) => ({ type: 'guardian' as const, id })) }
     const before = structuredClone(state)
     for (const finalize of [false, true]) {
       assert.throws(() => saveInvoiceDraft(state, draft, finalize, documentAt), /Getrennte Rechnungen/)
@@ -45,14 +73,17 @@ test('AP1: frühere Ergebnisrechnung mit einem oder mehreren Empfängern erreich
 test('AP1: gemeinsame Rechnung für eine oder mehrere berechtigte Personen bleibt je eine Forderung mit einer Nummer', () => {
   for (const guardianIds of [['g-a'], ['g-a', 'g-b']]) {
     let state = documentFamily()
-    const draft = { ...documentDraft(), recipients: (guardianIds).map((id) => ({ type: 'guardian' as const, id })) }
+    const draft = { ...documentDraft(), recipients: guardianIds.map((id) => ({ type: 'guardian' as const, id })) }
     state = saveInvoiceDraft(state, draft, true, documentAt)
     assert.equal(state.invoices.length, 1)
     assert.equal(activeInvoices(state).length, 1)
     assert.equal(state.documentVersions.length, 1)
     assert.equal(state.invoices[0].number, '2026-0001-a')
     assert.equal(state.documentVersions[0].amounts.totalCents, 758)
-    assert.deepEqual(state.invoices[0].snapshot?.recipients.map((guardian) => guardian.id), guardianIds)
+    assert.deepEqual(
+      state.invoices[0].snapshot?.recipients.map((guardian) => guardian.id),
+      guardianIds,
+    )
     reload(state)
   }
 })
@@ -67,7 +98,15 @@ test('AP1: historische Ausgabe beider Provenienzen behält Original, Druck, Zahl
     const original = structuredClone(state.documentVersions[0])
     state = reload(state)
     assert.equal(needsHistoricalSplitReview(state, state.invoices[0]), provenance === 'oldest-available')
-    const html = renderToStaticMarkup(createElement(InvoicePrint, { invoice: selectInvoice(state, state.invoices[0]), guardians: state.guardians, students: state.students, settings: state.settings, includeGiroCode: false }))
+    const html = renderToStaticMarkup(
+      createElement(InvoicePrint, {
+        invoice: selectInvoice(state, state.invoices[0]),
+        guardians: state.guardians,
+        students: state.students,
+        settings: state.settings,
+        includeGiroCode: false,
+      }),
+    )
     assert.match(html, /Originaler Unterricht/)
     state = changeInvoiceStatus(state, state.invoices[0].id, 'paid', documentAt, '2026-09-08')
     assert.equal(state.payments.length, 1)
@@ -85,17 +124,30 @@ test('AP1: beide Altentwurfsformen bleiben bis zur bestätigten atomaren Umwandl
   const one = documentFamily()
   one.invoices = [legacy(resultDraft(), 'legacy-one')]
   const two = documentFamily()
-  two.invoices = [legacy({ ...resultDraft(), recipients: (['g-a', 'g-b']).map((id) => ({ type: 'guardian' as const, id })) }, 'legacy-two')]
-  for (const [state, id, guardians] of [[one, 'legacy-one', ['g-a']], [two, 'legacy-two', ['g-a', 'g-b']]] as const) {
+  two.invoices = [
+    legacy(
+      { ...resultDraft(), recipients: ['g-a', 'g-b'].map((id) => ({ type: 'guardian' as const, id })) },
+      'legacy-two',
+    ),
+  ]
+  for (const [state, id, guardians] of [
+    [one, 'legacy-one', ['g-a']],
+    [two, 'legacy-two', ['g-a', 'g-b']],
+  ] as const) {
     const before = structuredClone(reload(state))
     const draft = editable(state.invoices[0])
     assert.equal(convertLegacyDraftState(state, id, [], [...guardians], draft, documentAt).ok, false)
     assert.equal(convertLegacyDraftState(state, id, LEGACY_REVIEW_FIELDS, [], draft, documentAt).ok, false)
     assert.deepEqual(state, before)
-    const result = requireSuccess(convertLegacyDraftState(state, id, LEGACY_REVIEW_FIELDS, [...guardians], draft, documentAt))
+    const result = requireSuccess(
+      convertLegacyDraftState(state, id, LEGACY_REVIEW_FIELDS, [...guardians], draft, documentAt),
+    )
     assert.equal(result.invoices.length, 1)
     assert.equal(result.invoices[0].recipientStrategy, 'joint')
-    assert.deepEqual(result.invoices[0].recipients.map((ref) => ref.id), guardians)
+    assert.deepEqual(
+      result.invoices[0].recipients.map((ref) => ref.id),
+      guardians,
+    )
     assert.equal(result.invoices[0].number, null)
     assert.deepEqual(result.counters, state.counters)
     assert.equal(Object.hasOwn(result.invoices[0], 'introText'), false)
@@ -106,8 +158,23 @@ test('AP1: beide Altentwurfsformen bleiben bis zur bestätigten atomaren Umwandl
   }
   const invalid = documentFamily()
   invalid.students[0].guardianIds = ['g-a']
-  invalid.invoices = [legacy({ ...resultDraft(), recipients: (['g-a', 'g-b']).map((id) => ({ type: 'guardian' as const, id })) }, 'legacy-mixed')]
-  assert.equal(convertLegacyDraftState(invalid, 'legacy-mixed', LEGACY_REVIEW_FIELDS, ['g-a', 'g-b'], editable(invalid.invoices[0]), documentAt).ok, false)
+  invalid.invoices = [
+    legacy(
+      { ...resultDraft(), recipients: ['g-a', 'g-b'].map((id) => ({ type: 'guardian' as const, id })) },
+      'legacy-mixed',
+    ),
+  ]
+  assert.equal(
+    convertLegacyDraftState(
+      invalid,
+      'legacy-mixed',
+      LEGACY_REVIEW_FIELDS,
+      ['g-a', 'g-b'],
+      editable(invalid.invoices[0]),
+      documentAt,
+    ).ok,
+    false,
+  )
   assert.equal(invalid.invoices[0].recipientStrategy, 'separate')
 })
 
@@ -119,5 +186,3 @@ test('AP1: Kopie eines historischen aufgeteilten Belegs ist gesperrt', () => {
   assert.equal(result.ok, false)
   if (!result.ok) assert.match(result.errors[0].message, /Teilbetragspositionen/)
 })
-
-

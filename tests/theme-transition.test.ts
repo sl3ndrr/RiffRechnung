@@ -8,8 +8,21 @@ function environment() {
   const classes = new Set<string>()
   const root = {
     dataset: {} as Record<string, string>,
-    style: { colorScheme: '', setProperty: (key: string, value: string) => { values.set(key, value) } },
-    classList: { contains: (value: string) => classes.has(value), add: (value: string) => { classes.add(value) }, remove: (value: string) => { classes.delete(value) } },
+    style: {
+      colorScheme: '',
+      setProperty: (key: string, value: string) => {
+        values.set(key, value)
+      },
+    },
+    classList: {
+      contains: (value: string) => classes.has(value),
+      add: (value: string) => {
+        classes.add(value)
+      },
+      remove: (value: string) => {
+        classes.delete(value)
+      },
+    },
   }
   const transitions: Array<{ update: () => void; finish: () => void; skipped: boolean }> = []
   let dark = false
@@ -18,13 +31,25 @@ function environment() {
   const document = {
     documentElement: root,
     body: {},
-    querySelector: () => ({ setAttribute: (_: string, value: string) => { meta = value } }),
+    querySelector: () => ({
+      setAttribute: (_: string, value: string) => {
+        meta = value
+      },
+    }),
     startViewTransition: (update: () => void) => {
       let finish!: () => void
-      const finished = new Promise<void>((resolve) => { finish = resolve })
+      const finished = new Promise<void>((resolve) => {
+        finish = resolve
+      })
       const entry = { update, finish, skipped: false }
       transitions.push(entry)
-      return { ready: Promise.resolve(), finished, skipTransition: () => { entry.skipped = true } }
+      return {
+        ready: Promise.resolve(),
+        finished,
+        skipTransition: () => {
+          entry.skipped = true
+        },
+      }
     },
   }
   const globals = {
@@ -33,15 +58,31 @@ function environment() {
     innerWidth: 800,
     innerHeight: 600,
     matchMedia: (query: string) => ({ matches: query.includes('reduced-motion') ? reduce : dark }),
-    getComputedStyle: () => ({ backgroundColor: '', getPropertyValue: (key: string) => key === '--surface' ? (root.dataset.theme === 'dark' ? '#11151c' : '#f5f7fb') : '250ms' }),
+    getComputedStyle: () => ({
+      backgroundColor: '',
+      getPropertyValue: (key: string) =>
+        key === '--surface' ? (root.dataset.theme === 'dark' ? '#11151c' : '#f5f7fb') : '250ms',
+    }),
   }
-  const previous = Object.fromEntries(Object.keys(globals).map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]))
-  for (const [key, value] of Object.entries(globals)) Object.defineProperty(globalThis, key, { value, configurable: true })
+  const previous = Object.fromEntries(
+    Object.keys(globals).map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]),
+  )
+  for (const [key, value] of Object.entries(globals))
+    Object.defineProperty(globalThis, key, { value, configurable: true })
   return {
-    root, transitions, values, classes,
-    get meta() { return meta },
-    setDark: (value: boolean) => { dark = value },
-    setReduced: (value: boolean) => { reduce = value },
+    root,
+    transitions,
+    values,
+    classes,
+    get meta() {
+      return meta
+    },
+    setDark: (value: boolean) => {
+      dark = value
+    },
+    setReduced: (value: boolean) => {
+      reduce = value
+    },
     cleanup: () => {
       cancelThemeReveal()
       resetAppliedTheme()
@@ -70,20 +111,29 @@ test('Theme reveal: stale callbacks cannot update or clear the latest transition
     env.transitions[1].finish()
     await new Promise<void>((resolve) => setImmediate(resolve))
     assert.equal(env.root.dataset.transition, undefined)
-  } finally { env.cleanup() }
+  } finally {
+    env.cleanup()
+  }
 })
 
 test('Theme reveal: unmount cancellation invalidates the pending callback', () => {
   const env = environment()
   try {
     let called = false
-    runThemeReveal(() => { called = true }, { x: 20, y: 30 })
+    runThemeReveal(
+      () => {
+        called = true
+      },
+      { x: 20, y: 30 },
+    )
     cancelThemeReveal()
     env.transitions[0].update()
     assert.equal(called, false)
     assert.equal(env.transitions[0].skipped, true)
     assert.equal(env.root.dataset.transition, undefined)
-  } finally { env.cleanup() }
+  } finally {
+    env.cleanup()
+  }
 })
 
 test('Theme: both reduced-motion sources bypass native snapshots', () => {
@@ -98,7 +148,9 @@ test('Theme: both reduced-motion sources bypass native snapshots', () => {
     assert.equal(updates, 2)
     assert.equal(env.transitions.length, 0)
     assert.equal(env.root.dataset.transition, undefined)
-  } finally { env.cleanup() }
+  } finally {
+    env.cleanup()
+  }
 })
 
 test('Theme: a preference change completes the pending wish exactly once', () => {
@@ -112,7 +164,9 @@ test('Theme: a preference change completes the pending wish exactly once', () =>
     assert.equal(updates, 1)
     assert.equal(env.transitions[0].skipped, true)
     assert.equal(env.root.dataset.transition, undefined)
-  } finally { env.cleanup() }
+  } finally {
+    env.cleanup()
+  }
 })
 
 test('Theme: first paint and repeated colors do not fade; system changes do', () => {
@@ -131,6 +185,11 @@ test('Theme: first paint and repeated colors do not fade; system changes do', ()
     applyResolvedTheme(resolveTheme('system'), true)
     assert.equal(env.classes.has('theme-changing'), true)
     assert.equal(env.meta, '#f5f7fb')
-    assert.deepEqual(centerOf({ getBoundingClientRect: () => ({ left: 10, top: 20, width: 44, height: 44 }) } as Element), { x: 32, y: 42 })
-  } finally { env.cleanup() }
+    assert.deepEqual(
+      centerOf({ getBoundingClientRect: () => ({ left: 10, top: 20, width: 44, height: 44 }) } as Element),
+      { x: 32, y: 42 },
+    )
+  } finally {
+    env.cleanup()
+  }
 })

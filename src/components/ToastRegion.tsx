@@ -11,29 +11,74 @@ interface ToastRegionProps {
 }
 
 function fillSlots(current: ToastMessage[], messages: ToastMessage[]) {
-  return [...current.map((item) => messages.find((message) => message.id === item.id) ?? item), ...messages.filter((message) => !current.some((item) => item.id === message.id))].slice(0, 3)
+  return [
+    ...current.map((item) => messages.find((message) => message.id === item.id) ?? item),
+    ...messages.filter((message) => !current.some((item) => item.id === message.id)),
+  ].slice(0, 3)
 }
 
-function Toast({ toast, open, onDismiss, onExited }: { toast: ToastMessage; open: boolean; onDismiss: ToastRegionProps['onDismiss']; onExited: ToastRegionProps['onDismiss'] }) {
+function Toast({
+  toast,
+  open,
+  onDismiss,
+  onExited,
+}: {
+  toast: ToastMessage
+  open: boolean
+  onDismiss: ToastRegionProps['onDismiss']
+  onExited: ToastRegionProps['onDismiss']
+}) {
   const ref = useRef<HTMLDivElement>(null)
   const present = useMotionPresence(open, ref)
   const dismiss = useCallback(() => onDismiss(toast.id), [onDismiss, toast.id])
   const durationMs = toast.durationMs ?? 4200
   const { paused, pause, claim } = useToastTimer(durationMs, dismiss, open)
-  useLayoutEffect(() => { if (!present) onExited(toast.id) }, [onExited, present, toast.id])
+  useLayoutEffect(() => {
+    if (!present) onExited(toast.id)
+  }, [onExited, present, toast.id])
   if (!present) return null
   const Icon = toast.tone === 'success' ? CheckCircle2 : toast.tone === 'error' ? TriangleAlert : Info
   return (
-    <div ref={ref} data-motion={open ? 'enter' : 'exit'} inert={!open} className={`toast toast--${toast.tone}${toast.action ? ' toast--action' : ''}`}
-      onMouseEnter={() => pause('hover', true)} onMouseLeave={() => pause('hover', false)}
+    <div
+      ref={ref}
+      data-motion={open ? 'enter' : 'exit'}
+      inert={!open}
+      className={`toast toast--${toast.tone}${toast.action ? ' toast--action' : ''}`}
+      onMouseEnter={() => pause('hover', true)}
+      onMouseLeave={() => pause('hover', false)}
       onFocusCapture={() => pause('focus', true)}
-      onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) pause('focus', false) }}>
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) pause('focus', false)
+      }}
+    >
       <Icon aria-hidden="true" />
       <span role={toast.tone === 'error' ? 'alert' : 'status'}>{toast.message}</span>
-      {toast.action && <button className="toast__action" type="button" aria-label={toast.action.ariaLabel ?? toast.action.label}
-        onClick={() => { if (open && claim()) { dismiss(); void toast.action?.onClick() } }}> {toast.action.label} </button>}
-      <button className="toast__dismiss" type="button" onClick={dismiss} aria-label="Meldung schließen"><X aria-hidden="true" /></button>
-      {toast.action && <div className="toast__progress" aria-hidden="true" style={{ animationDuration: `${durationMs}ms`, animationPlayState: paused ? 'paused' : 'running' }} />}
+      {toast.action && (
+        <button
+          className="toast__action"
+          type="button"
+          aria-label={toast.action.ariaLabel ?? toast.action.label}
+          onClick={() => {
+            if (open && claim()) {
+              dismiss()
+              void toast.action?.onClick()
+            }
+          }}
+        >
+          {' '}
+          {toast.action.label}{' '}
+        </button>
+      )}
+      <button className="toast__dismiss" type="button" onClick={dismiss} aria-label="Meldung schließen">
+        <X aria-hidden="true" />
+      </button>
+      {toast.action && (
+        <div
+          className="toast__progress"
+          aria-hidden="true"
+          style={{ animationDuration: `${durationMs}ms`, animationPlayState: paused ? 'paused' : 'running' }}
+        />
+      )}
     </div>
   )
 }
@@ -49,7 +94,16 @@ export function ToastRegion({ messages, onDismiss }: ToastRegionProps) {
     // At capacity, the next message enters as soon as the outgoing one exits.
     setDisplayed((current) => fillSlots(current, messages))
   }
-  const onExited = useCallback((id: string) => setDisplayed((current) => fillSlots(current.filter((item) => item.id !== id), messagesRef.current)), [])
+  const onExited = useCallback(
+    (id: string) =>
+      setDisplayed((current) =>
+        fillSlots(
+          current.filter((item) => item.id !== id),
+          messagesRef.current,
+        ),
+      ),
+    [],
+  )
   const [host] = useState(() => {
     const element = document.createElement('div')
     element.className = 'toast-host'
@@ -66,11 +120,23 @@ export function ToastRegion({ messages, onDismiss }: ToastRegionProps) {
     placeHost()
     const observer = new MutationObserver(placeHost)
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['inert'] })
-    return () => { observer.disconnect(); host.remove() }
+    return () => {
+      observer.disconnect()
+      host.remove()
+    }
   }, [host])
   return createPortal(
     <div className="toast-region" aria-live="polite" aria-atomic="false">
-      {displayed.map((toast) => <Toast key={toast.id} toast={toast} open={messages.some((message) => message.id === toast.id)} onDismiss={onDismiss} onExited={onExited} />)}
-    </div>, host,
+      {displayed.map((toast) => (
+        <Toast
+          key={toast.id}
+          toast={toast}
+          open={messages.some((message) => message.id === toast.id)}
+          onDismiss={onDismiss}
+          onExited={onExited}
+        />
+      ))}
+    </div>,
+    host,
   )
 }

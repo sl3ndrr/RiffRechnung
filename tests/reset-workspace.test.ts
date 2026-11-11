@@ -1,7 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { emptyState } from '../src/lib/defaults'
-import { StorageSession, STORAGE_KEY, LEGACY_STORAGE_KEY, LEGACY_GUARD_KEY, PREVIOUS_STORAGE_KEY, loadState } from '../src/lib/storage'
+import {
+  StorageSession,
+  STORAGE_KEY,
+  LEGACY_STORAGE_KEY,
+  LEGACY_GUARD_KEY,
+  PREVIOUS_STORAGE_KEY,
+  loadState,
+} from '../src/lib/storage'
 import { StorageConflict } from '../src/lib/storageConflict'
 import { inspectImport } from '../src/lib/importState'
 import { dashboardFixture } from './dashboardFixtures'
@@ -17,7 +24,13 @@ test('Full reset deletes issued stock and recovery copies; exported JSON remains
   storage.setItem(LEGACY_GUARD_KEY, JSON.stringify('legacy copy'))
   // Establish a session with the legacy copy present, as after a migration.
   const migrated = new StorageSession({ storage, lock: sharedLock() })
-  for (const key of [PREVIOUS_STORAGE_KEY, `${STORAGE_KEY}-recovery-one`, 'riffrechnung-v4-last-export-at', 'riffrechnung-theme-hint']) storage.setItem(key, 'old')
+  for (const key of [
+    PREVIOUS_STORAGE_KEY,
+    `${STORAGE_KEY}-recovery-one`,
+    'riffrechnung-v4-last-export-at',
+    'riffrechnung-theme-hint',
+  ])
+    storage.setItem(key, 'old')
   storage.setItem('unrelated-app', 'keep')
   const next = await migrated.resetAllLocalData()
   assert.equal(next.invoices.length, 0)
@@ -43,8 +56,14 @@ test('Reset preserves conflict detection, queued writes, and a new dataset ident
   const oldId = session.revision!.datasetId
   await session.resetAllLocalData()
   await assert.rejects(other.resetAllLocalData(), StorageConflict)
-  await assert.rejects(other.change((state) => state), StorageConflict)
-  await session.change((state) => ({ ...state, settings: { ...state.settings, issuer: { ...state.settings.issuer, name: 'Neu' } } }))
+  await assert.rejects(
+    other.change((state) => state),
+    StorageConflict,
+  )
+  await session.change((state) => ({
+    ...state,
+    settings: { ...state.settings, issuer: { ...state.settings.issuer, name: 'Neu' } },
+  }))
   assert.notEqual(session.revision!.datasetId, oldId)
   assert.equal(session.state.settings.issuer.name, 'Neu')
 })
@@ -70,7 +89,13 @@ test('Demo reset never touches real storage or its write lock', async () => {
   const storage = memoryStorage()
   seedState(dashboardFixture(), storage)
   const before = new Map(storage.entries)
-  const session = new StorageSession({ mode: 'demo', storage, lock: async () => { throw new Error('Real lock used') } })
+  const session = new StorageSession({
+    mode: 'demo',
+    storage,
+    lock: async () => {
+      throw new Error('Real lock used')
+    },
+  })
   await session.resetAllLocalData()
   assert.deepEqual(storage.entries, before)
   assert.equal(session.state.invoices.length, 0)

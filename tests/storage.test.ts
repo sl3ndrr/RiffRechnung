@@ -3,7 +3,15 @@ import assert from 'node:assert/strict'
 import { emptyState } from '../src/lib/defaults'
 import { canonical, descendsFrom, validateEnvelope } from '../src/lib/envelope'
 import { StorageConflict } from '../src/lib/storageConflict'
-import { StorageSession, LEGACY_GUARD_KEY, LEGACY_STORAGE_KEY, PREVIOUS_STORAGE_KEY, STORAGE_KEY, loadState, serializeBackup } from '../src/lib/storage'
+import {
+  StorageSession,
+  LEGACY_GUARD_KEY,
+  LEGACY_STORAGE_KEY,
+  PREVIOUS_STORAGE_KEY,
+  STORAGE_KEY,
+  loadState,
+  serializeBackup,
+} from '../src/lib/storage'
 import { inspectImport } from '../src/lib/importState'
 import { memoryStorage, seedState, sharedLock } from './storageHarness'
 
@@ -13,7 +21,10 @@ const context = () => {
   const session = new StorageSession({ storage, lock })
   return { storage, lock, session }
 }
-const title = (name: string) => (state: ReturnType<typeof emptyState>) => ({ ...state, settings: { ...state.settings, issuer: { ...state.settings.issuer, name } } })
+const title = (name: string) => (state: ReturnType<typeof emptyState>) => ({
+  ...state,
+  settings: { ...state.settings, issuer: { ...state.settings.issuer, name } },
+})
 test('P03: lokaler Schreibabschluss bestätigt den Stand; Export/Import/Reload sind unverändert', async () => {
   const { session, storage } = context()
   const saved = await session.change(title('Bestätigt'))
@@ -51,19 +62,20 @@ test('P03: zwei Sitzungen und parallele Schreibbefehle liefern genau einen Gewin
   assert.equal(initial.envelope?.revision, 1)
 })
 
-for (const key of ['write', STORAGE_KEY, PREVIOUS_STORAGE_KEY]) test(`P03: Quota bei ${key} bestätigt nichts, erhält letzten Stand und erlaubt Wiederholung`, async () => {
-  const { storage, session } = context()
-  await session.change(title('Vorher'))
-  const original = storage.getItem(STORAGE_KEY)
-  storage.fail = key
-  await assert.rejects(session.change(title('Nachher')), /Speicherplatz/)
-  assert.equal(storage.getItem(STORAGE_KEY), original)
-  assert.equal(session.state.settings.issuer.name, 'Vorher')
-  storage.fail = null
-  await session.change(title('Nachher'))
-  assert.equal(storage.getItem(PREVIOUS_STORAGE_KEY), original)
-  assert.equal(session.state.settings.issuer.name, 'Nachher')
-})
+for (const key of ['write', STORAGE_KEY, PREVIOUS_STORAGE_KEY])
+  test(`P03: Quota bei ${key} bestätigt nichts, erhält letzten Stand und erlaubt Wiederholung`, async () => {
+    const { storage, session } = context()
+    await session.change(title('Vorher'))
+    const original = storage.getItem(STORAGE_KEY)
+    storage.fail = key
+    await assert.rejects(session.change(title('Nachher')), /Speicherplatz/)
+    assert.equal(storage.getItem(STORAGE_KEY), original)
+    assert.equal(session.state.settings.issuer.name, 'Vorher')
+    storage.fail = null
+    await session.change(title('Nachher'))
+    assert.equal(storage.getItem(PREVIOUS_STORAGE_KEY), original)
+    assert.equal(session.state.settings.issuer.name, 'Nachher')
+  })
 
 test('P03: Security beim Lesen und fehlende Sperren bleiben geschlossen', async () => {
   const storage = memoryStorage()
@@ -72,7 +84,12 @@ test('P03: Security beim Lesen und fehlende Sperren bleiben geschlossen', async 
   assert.equal(session.initial.status, 'recovery')
   await assert.rejects(session.change(title('Verboten')), /Speicherzugriff/)
   storage.fail = null
-  const noLocks = new StorageSession({ storage, lock: async () => { throw new Error('Web Locks fehlen') } })
+  const noLocks = new StorageSession({
+    storage,
+    lock: async () => {
+      throw new Error('Web Locks fehlen')
+    },
+  })
   await assert.rejects(noLocks.change(title('Verboten')), /Web Locks/)
   assert.equal(storage.entries.size, 0)
 })
@@ -125,7 +142,22 @@ test('P03: Wiederherstellen alter Revision erzeugt neue Revision und bewahrt bek
   const { session, storage } = context()
   await session.change(title('Alt'))
   const old = session.export()
-  await session.change((state) => ({ ...title('Neu')(state), counters: { '2026:a': 50 }, voidedInvoiceNumbers: [{ number: '2026-a-0049', sequence: 49, year: 2026, invoiceDate: '2026-08-15', deletedAt: '2026-08-16T10:00:00.000Z', reason: 'deleted', amount: 50, recipient: 'Synthetisch' }] }))
+  await session.change((state) => ({
+    ...title('Neu')(state),
+    counters: { '2026:a': 50 },
+    voidedInvoiceNumbers: [
+      {
+        number: '2026-a-0049',
+        sequence: 49,
+        year: 2026,
+        invoiceDate: '2026-08-15',
+        deletedAt: '2026-08-16T10:00:00.000Z',
+        reason: 'deleted',
+        amount: 50,
+        recipient: 'Synthetisch',
+      },
+    ],
+  }))
   const before = session.revision!
   await session.restore(old)
   assert.equal(session.revision?.revision, 3)
@@ -155,7 +187,9 @@ test('P03: fehlerhafte Revisionsfolgen werden bereits beim Import abgewiesen', (
   const storage = memoryStorage()
   const e = seedState(emptyState(), storage)
   assert.throws(() => validateEnvelope({ ...e, revision: Number.MAX_SAFE_INTEGER + 1 }))
-  assert.throws(() => validateEnvelope({ ...e, ancestors: [{ commitId: e.commitId, revision: 1, fingerprint: 'a'.repeat(64) }] }))
+  assert.throws(() =>
+    validateEnvelope({ ...e, ancestors: [{ commitId: e.commitId, revision: 1, fingerprint: 'a'.repeat(64) }] }),
+  )
   assert.equal(canonical({ b: 1, a: 2 }), canonical({ a: 2, b: 1 }))
 })
 

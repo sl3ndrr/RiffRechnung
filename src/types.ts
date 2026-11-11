@@ -56,8 +56,13 @@ export interface GuardianSnapshot extends Address {
   email: string
 }
 
-export interface RecipientRef { type: 'guardian' | 'student'; id: string }
-export interface RecipientSnapshot extends GuardianSnapshot { type: RecipientRef['type'] }
+export interface RecipientRef {
+  type: 'guardian' | 'student'
+  id: string
+}
+export interface RecipientSnapshot extends GuardianSnapshot {
+  type: RecipientRef['type']
+}
 
 export interface StudentSnapshot {
   id: string
@@ -118,7 +123,22 @@ export interface DocumentAmounts {
   calculation: 'legacy-v1' | 'decimal-v1'
 }
 
-export type DocumentContent = Omit<Invoice, 'status' | 'paidAt' | 'sentAt' | 'updatedAt' | 'versionId' | 'correction' | 'issuedAmounts' | 'claimState' | 'archived' | 'openAmountCents' | 'snapshot' | 'draftPrintSnapshot' | 'period'>
+export type DocumentContent = Omit<
+  Invoice,
+  | 'status'
+  | 'paidAt'
+  | 'sentAt'
+  | 'updatedAt'
+  | 'versionId'
+  | 'correction'
+  | 'issuedAmounts'
+  | 'claimState'
+  | 'archived'
+  | 'openAmountCents'
+  | 'snapshot'
+  | 'draftPrintSnapshot'
+  | 'period'
+>
 
 export interface DocumentConflict {
   path: string

@@ -13,9 +13,13 @@ test('P04: Downloads erhalten Blob und angehängten Link bis zur asynchronen Ini
   let failClick = false
   let currentUrl = ''
   const link = {
-    href: '', download: '', tabIndex: 0,
+    href: '',
+    download: '',
+    tabIndex: 0,
     setAttribute() {},
-    remove() { attached = false },
+    remove() {
+      attached = false
+    },
     click() {
       currentUrl = this.href
       if (failClick) throw new Error('Downloadinitiierung fehlgeschlagen')
@@ -29,9 +33,30 @@ test('P04: Downloads erhalten Blob und angehängten Link bis zur asynchronen Ini
     },
   }
   try {
-    URL.revokeObjectURL = (url) => { revoked.push(url); revoke(url) }
-    Object.defineProperty(globalThis, 'document', { configurable: true, value: { createElement: () => link, body: { append: () => { attached = true } } } })
-    Object.defineProperty(globalThis, 'window', { configurable: true, value: { setTimeout: (callback: () => void, delay: number) => { assert.ok(delay > 0); timers.push(callback) } } })
+    URL.revokeObjectURL = (url) => {
+      revoked.push(url)
+      revoke(url)
+    }
+    Object.defineProperty(globalThis, 'document', {
+      configurable: true,
+      value: {
+        createElement: () => link,
+        body: {
+          append: () => {
+            attached = true
+          },
+        },
+      },
+    })
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: {
+        setTimeout: (callback: () => void, delay: number) => {
+          assert.ok(delay > 0)
+          timers.push(callback)
+        },
+      },
+    })
     const raw = '{Rohtext\r\nübrig}'
     downloadText('roh.txt', raw, 'text/plain')
     assert.equal(revoked.length, 0)
@@ -66,4 +91,3 @@ test('P04: Downloads erhalten Blob und angehängten Link bis zur asynchronen Ini
     else Reflect.deleteProperty(globalThis, 'window')
   }
 })
-

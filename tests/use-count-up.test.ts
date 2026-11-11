@@ -9,8 +9,13 @@ function fixture(target = 123457, reduced = false) {
   const values: number[] = []
   const clock: CountUpClock = {
     now: () => time,
-    request: (callback) => { frames.set(++sequence, callback); return sequence },
-    cancel: (id) => { frames.delete(id) },
+    request: (callback) => {
+      frames.set(++sequence, callback)
+      return sequence
+    },
+    cancel: (id) => {
+      frames.delete(id)
+    },
   }
   const animation = createCountUp(target, reduced, (value) => values.push(value), clock)
   const advance = (milliseconds: number) => {

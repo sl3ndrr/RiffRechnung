@@ -3,21 +3,44 @@ import { documentAt, documentDraft, documentFamily, legacyVersionedFixture } fro
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
 import { parseBackup, STORAGE_KEY, PREVIOUS_STORAGE_KEY, LEGACY_STORAGE_KEY } from '../../src/lib/storage'
 
-test('P05 Browser: kontrollierter Umstieg bereinigt Kopien; ein Namensfeld erhält finale Empfänger und beide Anschriften', async ({ page }) => {
-  const issued = saveInvoiceDraft(documentFamily(), { ...documentDraft(), recipients: [{ type: 'guardian', id: 'g-a' }, { type: 'guardian', id: 'g-b' }] }, true, documentAt)
+test('P05 Browser: kontrollierter Umstieg bereinigt Kopien; ein Namensfeld erhält finale Empfänger und beide Anschriften', async ({
+  page,
+}) => {
+  const issued = saveInvoiceDraft(
+    documentFamily(),
+    {
+      ...documentDraft(),
+      recipients: [
+        { type: 'guardian', id: 'g-a' },
+        { type: 'guardian', id: 'g-b' },
+      ],
+    },
+    true,
+    documentAt,
+  )
   const old = legacyVersionedFixture(issued, 10)
   old.guardians[0].name = 'Familie Müller, Dr. Anna'
-  Object.assign(old.guardians[0], { firstName: 'Andere', lastName: 'Darstellung', iban: 'P05-PAYER-SECRET', paymentNote: 'P05-PAYMENT-SECRET' })
+  Object.assign(old.guardians[0], {
+    firstName: 'Andere',
+    lastName: 'Darstellung',
+    iban: 'P05-PAYER-SECRET',
+    paymentNote: 'P05-PAYMENT-SECRET',
+  })
   old.students[0].note = 'P05-PERSON-SECRET'
   const raw = JSON.stringify(old)
   await page.goto('/')
-  await page.evaluate(({ raw, keys }) => {
-    for (const key of keys) localStorage.setItem(key, raw)
-  }, { raw, keys: [STORAGE_KEY, PREVIOUS_STORAGE_KEY, LEGACY_STORAGE_KEY] })
+  await page.evaluate(
+    ({ raw, keys }) => {
+      for (const key of keys) localStorage.setItem(key, raw)
+    },
+    { raw, keys: [STORAGE_KEY, PREVIOUS_STORAGE_KEY, LEGACY_STORAGE_KEY] },
+  )
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Lokale Daten benötigen Wiederherstellung' })).toBeVisible()
   await page.getByRole('button', { name: 'Altformat und Reparatur prüfen' }).click()
-  await expect(page.getByText(/Entfernte Kontaktfelder werden nach erfolgreicher Übernahme nicht archiviert/)).toBeVisible()
+  await expect(
+    page.getByText(/Entfernte Kontaktfelder werden nach erfolgreicher Übernahme nicht archiviert/),
+  ).toBeVisible()
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(raw)
   await page.getByRole('button', { name: 'Wiederherstellung vorbereiten' }).click()
   await page.getByRole('button', { name: 'Wiederherstellung bestätigen' }).click()
@@ -27,7 +50,11 @@ test('P05 Browser: kontrollierter Umstieg bereinigt Kopien; ein Namensfeld erhä
   expect(migrated.schemaVersion).toBe(15)
   expect(migrated.invoices[0].snapshot?.recipients.map((person) => person.street)).toEqual(['Testweg 2', 'Testweg 3'])
   expect(migrated.documentVersions[0].outputSnapshot.iban).toBe(issued.documentVersions[0].outputSnapshot.iban)
-  const copies = await page.evaluate(() => Object.keys(localStorage).map((key) => localStorage.getItem(key)).join('\n'))
+  const copies = await page.evaluate(() =>
+    Object.keys(localStorage)
+      .map((key) => localStorage.getItem(key))
+      .join('\n'),
+  )
   expect(copies).not.toMatch(/P05-(?:PAYER|PAYMENT|PERSON)-SECRET/)
   await page.getByRole('button', { name: 'Personen', exact: true }).first().click()
   await page.getByRole('button', { name: /Familie Müller, Dr. Anna bearbeiten/ }).click()
@@ -45,5 +72,3 @@ test('P05 Browser: kontrollierter Umstieg bereinigt Kopien; ein Namensfeld erhä
   expect(changed.documentVersions).toEqual(migrated.documentVersions)
   expect(changed.invoices).toEqual(migrated.invoices)
 })
-
-

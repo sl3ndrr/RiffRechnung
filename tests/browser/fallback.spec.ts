@@ -18,16 +18,23 @@ test.beforeEach(async ({ page }) => {
   })
 })
 
-async function settings(page: Page) { await page.getByRole('button', { name: 'Einstellungen', exact: true }).click() }
+async function settings(page: Page) {
+  await page.getByRole('button', { name: 'Einstellungen', exact: true }).click()
+}
 async function restore(page: Page, buffer: Buffer) {
   await settings(page)
-  await page.locator('#backup input[type=file]').setInputFiles({ name: 'synthetisch.json', mimeType: 'application/json', buffer })
+  await page
+    .locator('#backup input[type=file]')
+    .setInputFiles({ name: 'synthetisch.json', mimeType: 'application/json', buffer })
   await page.getByRole('button', { name: 'Wiederherstellung vorbereiten', exact: true }).click()
   await page.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
 }
 
-test('P03 Fallback: zwei unabhängige Duo-Rechnungen als JSON exportieren, importieren und reload', async ({ page, browser }) => {
+test('P03 Fallback: zwei unabhängige Duo-Rechnungen als JSON exportieren, importieren und reload', async ({
+  page,
+  browser,
+}) => {
   const state = duoIssued()
   await page.goto('/')
   await restore(page, Buffer.from(serializeBackup(state)))
@@ -46,7 +53,9 @@ test('P03 Fallback: zwei unabhängige Duo-Rechnungen als JSON exportieren, impor
     expect(await imported.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(raw)
     expect(parseBackup(raw!)).toEqual(state)
     expect('duoGroups' in parseBackup(raw!)).toBe(false)
-  } finally { await destination.close() }
+  } finally {
+    await destination.close()
+  }
 })
 
 test('P04: asynchrone Rohdatenrettung erhält lokalen Text und unveränderte Importbytes', async ({ page }) => {
@@ -58,7 +67,9 @@ test('P04: asynchrone Rohdatenrettung erhält lokalen Text und unveränderte Imp
   await page.getByRole('button', { name: 'Beschädigte Rohdaten exportieren', exact: true }).click()
   expect(await readFile((await (await textDownload).path())!, 'utf8')).toBe(corrupt)
   const bytes = Buffer.from([0xff, 0xfe, 0, 13, 10, 123, 255])
-  await page.locator('input[type=file]').setInputFiles({ name: 'unbekannt.json', mimeType: 'application/json', buffer: bytes })
+  await page
+    .locator('input[type=file]')
+    .setInputFiles({ name: 'unbekannt.json', mimeType: 'application/json', buffer: bytes })
   await expect(page.getByRole('alert').filter({ hasText: 'Keine Übernahme möglich' })).toBeVisible()
   const byteDownload = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Unveränderte Originaldatei exportieren', exact: true }).click()
@@ -66,13 +77,31 @@ test('P04: asynchrone Rohdatenrettung erhält lokalen Text und unveränderte Imp
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(corrupt)
 })
 
-test('AP1 Fallback: gemeinsame Rechnung an zwei Personen als JSON exportieren, importieren und reload', async ({ page, browser, browserName }, testInfo) => {
+test('AP1 Fallback: gemeinsame Rechnung an zwei Personen als JSON exportieren, importieren und reload', async ({
+  page,
+  browser,
+  browserName,
+}, testInfo) => {
   const flowStarted = Date.now()
   console.log(`P12 JSON-Fallback: ${browserName} ${browser.version()}; Node ${process.version}; ${process.platform}`)
-  await testInfo.attach('browser-version.txt', { body: `${browserName} ${browser.version()} / ${process.platform} / Node ${process.version}`, contentType: 'text/plain' })
+  await testInfo.attach('browser-version.txt', {
+    body: `${browserName} ${browser.version()} / ${process.platform} / Node ${process.version}`,
+    contentType: 'text/plain',
+  })
   const state = documentFamily()
-  const draft = { ...documentDraft(), recipients: (['g-a', 'g-b']).map((id) => ({ type: 'guardian' as const, id })), studentIds: ['s-a', 's-b'], recipientStrategy: 'joint' as const,
-    items: ['a', 'b'].map((id) => ({ ...documentDraft().items[0], id: `position-${id}`, studentId: `s-${id}`, quantity: 1, unitPrice: 30 })) }
+  const draft = {
+    ...documentDraft(),
+    recipients: ['g-a', 'g-b'].map((id) => ({ type: 'guardian' as const, id })),
+    studentIds: ['s-a', 's-b'],
+    recipientStrategy: 'joint' as const,
+    items: ['a', 'b'].map((id) => ({
+      ...documentDraft().items[0],
+      id: `position-${id}`,
+      studentId: `s-${id}`,
+      quantity: 1,
+      unitPrice: 30,
+    })),
+  }
   const result = saveInvoiceDraft(state, draft, true, documentAt)
   await page.goto('/')
   await expect(page.getByRole('button', { name: 'Ordner wählen', exact: true })).toHaveCount(0)
@@ -95,12 +124,18 @@ test('AP1 Fallback: gemeinsame Rechnung an zwei Personen als JSON exportieren, i
     expect(await imported.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(raw)
     const saved = parseBackup(raw!)
     expect(saved).toEqual(result)
-    expect(saved.invoices.map((invoice) => invoice.snapshot!.students.map((student) => student.id))).toEqual([['s-a', 's-b']])
-    expect(saved.invoices.map((invoice) => invoice.snapshot!.recipients.map((guardian) => guardian.id))).toEqual([['g-a', 'g-b']])
+    expect(saved.invoices.map((invoice) => invoice.snapshot!.students.map((student) => student.id))).toEqual([
+      ['s-a', 's-b'],
+    ])
+    expect(saved.invoices.map((invoice) => invoice.snapshot!.recipients.map((guardian) => guardian.id))).toEqual([
+      ['g-a', 'g-b'],
+    ])
     expect(saved.invoices.reduce((sum, invoice) => sum + invoiceTotalCents(invoice), 0)).toBe(6000)
     expect(new Set(saved.invoices.flatMap((invoice) => invoice.items.map((item) => item.id))).size).toBe(2)
   } finally {
     await destination.close()
-    console.log(`P12 JSON-Fallback UI-Ablauf: ${browserName} ${Date.now() - flowStarted} ms (ohne initiales Fixture-Setup)`)
+    console.log(
+      `P12 JSON-Fallback UI-Ablauf: ${browserName} ${Date.now() - flowStarted} ms (ohne initiales Fixture-Setup)`,
+    )
   }
 })

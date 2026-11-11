@@ -6,18 +6,25 @@ import { waitForThemeMotion } from './themeMotion'
 const hintKey = 'riffrechnung-theme-hint'
 const switchGroup = (page: Page) => page.locator('.topbar').getByRole('radiogroup', { name: 'Farbschema' })
 const option = (page: Page, name: string) => switchGroup(page).getByRole('radio', { name, exact: true })
-const storedSettings = (page: Page) => page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? 'null')?.data?.settings, STORAGE_KEY)
+const storedSettings = (page: Page) =>
+  page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? 'null')?.data?.settings, STORAGE_KEY)
 
 async function selectTheme(page: Page, label: string) {
   await option(page, label).click()
-  await expect.poll(async () => (await storedSettings(page))?.theme).toBe(({ Hell: 'light', System: 'system', Dunkel: 'dark' } as Record<string, string>)[label])
+  await expect
+    .poll(async () => (await storedSettings(page))?.theme)
+    .toBe(({ Hell: 'light', System: 'system', Dunkel: 'dark' } as Record<string, string>)[label])
   await waitForThemeMotion(page)
 }
 
 test('3.AP1: alle Positionen, Systemwechsel zur Laufzeit, Metafarbe und Reload', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' })
   await page.goto('/')
-  for (const [label, theme, resolved] of [['Dunkel', 'dark', 'dark'], ['Hell', 'light', 'light'], ['System', 'system', 'light']] as const) {
+  for (const [label, theme, resolved] of [
+    ['Dunkel', 'dark', 'dark'],
+    ['Hell', 'light', 'light'],
+    ['System', 'system', 'light'],
+  ] as const) {
     await selectTheme(page, label)
     await expect(option(page, label)).toBeChecked()
     await expect(page.locator('html')).toHaveAttribute('data-theme', resolved)
@@ -100,16 +107,26 @@ test('3.AP1: Pfeiltasten, eine Tab-Position und sichtbarer Fokus', async ({ page
   await expect(group).toHaveAccessibleName('Farbschema')
   await expect(group.getByRole('radio')).toHaveCount(3)
   await option(page, 'System').focus()
-  for (const [key, label] of [['ArrowLeft', 'Hell'], ['ArrowRight', 'System'], ['ArrowRight', 'Dunkel'], ['ArrowRight', 'Hell'], ['ArrowUp', 'Dunkel'], ['Home', 'Hell'], ['End', 'Dunkel']] as const) {
+  for (const [key, label] of [
+    ['ArrowLeft', 'Hell'],
+    ['ArrowRight', 'System'],
+    ['ArrowRight', 'Dunkel'],
+    ['ArrowRight', 'Hell'],
+    ['ArrowUp', 'Dunkel'],
+    ['Home', 'Hell'],
+    ['End', 'Dunkel'],
+  ] as const) {
     await page.keyboard.press(key)
     await expect(option(page, label)).toBeChecked()
     await expect(option(page, label)).toBeFocused()
     await waitForThemeMotion(page)
   }
-  const style = await option(page, 'Dunkel').locator('xpath=..').evaluate((element) => {
-    const style = getComputedStyle(element)
-    return { outline: style.outlineStyle, width: Number.parseFloat(style.outlineWidth) }
-  })
+  const style = await option(page, 'Dunkel')
+    .locator('xpath=..')
+    .evaluate((element) => {
+      const style = getComputedStyle(element)
+      return { outline: style.outlineStyle, width: Number.parseFloat(style.outlineWidth) }
+    })
   expect(style.outline).toBe('solid')
   expect(style.width).toBeGreaterThanOrEqual(3)
   await page.keyboard.press('Tab')
@@ -119,7 +136,10 @@ test('3.AP1: Pfeiltasten, eine Tab-Position und sichtbarer Fokus', async ({ page
 test('3.AP1: Daumen respektiert beide Bewegungspräferenzen', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto('/')
-  const duration = () => page.locator('.theme-switch__thumb').evaluate((element) => Number.parseFloat(getComputedStyle(element).transitionDuration))
+  const duration = () =>
+    page
+      .locator('.theme-switch__thumb')
+      .evaluate((element) => Number.parseFloat(getComputedStyle(element).transitionDuration))
   expect(await duration()).toBeGreaterThan(0.01)
   await page.emulateMedia({ reducedMotion: 'reduce' })
   expect(await duration()).toBeLessThanOrEqual(0.00001)
@@ -154,15 +174,21 @@ for (const width of [320, 390, 820, 1440]) {
 for (const hint of ['dark', 'light', 'system', 'invalid', null]) {
   test(`3.AP1: Starthinweis ${hint} wirkt schon ohne App-Bundle`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' })
-    await page.addInitScript(({ key, hint }) => {
-      if (hint === null) localStorage.removeItem(key)
-      else localStorage.setItem(key, hint)
-    }, { key: hintKey, hint })
+    await page.addInitScript(
+      ({ key, hint }) => {
+        if (hint === null) localStorage.removeItem(key)
+        else localStorage.setItem(key, hint)
+      },
+      { key: hintKey, hint },
+    )
     await page.route('**/src/main.tsx', (route) => route.abort())
     await page.goto('/')
     const resolved = hint === 'light' ? 'light' : 'dark'
     await expect(page.locator('html')).toHaveAttribute('data-theme', resolved)
-    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', resolved === 'dark' ? '#11151c' : '#f5f7fb')
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute(
+      'content',
+      resolved === 'dark' ? '#11151c' : '#f5f7fb',
+    )
     expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBeNull()
   })
 }

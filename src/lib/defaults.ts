@@ -26,7 +26,10 @@ export const defaultSettings: Settings = {
 export function emptyState(): AppState {
   return {
     schemaVersion: 15,
-    documentVersions: [], invoiceAdministration: [], payments: [], historicalSnapshotCorrections: [],
+    documentVersions: [],
+    invoiceAdministration: [],
+    payments: [],
+    historicalSnapshotCorrections: [],
     guardians: [],
     students: [],
     invoices: [],
@@ -60,16 +63,86 @@ export function createDemoState(referenceDate = new Date()): AppState {
   }
 
   const guardianSeeds = [
-    { id: 'guardian-demo-claudia-schneider', name: 'Claudia Schneider', email: 'claudia.schneider@example.de', phone: '+49 221 555 11 01', address: { street: 'Lindenweg 8', postalCode: '50931', city: 'Köln' }, family: 'Schneider' },
-    { id: 'guardian-demo-tobias-schneider', name: 'Tobias Schneider', email: 'tobias.schneider@example.de', phone: '+49 221 555 11 02', address: { street: 'Lindenweg 8', postalCode: '50931', city: 'Köln' }, family: 'Schneider' },
-    { id: 'guardian-demo-aylin-yilmaz', name: 'Aylin Yılmaz', email: 'aylin.yilmaz@example.de', phone: '+49 221 555 12 01', address: { street: 'Rosenstraße 14', postalCode: '50678', city: 'Köln' }, family: 'Yılmaz' },
-    { id: 'guardian-demo-murat-yilmaz', name: 'Murat Yılmaz', email: 'murat.yilmaz@example.de', phone: '+49 221 555 12 02', address: { street: 'Rosenstraße 14', postalCode: '50678', city: 'Köln' }, family: 'Yılmaz' },
-    { id: 'guardian-demo-anna-becker', name: 'Anna Becker', email: 'anna.becker@example.de', phone: '+49 221 555 13 01', address: { street: 'Berrenrather Straße 96', postalCode: '50937', city: 'Köln' }, family: 'Becker' },
-    { id: 'guardian-demo-thomas-hoffmann', name: 'Thomas Hoffmann', email: 'thomas.hoffmann@example.de', phone: '+49 221 555 14 01', address: { street: 'Neusser Straße 221', postalCode: '50733', city: 'Köln' }, family: 'Hoffmann' },
-    { id: 'guardian-demo-linh-nguyen', name: 'Linh Nguyen', email: 'linh.nguyen@example.de', phone: '+49 221 555 15 01', address: { street: 'Aachener Straße 318', postalCode: '50933', city: 'Köln' }, family: 'Nguyen' },
-    { id: 'guardian-demo-katharina-wagner', name: 'Katharina Wagner', email: 'katharina.wagner@example.de', phone: '+49 221 555 16 01', address: { street: 'Sülzburgstraße 42', postalCode: '50937', city: 'Köln' }, family: 'Wagner' },
-    { id: 'guardian-demo-sebastian-wagner', name: 'Sebastian Wagner', email: 'sebastian.wagner@example.de', phone: '+49 221 555 16 02', address: { street: 'Sülzburgstraße 42', postalCode: '50937', city: 'Köln' }, family: 'Wagner' },
-    { id: 'guardian-demo-marco-romano', name: 'Marco Romano', email: 'marco.romano@example.de', phone: '+49 221 555 17 01', address: { street: 'Deutzer Freiheit 73', postalCode: '50679', city: 'Köln' }, family: 'Romano' },
+    {
+      id: 'guardian-demo-claudia-schneider',
+      name: 'Claudia Schneider',
+      email: 'claudia.schneider@example.de',
+      phone: '+49 221 555 11 01',
+      address: { street: 'Lindenweg 8', postalCode: '50931', city: 'Köln' },
+      family: 'Schneider',
+    },
+    {
+      id: 'guardian-demo-tobias-schneider',
+      name: 'Tobias Schneider',
+      email: 'tobias.schneider@example.de',
+      phone: '+49 221 555 11 02',
+      address: { street: 'Lindenweg 8', postalCode: '50931', city: 'Köln' },
+      family: 'Schneider',
+    },
+    {
+      id: 'guardian-demo-aylin-yilmaz',
+      name: 'Aylin Yılmaz',
+      email: 'aylin.yilmaz@example.de',
+      phone: '+49 221 555 12 01',
+      address: { street: 'Rosenstraße 14', postalCode: '50678', city: 'Köln' },
+      family: 'Yılmaz',
+    },
+    {
+      id: 'guardian-demo-murat-yilmaz',
+      name: 'Murat Yılmaz',
+      email: 'murat.yilmaz@example.de',
+      phone: '+49 221 555 12 02',
+      address: { street: 'Rosenstraße 14', postalCode: '50678', city: 'Köln' },
+      family: 'Yılmaz',
+    },
+    {
+      id: 'guardian-demo-anna-becker',
+      name: 'Anna Becker',
+      email: 'anna.becker@example.de',
+      phone: '+49 221 555 13 01',
+      address: { street: 'Berrenrather Straße 96', postalCode: '50937', city: 'Köln' },
+      family: 'Becker',
+    },
+    {
+      id: 'guardian-demo-thomas-hoffmann',
+      name: 'Thomas Hoffmann',
+      email: 'thomas.hoffmann@example.de',
+      phone: '+49 221 555 14 01',
+      address: { street: 'Neusser Straße 221', postalCode: '50733', city: 'Köln' },
+      family: 'Hoffmann',
+    },
+    {
+      id: 'guardian-demo-linh-nguyen',
+      name: 'Linh Nguyen',
+      email: 'linh.nguyen@example.de',
+      phone: '+49 221 555 15 01',
+      address: { street: 'Aachener Straße 318', postalCode: '50933', city: 'Köln' },
+      family: 'Nguyen',
+    },
+    {
+      id: 'guardian-demo-katharina-wagner',
+      name: 'Katharina Wagner',
+      email: 'katharina.wagner@example.de',
+      phone: '+49 221 555 16 01',
+      address: { street: 'Sülzburgstraße 42', postalCode: '50937', city: 'Köln' },
+      family: 'Wagner',
+    },
+    {
+      id: 'guardian-demo-sebastian-wagner',
+      name: 'Sebastian Wagner',
+      email: 'sebastian.wagner@example.de',
+      phone: '+49 221 555 16 02',
+      address: { street: 'Sülzburgstraße 42', postalCode: '50937', city: 'Köln' },
+      family: 'Wagner',
+    },
+    {
+      id: 'guardian-demo-marco-romano',
+      name: 'Marco Romano',
+      email: 'marco.romano@example.de',
+      phone: '+49 221 555 17 01',
+      address: { street: 'Deutzer Freiheit 73', postalCode: '50679', city: 'Köln' },
+      family: 'Romano',
+    },
   ]
   const guardians: Guardian[] = guardianSeeds.map((guardian) => ({
     id: guardian.id,
@@ -90,16 +163,96 @@ export function createDemoState(referenceDate = new Date()): AppState {
     weekdays: [number, number]
     duration: number
   }> = [
-    { id: 'student-demo-mia-schneider', name: 'Mia Schneider', billingCode: 'a', guardianIds: ['guardian-demo-claudia-schneider', 'guardian-demo-tobias-schneider'], lessonType: 'solo', weekdays: [1, 4], duration: .75 },
-    { id: 'student-demo-jonas-schneider', name: 'Jonas Schneider', billingCode: 'b', guardianIds: ['guardian-demo-claudia-schneider', 'guardian-demo-tobias-schneider'], lessonType: 'duo', weekdays: [2, 5], duration: .75 },
-    { id: 'student-demo-elif-yilmaz', name: 'Elif Yılmaz', billingCode: 'c', guardianIds: ['guardian-demo-aylin-yilmaz', 'guardian-demo-murat-yilmaz'], lessonType: 'duo', weekdays: [2, 5], duration: .75 },
-    { id: 'student-demo-deniz-yilmaz', name: 'Deniz Yılmaz', billingCode: 'd', guardianIds: ['guardian-demo-aylin-yilmaz', 'guardian-demo-murat-yilmaz'], lessonType: 'solo', weekdays: [3, 6], duration: 1 },
-    { id: 'student-demo-paul-becker', name: 'Paul Becker', billingCode: 'e', guardianIds: ['guardian-demo-anna-becker'], lessonType: 'solo', weekdays: [1, 3], duration: .75 },
-    { id: 'student-demo-sophie-hoffmann', name: 'Sophie Hoffmann', billingCode: 'f', guardianIds: ['guardian-demo-thomas-hoffmann'], lessonType: 'duo', weekdays: [3, 5], duration: .75 },
-    { id: 'student-demo-minh-nguyen', name: 'Minh Nguyen', billingCode: 'g', guardianIds: ['guardian-demo-linh-nguyen'], lessonType: 'solo', weekdays: [2, 4], duration: 1 },
-    { id: 'student-demo-emma-wagner', name: 'Emma Wagner', billingCode: 'h', guardianIds: ['guardian-demo-katharina-wagner', 'guardian-demo-sebastian-wagner'], lessonType: 'solo', weekdays: [1, 4], duration: .75 },
-    { id: 'student-demo-noah-wagner', name: 'Noah Wagner', billingCode: 'i', guardianIds: ['guardian-demo-katharina-wagner', 'guardian-demo-sebastian-wagner'], lessonType: 'duo', weekdays: [3, 5], duration: .75 },
-    { id: 'student-demo-luca-romano', name: 'Luca Romano', billingCode: 'j', guardianIds: ['guardian-demo-marco-romano'], lessonType: 'solo', weekdays: [2, 6], duration: 1 },
+    {
+      id: 'student-demo-mia-schneider',
+      name: 'Mia Schneider',
+      billingCode: 'a',
+      guardianIds: ['guardian-demo-claudia-schneider', 'guardian-demo-tobias-schneider'],
+      lessonType: 'solo',
+      weekdays: [1, 4],
+      duration: 0.75,
+    },
+    {
+      id: 'student-demo-jonas-schneider',
+      name: 'Jonas Schneider',
+      billingCode: 'b',
+      guardianIds: ['guardian-demo-claudia-schneider', 'guardian-demo-tobias-schneider'],
+      lessonType: 'duo',
+      weekdays: [2, 5],
+      duration: 0.75,
+    },
+    {
+      id: 'student-demo-elif-yilmaz',
+      name: 'Elif Yılmaz',
+      billingCode: 'c',
+      guardianIds: ['guardian-demo-aylin-yilmaz', 'guardian-demo-murat-yilmaz'],
+      lessonType: 'duo',
+      weekdays: [2, 5],
+      duration: 0.75,
+    },
+    {
+      id: 'student-demo-deniz-yilmaz',
+      name: 'Deniz Yılmaz',
+      billingCode: 'd',
+      guardianIds: ['guardian-demo-aylin-yilmaz', 'guardian-demo-murat-yilmaz'],
+      lessonType: 'solo',
+      weekdays: [3, 6],
+      duration: 1,
+    },
+    {
+      id: 'student-demo-paul-becker',
+      name: 'Paul Becker',
+      billingCode: 'e',
+      guardianIds: ['guardian-demo-anna-becker'],
+      lessonType: 'solo',
+      weekdays: [1, 3],
+      duration: 0.75,
+    },
+    {
+      id: 'student-demo-sophie-hoffmann',
+      name: 'Sophie Hoffmann',
+      billingCode: 'f',
+      guardianIds: ['guardian-demo-thomas-hoffmann'],
+      lessonType: 'duo',
+      weekdays: [3, 5],
+      duration: 0.75,
+    },
+    {
+      id: 'student-demo-minh-nguyen',
+      name: 'Minh Nguyen',
+      billingCode: 'g',
+      guardianIds: ['guardian-demo-linh-nguyen'],
+      lessonType: 'solo',
+      weekdays: [2, 4],
+      duration: 1,
+    },
+    {
+      id: 'student-demo-emma-wagner',
+      name: 'Emma Wagner',
+      billingCode: 'h',
+      guardianIds: ['guardian-demo-katharina-wagner', 'guardian-demo-sebastian-wagner'],
+      lessonType: 'solo',
+      weekdays: [1, 4],
+      duration: 0.75,
+    },
+    {
+      id: 'student-demo-noah-wagner',
+      name: 'Noah Wagner',
+      billingCode: 'i',
+      guardianIds: ['guardian-demo-katharina-wagner', 'guardian-demo-sebastian-wagner'],
+      lessonType: 'duo',
+      weekdays: [3, 5],
+      duration: 0.75,
+    },
+    {
+      id: 'student-demo-luca-romano',
+      name: 'Luca Romano',
+      billingCode: 'j',
+      guardianIds: ['guardian-demo-marco-romano'],
+      lessonType: 'solo',
+      weekdays: [2, 6],
+      duration: 1,
+    },
   ]
   const students: Student[] = studentSeeds.map((student) => ({
     id: student.id,
@@ -112,12 +265,24 @@ export function createDemoState(referenceDate = new Date()): AppState {
   }))
 
   const families = [
-    { id: 'schneider', guardianIds: ['guardian-demo-claudia-schneider', 'guardian-demo-tobias-schneider'], studentIds: ['student-demo-mia-schneider', 'student-demo-jonas-schneider'] },
-    { id: 'yilmaz', guardianIds: ['guardian-demo-aylin-yilmaz', 'guardian-demo-murat-yilmaz'], studentIds: ['student-demo-elif-yilmaz', 'student-demo-deniz-yilmaz'] },
+    {
+      id: 'schneider',
+      guardianIds: ['guardian-demo-claudia-schneider', 'guardian-demo-tobias-schneider'],
+      studentIds: ['student-demo-mia-schneider', 'student-demo-jonas-schneider'],
+    },
+    {
+      id: 'yilmaz',
+      guardianIds: ['guardian-demo-aylin-yilmaz', 'guardian-demo-murat-yilmaz'],
+      studentIds: ['student-demo-elif-yilmaz', 'student-demo-deniz-yilmaz'],
+    },
     { id: 'becker', guardianIds: ['guardian-demo-anna-becker'], studentIds: ['student-demo-paul-becker'] },
     { id: 'hoffmann', guardianIds: ['guardian-demo-thomas-hoffmann'], studentIds: ['student-demo-sophie-hoffmann'] },
     { id: 'nguyen', guardianIds: ['guardian-demo-linh-nguyen'], studentIds: ['student-demo-minh-nguyen'] },
-    { id: 'wagner', guardianIds: ['guardian-demo-katharina-wagner', 'guardian-demo-sebastian-wagner'], studentIds: ['student-demo-emma-wagner', 'student-demo-noah-wagner'] },
+    {
+      id: 'wagner',
+      guardianIds: ['guardian-demo-katharina-wagner', 'guardian-demo-sebastian-wagner'],
+      studentIds: ['student-demo-emma-wagner', 'student-demo-noah-wagner'],
+    },
     { id: 'romano', guardianIds: ['guardian-demo-marco-romano'], studentIds: ['student-demo-luca-romano'] },
   ]
 
@@ -142,25 +307,36 @@ export function createDemoState(referenceDate = new Date()): AppState {
   }
   const sequenceByScope = new Map<string, number>()
 
-  const lessonItemsFor = (family: typeof families[number], year: number, month: number): InvoiceItem[] => family.studentIds.flatMap((studentId) => {
-    const profile = studentSeeds.find((student) => student.id === studentId)
-    if (!profile) return []
-    const lastDay = new Date(Date.UTC(year, month + 1, 0, 12)).getUTCDate()
-    const dates = Array.from({ length: lastDay }, (_, index) => index + 1)
-      .filter((day) => profile.weekdays.includes(new Date(Date.UTC(year, month, day, 12)).getUTCDay()))
-    return dates.map((day, index): InvoiceItem => ({
-      id: `item-demo-${year}-${String(month + 1).padStart(2, '0')}-${family.id}-${profile.billingCode}-${String(index + 1).padStart(2, '0')}`,
-      studentId,
-      serviceDate: isoDate(new Date(Date.UTC(year, month, day, 12))),
-      lessonType: profile.lessonType,
-      description: `${topics[profile.lessonType][index % topics[profile.lessonType].length]} (${profile.lessonType === 'duo' ? 'Duo' : 'Solo'})`,
-      quantity: profile.duration,
-      unit: 'Std.',
-      unitPrice: profile.lessonType === 'duo' ? settings.duoRate : settings.privateRate,
-    }))
-  }).sort((a, b) => a.serviceDate.localeCompare(b.serviceDate) || a.studentId.localeCompare(b.studentId))
+  const lessonItemsFor = (family: (typeof families)[number], year: number, month: number): InvoiceItem[] =>
+    family.studentIds
+      .flatMap((studentId) => {
+        const profile = studentSeeds.find((student) => student.id === studentId)
+        if (!profile) return []
+        const lastDay = new Date(Date.UTC(year, month + 1, 0, 12)).getUTCDate()
+        const dates = Array.from({ length: lastDay }, (_, index) => index + 1).filter((day) =>
+          profile.weekdays.includes(new Date(Date.UTC(year, month, day, 12)).getUTCDay()),
+        )
+        return dates.map(
+          (day, index): InvoiceItem => ({
+            id: `item-demo-${year}-${String(month + 1).padStart(2, '0')}-${family.id}-${profile.billingCode}-${String(index + 1).padStart(2, '0')}`,
+            studentId,
+            serviceDate: isoDate(new Date(Date.UTC(year, month, day, 12))),
+            lessonType: profile.lessonType,
+            description: `${topics[profile.lessonType][index % topics[profile.lessonType].length]} (${profile.lessonType === 'duo' ? 'Duo' : 'Solo'})`,
+            quantity: profile.duration,
+            unit: 'Std.',
+            unitPrice: profile.lessonType === 'duo' ? settings.duoRate : settings.privateRate,
+          }),
+        )
+      })
+      .sort((a, b) => a.serviceDate.localeCompare(b.serviceDate) || a.studentId.localeCompare(b.studentId))
 
-  const createInvoice = (family: typeof families[number], year: number, month: number, status: 'paid' | 'sent' | 'draft'): Invoice => {
+  const createInvoice = (
+    family: (typeof families)[number],
+    year: number,
+    month: number,
+    status: 'paid' | 'sent' | 'draft',
+  ): Invoice => {
     const isCurrentMonth = year === currentYear && month === currentMonth
     const invoiceDay = isCurrentMonth ? currentDay : new Date(Date.UTC(year, month + 1, 0, 12)).getUTCDate()
     const invoiceDateValue = new Date(Date.UTC(year, month, invoiceDay, 12))
@@ -194,25 +370,40 @@ export function createDemoState(referenceDate = new Date()): AppState {
       studentIds: family.studentIds,
       recipientStrategy: 'joint',
       items: lessonItemsFor(family, year, month),
-      freeText: status === 'draft' ? 'Entwurf: Termine und Zuordnung sind vorbereitet und können vor der Finalisierung angepasst werden.' : '',
-      ...(finalized ? {
-        snapshot: {
-          issuer: structuredClone(settings.issuer),
-          recipients: family.guardianIds.flatMap((guardianId) => {
-            const guardian = guardians.find((item) => item.id === guardianId)
-            return guardian ? [{ type: 'guardian' as const, id: guardian.id, name: guardian.name, email: guardian.email, ...guardian.address }] : []
-          }),
-          students: family.studentIds.flatMap((studentId) => {
-            const student = students.find((item) => item.id === studentId)
-            return student ? [{ id: student.id, name: student.name }] : []
-          }),
-          accountHolder: settings.accountHolder,
-          iban: settings.iban,
-          bic: settings.bic,
-          bankName: settings.bankName,
-        },
-        sentAt,
-      } : {}),
+      freeText:
+        status === 'draft'
+          ? 'Entwurf: Termine und Zuordnung sind vorbereitet und können vor der Finalisierung angepasst werden.'
+          : '',
+      ...(finalized
+        ? {
+            snapshot: {
+              issuer: structuredClone(settings.issuer),
+              recipients: family.guardianIds.flatMap((guardianId) => {
+                const guardian = guardians.find((item) => item.id === guardianId)
+                return guardian
+                  ? [
+                      {
+                        type: 'guardian' as const,
+                        id: guardian.id,
+                        name: guardian.name,
+                        email: guardian.email,
+                        ...guardian.address,
+                      },
+                    ]
+                  : []
+              }),
+              students: family.studentIds.flatMap((studentId) => {
+                const student = students.find((item) => item.id === studentId)
+                return student ? [{ id: student.id, name: student.name }] : []
+              }),
+              accountHolder: settings.accountHolder,
+              iban: settings.iban,
+              bic: settings.bic,
+              bankName: settings.bankName,
+            },
+            sentAt,
+          }
+        : {}),
       ...(status === 'paid' ? { paidAt } : {}),
       createdAt,
       updatedAt,
@@ -222,7 +413,7 @@ export function createDemoState(referenceDate = new Date()): AppState {
   const invoices: Invoice[] = []
   let historyYear = 2025
   let historyMonth = 0
-  while (historyYear < currentYear || historyYear === currentYear && historyMonth < currentMonth) {
+  while (historyYear < currentYear || (historyYear === currentYear && historyMonth < currentMonth)) {
     families.forEach((family) => invoices.push(createInvoice(family, historyYear, historyMonth, 'paid')))
     historyMonth += 1
     if (historyMonth === 12) {
@@ -230,7 +421,9 @@ export function createDemoState(referenceDate = new Date()): AppState {
       historyMonth = 0
     }
   }
-  families.forEach((family, index) => invoices.push(createInvoice(family, currentYear, currentMonth, index < 2 ? 'sent' : 'draft')))
+  families.forEach((family, index) =>
+    invoices.push(createInvoice(family, currentYear, currentMonth, index < 2 ? 'sent' : 'draft')),
+  )
 
   const demo = captureLegacyDocuments({
     schemaVersion: 3,
@@ -241,16 +434,23 @@ export function createDemoState(referenceDate = new Date()): AppState {
     settings: { ...settings, numberPattern: '{YYYY}-{K}-{NNNN}', resetNumberAnnually: true },
     counters: Object.fromEntries([...sequenceByScope].map(([key, sequence]) => [key, sequence + 1])),
     nextStudentCodeIndex: students.length,
-    audit: [{ id: 'event-demo-data-loaded', at: now, label: 'Vollständige Beispieldaten ab Januar 2025 angelegt', entityType: 'system' }],
+    audit: [
+      {
+        id: 'event-demo-data-loaded',
+        at: now,
+        label: 'Vollständige Beispieldaten ab Januar 2025 angelegt',
+        entityType: 'system',
+      },
+    ],
     updatedAt: now,
   })
   // Demo data is generated here with intentional, synthetic payment days. It
   // is not historical input, so those days are safe to mark as confirmed.
   demo.payments = demo.payments.map((payment) => {
     const { legacyPaymentDay, ...rest } = payment
-    return legacyPaymentDay ? { ...rest, paidAt: paymentDay(legacyPaymentDay), paymentDayStatus: 'confirmed' as const } : payment
+    return legacyPaymentDay
+      ? { ...rest, paidAt: paymentDay(legacyPaymentDay), paymentDayStatus: 'confirmed' as const }
+      : payment
   })
   return demo
 }
-
-

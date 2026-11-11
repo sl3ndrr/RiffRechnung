@@ -38,17 +38,31 @@ test('AP6: eingefrorene Schema-7-Originale und Verwaltungsdaten bleiben bei 7→
     assert.equal(preview.report?.toSchema, 15)
     assert.ok(preview.report?.changes.some((entry) => entry.path === 'schemaVersion'))
     assert.equal(preview.state.schemaVersion, 15)
-    const expected = expectedTextless(normalizeLegacyRecipients(cleanLegacyContacts(stripLegacyTaxFields(original).value)))
+    const expected = expectedTextless(
+      normalizeLegacyRecipients(cleanLegacyContacts(stripLegacyTaxFields(original).value)),
+    )
     expected.documentVersions = expectedConsolidatedVersions(expected.documentVersions)
     const { schemaVersion: _oldSchema, counters: oldCounters, settings: oldSettings, ...oldContent } = expected
     const { schemaVersion: _newSchema, counters: newCounters, settings: newSettings, ...newContent } = preview.state
-    void _oldSchema; void _newSchema;
+    void _oldSchema
+    void _newSchema
     assert.deepEqual(newContent, oldContent)
     const retainedSettings = { ...oldSettings }
-    Reflect.deleteProperty(retainedSettings, 'numberPattern'); Reflect.deleteProperty(retainedSettings, 'resetNumberAnnually')
+    Reflect.deleteProperty(retainedSettings, 'numberPattern')
+    Reflect.deleteProperty(retainedSettings, 'resetNumberAnnually')
     assert.deepEqual(newSettings, retainedSettings)
     for (const [key, count] of Object.entries(oldCounters)) assert.ok(newCounters[key] >= count)
-    for (const key of ['guardians', 'students', 'invoices', 'documentVersions', 'invoiceAdministration', 'payments', 'voidedInvoiceNumbers', 'audit', 'historicalSnapshotCorrections'] as const) {
+    for (const key of [
+      'guardians',
+      'students',
+      'invoices',
+      'documentVersions',
+      'invoiceAdministration',
+      'payments',
+      'voidedInvoiceNumbers',
+      'audit',
+      'historicalSnapshotCorrections',
+    ] as const) {
       assert.deepEqual(preview.state[key], expected[key], key)
     }
     assert.equal(Reflect.get(preview.state, 'duoGroups'), undefined)
@@ -104,7 +118,10 @@ test('AP6: abgebrochene oder fehlerhafte Migration überschreibt keinen Bestand'
   const stale = new StorageSession({ storage, lock: sharedLock() })
   assert.equal(inspectImport(raw).ok, true)
   assert.equal(storage.length, 0)
-  const invalid = JSON.stringify({ ...original, invoices: [{ ...original.invoices[0], number: 'Kollision' }, ...original.invoices.slice(1)] })
+  const invalid = JSON.stringify({
+    ...original,
+    invoices: [{ ...original.invoices[0], number: 'Kollision' }, ...original.invoices.slice(1)],
+  })
   await assert.rejects(() => first.restore(invalid))
   assert.equal(storage.getItem(STORAGE_KEY), null)
   storage.fail = STORAGE_KEY
@@ -135,12 +152,22 @@ test('AP6: Datenschutzsperre gilt nach Migration und Import; historische separat
     const originalVersion = migratedState.documentVersions.find((entry) => entry.id === historical.versionId)!
     assert.equal(originalVersion.content.recipientStrategy, 'separate')
     assert.equal(originalVersion.provenance, original === fixture.oldestSeparate ? 'oldest-available' : 'issued')
-    const newDraft = { ...historical, id: undefined, number: null, sequence: null, status: 'draft' as const, versionId: undefined, snapshot: undefined, correction: undefined }
+    const newDraft = {
+      ...historical,
+      id: undefined,
+      number: null,
+      sequence: null,
+      status: 'draft' as const,
+      versionId: undefined,
+      snapshot: undefined,
+      correction: undefined,
+    }
     assert.throws(() => saveInvoiceDraft(migratedState, newDraft, true), /getrennte|separate|Empfänger/i)
     const correction = createCorrectionDraft(migratedState, historical.id, 'Synthetische Berichtigung')
-    assert.deepEqual(correction.documentVersions.find((entry) => entry.id === originalVersion.id), originalVersion)
+    assert.deepEqual(
+      correction.documentVersions.find((entry) => entry.id === originalVersion.id),
+      originalVersion,
+    )
     assert.deepEqual(loadState(storage).status, 'ready')
   }
 })
-
-

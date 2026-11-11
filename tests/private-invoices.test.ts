@@ -12,41 +12,100 @@ import { inspectImport, serializeMigrationReport } from '../src/lib/importState'
 import { requireSuccess } from '../src/lib/result'
 import { assertOriginalsPreserved } from '../src/lib/safety'
 import { canonical } from '../src/lib/envelope'
-import { StorageSession, STORAGE_KEY, PREVIOUS_STORAGE_KEY, LEGACY_STORAGE_KEY, LEGACY_GUARD_KEY, serializeBackup } from '../src/lib/storage'
+import {
+  StorageSession,
+  STORAGE_KEY,
+  PREVIOUS_STORAGE_KEY,
+  LEGACY_STORAGE_KEY,
+  LEGACY_GUARD_KEY,
+  serializeBackup,
+} from '../src/lib/storage'
 import { memoryStorage, sharedLock } from './storageHarness'
 import { validateBackupState } from '../src/lib/validation'
 import { invoiceSetupErrors } from '../src/lib/invoiceSetup'
 import type { AppState } from '../src/types'
 
 function print(state: AppState): string {
-  return renderToStaticMarkup(createElement(InvoicePrint, { invoice: selectInvoice(state, state.invoices[0]), guardians: state.guardians, students: state.students, settings: state.settings }))
+  return renderToStaticMarkup(
+    createElement(InvoicePrint, {
+      invoice: selectInvoice(state, state.invoices[0]),
+      guardians: state.guardians,
+      students: state.students,
+      settings: state.settings,
+    }),
+  )
 }
 
 /** Independent comparison of all protected values, including nested JSON evidence. */
 function assertProtectedValues(before: unknown, after: unknown, path = ''): void {
   if (path === 'counters') {
-    for (const [key, count] of Object.entries(before as Record<string, number>)) assert.ok((after as Record<string, number>)[key] >= count, key)
+    for (const [key, count] of Object.entries(before as Record<string, number>))
+      assert.ok((after as Record<string, number>)[key] >= count, key)
     return
   }
-  if (path === 'schemaVersion') { assert.equal(after, 15); return }
+  if (path === 'schemaVersion') {
+    assert.equal(after, 15)
+    return
+  }
   if (Array.isArray(before)) {
     assert.ok(Array.isArray(after), path)
-    const entries = path.endsWith('.conflicts') ? before.filter((entry) => entry.path !== 'snapshot.taxIdentifier') : before
+    const entries = path.endsWith('.conflicts')
+      ? before.filter((entry) => entry.path !== 'snapshot.taxIdentifier')
+      : before
     assert.equal(after.length, entries.length, path)
     entries.forEach((entry, i) => assertProtectedValues(entry, after[i], `${path}[${i}]`))
     return
   }
   if (before !== null && typeof before === 'object') {
     assert.ok(after !== null && typeof after === 'object', path)
-    const old = { ...before } as Record<string, unknown>, next = after as Record<string, unknown>
-    if (Array.isArray(old.guardianIds) && !path.startsWith('students[')) { assert.deepEqual(next.recipients, old.guardianIds.map((id) => ({ type: 'guardian', id })), path); old.recipients = old.guardianIds.map((id) => ({ type: 'guardian', id })); delete old.guardianIds }
-    if (Array.isArray(old.guardians) && !('schemaVersion' in old)) { old.recipients = old.guardians.map((person) => ({ ...(person as Record<string, unknown>), type: 'guardian' })); delete old.guardians }
-    const retired = [...(/^documentVersions\[\d+\]\.content$/.test(path) ? ['snapshot', 'draftPrintSnapshot', 'period', 'legalText'] : []), ...(path === 'settings' ? ['numberPattern', 'resetNumberAnnually'] : []), 'introText', 'legalText', 'defaultLegalText', 'outputLegalText', 'invoiceProfile', 'taxIdentifier', 'invoiceKind', 'taxPresentation', 'taxOutput', ...(path.startsWith('guardians[') ? ['iban', 'paymentNote', 'firstName', 'lastName'] : []), ...(path.startsWith('students[') ? ['note'] : [])]
-    assert.deepEqual(Object.keys(next).sort(), Object.keys(old).filter((key) => !retired.includes(key)).sort(), path)
+    const old = { ...before } as Record<string, unknown>,
+      next = after as Record<string, unknown>
+    if (Array.isArray(old.guardianIds) && !path.startsWith('students[')) {
+      assert.deepEqual(
+        next.recipients,
+        old.guardianIds.map((id) => ({ type: 'guardian', id })),
+        path,
+      )
+      old.recipients = old.guardianIds.map((id) => ({ type: 'guardian', id }))
+      delete old.guardianIds
+    }
+    if (Array.isArray(old.guardians) && !('schemaVersion' in old)) {
+      old.recipients = old.guardians.map((person) => ({ ...(person as Record<string, unknown>), type: 'guardian' }))
+      delete old.guardians
+    }
+    const retired = [
+      ...(/^documentVersions\[\d+\]\.content$/.test(path)
+        ? ['snapshot', 'draftPrintSnapshot', 'period', 'legalText']
+        : []),
+      ...(path === 'settings' ? ['numberPattern', 'resetNumberAnnually'] : []),
+      'introText',
+      'legalText',
+      'defaultLegalText',
+      'outputLegalText',
+      'invoiceProfile',
+      'taxIdentifier',
+      'invoiceKind',
+      'taxPresentation',
+      'taxOutput',
+      ...(path.startsWith('guardians[') ? ['iban', 'paymentNote', 'firstName', 'lastName'] : []),
+      ...(path.startsWith('students[') ? ['note'] : []),
+    ]
+    assert.deepEqual(
+      Object.keys(next).sort(),
+      Object.keys(old)
+        .filter((key) => !retired.includes(key))
+        .sort(),
+      path,
+    )
     for (const key of Object.keys(next)) assertProtectedValues(old[key], next[key], path ? `${path}.${key}` : key)
     return
   }
-  if (before !== after && typeof before === 'string' && typeof after === 'string' && /\.conflicts\[\d+\]\.values\[\d+\]$/.test(path)) {
+  if (
+    before !== after &&
+    typeof before === 'string' &&
+    typeof after === 'string' &&
+    /\.conflicts\[\d+\]\.values\[\d+\]$/.test(path)
+  ) {
     assertProtectedValues(JSON.parse(before), JSON.parse(after), `${path}.snapshot`)
     return
   }
@@ -55,17 +114,34 @@ function assertProtectedValues(before: unknown, after: unknown, path = ''): void
 
 function oldTaxStock() {
   const issued = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
-  const stock = saveInvoiceDraft(issued, { ...documentDraft(), items: documentDraft().items.map((item) => ({ ...item, id: 'historical-draft-item' })) }, false, documentAt)
+  const stock = saveInvoiceDraft(
+    issued,
+    { ...documentDraft(), items: documentDraft().items.map((item) => ({ ...item, id: 'historical-draft-item' })) },
+    false,
+    documentAt,
+  )
   const old = legacyVersionedFixture(stock, 8)
   old.schemaVersion = 8
   old.settings.invoiceProfile = 'small-business'
   old.settings.taxIdentifier = { kind: 'tax-number', value: 'SYNTHETIC-TAX-SECRET' }
-  const addSnapshot = (snapshot: Record<string, unknown>) => Object.assign(snapshot, {
-    invoiceProfile: 'small-business', taxIdentifier: old.settings.taxIdentifier, invoiceKind: 'standard',
-    taxOutput: { identifier: old.settings.taxIdentifier, noticeText: 'SYNTHETIC-TAX-NOTICE', noticePosition: 'footer' },
-  })
+  const addSnapshot = (snapshot: Record<string, unknown>) =>
+    Object.assign(snapshot, {
+      invoiceProfile: 'small-business',
+      taxIdentifier: old.settings.taxIdentifier,
+      invoiceKind: 'standard',
+      taxOutput: {
+        identifier: old.settings.taxIdentifier,
+        noticeText: 'SYNTHETIC-TAX-NOTICE',
+        noticePosition: 'footer',
+      },
+    })
   old.invoices[0].invoiceKind = 'standard'
-  old.invoices[0].taxPresentation = { showIdentifier: true, showIdentifierInDraft: false, showNoticeInDraft: false, noticePosition: 'footer' }
+  old.invoices[0].taxPresentation = {
+    showIdentifier: true,
+    showIdentifierInDraft: false,
+    showNoticeInDraft: false,
+    noticePosition: 'footer',
+  }
   addSnapshot(old.invoices[0].snapshot)
   old.invoices[0].introText = 'Eigene Einleitung zu § 19'
   old.invoices[0].freeText = 'Eigener Kleinunternehmertext bleibt unverändert'
@@ -77,30 +153,58 @@ function oldTaxStock() {
   old.invoices[1].taxPresentation = old.invoices[0].taxPresentation
   addSnapshot(old.invoices[1].draftPrintSnapshot)
   old.documentVersions[0].content = structuredClone(old.invoices[0])
-  for (const key of ['status', 'paidAt', 'sentAt', 'updatedAt', 'versionId']) delete old.documentVersions[0].content[key]
+  for (const key of ['status', 'paidAt', 'sentAt', 'updatedAt', 'versionId'])
+    delete old.documentVersions[0].content[key]
   addSnapshot(old.documentVersions[0].outputSnapshot)
-  const event = { id: 'old-tax-snapshot', at: documentAt, label: 'Historische Snapshot-Korrektur', entityType: 'invoice', entityId: old.invoices[0].id,
-    snapshotCorrection: { oldValue: structuredClone(old.invoices[0].snapshot), newValue: structuredClone(old.invoices[0].snapshot) } }
+  const event = {
+    id: 'old-tax-snapshot',
+    at: documentAt,
+    label: 'Historische Snapshot-Korrektur',
+    entityType: 'invoice',
+    entityId: old.invoices[0].id,
+    snapshotCorrection: {
+      oldValue: structuredClone(old.invoices[0].snapshot),
+      newValue: structuredClone(old.invoices[0].snapshot),
+    },
+  }
   old.audit.push(event)
   old.historicalSnapshotCorrections.push(event)
   old.documentVersions[0].snapshotHistory.push(event)
-  old.documentVersions[0].conflicts.push({ path: 'snapshot', message: 'Historische Snapshot-Differenz', values: [JSON.stringify(old.invoices[0].snapshot)] })
-  old.documentVersions[0].conflicts.push({ path: 'snapshot.taxIdentifier', message: 'Steuerkennung', values: ['SYNTHETIC-TAX-SECRET'] })
+  old.documentVersions[0].conflicts.push({
+    path: 'snapshot',
+    message: 'Historische Snapshot-Differenz',
+    values: [JSON.stringify(old.invoices[0].snapshot)],
+  })
+  old.documentVersions[0].conflicts.push({
+    path: 'snapshot.taxIdentifier',
+    message: 'Steuerkennung',
+    values: ['SYNTHETIC-TAX-SECRET'],
+  })
   return old
 }
 
 test('P01: unter, bei und über 250 Euro ohne Anschriften derselbe Abschluss; genau eine Privatzeile', () => {
   for (const price of [249.99, 250, 250.01]) {
     const state = documentFamily()
-    state.settings.issuer.street = ''; state.settings.issuer.postalCode = ''; state.settings.issuer.city = ''
-    state.guardians.forEach((guardian) => { guardian.address = { street: '', postalCode: '', city: '' } })
-    const draft = { ...documentDraft(), items: documentDraft().items.map((item) => ({ ...item, quantity: 1, unitPrice: price })) }
+    state.settings.issuer.street = ''
+    state.settings.issuer.postalCode = ''
+    state.settings.issuer.city = ''
+    state.guardians.forEach((guardian) => {
+      guardian.address = { street: '', postalCode: '', city: '' }
+    })
+    const draft = {
+      ...documentDraft(),
+      items: documentDraft().items.map((item) => ({ ...item, quantity: 1, unitPrice: price })),
+    }
     for (const finalize of [false, true]) {
       const result = saveInvoiceDraft(state, draft, finalize, documentAt)
       validateBackupState(result)
       const output = print(result)
       assert.equal(output.split('Privatrechnung').length - 1, 1)
-      assert.match(output, /<section class="invoice-summary"><p class="invoice-total-row">.*?<\/p><p class="invoice-private-row">Privatrechnung<\/p>/)
+      assert.match(
+        output,
+        /<section class="invoice-summary"><p class="invoice-total-row">.*?<\/p><p class="invoice-private-row">Privatrechnung<\/p>/,
+      )
       assert.doesNotMatch(output, /Steuernummer|Steuerbefreiung|Kleinbetragsrechnung|Steuerliche Angaben/)
       if (finalize) assert.equal(result.documentVersions[0].amounts.totalCents, Math.round(price * 100))
     }
@@ -108,19 +212,28 @@ test('P01: unter, bei und über 250 Euro ohne Anschriften derselbe Abschluss; ge
 })
 
 test('P01: beide gemeinsamen Empfängeranschriften, GiroCode-Daten und Namen bleiben erhalten', () => {
-  const issued = saveInvoiceDraft(documentFamily(), { ...documentDraft(), recipients: (['g-a', 'g-b']).map((id) => ({ type: 'guardian' as const, id })) }, true, documentAt)
+  const issued = saveInvoiceDraft(
+    documentFamily(),
+    { ...documentDraft(), recipients: ['g-a', 'g-b'].map((id) => ({ type: 'guardian' as const, id })) },
+    true,
+    documentAt,
+  )
   const output = print(issued)
-  for (const text of ['Empfaenger A', 'Empfaenger B', 'Testweg 2', 'Testweg 3', 'DE02 1203 0000 0000 2020 51']) assert.ok(output.includes(text), text)
+  for (const text of ['Empfaenger A', 'Empfaenger B', 'Testweg 2', 'Testweg 3', 'DE02 1203 0000 0000 2020 51'])
+    assert.ok(output.includes(text), text)
   const incomplete = structuredClone(issued.settings)
-  incomplete.issuer.name = ''; incomplete.iban = ''
+  incomplete.issuer.name = ''
+  incomplete.iban = ''
   assert.ok(invoiceSetupErrors(incomplete).some((error) => error.field === 'settings.issuer.name'))
   assert.ok(invoiceSetupErrors(incomplete).some((error) => error.field === 'settings.iban'))
 })
 
 test('P01: 8→9 entfernt nur benannte Steuerfelder und Steuer-Konfliktbelege; Quelle und Freitexte bleiben gleich', () => {
-  const old = oldTaxStock(), raw = JSON.stringify(old)
+  const old = oldTaxStock(),
+    raw = JSON.stringify(old)
   const preview = requireSuccess(inspectImport(raw))
-  assert.equal(preview.report?.fromSchema, 8); assert.equal(preview.report?.toSchema, 15)
+  assert.equal(preview.report?.fromSchema, 8)
+  assert.equal(preview.report?.toSchema, 15)
   assertProtectedValues(old, preview.state)
   assert.equal(JSON.stringify(old), raw)
   assert.equal(preview.rawData, raw)
@@ -128,8 +241,16 @@ test('P01: 8→9 entfernt nur benannte Steuerfelder und Steuer-Konfliktbelege; Q
   assert.doesNotMatch(serializeMigrationReport(preview), /SYNTHETIC-TAX-SECRET|SYNTHETIC-TAX-NOTICE/)
   assert.equal(print(preview.state).split('Privatrechnung').length - 1, 1)
   assert.equal(requireSuccess(inspectImport(JSON.stringify(preview.state))).report, null)
-  for (const modify of [(state: AppState) => { state.invoices[0].items[0].unitPrice++ }, (state: AppState) => { state.documentVersions[0].outputSnapshot.iban = 'ANDERS' }]) {
-    const next = structuredClone(preview.state); modify(next)
+  for (const modify of [
+    (state: AppState) => {
+      state.invoices[0].items[0].unitPrice++
+    },
+    (state: AppState) => {
+      state.documentVersions[0].outputSnapshot.iban = 'ANDERS'
+    },
+  ]) {
+    const next = structuredClone(preview.state)
+    modify(next)
     assert.throws(() => assertOriginalsPreserved(preview.state, next))
   }
   const illegal = structuredClone(preview.state)
@@ -152,7 +273,10 @@ test('P01: unveränderte historische Gold-Quelle wird bereinigt; Nichtsteuerdate
   for (const source of [root.issuedCorrected, root.oldestSeparate]) {
     const preview = requireSuccess(inspectImport(JSON.stringify(source)))
     assertProtectedValues(source, preview.state)
-    assert.doesNotMatch(serializeBackup(preview.state), /"(?:invoiceProfile|taxIdentifier|invoiceKind|taxPresentation|taxOutput)"\s*:/)
+    assert.doesNotMatch(
+      serializeBackup(preview.state),
+      /"(?:invoiceProfile|taxIdentifier|invoiceKind|taxPresentation|taxOutput)"\s*:/,
+    )
   }
 })
 
@@ -168,39 +292,59 @@ test('P01: Kopie und Korrektur führen keine Steuerfelder wieder ein; Originalsc
   const finalized = saveInvoiceDraft(corrected, editable(correction), true, documentAt)
   assertOriginalsPreserved(source, finalized)
   assert.equal(canonical(finalized.documentVersions[0]), canonical(version))
-  assert.doesNotMatch(serializeBackup(finalized), /"(?:invoiceProfile|taxIdentifier|invoiceKind|taxPresentation|taxOutput)"\s*:/)
+  assert.doesNotMatch(
+    serializeBackup(finalized),
+    /"(?:invoiceProfile|taxIdentifier|invoiceKind|taxPresentation|taxOutput)"\s*:/,
+  )
 })
 
 test('P01: erfolgreiche Übernahme bereinigt Hauptbestand, Vorgänger, Legacy-Schlüssel und interne Archive', async () => {
-  const storage = memoryStorage(), raw = JSON.stringify(oldTaxStock())
+  const storage = memoryStorage(),
+    raw = JSON.stringify(oldTaxStock())
   for (const key of [STORAGE_KEY, PREVIOUS_STORAGE_KEY, LEGACY_STORAGE_KEY]) storage.setItem(key, raw)
   storage.setItem(LEGACY_GUARD_KEY, JSON.stringify(raw))
-  storage.setItem(`${STORAGE_KEY}-recovery-old`, JSON.stringify({ previousRaw: raw, legacyRaw: raw, sourceRaw: raw,
-    report: { changes: [{ path: 'settings.taxIdentifier', before: 'SYNTHETIC-TAX-SECRET', after: 'SYNTHETIC-TAX-SECRET' }, { path: 'documentVersions.version-old', before: null, after: oldTaxStock().documentVersions[0] }] } }))
+  storage.setItem(
+    `${STORAGE_KEY}-recovery-old`,
+    JSON.stringify({
+      previousRaw: raw,
+      legacyRaw: raw,
+      sourceRaw: raw,
+      report: {
+        changes: [
+          { path: 'settings.taxIdentifier', before: 'SYNTHETIC-TAX-SECRET', after: 'SYNTHETIC-TAX-SECRET' },
+          { path: 'documentVersions.version-old', before: null, after: oldTaxStock().documentVersions[0] },
+        ],
+      },
+    }),
+  )
   const session = new StorageSession({ storage, lock: sharedLock() })
   assert.equal(session.initial.status, 'recovery')
   await session.restore(raw)
-  for (const [key, value] of storage.entries) assert.doesNotMatch(value, /SYNTHETIC-TAX-SECRET|SYNTHETIC-TAX-NOTICE/, key)
+  for (const [key, value] of storage.entries)
+    assert.doesNotMatch(value, /SYNTHETIC-TAX-SECRET|SYNTHETIC-TAX-NOTICE/, key)
   assert.doesNotMatch(session.exportRecoveryArchive(), /SYNTHETIC-TAX-SECRET|SYNTHETIC-TAX-NOTICE/)
   assert.equal(new StorageSession({ storage, lock: sharedLock() }).state.schemaVersion, 15)
 })
 
 test('P01: fehlgeschlagene Speicherung und unlesbare Nebenstruktur lassen alle Ausgangsschlüssel unverändert', async () => {
   for (const failing of [STORAGE_KEY, PREVIOUS_STORAGE_KEY, LEGACY_GUARD_KEY, 'security-write']) {
-    const storage = memoryStorage(), raw = JSON.stringify(oldTaxStock())
-    storage.setItem(STORAGE_KEY, raw); storage.setItem(PREVIOUS_STORAGE_KEY, raw)
-    storage.setItem(LEGACY_STORAGE_KEY, raw); storage.setItem(LEGACY_GUARD_KEY, JSON.stringify(raw))
+    const storage = memoryStorage(),
+      raw = JSON.stringify(oldTaxStock())
+    storage.setItem(STORAGE_KEY, raw)
+    storage.setItem(PREVIOUS_STORAGE_KEY, raw)
+    storage.setItem(LEGACY_STORAGE_KEY, raw)
+    storage.setItem(LEGACY_GUARD_KEY, JSON.stringify(raw))
     const before = [...storage.entries]
-    const session = new StorageSession({ storage, lock: sharedLock() }); storage.fail = failing
+    const session = new StorageSession({ storage, lock: sharedLock() })
+    storage.fail = failing
     await assert.rejects(session.restore(raw))
     assert.deepEqual([...storage.entries], before)
   }
-  const storage = memoryStorage(), raw = JSON.stringify(oldTaxStock())
-  storage.setItem(STORAGE_KEY, raw); storage.setItem(`${STORAGE_KEY}-recovery-broken`, '{"taxIdentifier":"SYNTHETIC-TAX-SECRET",beschädigt')
+  const storage = memoryStorage(),
+    raw = JSON.stringify(oldTaxStock())
+  storage.setItem(STORAGE_KEY, raw)
+  storage.setItem(`${STORAGE_KEY}-recovery-broken`, '{"taxIdentifier":"SYNTHETIC-TAX-SECRET",beschädigt')
   const before = [...storage.entries]
   await assert.rejects(new StorageSession({ storage, lock: sharedLock() }).restore(raw), /nicht lesbar/)
   assert.deepEqual([...storage.entries], before)
 })
-
-
-

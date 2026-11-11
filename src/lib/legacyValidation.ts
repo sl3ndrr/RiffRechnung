@@ -30,7 +30,10 @@ export function validateLegacyV7Structure(value: unknown): void {
 }
 
 export function validateLegacyV8Structure(value: unknown): void {
-  validateLegacyStructure(cleanInvoiceTexts(cleanLegacyContacts(detachLegacyDuoGroups(stripLegacyTaxFields(value).value))), 8)
+  validateLegacyStructure(
+    cleanInvoiceTexts(cleanLegacyContacts(detachLegacyDuoGroups(stripLegacyTaxFields(value).value))),
+    8,
+  )
 }
 
 export function validateLegacyV9Structure(value: unknown): void {
@@ -40,7 +43,6 @@ export function validateLegacyV9Structure(value: unknown): void {
 export function validateLegacyV10Structure(value: unknown): void {
   validateLegacyStructure(cleanInvoiceTexts(cleanLegacyContacts(value)), 10)
 }
-
 
 export function validateLegacyV11Structure(value: unknown): void {
   validateLegacyStructure(cleanInvoiceTexts(value), 11)
@@ -53,7 +55,6 @@ export function validateLegacyV12Structure(value: unknown): void {
 export function validateLegacyV13Structure(value: unknown): void {
   validateLegacyStructure(cleanInvoiceTexts(value), 13)
 }
-
 
 export function validateLegacyV14Structure(value: unknown): void {
   validateLegacyStructure(cleanInvoiceTexts(value), 14)

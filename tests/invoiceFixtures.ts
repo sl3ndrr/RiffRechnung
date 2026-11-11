@@ -26,7 +26,7 @@ export const invoice = (overrides: Partial<Invoice> = {}): Invoice => ({
   dueDate: '2026-08-15',
   period: 'August 2026',
   status: 'sent',
-  recipients: ([]).map((id) => ({ type: 'guardian' as const, id })),
+  recipients: [].map((id) => ({ type: 'guardian' as const, id })),
   studentIds: ['student-a'],
   recipientStrategy: 'joint',
   items: [],
@@ -40,7 +40,9 @@ export function withMockLocalStorage(run: () => void): void {
   const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
   const entries = new Map<string, string>()
   const localStorageMock: Storage = {
-    get length() { return entries.size },
+    get length() {
+      return entries.size
+    },
     clear: () => entries.clear(),
     getItem: (key) => entries.get(key) ?? null,
     key: (index) => [...entries.keys()][index] ?? null,
@@ -77,15 +79,24 @@ export function validImportState() {
   })
   state.students.push({ ...student('student-a', 'Anna', 'a'), guardianIds: ['guardian-a'] })
   state.nextStudentCodeIndex = 1
-  state.invoices.push(invoice({
-    recipients: (['guardian-a']).map((id) => ({ type: 'guardian' as const, id })),
-    items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-a')],
-  }))
+  state.invoices.push(
+    invoice({
+      recipients: ['guardian-a'].map((id) => ({ type: 'guardian' as const, id })),
+      items: [createLessonItem('student-a', '2026-08-05', defaultSettings, 'item-a')],
+    }),
+  )
   const current = captureLegacyDocuments(legacyFixture(state))
   current.schemaVersion = 15
   current.settings = {
     ...current.settings,
-    issuer: { name: 'Synthetisches Studio', street: 'Testweg 1', postalCode: '12345', city: 'Teststadt', email: 'studio@example.de', phone: '' },
+    issuer: {
+      name: 'Synthetisches Studio',
+      street: 'Testweg 1',
+      postalCode: '12345',
+      city: 'Teststadt',
+      email: 'studio@example.de',
+      phone: '',
+    },
     accountHolder: 'Synthetisches Studio',
     iban: 'DE02120300000000202051',
   }

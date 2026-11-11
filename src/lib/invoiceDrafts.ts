@@ -31,7 +31,11 @@ function lessonDescription(description: string, lessonType: LessonType): string 
   return `${base} (${lessonTypeLabel[lessonType]})`
 }
 
-export function applyLessonType(item: InvoiceItem, lessonType: LessonType, settings: Pick<Settings, 'privateRate' | 'duoRate'>): InvoiceItem {
+export function applyLessonType(
+  item: InvoiceItem,
+  lessonType: LessonType,
+  settings: Pick<Settings, 'privateRate' | 'duoRate'>,
+): InvoiceItem {
   return {
     ...item,
     lessonType,
@@ -40,7 +44,12 @@ export function applyLessonType(item: InvoiceItem, lessonType: LessonType, setti
   }
 }
 
-export function createLessonItem(studentId: string, serviceDate: string, settings: Pick<Settings, 'privateRate' | 'duoRate'>, id = uid('item')): InvoiceItem {
+export function createLessonItem(
+  studentId: string,
+  serviceDate: string,
+  settings: Pick<Settings, 'privateRate' | 'duoRate'>,
+  id = uid('item'),
+): InvoiceItem {
   const lessonType: LessonType = 'solo'
   if (!validId(id) || !validId(studentId)) throw new Error('Eine gültige Positions- und Lernenden-ID wird benötigt.')
   if (!validPrice(lessonRate(settings, lessonType))) throw new Error('Der Standardpreis ist ungültig.')
@@ -56,9 +65,15 @@ export function createLessonItem(studentId: string, serviceDate: string, setting
   }
 }
 
-
 /** Shared editable values only. Each caller owns identity, numbering and frozen data. */
 export function invoiceDraftFields(source: InvoiceDraft): Omit<InvoiceDraft, 'id' | 'correction' | 'period'> {
-  return structuredClone({ invoiceDate: source.invoiceDate, dueDate: source.dueDate, recipients: source.recipients,
-    studentIds: source.studentIds, recipientStrategy: source.recipientStrategy, items: source.items, freeText: source.freeText })
+  return structuredClone({
+    invoiceDate: source.invoiceDate,
+    dueDate: source.dueDate,
+    recipients: source.recipients,
+    studentIds: source.studentIds,
+    recipientStrategy: source.recipientStrategy,
+    items: source.items,
+    freeText: source.freeText,
+  })
 }

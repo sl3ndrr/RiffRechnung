@@ -53,31 +53,64 @@ export function dashboardStats(state: AppState, now: Date, year = now.getFullYea
   }
 
   const invoices = selectedInvoices(state)
-  const items: DashboardOpenItem[] = invoices.flatMap((invoice) => {
-    if (invoice.archived || !isActiveClaim(state, invoice)) return []
-    // Reuse the claim's clamped remainder, including existing overpayments.
-    const remaining = openCents(state, invoice)
-    if (remaining <= 0) return []
-    const isOverdue = effectiveStatus(invoice, now) === 'overdue'
-    return [{
-      invoiceId: invoice.id, number: invoice.number,
-      recipientLabel: guardianName(invoice, state.guardians, state.students), studentLabel: studentName(invoice, state.students),
-      openCents: remaining, invoiceDate: invoice.invoiceDate, dueDate: invoice.dueDate,
-      daysSinceInvoice: Math.max(0, calendarDaysBetween(invoice.invoiceDate, today)),
-      daysOverdue: isOverdue ? Math.max(0, calendarDaysBetween(invoice.dueDate, today)) : 0, isOverdue,
-      daysUntilDue: Math.max(0, calendarDaysBetween(today, invoice.dueDate)),
-    }]
-  }).sort((a, b) => Number(b.isOverdue) - Number(a.isOverdue) || b.daysOverdue - a.daysOverdue
-    || a.dueDate.localeCompare(b.dueDate) || a.invoiceId.localeCompare(b.invoiceId))
+  const items: DashboardOpenItem[] = invoices
+    .flatMap((invoice) => {
+      if (invoice.archived || !isActiveClaim(state, invoice)) return []
+      // Reuse the claim's clamped remainder, including existing overpayments.
+      const remaining = openCents(state, invoice)
+      if (remaining <= 0) return []
+      const isOverdue = effectiveStatus(invoice, now) === 'overdue'
+      return [
+        {
+          invoiceId: invoice.id,
+          number: invoice.number,
+          recipientLabel: guardianName(invoice, state.guardians, state.students),
+          studentLabel: studentName(invoice, state.students),
+          openCents: remaining,
+          invoiceDate: invoice.invoiceDate,
+          dueDate: invoice.dueDate,
+          daysSinceInvoice: Math.max(0, calendarDaysBetween(invoice.invoiceDate, today)),
+          daysOverdue: isOverdue ? Math.max(0, calendarDaysBetween(invoice.dueDate, today)) : 0,
+          isOverdue,
+          daysUntilDue: Math.max(0, calendarDaysBetween(today, invoice.dueDate)),
+        },
+      ]
+    })
+    .sort(
+      (a, b) =>
+        Number(b.isOverdue) - Number(a.isOverdue) ||
+        b.daysOverdue - a.daysOverdue ||
+        a.dueDate.localeCompare(b.dueDate) ||
+        a.invoiceId.localeCompare(b.invoiceId),
+    )
   const overdue = items.filter((item) => item.isOverdue)
   const drafts = invoices.filter((invoice) => !invoice.versionId)
   const draftAmounts = drafts.map(previewCents)
   const calculableDrafts = draftAmounts.filter((amount): amount is number => amount !== null)
   return {
-    paid: { yearCents: sumCents(months.map((month) => month.cents)), allTimeCents: sumCents(state.payments.map((payment) => payment.amountCents)), withoutConfirmedDay },
-    open: { count: items.length, totalCents: sumCents(items.map((item) => item.openCents)), overdueCount: overdue.length, overdueCents: sumCents(overdue.map((item) => item.openCents)), items },
-    drafts: { count: calculableDrafts.length, totalCount: drafts.length, totalCents: sumCents(calculableDrafts), uncalculableCount: drafts.length - calculableDrafts.length },
-    people: { guardians: state.guardians.length, students: state.students.length, activeStudents: state.students.filter((student) => student.active).length },
+    paid: {
+      yearCents: sumCents(months.map((month) => month.cents)),
+      allTimeCents: sumCents(state.payments.map((payment) => payment.amountCents)),
+      withoutConfirmedDay,
+    },
+    open: {
+      count: items.length,
+      totalCents: sumCents(items.map((item) => item.openCents)),
+      overdueCount: overdue.length,
+      overdueCents: sumCents(overdue.map((item) => item.openCents)),
+      items,
+    },
+    drafts: {
+      count: calculableDrafts.length,
+      totalCount: drafts.length,
+      totalCents: sumCents(calculableDrafts),
+      uncalculableCount: drafts.length - calculableDrafts.length,
+    },
+    people: {
+      guardians: state.guardians.length,
+      students: state.students.length,
+      activeStudents: state.students.filter((student) => student.active).length,
+    },
     monthly: { year, months, availableYears: [...years].sort((a, b) => b - a) },
   }
 }

@@ -21,36 +21,63 @@ for (const width of [320, 390, 1280]) {
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Guten Morgen, Anna')
       const navigation = page.locator(width <= 820 ? '.mobile-bottom-nav' : '.sidebar nav')
       await expect(navigation.getByRole('button')).toHaveCount(4)
-      await expect(navigation.getByRole('button', { name: 'Dashboard', exact: true })).toHaveAttribute('aria-current', 'page')
+      await expect(navigation.getByRole('button', { name: 'Dashboard', exact: true })).toHaveAttribute(
+        'aria-current',
+        'page',
+      )
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
       if (width <= 820) {
-        const fit = await navigation.getByRole('button').evaluateAll((buttons) => buttons.every((button) => {
-          const rect = button.getBoundingClientRect(), label = button.querySelector('span')!.getBoundingClientRect()
-          return rect.width >= 44 && rect.height >= 44 && label.left >= rect.left && label.right <= rect.right && rect.right <= window.innerWidth
-        }))
+        const fit = await navigation.getByRole('button').evaluateAll((buttons) =>
+          buttons.every((button) => {
+            const rect = button.getBoundingClientRect(),
+              label = button.querySelector('span')!.getBoundingClientRect()
+            return (
+              rect.width >= 44 &&
+              rect.height >= 44 &&
+              label.left >= rect.left &&
+              label.right <= rect.right &&
+              rect.right <= window.innerWidth
+            )
+          }),
+        )
         expect(fit).toBe(true)
       }
-      const colors = await page.locator('.dashboard-page h1, .dashboard-page h2, .dashboard-stat__value, .dashboard-stat p, .dashboard-open-row span, .dashboard-open-row strong, .dashboard-open-row small, .dashboard-chart__value, .dashboard-chip, .dashboard-average').evaluateAll((elements) => elements.map((element) => {
-        let ancestor: Element | null = element
-        let background = 'rgba(0, 0, 0, 0)'
-        while (ancestor && (background === 'rgba(0, 0, 0, 0)' || background === 'transparent')) {
-          background = getComputedStyle(ancestor).backgroundColor
-          ancestor = ancestor.parentElement
-        }
-        return [getComputedStyle(element).color, background]
-      }))
-      for (const [foreground, background] of colors) expect(contrast(foreground, background)).toBeGreaterThanOrEqual(4.5)
+      const colors = await page
+        .locator(
+          '.dashboard-page h1, .dashboard-page h2, .dashboard-stat__value, .dashboard-stat p, .dashboard-open-row span, .dashboard-open-row strong, .dashboard-open-row small, .dashboard-chart__value, .dashboard-chip, .dashboard-average',
+        )
+        .evaluateAll((elements) =>
+          elements.map((element) => {
+            let ancestor: Element | null = element
+            let background = 'rgba(0, 0, 0, 0)'
+            while (ancestor && (background === 'rgba(0, 0, 0, 0)' || background === 'transparent')) {
+              background = getComputedStyle(ancestor).backgroundColor
+              ancestor = ancestor.parentElement
+            }
+            return [getComputedStyle(element).color, background]
+          }),
+        )
+      for (const [foreground, background] of colors)
+        expect(contrast(foreground, background)).toBeGreaterThanOrEqual(4.5)
       const row = page.locator('.dashboard-open-row').first()
       await tabTo(page, row)
       const focus = await row.evaluate((element) => {
         const style = getComputedStyle(element)
-        return { width: Number.parseFloat(style.outlineWidth), style: style.outlineStyle, color: style.outlineColor, background: getComputedStyle(element.closest('.surface')!).backgroundColor }
+        return {
+          width: Number.parseFloat(style.outlineWidth),
+          style: style.outlineStyle,
+          color: style.outlineColor,
+          background: getComputedStyle(element.closest('.surface')!).backgroundColor,
+        }
       })
       expect(focus.width).toBeGreaterThanOrEqual(3)
       expect(focus.style).not.toBe('none')
       expect(contrast(focus.color, focus.background)).toBeGreaterThanOrEqual(3)
       await row.scrollIntoViewIfNeeded()
-      await testInfo.attach(`dashboard-${width}-${theme}.png`, { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
+      await testInfo.attach(`dashboard-${width}-${theme}.png`, {
+        body: await page.screenshot({ fullPage: true }),
+        contentType: 'image/png',
+      })
       const year = page.getByRole('combobox', { name: 'Jahr für Zahlungseingang', exact: true })
       await tabTo(page, year)
       await year.selectOption('2025')
@@ -82,7 +109,11 @@ async function invoices(page: Page, mobile = false) {
 }
 
 async function tabTo(page: Page, target: Locator, maximumTabs = 80) {
-  for (let index = 0; index < maximumTabs && !await target.evaluate((element) => element === document.activeElement); index++) {
+  for (
+    let index = 0;
+    index < maximumTabs && !(await target.evaluate((element) => element === document.activeElement));
+    index++
+  ) {
     await page.keyboard.press('Tab')
   }
   await expect(target).toBeFocused()
@@ -91,18 +122,33 @@ async function tabTo(page: Page, target: Locator, maximumTabs = 80) {
 async function finishAnimations(page: Page) {
   await page.evaluate(() => {
     for (const animation of document.getAnimations()) {
-      try { animation.finish() } catch { /* Endlose Statusanimationen bleiben für den Screenshot unbeachtet. */ }
+      try {
+        animation.finish()
+      } catch {
+        /* Endlose Statusanimationen bleiben für den Screenshot unbeachtet. */
+      }
     }
   })
 }
 
-test('AP8 Accessibility: lange Desktop-Details bleiben im Fenster und Footeraktionen per Tastatur erreichbar', async ({ page }, testInfo) => {
+test('AP8 Accessibility: lange Desktop-Details bleiben im Fenster und Footeraktionen per Tastatur erreichbar', async ({
+  page,
+}, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 720 })
   const draft = documentDraft()
-  const state = saveInvoiceDraft(documentFamily(), {
-    ...draft,
-    items: Array.from({ length: 12 }, (_, index) => ({ ...draft.items[0], id: `long-detail-${index}`, description: `Unterrichtsposition ${index + 1} mit ausführlicher Beschreibung` })),
-  }, false, documentAt)
+  const state = saveInvoiceDraft(
+    documentFamily(),
+    {
+      ...draft,
+      items: Array.from({ length: 12 }, (_, index) => ({
+        ...draft.items[0],
+        id: `long-detail-${index}`,
+        description: `Unterrichtsposition ${index + 1} mit ausführlicher Beschreibung`,
+      })),
+    },
+    false,
+    documentAt,
+  )
   await seed(page, state)
   await invoices(page)
   await page.getByRole('button', { name: 'Entwurf', exact: true }).first().click()
@@ -130,11 +176,16 @@ function contrast(foreground: string, background: string) {
   const rgb = (value: string) => {
     const normalized = value.trim()
     const channels = normalized.startsWith('#')
-      ? [normalized.slice(1, 3), normalized.slice(3, 5), normalized.slice(5, 7)].map((channel) => Number.parseInt(channel, 16))
-      : normalized.match(/\d+(?:\.\d+)?/g)!.slice(0, 3).map(Number)
+      ? [normalized.slice(1, 3), normalized.slice(3, 5), normalized.slice(5, 7)].map((channel) =>
+          Number.parseInt(channel, 16),
+        )
+      : normalized
+          .match(/\d+(?:\.\d+)?/g)!
+          .slice(0, 3)
+          .map(Number)
     return channels.map((channel) => {
-    const normalized = channel / 255
-    return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4
+      const normalized = channel / 255
+      return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4
     })
   }
   const luminance = (value: string) => {
@@ -146,7 +197,9 @@ function contrast(foreground: string, background: string) {
 }
 
 for (const width of [390, 900, 1280]) {
-  test(`P10 Browser: Rechnungsdetails, Status und Rückkehr funktionieren mit Tab, Enter und Escape bei ${width} Pixeln`, async ({ page }) => {
+  test(`P10 Browser: Rechnungsdetails, Status und Rückkehr funktionieren mit Tab, Enter und Escape bei ${width} Pixeln`, async ({
+    page,
+  }) => {
     const state = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
     await page.setViewportSize({ width, height: 900 })
     await seed(page, state)
@@ -166,8 +219,6 @@ for (const width of [390, 900, 1280]) {
   })
 }
 
-
-
 test('P10 Browser: verschachtelte Dialoge halten Fokus, Modalität und Scrollsperre', async ({ page }) => {
   const state = saveInvoiceDraft(documentFamily(), documentDraft(), false, documentAt)
   await seed(page, state)
@@ -182,7 +233,9 @@ test('P10 Browser: verschachtelte Dialoge halten Fokus, Modalität und Scrollspe
   await expect(confirmation).toBeVisible()
   await expect(confirmation.getByRole('button', { name: 'Weiter bearbeiten' })).toBeFocused()
   await expect(confirmation).toHaveAccessibleName('Ungespeicherte Rechnungsänderungen verwerfen?')
-  await expect(confirmation).toHaveAccessibleDescription('Die Eingaben wurden noch nicht gespeichert oder finalisiert. „Weiter bearbeiten“ erhält alle Formularwerte. „Verwerfen“ ändert keinen gespeicherten Beleg.')
+  await expect(confirmation).toHaveAccessibleDescription(
+    'Die Eingaben wurden noch nicht gespeichert oder finalisiert. „Weiter bearbeiten“ erhält alle Formularwerte. „Verwerfen“ ändert keinen gespeicherten Beleg.',
+  )
   const accessibilityTree = await confirmation.ariaSnapshot()
   expect(accessibilityTree).toContain('alertdialog "Ungespeicherte Rechnungsänderungen verwerfen?"')
   expect(accessibilityTree).toContain('button "Weiter bearbeiten"')
@@ -246,7 +299,6 @@ test('P10 Browser: interne Navigation schützt alle Editorwerte und Verwerfen sp
   await expect(editor.getByLabel('Freitext / Hinweis', { exact: true })).not.toHaveValue('Ungespeicherter Freitext')
 })
 
-
 test('P10 Browser: Importbestätigung bleibt als oberster Dialog erreichbar', async ({ page }) => {
   const state = saveInvoiceDraft(documentFamily(), documentDraft(), false, documentAt)
   await seed(page, state)
@@ -279,10 +331,12 @@ test('P10 Browser: mobile Navigation ist geschlossen inert und stellt Fokus wied
   const sidebar = page.locator('#mobile-sidebar')
   await expect(sidebar).toHaveAttribute('inert', '')
   const hiddenInvoiceLink = sidebar.locator('button').filter({ hasText: 'Rechnungen' })
-  expect(await hiddenInvoiceLink.evaluate((element) => {
-    element.focus()
-    return element === document.activeElement
-  })).toBe(false)
+  expect(
+    await hiddenInvoiceLink.evaluate((element) => {
+      element.focus()
+      return element === document.activeElement
+    }),
+  ).toBe(false)
   await tabTo(page, trigger)
   await page.keyboard.press('Enter')
   const close = page.locator('#mobile-sidebar').getByRole('button', { name: 'Navigation schließen' })
@@ -319,12 +373,20 @@ test('P10 Browser: relevante Textkontraste erreichen in beiden Themes AA', async
       ]
     })
     for (const [foreground, background] of pairs) expect(contrast(foreground, background)).toBeGreaterThanOrEqual(4.5)
-    const controlColors = await group.locator('label').evaluateAll((labels) => labels.map((label) => {
-      const style = getComputedStyle(label)
-      const root = getComputedStyle(document.documentElement)
-      return [style.color, root.getPropertyValue(label.classList.contains('is-selected') ? '--primary-container' : '--surface-container-high')]
-    }))
-    for (const [foreground, background] of controlColors) expect(contrast(foreground, background)).toBeGreaterThanOrEqual(3)
+    const controlColors = await group.locator('label').evaluateAll((labels) =>
+      labels.map((label) => {
+        const style = getComputedStyle(label)
+        const root = getComputedStyle(document.documentElement)
+        return [
+          style.color,
+          root.getPropertyValue(
+            label.classList.contains('is-selected') ? '--primary-container' : '--surface-container-high',
+          ),
+        ]
+      }),
+    )
+    for (const [foreground, background] of controlColors)
+      expect(contrast(foreground, background)).toBeGreaterThanOrEqual(3)
     await finishAnimations(page)
     await page.screenshot({ path: testInfo.outputPath(`kontrast-${theme}-kleine-texte.png`), fullPage: false })
     await invoices(page)
@@ -347,15 +409,24 @@ test('P10 Browser: relevante Textkontraste erreichen in beiden Themes AA', async
   }
 })
 
-test('P10 Browser: Datei-, Chip- und Theme-Eingaben markieren das sichtbare Bedienelement', async ({ page }, testInfo) => {
-  const outline = async (locator: Locator) => locator.evaluate((element) => getComputedStyle(element).outlineStyle !== 'none' && Number.parseFloat(getComputedStyle(element).outlineWidth) >= 3)
+test('P10 Browser: Datei-, Chip- und Theme-Eingaben markieren das sichtbare Bedienelement', async ({
+  page,
+}, testInfo) => {
+  const outline = async (locator: Locator) =>
+    locator.evaluate(
+      (element) =>
+        getComputedStyle(element).outlineStyle !== 'none' &&
+        Number.parseFloat(getComputedStyle(element).outlineWidth) >= 3,
+    )
   const state = saveInvoiceDraft(documentFamily(), documentDraft(), false, documentAt)
   await seed(page, state)
   const topbarInput = page.locator('.theme-switch').getByRole('radio', { checked: true })
   await tabTo(page, topbarInput)
   expect(await outline(topbarInput.locator('xpath=..'))).toBe(true)
   await page.keyboard.press('Tab')
-  expect(await page.locator('.theme-switch').evaluate((element) => element.contains(document.activeElement))).toBe(false)
+  expect(await page.locator('.theme-switch').evaluate((element) => element.contains(document.activeElement))).toBe(
+    false,
+  )
   await page.getByRole('button', { name: 'Einstellungen', exact: true }).click()
   const themeInput = page.locator('.theme-picker').getByRole('radio', { checked: true })
   await tabTo(page, themeInput)
@@ -381,7 +452,9 @@ test('P10 Browser: Datei-, Chip- und Theme-Eingaben markieren das sichtbare Bedi
 })
 
 for (const width of [390, 1280]) {
-  test(`P02/3.AP3 Browser: Dashboard startet, Navigation, Suche und Statusfilter bleiben bei ${width} Pixeln`, async ({ page }) => {
+  test(`P02/3.AP3 Browser: Dashboard startet, Navigation, Suche und Statusfilter bleiben bei ${width} Pixeln`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width, height: 900 })
     await seed(page, saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt))
     await expect(page.locator('.dashboard-page')).toBeVisible()
@@ -389,7 +462,10 @@ for (const width of [390, 1280]) {
     await expect(page.getByRole('heading', { name: 'Rechnungen', exact: true })).toBeVisible()
     const navigation = page.locator(width === 390 ? '.mobile-bottom-nav' : '.sidebar nav')
     await expect(navigation.getByRole('button')).toHaveCount(4)
-    await expect(navigation.getByRole('button', { name: 'Rechnungen', exact: true })).toHaveAttribute('aria-current', 'page')
+    await expect(navigation.getByRole('button', { name: 'Rechnungen', exact: true })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
     await navigation.getByRole('button', { name: 'Personen', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Personen', exact: true })).toBeVisible()
     await navigation.getByRole('button', { name: 'Einstellungen', exact: true }).click()
@@ -418,9 +494,15 @@ test('P02 Browser: kompakte Einrichtung, ein isolierter Demo-Einstieg und Info-L
   await expect(page.getByRole('region', { name: 'Einrichtung', exact: true })).toBeVisible()
   const demo = page.getByRole('button', { name: 'Mit Beispieldaten testen', exact: true })
   await expect(demo).toHaveCount(1)
-  await expect(page.getByRole('link', { name: /Info öffnen/ })).toHaveAttribute('href', 'https://github.com/sl3ndrr/RiffRechnung/blob/main/docs/about.md')
+  await expect(page.getByRole('link', { name: /Info öffnen/ })).toHaveAttribute(
+    'href',
+    'https://github.com/sl3ndrr/RiffRechnung/blob/main/docs/about.md',
+  )
   await expect(page.getByRole('link', { name: /Info öffnen/ })).toHaveText(`Info · Version ${version}`)
-  await expect(page.getByRole('link', { name: /Info öffnen/ })).toHaveAttribute('aria-label', `Info öffnen (neuer Tab), aktuelle Version ${version}`)
+  await expect(page.getByRole('link', { name: /Info öffnen/ })).toHaveAttribute(
+    'aria-label',
+    `Info öffnen (neuer Tab), aktuelle Version ${version}`,
+  )
   await demo.click()
   await expect(page.getByRole('button', { name: 'Demo verlassen', exact: true })).toBeVisible()
   await expect(demo).toHaveCount(0)
@@ -428,6 +510,3 @@ test('P02 Browser: kompakte Einrichtung, ein isolierter Demo-Einstieg und Info-L
   await expect(demo).toHaveCount(1)
   await expect(page.getByRole('region', { name: 'Einrichtung', exact: true })).toBeVisible()
 })
-
-
-

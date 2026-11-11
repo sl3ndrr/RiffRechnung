@@ -10,13 +10,37 @@ import { migrateDerivedInvoiceState } from './legacyInvoiceState'
 import type { AppState, AuditEvent, Invoice, InvoiceItem, Student } from '../types'
 import { commandResult, requireSuccess, type CommandResult } from './result'
 import { backupArray, backupEnum, backupObject, backupTimestamp, knownKeys, validateBackupState } from './validation'
-import { validateLegacyV2Structure, validateLegacyV3Structure, validateLegacyV4Structure, validateLegacyV5Structure, validateLegacyV6Structure, validateLegacyV7Structure, validateLegacyV8Structure, validateLegacyV9Structure, validateLegacyV10Structure, validateLegacyV11Structure, validateLegacyV12Structure, validateLegacyV13Structure, validateLegacyV14Structure } from './legacyValidation'
+import {
+  validateLegacyV2Structure,
+  validateLegacyV3Structure,
+  validateLegacyV4Structure,
+  validateLegacyV5Structure,
+  validateLegacyV6Structure,
+  validateLegacyV7Structure,
+  validateLegacyV8Structure,
+  validateLegacyV9Structure,
+  validateLegacyV10Structure,
+  validateLegacyV11Structure,
+  validateLegacyV12Structure,
+  validateLegacyV13Structure,
+  validateLegacyV14Structure,
+} from './legacyValidation'
 import { invoiceStudentCode, studentCodeForIndex, studentCodeIndex } from './invoiceNumbering'
 import { mailboxError } from './mailbox'
 import { stripLegacyTaxFields } from './legacyTaxFields'
 
-interface MigrationChange { path: string; before: unknown; after: unknown; reason: string }
-export interface IdMapping { invoiceId: string; itemIndex: number; oldId: string; newId: string }
+interface MigrationChange {
+  path: string
+  before: unknown
+  after: unknown
+  reason: string
+}
+export interface IdMapping {
+  invoiceId: string
+  itemIndex: number
+  oldId: string
+  newId: string
+}
 export interface MigrationReport {
   migration: 'riffrechnung-to-v15'
   version: 1
@@ -48,7 +72,8 @@ function upgradeToV6(value: unknown): AppState {
 function upgradeToV7(value: unknown, report?: Pick<MigrationReport, 'changes'>): AppState {
   const state = cleanLegacyContacts(stripLegacyTaxFields(value).value) as AppState
   const record = (path: string, before: unknown, after: unknown, reason: string) => {
-    if (report && canonical(before) !== canonical(after)) report.changes.push({ path, before: before ?? null, after, reason })
+    if (report && canonical(before) !== canonical(after))
+      report.changes.push({ path, before: before ?? null, after, reason })
   }
   state.schemaVersion = 7 as never
   state.payments = state.payments.map((payment, index) => {
@@ -60,14 +85,35 @@ function upgradeToV7(value: unknown, report?: Pick<MigrationReport, 'changes'>):
       paymentDayStatus: 'unknown' as const,
       ...(retained ? { legacyPaymentDay: retained } : {}),
     }
-    record(`payments[${index}].paymentDayStatus`, undefined, 'unknown', 'Vor Paket 08 gab es keine Bestätigung des tatsächlichen Bankzahlungstags; Zahlung bleibt mit unbekanntem Datum erhalten.')
-    if (retained) record(`payments[${index}].legacyPaymentDay`, undefined, retained, 'Bisheriger automatisch gesetzter oder historisch übernommener Wert bleibt nur als unbestätigter Nachweis erhalten.')
-    record(`payments[${index}].paidAt`, payment.paidAt, null, 'Der bisherige Wert war kein bestätigter Zahlungstag und wird nicht in Kalenderauswertungen verwendet.')
+    record(
+      `payments[${index}].paymentDayStatus`,
+      undefined,
+      'unknown',
+      'Vor Paket 08 gab es keine Bestätigung des tatsächlichen Bankzahlungstags; Zahlung bleibt mit unbekanntem Datum erhalten.',
+    )
+    if (retained)
+      record(
+        `payments[${index}].legacyPaymentDay`,
+        undefined,
+        retained,
+        'Bisheriger automatisch gesetzter oder historisch übernommener Wert bleibt nur als unbestätigter Nachweis erhalten.',
+      )
+    record(
+      `payments[${index}].paidAt`,
+      payment.paidAt,
+      null,
+      'Der bisherige Wert war kein bestätigter Zahlungstag und wird nicht in Kalenderauswertungen verwendet.',
+    )
     return next
   })
   state.invoices = state.invoices.map((invoice, index) => {
     if (invoice.paidAt === undefined) return invoice
-    record(`invoices[${index}].paidAt`, invoice.paidAt, null, 'Die Rechnungsprojektion übernimmt nur noch bestätigte Zahlungstage aus dem Zahlungsdatensatz.')
+    record(
+      `invoices[${index}].paidAt`,
+      invoice.paidAt,
+      null,
+      'Die Rechnungsprojektion übernimmt nur noch bestätigte Zahlungstage aus dem Zahlungsdatensatz.',
+    )
     const next = { ...invoice }
     Reflect.deleteProperty(next, 'paidAt')
     return next
@@ -80,14 +126,23 @@ function upgradeToV10(value: AppState, report?: Pick<MigrationReport, 'changes'>
   if ((state as { schemaVersion: number }).schemaVersion !== 10) {
     const before = state.schemaVersion
     state.schemaVersion = 10 as never
-    report?.changes.push({ path: 'schemaVersion', before, after: 10, reason: 'Duo-Gruppenworkflow entfernen; Rechnungen, Positionen, Einzelpreise und Empfänger unverändert erhalten.' })
+    report?.changes.push({
+      path: 'schemaVersion',
+      before,
+      after: 10,
+      reason: 'Duo-Gruppenworkflow entfernen; Rechnungen, Positionen, Einzelpreise und Empfänger unverändert erhalten.',
+    })
   }
   return state
 }
 
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`
-  if (value && typeof value === 'object') return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, entry]) => `${JSON.stringify(key)}:${canonical(entry)}`).join(',')}}`
+  if (value && typeof value === 'object')
+    return `{${Object.entries(value)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, entry]) => `${JSON.stringify(key)}:${canonical(entry)}`)
+      .join(',')}}`
   return JSON.stringify(value) ?? 'null'
 }
 
@@ -96,9 +151,15 @@ function canonical(value: unknown): string {
 // origin is inferred merely from an equal ID or a similar invoice number.
 function copySignature(invoice: LegacyInvoice): string {
   return canonical({
-    year: invoice.year, invoiceDate: invoice.invoiceDate, dueDate: invoice.dueDate,
-    period: invoice.period, studentIds: invoice.studentIds, items: invoice.items,
-    introText: invoice.introText, freeText: invoice.freeText, legalText: invoice.legalText,
+    year: invoice.year,
+    invoiceDate: invoice.invoiceDate,
+    dueDate: invoice.dueDate,
+    period: invoice.period,
+    studentIds: invoice.studentIds,
+    items: invoice.items,
+    introText: invoice.introText,
+    freeText: invoice.freeText,
+    legalText: invoice.legalText,
     createdAt: invoice.createdAt,
     snapshot: invoice.snapshot && { ...invoice.snapshot, guardians: [] },
   })
@@ -106,9 +167,10 @@ function copySignature(invoice: LegacyInvoice): string {
 
 function repairCopiedItemIds(state: LegacyState, report: MigrationReport): void {
   const occurrences = new Map<string, Array<{ invoice: LegacyInvoice; itemIndex: number }>>()
-  for (const invoice of state.invoices) invoice.items.forEach((item, itemIndex) => {
-    occurrences.set(item.id, [...(occurrences.get(item.id) ?? []), { invoice, itemIndex }])
-  })
+  for (const invoice of state.invoices)
+    invoice.items.forEach((item, itemIndex) => {
+      occurrences.set(item.id, [...(occurrences.get(item.id) ?? []), { invoice, itemIndex }])
+    })
   // Preflight every collision BEFORE modifying the copy. The normal validator
   // still rejects duplicates within one invoice and all current-format collisions.
   for (const [id, entries] of occurrences) {
@@ -116,28 +178,45 @@ function repairCopiedItemIds(state: LegacyState, report: MigrationReport): void 
     const signature = copySignature(entries[0].invoice)
     const recipients = new Set<string>()
     for (const { invoice } of entries) {
-      if (invoice.recipientStrategy !== 'separate' || invoice.guardianIds.length !== 1
-        || recipients.has(invoice.guardianIds[0]) || copySignature(invoice) !== signature
-        || (invoice.snapshot && (invoice.snapshot.guardians.length !== 1 || invoice.snapshot.guardians[0].id !== invoice.guardianIds[0]))) {
-        throw new Error(`Positions-ID ${id} ist mehrfach vorhanden, aber die Herkunft als bekannte Empfängerkopie ist nicht eindeutig. Keine automatische Reparatur; bitte Rohdaten exportieren.`)
+      if (
+        invoice.recipientStrategy !== 'separate' ||
+        invoice.guardianIds.length !== 1 ||
+        recipients.has(invoice.guardianIds[0]) ||
+        copySignature(invoice) !== signature ||
+        (invoice.snapshot &&
+          (invoice.snapshot.guardians.length !== 1 || invoice.snapshot.guardians[0].id !== invoice.guardianIds[0]))
+      ) {
+        throw new Error(
+          `Positions-ID ${id} ist mehrfach vorhanden, aber die Herkunft als bekannte Empfängerkopie ist nicht eindeutig. Keine automatische Reparatur; bitte Rohdaten exportieren.`,
+        )
       }
       recipients.add(invoice.guardianIds[0])
     }
   }
   const occupied = new Set(occurrences.keys())
   const seen = new Set<string>()
-  state.invoices.forEach((invoice, invoiceIndex) => invoice.items.forEach((item, itemIndex) => {
-    if (!seen.has(item.id)) { seen.add(item.id); return }
-    const oldId = item.id
-    const stem = `item-v3-${invoiceIndex}-${itemIndex}`
-    let newId = stem
-    let suffix = 1
-    while (occupied.has(newId)) newId = `${stem}-${suffix++}`
-    occupied.add(newId)
-    item.id = newId
-    report.idMappings.push({ invoiceId: invoice.id, itemIndex, oldId, newId })
-    report.changes.push({ path: `invoices[${invoiceIndex}].items[${itemIndex}].id`, before: oldId, after: newId, reason: 'Eindeutige Positions-ID für bekannte Empfängerkopie' })
-  }))
+  state.invoices.forEach((invoice, invoiceIndex) =>
+    invoice.items.forEach((item, itemIndex) => {
+      if (!seen.has(item.id)) {
+        seen.add(item.id)
+        return
+      }
+      const oldId = item.id
+      const stem = `item-v3-${invoiceIndex}-${itemIndex}`
+      let newId = stem
+      let suffix = 1
+      while (occupied.has(newId)) newId = `${stem}-${suffix++}`
+      occupied.add(newId)
+      item.id = newId
+      report.idMappings.push({ invoiceId: invoice.id, itemIndex, oldId, newId })
+      report.changes.push({
+        path: `invoices[${invoiceIndex}].items[${itemIndex}].id`,
+        before: oldId,
+        after: newId,
+        reason: 'Eindeutige Positions-ID für bekannte Empfängerkopie',
+      })
+    }),
+  )
 }
 
 function migrateV2(data: unknown, source: MigrationReport['source']): { state: LegacyState; report: MigrationReport } {
@@ -145,7 +224,15 @@ function migrateV2(data: unknown, source: MigrationReport['source']): { state: L
   // Shape has been checked, including references and ALL numeric values.
   // Only the following documented optional v2 fields may still be absent.
   const state = cleanLegacyContacts(stripLegacyTaxFields(data).value) as LegacyState
-  const report: MigrationReport = { migration: 'riffrechnung-to-v15', version: 1, fromSchema: 2, toSchema: 15, source, changes: [], idMappings: [] }
+  const report: MigrationReport = {
+    migration: 'riffrechnung-to-v15',
+    version: 1,
+    fromSchema: 2,
+    toSchema: 15,
+    source,
+    changes: [],
+    idMappings: [],
+  }
   repairCopiedItemIds(state, report)
   const record = (path: string, before: unknown, after: unknown, reason: string) => {
     if (canonical(before) !== canonical(after)) report.changes.push({ path, before: before ?? null, after, reason })
@@ -157,19 +244,35 @@ function migrateV2(data: unknown, source: MigrationReport['source']): { state: L
     if (student.billingCode) return
     while (used.has(studentCodeForIndex(cursor))) cursor++
     const code = studentCodeForIndex(cursor++)
-    record(`students[${index}].billingCode`, student.billingCode, code, 'Fehlendes altes Lernendenkennzeichen; keine Person erzeugt')
+    record(
+      `students[${index}].billingCode`,
+      student.billingCode,
+      code,
+      'Fehlendes altes Lernendenkennzeichen; keine Person erzeugt',
+    )
     student.billingCode = code
     used.add(code)
   })
-  const nextIndex = Math.max(state.nextStudentCodeIndex ?? 0, ...state.students.map((student) => studentCodeIndex(student.billingCode) + 1), 0)
+  const nextIndex = Math.max(
+    state.nextStudentCodeIndex ?? 0,
+    ...state.students.map((student) => studentCodeIndex(student.billingCode) + 1),
+    0,
+  )
   record('nextStudentCodeIndex', state.nextStudentCodeIndex, nextIndex, 'Lernendenkennzeichen reservieren')
   state.nextStudentCodeIndex = nextIndex
-  state.invoices.forEach((invoice, invoiceIndex) => invoice.items.forEach((item: InvoiceItem, itemIndex) => {
-    if (item.lessonType !== undefined) return
-    const type = /\(duo\)\s*$/iu.test(item.description) ? 'duo' : 'solo'
-    record(`invoices[${invoiceIndex}].items[${itemIndex}].lessonType`, undefined, type, 'Dokumentierter Altformat-Standard; Preis und Text bleiben unverändert')
-    item.lessonType = type
-  }))
+  state.invoices.forEach((invoice, invoiceIndex) =>
+    invoice.items.forEach((item: InvoiceItem, itemIndex) => {
+      if (item.lessonType !== undefined) return
+      const type = /\(duo\)\s*$/iu.test(item.description) ? 'duo' : 'solo'
+      record(
+        `invoices[${invoiceIndex}].items[${itemIndex}].lessonType`,
+        undefined,
+        type,
+        'Dokumentierter Altformat-Standard; Preis und Text bleiben unverändert',
+      )
+      item.lessonType = type
+    }),
+  )
   for (const invoice of state.invoices) {
     const code = invoiceStudentCode(state, invoice.studentIds)
     if (!code.includes('+')) continue
@@ -177,12 +280,22 @@ function migrateV2(data: unknown, source: MigrationReport['source']): { state: L
     const key = `${scope}:${code}`
     const oldKey = `${scope}:${code.replaceAll('+', '')}`
     if (state.counters[key] === undefined && state.counters[oldKey] !== undefined) {
-      record(`counters.${key}`, undefined, state.counters[oldKey], 'Bestehenden Kombinationszähler zusätzlich segmentiert reservieren')
+      record(
+        `counters.${key}`,
+        undefined,
+        state.counters[oldKey],
+        'Bestehenden Kombinationszähler zusätzlich segmentiert reservieren',
+      )
       state.counters[key] = state.counters[oldKey]
     }
   }
   if (state.voidedInvoiceNumbers === undefined) {
-    record('voidedInvoiceNumbers', undefined, [], 'Altformat ohne Reservierungsliste; keine fehlende Historie rekonstruiert')
+    record(
+      'voidedInvoiceNumbers',
+      undefined,
+      [],
+      'Altformat ohne Reservierungsliste; keine fehlende Historie rekonstruiert',
+    )
     state.voidedInvoiceNumbers = []
   }
   record('schemaVersion', 2, 3, 'Geprüftes Speicherformat')
@@ -197,7 +310,10 @@ export function historicalEmailWarnings(state: AppState): string[] {
     if (!value || typeof value !== 'object') return
     for (const [key, entry] of Object.entries(value)) {
       const childPath = `${path}.${key}`
-      if (key === 'email' && typeof entry === 'string' && mailboxError(entry)) warnings.push(`${childPath}: ${JSON.stringify(entry)} ist keine unterstützte Mailbox. Historischer Wert bleibt erhalten; E-Mail-Versandlink ist gesperrt.`)
+      if (key === 'email' && typeof entry === 'string' && mailboxError(entry))
+        warnings.push(
+          `${childPath}: ${JSON.stringify(entry)} ist keine unterstützte Mailbox. Historischer Wert bleibt erhalten; E-Mail-Versandlink ist gesperrt.`,
+        )
       else if (entry && typeof entry === 'object') inspect(entry, childPath)
     }
   }
@@ -209,7 +325,11 @@ export function historicalEmailWarnings(state: AppState): string[] {
 export function inspectImport(rawData: string): CommandResult<ImportPreview> {
   return commandResult(() => {
     let parsed: unknown
-    try { parsed = JSON.parse(rawData.replace(/^\uFEFF/, '')) } catch { throw new Error('Die Backup-Datei enthält kein gültiges JSON.') }
+    try {
+      parsed = JSON.parse(rawData.replace(/^\uFEFF/, ''))
+    } catch {
+      throw new Error('Die Backup-Datei enthält kein gültiges JSON.')
+    }
     const root = backupObject(parsed, 'Backup')
     let data: unknown = root
     let source: MigrationReport['source'] = 'local-state'
@@ -223,106 +343,297 @@ export function inspectImport(rawData: string): CommandResult<ImportPreview> {
       source = backupEnum(root.app, 'app', ['riffrechnung', 'gitarrenrechnungen']) as MigrationReport['source']
       backupTimestamp(root.exportedAt, 'exportedAt')
       data = root.data
-      if (root.schemaVersion !== backupObject(data, 'data').schemaVersion) throw new Error('Backup-Umschlag und Daten haben unterschiedliche Formatversionen.')
+      if (root.schemaVersion !== backupObject(data, 'data').schemaVersion)
+        throw new Error('Backup-Umschlag und Daten haben unterschiedliche Formatversionen.')
     }
     const version = backupObject(data, 'data').schemaVersion
-    if (version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== 6 && version !== 7 && version !== 8 && version !== 9 && version !== 10 && version !== 11 && version !== 12 && version !== 13 && version !== 14 && version !== 15) throw new Error('Die Datei hat kein unterstütztes Backup-Format. Neuere oder unbekannte Formate bleiben unverändert.')
+    if (
+      version !== 2 &&
+      version !== 3 &&
+      version !== 4 &&
+      version !== 5 &&
+      version !== 6 &&
+      version !== 7 &&
+      version !== 8 &&
+      version !== 9 &&
+      version !== 10 &&
+      version !== 11 &&
+      version !== 12 &&
+      version !== 13 &&
+      version !== 14 &&
+      version !== 15
+    )
+      throw new Error(
+        'Die Datei hat kein unterstütztes Backup-Format. Neuere oder unbekannte Formate bleiben unverändert.',
+      )
     let report: MigrationReport | null = null
     let state: AppState
-    if (version === 15) { validateBackupState(data); state = structuredClone(data) }
-    else if (version === 14) {
+    if (version === 15) {
+      validateBackupState(data)
+      state = structuredClone(data)
+    } else if (version === 14) {
       validateLegacyV14Structure(data)
-      report = { migration: 'riffrechnung-to-v15', version: 1, fromSchema: 14, toSchema: 15, source, changes: [], idMappings: [] }
+      report = {
+        migration: 'riffrechnung-to-v15',
+        version: 1,
+        fromSchema: 14,
+        toSchema: 15,
+        source,
+        changes: [],
+        idMappings: [],
+      }
       state = structuredClone(data as AppState)
-    }
-    else if (version === 13) {
+    } else if (version === 13) {
       validateLegacyV13Structure(data)
-      report = { migration: 'riffrechnung-to-v15', version: 1, fromSchema: 13, toSchema: 15, source, changes: [], idMappings: [] }
+      report = {
+        migration: 'riffrechnung-to-v15',
+        version: 1,
+        fromSchema: 13,
+        toSchema: 15,
+        source,
+        changes: [],
+        idMappings: [],
+      }
       state = structuredClone(data as AppState)
-    }
-    else if (version === 12) {
+    } else if (version === 12) {
       validateLegacyV12Structure(data)
-      report = { migration: 'riffrechnung-to-v15', version: 1, fromSchema: 12, toSchema: 15, source, changes: [], idMappings: [] }
+      report = {
+        migration: 'riffrechnung-to-v15',
+        version: 1,
+        fromSchema: 12,
+        toSchema: 15,
+        source,
+        changes: [],
+        idMappings: [],
+      }
       state = structuredClone(data as AppState)
-    }
-    else if (version === 11) {
+    } else if (version === 11) {
       validateLegacyV11Structure(data)
-      report = { migration: 'riffrechnung-to-v15', version: 1, fromSchema: 11, toSchema: 15, source, changes: [], idMappings: [] }
+      report = {
+        migration: 'riffrechnung-to-v15',
+        version: 1,
+        fromSchema: 11,
+        toSchema: 15,
+        source,
+        changes: [],
+        idMappings: [],
+      }
       state = structuredClone(data as AppState)
-    }
-    else if (version === 10) {
+    } else if (version === 10) {
       validateLegacyV10Structure(data)
-      report = { migration: 'riffrechnung-to-v15', version: 1, fromSchema: 10, toSchema: 15, source, changes: [], idMappings: [] }
+      report = {
+        migration: 'riffrechnung-to-v15',
+        version: 1,
+        fromSchema: 10,
+        toSchema: 15,
+        source,
+        changes: [],
+        idMappings: [],
+      }
       state = cleanLegacyContacts(data) as AppState
-    }
-    else if (version === 9) {
+    } else if (version === 9) {
       validateLegacyV9Structure(data)
-      report = { migration: 'riffrechnung-to-v15', version: 1, fromSchema: 9, toSchema: 15, source, changes: [], idMappings: [] }
+      report = {
+        migration: 'riffrechnung-to-v15',
+        version: 1,
+        fromSchema: 9,
+        toSchema: 15,
+        source,
+        changes: [],
+        idMappings: [],
+      }
       state = cleanLegacyContacts(data) as AppState
-    }
-    else if (version === 8) {
+    } else if (version === 8) {
       validateLegacyV8Structure(data)
-      report = { migration: 'riffrechnung-to-v15', version: 1, fromSchema: 8, toSchema: 15, source, changes: [], idMappings: [] }
+      report = {
+        migration: 'riffrechnung-to-v15',
+        version: 1,
+        fromSchema: 8,
+        toSchema: 15,
+        source,
+        changes: [],
+        idMappings: [],
+      }
       state = cleanLegacyContacts(stripLegacyTaxFields(data).value) as AppState
-    }
-    else if (version === 7) {
+    } else if (version === 7) {
       validateLegacyV7Structure(data)
-      report = { migration: 'riffrechnung-to-v15', version: 1, fromSchema: 7, toSchema: 15, source, changes: [], idMappings: [] }
+      report = {
+        migration: 'riffrechnung-to-v15',
+        version: 1,
+        fromSchema: 7,
+        toSchema: 15,
+        source,
+        changes: [],
+        idMappings: [],
+      }
       state = cleanLegacyContacts(stripLegacyTaxFields(data).value) as AppState
-    }
-    else if (version === 6) {
+    } else if (version === 6) {
       validateLegacyV6Structure(data)
-      report = { migration: 'riffrechnung-to-v15', version: 1, fromSchema: 6, toSchema: 15, source, changes: [], idMappings: [] }
+      report = {
+        migration: 'riffrechnung-to-v15',
+        version: 1,
+        fromSchema: 6,
+        toSchema: 15,
+        source,
+        changes: [],
+        idMappings: [],
+      }
       state = upgradeToV7(data, report)
-    }
-    else if (version === 5) {
+    } else if (version === 5) {
       validateLegacyV5Structure(data)
-      report = { migration: 'riffrechnung-to-v15', version: 1, fromSchema: 5, toSchema: 15, source, changes: [], idMappings: [] }
+      report = {
+        migration: 'riffrechnung-to-v15',
+        version: 1,
+        fromSchema: 5,
+        toSchema: 15,
+        source,
+        changes: [],
+        idMappings: [],
+      }
       state = upgradeToV7(upgradeToV6(data), report)
-    }
-    else if (version === 4) {
+    } else if (version === 4) {
       validateLegacyV4Structure(data)
-      report = { migration: 'riffrechnung-to-v15', version: 1, fromSchema: 4, toSchema: 15, source, changes: [], idMappings: [] }
+      report = {
+        migration: 'riffrechnung-to-v15',
+        version: 1,
+        fromSchema: 4,
+        toSchema: 15,
+        source,
+        changes: [],
+        idMappings: [],
+      }
       state = upgradeToV7(upgradeToV6({ ...structuredClone(data as AppState), schemaVersion: 5 }), report)
-    }
-    else {
+    } else {
       let legacy: LegacyState
       if (version === 2) ({ state: legacy, report } = migrateV2(data, source))
-      else { validateLegacyV3Structure(data); legacy = cleanLegacyContacts(stripLegacyTaxFields(data).value) as LegacyState }
-      report ??= { migration: 'riffrechnung-to-v15', version: 1, fromSchema: 3, toSchema: 15, source, changes: [], idMappings: [] }
+      else {
+        validateLegacyV3Structure(data)
+        legacy = cleanLegacyContacts(stripLegacyTaxFields(data).value) as LegacyState
+      }
+      report ??= {
+        migration: 'riffrechnung-to-v15',
+        version: 1,
+        fromSchema: 3,
+        toSchema: 15,
+        source,
+        changes: [],
+        idMappings: [],
+      }
       state = captureLegacyDocumentsV7(legacy)
-      report.changes.push({ path: 'schemaVersion', before: version, after: 7, reason: 'Vollständige älteste verfügbare Belegstände, getrennte Verwaltung und unbekannte historische Zahlungstage sichern; frühere Inhalte bleiben unbekannt' })
-      for (const document of state.documentVersions) report.changes.push({ path: `documentVersions.${document.id}`, before: null, after: document, reason: 'Jetzt verfügbarer historischer Inhalt, alte Ausgabebeträge und Snapshot-/Registerbelege; keine Wiederherstellung verlorener Originale' })
-      for (const invoice of state.invoices.filter((entry) => entry.versionId)) report.changes.push({ path: `invoices.${invoice.id}.versionId`, before: null, after: invoice.versionId, reason: 'Verweis auf den gesicherten vollständigen Belegstand' })
-      report.changes.push({ path: 'invoiceAdministration', before: null, after: state.invoiceAdministration, reason: 'Vorhandenen Verwaltungsstatus übernehmen; frühere Ereignisse bleiben unbekannt' })
-      report.changes.push({ path: 'payments', before: null, after: state.payments, reason: 'Vorhandenen Vollzahlungsstatus oder gespeicherten Zahlungshinweis einmalig übernehmen; fehlende Zahlungstage bleiben unbekannt' })
-      if (state.historicalSnapshotCorrections.length) report.changes.push({ path: 'historicalSnapshotCorrections', before: null, after: state.historicalSnapshotCorrections, reason: 'Vorhandene Snapshot-Differenzen unabhängig von der begrenzten Aktivitätsliste bewahren; auch ohne vollständigen Beleg' })
+      report.changes.push({
+        path: 'schemaVersion',
+        before: version,
+        after: 7,
+        reason:
+          'Vollständige älteste verfügbare Belegstände, getrennte Verwaltung und unbekannte historische Zahlungstage sichern; frühere Inhalte bleiben unbekannt',
+      })
+      for (const document of state.documentVersions)
+        report.changes.push({
+          path: `documentVersions.${document.id}`,
+          before: null,
+          after: document,
+          reason:
+            'Jetzt verfügbarer historischer Inhalt, alte Ausgabebeträge und Snapshot-/Registerbelege; keine Wiederherstellung verlorener Originale',
+        })
+      for (const invoice of state.invoices.filter((entry) => entry.versionId))
+        report.changes.push({
+          path: `invoices.${invoice.id}.versionId`,
+          before: null,
+          after: invoice.versionId,
+          reason: 'Verweis auf den gesicherten vollständigen Belegstand',
+        })
+      report.changes.push({
+        path: 'invoiceAdministration',
+        before: null,
+        after: state.invoiceAdministration,
+        reason: 'Vorhandenen Verwaltungsstatus übernehmen; frühere Ereignisse bleiben unbekannt',
+      })
+      report.changes.push({
+        path: 'payments',
+        before: null,
+        after: state.payments,
+        reason:
+          'Vorhandenen Vollzahlungsstatus oder gespeicherten Zahlungshinweis einmalig übernehmen; fehlende Zahlungstage bleiben unbekannt',
+      })
+      if (state.historicalSnapshotCorrections.length)
+        report.changes.push({
+          path: 'historicalSnapshotCorrections',
+          before: null,
+          after: state.historicalSnapshotCorrections,
+          reason:
+            'Vorhandene Snapshot-Differenzen unabhängig von der begrenzten Aktivitätsliste bewahren; auch ohne vollständigen Beleg',
+        })
     }
     if (report && version < 11) {
-      for (const path of stripLegacyTaxFields(data).removedPaths) report.changes.push({ path, before: '[entfernt]', after: null, reason: 'Abgeschafftes strukturiertes Steuerfeld; kein Rohwert im Migrationsbericht aufbewahrt.' })
+      for (const path of stripLegacyTaxFields(data).removedPaths)
+        report.changes.push({
+          path,
+          before: '[entfernt]',
+          after: null,
+          reason: 'Abgeschafftes strukturiertes Steuerfeld; kein Rohwert im Migrationsbericht aufbewahrt.',
+        })
       if (version === 8 || version === 9) {
         const old = backupObject(data, 'data')
         state = detachLegacyDuoGroups(state) as unknown as AppState
-        if (old.duoGroups !== undefined) report.changes.push({ path: 'duoGroups', before: structuredClone(old.duoGroups), after: null, reason: 'Schema-8/9-Gruppenmetadaten nur als Nachweis erhalten. Alle vorhandenen Entwürfe sind unabhängig; fehlende Ziele werden nicht rekonstruiert und Beträge nicht verteilt.' })
+        if (old.duoGroups !== undefined)
+          report.changes.push({
+            path: 'duoGroups',
+            before: structuredClone(old.duoGroups),
+            after: null,
+            reason:
+              'Schema-8/9-Gruppenmetadaten nur als Nachweis erhalten. Alle vorhandenen Entwürfe sind unabhängig; fehlende Ziele werden nicht rekonstruiert und Beträge nicht verteilt.',
+          })
       }
       state = upgradeToV10(state, report)
       for (const invoice of state.invoices.filter((entry) => entry.status === 'draft')) {
         const change = draftAmountChange(invoice)
-        if (change.changed) report.changes.push({ path: `invoices.${invoice.id}.amountReview`, before: change.before, after: change.after, reason: 'Centvergleich Altberechnung/exakte Dezimalberechnung; Originalwerte unverändert. Vor Finalisierung im Editor prüfen. Kein gespeicherter historischer Belegbetrag.' })
-        if (change.changed && change.after !== null) invoice.items.forEach((item, index) => {
-          const before = legacyItemCents(item), after = itemTotalCents(item)
-          if (before !== after) report!.changes.push({ path: `invoices.${invoice.id}.items[${index}].amountReview`, before, after, reason: 'Positionsbetrag in Cent: Altalgorithmus → kaufmännische exakte Dezimalrundung; Eingaben bleiben erhalten' })
-        })
+        if (change.changed)
+          report.changes.push({
+            path: `invoices.${invoice.id}.amountReview`,
+            before: change.before,
+            after: change.after,
+            reason:
+              'Centvergleich Altberechnung/exakte Dezimalberechnung; Originalwerte unverändert. Vor Finalisierung im Editor prüfen. Kein gespeicherter historischer Belegbetrag.',
+          })
+        if (change.changed && change.after !== null)
+          invoice.items.forEach((item, index) => {
+            const before = legacyItemCents(item),
+              after = itemTotalCents(item)
+            if (before !== after)
+              report!.changes.push({
+                path: `invoices.${invoice.id}.items[${index}].amountReview`,
+                before,
+                after,
+                reason:
+                  'Positionsbetrag in Cent: Altalgorithmus → kaufmännische exakte Dezimalrundung; Eingaben bleiben erhalten',
+              })
+          })
       }
       const oldPeople = backupObject(data, 'data')
-      for (const [collection, fields] of [['guardians', ['iban', 'paymentNote', 'firstName', 'lastName']], ['students', ['note']]] as const) {
+      for (const [collection, fields] of [
+        ['guardians', ['iban', 'paymentNote', 'firstName', 'lastName']],
+        ['students', ['note']],
+      ] as const) {
         backupArray(oldPeople[collection], collection).forEach((raw, index) => {
           const person = backupObject(raw, collection)
-          for (const field of fields) if (field in person) report!.changes.push({ path: `${collection}[${index}].${field}`, before: '[entfernt]', after: null, reason: 'Abgeschafftes Kontaktfeld; kein Rohwert oder Archivwert bleibt erhalten.' })
+          for (const field of fields)
+            if (field in person)
+              report!.changes.push({
+                path: `${collection}[${index}].${field}`,
+                before: '[entfernt]',
+                after: null,
+                reason: 'Abgeschafftes Kontaktfeld; kein Rohwert oder Archivwert bleibt erhalten.',
+              })
         })
       }
       state = migrateContactsRecipients(state)
-      report.changes.push({ path: 'schemaVersion', before: 10, after: 11, reason: 'Ein Namensfeld, bereinigte Kontakte und recipients als einzige Rechnungsempfängerquelle; eingefrorene Werte bleiben erhalten.' })
+      report.changes.push({
+        path: 'schemaVersion',
+        before: 10,
+        after: 11,
+        reason:
+          'Ein Namensfeld, bereinigte Kontakte und recipients als einzige Rechnungsempfängerquelle; eingefrorene Werte bleiben erhalten.',
+      })
     }
     if (report) {
       if (version < 12) state = migrateInvoiceNumbering(state, report.changes)
@@ -330,17 +641,44 @@ export function inspectImport(rawData: string): CommandResult<ImportPreview> {
       if (version < 14) state = migrateDerivedInvoiceState(state, report.changes)
       state = migrateInvoiceTexts(state)
       report = cleanTextReport(report)
-      report.changes.push({ path: 'schemaVersion', before: 14, after: 15, reason: 'Abgeschaffte Einleitungs-/Rechtstextfelder und ihre Kopien entfernt. Rechnungshinweis und alle übrigen Belegdaten unverändert; keine Archivkopie dieser Texte.' })
+      report.changes.push({
+        path: 'schemaVersion',
+        before: 14,
+        after: 15,
+        reason:
+          'Abgeschaffte Einleitungs-/Rechtstextfelder und ihre Kopien entfernt. Rechnungshinweis und alle übrigen Belegdaten unverändert; keine Archivkopie dieser Texte.',
+      })
       validateBackupState(state)
     }
-    return { rawData, state, report, envelope, warnings: [...historicalEmailWarnings(state), ...state.documentVersions.flatMap((version) => version.conflicts.map((conflict) => `${version.content.number}: ${conflict.message}`))] }
+    return {
+      rawData,
+      state,
+      report,
+      envelope,
+      warnings: [
+        ...historicalEmailWarnings(state),
+        ...state.documentVersions.flatMap((version) =>
+          version.conflicts.map((conflict) => `${version.content.number}: ${conflict.message}`),
+        ),
+      ],
+    }
   })
 }
 
 export function inspectImportBytes(bytes: Uint8Array): CommandResult<ImportPreview> {
   try {
     return inspectImport(new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes))
-  } catch { return { ok: false, errors: [{ code: 'INVALID_ENCODING', message: 'Die Datei enthält kein gültiges UTF-8. Bitte unveränderte Rohdaten exportieren.' }] } }
+  } catch {
+    return {
+      ok: false,
+      errors: [
+        {
+          code: 'INVALID_ENCODING',
+          message: 'Die Datei enthält kein gültiges UTF-8. Bitte unveränderte Rohdaten exportieren.',
+        },
+      ],
+    }
+  }
 }
 
 // Read-only conversion; callers must inspect the report before a replacement.
@@ -349,11 +687,26 @@ export function parseBackup(text: string): AppState {
 }
 
 export function serializeMigrationReport(preview: ImportPreview): string {
-  return JSON.stringify({ app: 'riffrechnung-recovery', version: 1, data: preview.state, report: preview.report, warnings: preview.warnings }, null, 2)
+  return JSON.stringify(
+    {
+      app: 'riffrechnung-recovery',
+      version: 1,
+      data: preview.state,
+      report: preview.report,
+      warnings: preview.warnings,
+    },
+    null,
+    2,
+  )
 }
 
-type LegacySnapshot = Omit<NonNullable<Invoice['snapshot']>, 'recipients'> & { guardians: import('../types').GuardianSnapshot[]; recipients?: NonNullable<Invoice['snapshot']>['recipients'] }
-type LegacyAuditEvent = Omit<AuditEvent, 'snapshotCorrection'> & { snapshotCorrection?: { oldValue: LegacySnapshot | null; newValue: LegacySnapshot } }
+type LegacySnapshot = Omit<NonNullable<Invoice['snapshot']>, 'recipients'> & {
+  guardians: import('../types').GuardianSnapshot[]
+  recipients?: NonNullable<Invoice['snapshot']>['recipients']
+}
+type LegacyAuditEvent = Omit<AuditEvent, 'snapshotCorrection'> & {
+  snapshotCorrection?: { oldValue: LegacySnapshot | null; newValue: LegacySnapshot }
+}
 interface LegacyInvoice extends Omit<Invoice, 'recipients' | 'snapshot'> {
   introText?: string
   legalText?: string
@@ -363,33 +716,80 @@ interface LegacyInvoice extends Omit<Invoice, 'recipients' | 'snapshot'> {
   recipients?: Invoice['recipients']
   snapshot?: LegacySnapshot
 }
-export type LegacyState = Omit<AppState, 'schemaVersion' | 'invoices' | 'audit' | 'documentVersions' | 'invoiceAdministration' | 'payments' | 'historicalSnapshotCorrections' | 'settings'> & { settings: LegacyNumberSettings; schemaVersion: 3; invoices: LegacyInvoice[]; audit: LegacyAuditEvent[] }
+export type LegacyState = Omit<
+  AppState,
+  | 'schemaVersion'
+  | 'invoices'
+  | 'audit'
+  | 'documentVersions'
+  | 'invoiceAdministration'
+  | 'payments'
+  | 'historicalSnapshotCorrections'
+  | 'settings'
+> & { settings: LegacyNumberSettings; schemaVersion: 3; invoices: LegacyInvoice[]; audit: LegacyAuditEvent[] }
 
-type UnversionedState = Omit<AppState, 'schemaVersion' | 'documentVersions' | 'invoiceAdministration' | 'payments' | 'historicalSnapshotCorrections'> & { schemaVersion: 3 }
+type UnversionedState = Omit<
+  AppState,
+  'schemaVersion' | 'documentVersions' | 'invoiceAdministration' | 'payments' | 'historicalSnapshotCorrections'
+> & { schemaVersion: 3 }
 
 /** Deterministic capture: sourceUpdatedAt is a source timestamp, not a guessed issuance date. */
 function captureLegacyDocumentsV7(legacy: LegacyState | UnversionedState): AppState {
   const normalized = normalizeLegacyRecipients(upgradeToV6(legacy))
-  const state: AppState = { ...normalized, documentVersions: [], invoiceAdministration: [], payments: [], historicalSnapshotCorrections: structuredClone(normalized.audit.filter((event) => event.snapshotCorrection)) }
+  const state: AppState = {
+    ...normalized,
+    documentVersions: [],
+    invoiceAdministration: [],
+    payments: [],
+    historicalSnapshotCorrections: structuredClone(normalized.audit.filter((event) => event.snapshotCorrection)),
+  }
   state.invoices.forEach((invoice, index) => {
     if (invoice.status === 'draft') return
     const version = captureDocument(state, invoice, `version-v4-${index}`, true)
     state.documentVersions.push(version)
     invoice.versionId = version.id
-    state.invoiceAdministration.push({ versionId: version.id, archived: false, events: [{ at: invoice.updatedAt, status: invoice.status, kind: 'imported', reason: 'Ältester verfügbarer Verwaltungsstand; frühere Versand-/Statusereignisse unbekannt.' }], resolutions: [] })
-    if (invoice.status === 'paid' || invoice.paidAt) state.payments.push({
-      id: `payment-v4-${index}`, sourceVersionId: version.id, amountCents: version.amounts.totalCents,
-      paidAt: null, paymentDayStatus: 'unknown',
-      ...(invoice.paidAt ? { legacyPaymentDay: invoice.paidAt } : {}),
-      recordedAt: invoice.updatedAt, provenance: 'legacy-status',
-      allocations: [{ versionId: invoice.status === 'paid' ? version.id : null, at: invoice.updatedAt, reason: 'Aus historischem Vollzahlungsstatus übernommen; Zahlungsdatum bleibt unbekannt, wenn es nicht gespeichert war.' }],
+    state.invoiceAdministration.push({
+      versionId: version.id,
+      archived: false,
+      events: [
+        {
+          at: invoice.updatedAt,
+          status: invoice.status,
+          kind: 'imported',
+          reason: 'Ältester verfügbarer Verwaltungsstand; frühere Versand-/Statusereignisse unbekannt.',
+        },
+      ],
+      resolutions: [],
     })
+    if (invoice.status === 'paid' || invoice.paidAt)
+      state.payments.push({
+        id: `payment-v4-${index}`,
+        sourceVersionId: version.id,
+        amountCents: version.amounts.totalCents,
+        paidAt: null,
+        paymentDayStatus: 'unknown',
+        ...(invoice.paidAt ? { legacyPaymentDay: invoice.paidAt } : {}),
+        recordedAt: invoice.updatedAt,
+        provenance: 'legacy-status',
+        allocations: [
+          {
+            versionId: invoice.status === 'paid' ? version.id : null,
+            at: invoice.updatedAt,
+            reason:
+              'Aus historischem Vollzahlungsstatus übernommen; Zahlungsdatum bleibt unbekannt, wenn es nicht gespeichert war.',
+          },
+        ],
+      })
   })
   return upgradeToV7(state)
 }
 
 export function captureLegacyDocuments(legacy: LegacyState | UnversionedState): AppState {
-  return migrateInvoiceTexts(migrateDerivedInvoiceState(consolidateDocumentOutput(migrateInvoiceNumbering(migrateContactsRecipients(upgradeToV10(captureLegacyDocumentsV7(legacy)))))))
+  return migrateInvoiceTexts(
+    migrateDerivedInvoiceState(
+      consolidateDocumentOutput(
+        migrateInvoiceNumbering(migrateContactsRecipients(upgradeToV10(captureLegacyDocumentsV7(legacy)))),
+      ),
+    ),
+  )
 }
-
-

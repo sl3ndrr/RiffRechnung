@@ -23,14 +23,28 @@ async function seed(page: Page, state: AppState) {
 }
 async function openDraft(page: Page, name: string) {
   await navigateToInvoices(page)
-  await page.locator('.invoice-list-table .invoice-data-row').filter({ hasText: name }).getByRole('button', { name: 'Entwurf', exact: true }).click()
+  await page
+    .locator('.invoice-list-table .invoice-data-row')
+    .filter({ hasText: name })
+    .getByRole('button', { name: 'Entwurf', exact: true })
+    .click()
   await page.locator('.invoice-detail').getByRole('button', { name: 'Bearbeiten', exact: true }).click()
   return page.getByRole('dialog', { name: 'Entwurf bearbeiten', exact: true })
 }
 
-test('P03 Browser: beide Erziehungsberechtigte ausdrücklich auf einer gemeinsamen Duo-Rechnung wählen', async ({ page }) => {
+test('P03 Browser: beide Erziehungsberechtigte ausdrücklich auf einer gemeinsamen Duo-Rechnung wählen', async ({
+  page,
+}) => {
   const state = documentFamily()
-  await seed(page, saveInvoiceDraft(state, { ...documentDraft(), recipients: ([]).map((id) => ({ type: 'guardian' as const, id })) }, false, documentAt))
+  await seed(
+    page,
+    saveInvoiceDraft(
+      state,
+      { ...documentDraft(), recipients: [].map((id) => ({ type: 'guardian' as const, id })) },
+      false,
+      documentAt,
+    ),
+  )
   const editor = await openDraft(page, 'Testkind A')
   const audience = editor.getByRole('group', { name: 'Rechnungsempfänger' })
   await audience.locator('label.choice-chip').filter({ hasText: 'Empfaenger A' }).click()
@@ -51,8 +65,11 @@ test('P03 Browser: beide Erziehungsberechtigte ausdrücklich auf einer gemeinsam
   await expect(page.getByRole('button', { name: 'Duo · zwei Haushalte', exact: true })).toHaveCount(0)
 })
 
-test('P03 Browser: alte Gruppenentwürfe im lokalen Klärungspfad übernehmen und einzeln abschließen', async ({ page }, testInfo) => {
-  const old = legacyDuoState(), raw = JSON.stringify(old)
+test('P03 Browser: alte Gruppenentwürfe im lokalen Klärungspfad übernehmen und einzeln abschließen', async ({
+  page,
+}, testInfo) => {
+  const old = legacyDuoState(),
+    raw = JSON.stringify(old)
   await page.goto('/')
   await page.evaluate(({ key, raw }) => localStorage.setItem(key, raw), { key: STORAGE_KEY, raw })
   await page.reload()
@@ -76,7 +93,10 @@ test('P03 Browser: alte Gruppenentwürfe im lokalen Klärungspfad übernehmen un
     await expect(editor).not.toBeVisible()
     const saved = await stateOf(page)
     expect(saved.documentVersions).toHaveLength(i + 1)
-    if (i === 0) expect(saved.invoices.find((invoice) => invoice.id === old.invoices[1].id)).toEqual(expectedTextless(normalizeLegacyRecipients(old).invoices)[1])
+    if (i === 0)
+      expect(saved.invoices.find((invoice) => invoice.id === old.invoices[1].id)).toEqual(
+        expectedTextless(normalizeLegacyRecipients(old).invoices)[1],
+      )
   }
   const issued = await stateOf(page)
   expect(issued.documentVersions.map((version) => version.amounts.totalCents)).toEqual([758, 1502])
@@ -85,20 +105,36 @@ test('P03 Browser: alte Gruppenentwürfe im lokalen Klärungspfad übernehmen un
     const rendering = await page.context().newPage()
     try {
       await rendering.goto('/')
-      await rendering.evaluate(async ({ state, invoiceId }) => {
-        const path = '/tests/browser/documentPrintHarness.tsx'
-        const { mountDocument } = await import(path)
-        mountDocument(state, invoiceId)
-      }, { state: issued, invoiceId: issued.invoices[i].id })
-      await expect.poll(() => rendering.evaluate(() => document.documentElement.dataset.documentReady)).toBe(issued.invoices[i].id)
+      await rendering.evaluate(
+        async ({ state, invoiceId }) => {
+          const path = '/tests/browser/documentPrintHarness.tsx'
+          const { mountDocument } = await import(path)
+          mountDocument(state, invoiceId)
+        },
+        { state: issued, invoiceId: issued.invoices[i].id },
+      )
+      await expect
+        .poll(() => rendering.evaluate(() => document.documentElement.dataset.documentReady))
+        .toBe(issued.invoices[i].id)
       const pdf = await rendering.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true })
       const text = execFileSync('pdftotext', ['-layout', '-', '-'], { input: pdf, encoding: 'utf8' })
-      for (const marker of [households[i].student, households[i].guardian, households[i].free, i === 0 ? '7,58' : '15,02']) expect(text).toContain(marker)
+      for (const marker of [
+        households[i].student,
+        households[i].guardian,
+        households[i].free,
+        i === 0 ? '7,58' : '15,02',
+      ])
+        expect(text).toContain(marker)
       for (const marker of [households[i].intro, households[i].legal]) expect(text).not.toContain(marker)
-      for (const marker of [households[1 - i].student, households[1 - i].guardian, 'GEHEIM_', old.duoGroups[0].id]) expect(text).not.toContain(marker)
-      expect(await rendering.evaluate(() => document.documentElement.dataset.giroPayload)).toContain(issued.invoices[i].number!)
+      for (const marker of [households[1 - i].student, households[1 - i].guardian, 'GEHEIM_', old.duoGroups[0].id])
+        expect(text).not.toContain(marker)
+      expect(await rendering.evaluate(() => document.documentElement.dataset.giroPayload)).toContain(
+        issued.invoices[i].number!,
+      )
       await testInfo.attach(`p03-haushalt-${i + 1}.pdf`, { body: pdf, contentType: 'application/pdf' })
-    } finally { await rendering.close() }
+    } finally {
+      await rendering.close()
+    }
   }
 })
 
@@ -116,11 +152,15 @@ test('P03 Browser: ungültige Gruppe lässt Eingangsbytes unverändert und biete
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(raw)
 })
 
-test('P03 Browser: unabhängige Entwürfe überstehen Speicherkonflikt und Quota ohne Partnerabschluss', async ({ page, context }) => {
+test('P03 Browser: unabhängige Entwürfe überstehen Speicherkonflikt und Quota ohne Partnerabschluss', async ({
+  page,
+  context,
+}) => {
   await seed(page, duoDrafts())
   const second = await context.newPage()
   await second.goto('/')
-  const firstEditor = await openDraft(page, households[0].student), secondEditor = await openDraft(second, households[1].student)
+  const firstEditor = await openDraft(page, households[0].student),
+    secondEditor = await openDraft(second, households[1].student)
   const before = await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)
   await page.evaluate((key) => {
     const original = Storage.prototype.setItem
@@ -143,5 +183,3 @@ test('P03 Browser: unabhängige Entwürfe überstehen Speicherkonflikt und Quota
   expect(saved.invoices.find((invoice) => invoice.id === 'duo-invoice-1')?.status).toBe('draft')
   await second.close()
 })
-
-

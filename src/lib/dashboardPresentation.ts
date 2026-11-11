@@ -24,7 +24,11 @@ export function dashboardMonthlyAverage(monthly: DashboardStats['monthly'], now:
 
 /** Bereits überfällige Ansprüche stehen im Fehlerchip; hier folgt der nächste Termin. */
 export function dashboardNextDue(items: readonly DashboardOpenItem[]): DashboardOpenItem | null {
-  return items.filter((item) => !item.isOverdue).sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.invoiceId.localeCompare(b.invoiceId))[0] ?? null
+  return (
+    items
+      .filter((item) => !item.isOverdue)
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.invoiceId.localeCompare(b.invoiceId))[0] ?? null
+  )
 }
 
 /** Rein dekorativer Anteil der verstrichenen Zahlungsfrist, begrenzt auf 0–1. */

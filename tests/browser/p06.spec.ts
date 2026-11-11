@@ -3,7 +3,9 @@ import { documentFamily, documentDraft, documentAt, legacyVersionedFixture } fro
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
 import { parseBackup, STORAGE_KEY } from '../../src/lib/storage'
 
-test('P06 Browser: geschützter Schema-11-Umstieg, festes Format, gemeinsame Empfänger, Kombination und Reload', async ({ page }) => {
+test('P06 Browser: geschützter Schema-11-Umstieg, festes Format, gemeinsame Empfänger, Kombination und Reload', async ({
+  page,
+}) => {
   const issued = saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt)
   const old = legacyVersionedFixture(issued, 11)
   old.counters = { '2026:a': 7, '2026:a+b': 3 }
@@ -24,22 +26,53 @@ test('P06 Browser: geschützter Schema-11-Umstieg, festes Format, gemeinsame Emp
   await expect(page.getByText(/Platzhalter:/)).toHaveCount(0)
   await expect(page.locator('.number-preview')).toContainText('-0023-a')
   const result = await page.evaluate(async () => {
-    const storagePath = '/src/lib/storage.ts', actionsPath = '/src/lib/invoiceActions.ts'
+    const storagePath = '/src/lib/storage.ts',
+      actionsPath = '/src/lib/invoiceActions.ts'
     const { StorageSession } = await import(storagePath)
     const { saveInvoiceDraft } = await import(actionsPath)
-    const paymentPath = '/src/lib/paymentData.ts', numberingPath = '/src/lib/invoiceNumbering.ts'
+    const paymentPath = '/src/lib/paymentData.ts',
+      numberingPath = '/src/lib/invoiceNumbering.ts'
     const { buildEpcPayload } = await import(paymentPath)
     const { nextInvoiceAllocation } = await import(numberingPath)
     const session = new StorageSession()
     const base = session.state.invoices[0]
-    const draft = { invoiceDate: base.invoiceDate, dueDate: base.dueDate, period: base.period, studentIds: base.studentIds, recipientStrategy: 'joint', freeText: base.freeText, recipients: [{ type: 'guardian', id: 'g-a' }, { type: 'guardian', id: 'g-b' }], items: base.items.map((item: { id: string }) => ({ ...item, id: 'p06-single-item' })) }
+    const draft = {
+      invoiceDate: base.invoiceDate,
+      dueDate: base.dueDate,
+      period: base.period,
+      studentIds: base.studentIds,
+      recipientStrategy: 'joint',
+      freeText: base.freeText,
+      recipients: [
+        { type: 'guardian', id: 'g-a' },
+        { type: 'guardian', id: 'g-b' },
+      ],
+      items: base.items.map((item: { id: string }) => ({ ...item, id: 'p06-single-item' })),
+    }
     await session.change((state: Parameters<typeof saveInvoiceDraft>[0]) => saveInvoiceDraft(state, draft, true))
     const single = session.state.invoices.at(-1)
     const reverse = nextInvoiceAllocation(session.state, base.invoiceDate, ['s-b', 's-a'])
     const forward = nextInvoiceAllocation(session.state, base.invoiceDate, ['s-a', 's-b'])
-    await session.change((state: Parameters<typeof saveInvoiceDraft>[0]) => saveInvoiceDraft(state, { ...draft, studentIds: ['s-b', 's-a'], items: draft.items.map((item: { id: string }) => ({ ...item, id: 'p06-combo-item' })) }, true))
+    await session.change((state: Parameters<typeof saveInvoiceDraft>[0]) =>
+      saveInvoiceDraft(
+        state,
+        {
+          ...draft,
+          studentIds: ['s-b', 's-a'],
+          items: draft.items.map((item: { id: string }) => ({ ...item, id: 'p06-combo-item' })),
+        },
+        true,
+      ),
+    )
     const combo = session.state.invoices.at(-1)
-    return { single: single.number, combo: combo.number, reverse, forward, counters: session.state.counters, payload: buildEpcPayload(combo, session.state.settings, 7.58) }
+    return {
+      single: single.number,
+      combo: combo.number,
+      reverse,
+      forward,
+      counters: session.state.counters,
+      payload: buildEpcPayload(combo, session.state.settings, 7.58),
+    }
   })
   expect(result.single).toBe('2026-0007-a')
   expect(result.combo).toBe('2026-0003-a+b')
@@ -54,4 +87,3 @@ test('P06 Browser: geschützter Schema-11-Umstieg, festes Format, gemeinsame Emp
   expect(state.documentVersions[0]).toEqual(legacyVersionedFixture(issued, 13).documentVersions[0])
   expect(state.students.map((person) => person.billingCode)).toEqual(['a', 'b'])
 })
-

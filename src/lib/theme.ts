@@ -6,11 +6,16 @@ let applied: ResolvedTheme | null = null
 let fadeTimer: number | undefined
 
 export function prefersReducedMotion() {
-  return document.documentElement.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion: reduce)').matches
+  return (
+    document.documentElement.classList.contains('reduce-motion') ||
+    matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
 }
 
 export function resolveTheme(theme: ThemeMode): ResolvedTheme {
-  return theme === 'dark' || (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'
+  return theme === 'dark' || (theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
+    ? 'dark'
+    : 'light'
 }
 
 export function clearThemeFade() {
@@ -33,7 +38,9 @@ export function applyResolvedTheme(theme: ResolvedTheme, fade = false) {
   applied = theme
   root.dataset.theme = theme
   root.style.colorScheme = theme
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', getComputedStyle(root).getPropertyValue('--surface').trim())
+  document
+    .querySelector('meta[name="theme-color"]')
+    ?.setAttribute('content', getComputedStyle(root).getPropertyValue('--surface').trim())
 }
 
 export function resetAppliedTheme() {

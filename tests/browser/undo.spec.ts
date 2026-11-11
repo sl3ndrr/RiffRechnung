@@ -8,8 +8,10 @@ import { serializeBackup, STORAGE_KEY } from '../../src/lib/storage'
 import { undoAt, undoFixture } from '../undoFixtures'
 import { navigateToInvoices } from './navigation'
 
-const undoButton = (page: Page) => page.getByRole('button', { name: 'Löschen von Entwurf rückgängig machen', exact: true })
-const stateOf = (page: Page): Promise<AppState> => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).data, STORAGE_KEY)
+const undoButton = (page: Page) =>
+  page.getByRole('button', { name: 'Löschen von Entwurf rückgängig machen', exact: true })
+const stateOf = (page: Page): Promise<AppState> =>
+  page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).data, STORAGE_KEY)
 
 async function seed(page: Page, state = undoFixture()) {
   await page.clock.install({ time: new Date(undoAt) })
@@ -35,7 +37,10 @@ async function finishExits(page: Page) {
 async function deleteDraft(page: Page) {
   await page.locator('.invoice-list-table').getByRole('button', { name: 'Entwurf', exact: true }).first().click()
   await page.locator('.invoice-detail__footer').getByRole('button', { name: 'Löschen', exact: true }).click()
-  await page.getByRole('alertdialog', { name: 'Entwurf löschen?', exact: true }).getByRole('button', { name: 'Entwurf löschen', exact: true }).click()
+  await page
+    .getByRole('alertdialog', { name: 'Entwurf löschen?', exact: true })
+    .getByRole('button', { name: 'Entwurf löschen', exact: true })
+    .click()
   await finishExits(page)
   await expect(undoButton(page).last()).toBeVisible()
   await page.mouse.move(0, 0)
@@ -57,7 +62,11 @@ test('3.AP5: Entwurf-Undo vor Ablauf erhält ID, Inhalt, Nummernkreis und Zwisch
   expect(restored.invoices).toEqual(initial.invoices)
   expect(restored.counters).toEqual(initial.counters)
   expect(restored.settings.theme).toBe('dark')
-  expect(restored.audit.slice(0, 3).map((event) => event.label)).toEqual(['Löschen rückgängig gemacht', 'Farbschema geändert', 'Rechnungsentwurf gelöscht'])
+  expect(restored.audit.slice(0, 3).map((event) => event.label)).toEqual([
+    'Löschen rückgängig gemacht',
+    'Farbschema geändert',
+    'Rechnungsentwurf gelöscht',
+  ])
   await expect(undoButton(page)).toHaveCount(0)
   await page.reload()
   expect((await stateOf(page)).invoices).toEqual(initial.invoices)
@@ -138,7 +147,10 @@ test('3.AP5: Keyboard-Undo hat sichtbaren Fokus und klaut bei Erscheinen keinen 
   await expect.poll(async () => (await stateOf(page)).invoices.length).toBe(1)
 })
 
-for (const [kind, name, confirmation] of [['guardian', 'Kontakt g1', 'Kontakt löschen'], ['student', 'Kind s1', 'Lernende Person löschen']] as const) {
+for (const [kind, name, confirmation] of [
+  ['guardian', 'Kontakt g1', 'Kontakt löschen'],
+  ['student', 'Kind s1', 'Lernende Person löschen'],
+] as const) {
   test(`3.AP5: ${kind}-Undo stellt Personen und Entwurfszuordnungen wieder her`, async ({ page }) => {
     const initial = await seed(page)
     await page.locator('.sidebar').getByRole('button', { name: 'Personen', exact: true }).click()
@@ -159,12 +171,17 @@ for (const [kind, name, confirmation] of [['guardian', 'Kontakt g1', 'Kontakt l�
 
 test('3.AP5: Archivieren und Zurückholen sind umkehrbar, Originale bleiben gleich', async ({ page }) => {
   const initial = undoFixture()
-  const finalized = requireSuccess(saveInvoiceState(initial, { id: initial.invoices[0].id, ...invoiceDraftFields(initial.invoices[0]) }, true, undoAt))
+  const finalized = requireSuccess(
+    saveInvoiceState(initial, { id: initial.invoices[0].id, ...invoiceDraftFields(initial.invoices[0]) }, true, undoAt),
+  )
   await seed(page, finalized)
   await navigateToInvoices(page)
   await page.getByRole('button', { name: finalized.invoices[0].number!, exact: true }).click()
   await page.locator('.invoice-detail__footer').getByRole('button', { name: 'Archivieren', exact: true }).click()
-  const undo = page.getByRole('button', { name: `Archivänderung von ${finalized.invoices[0].number} rückgängig machen`, exact: true })
+  const undo = page.getByRole('button', {
+    name: `Archivänderung von ${finalized.invoices[0].number} rückgängig machen`,
+    exact: true,
+  })
   await expect(undo).toBeVisible()
   await undo.click()
   await expect.poll(async () => (await stateOf(page)).invoiceAdministration[0].archived).toBe(false)
@@ -174,7 +191,9 @@ test('3.AP5: Archivieren und Zurückholen sind umkehrbar, Originale bleiben glei
   await page.getByRole('button', { name: finalized.invoices[0].number!, exact: true }).click()
   await page.locator('.invoice-detail__footer').getByRole('button', { name: 'Aus Archiv holen', exact: true }).click()
   const returnToast = page.locator('.toast').filter({ hasText: 'Beleg aus Archiv geholt.' })
-  await returnToast.getByRole('button', { name: `Archivänderung von ${finalized.invoices[0].number} rückgängig machen`, exact: true }).click()
+  await returnToast
+    .getByRole('button', { name: `Archivänderung von ${finalized.invoices[0].number} rückgängig machen`, exact: true })
+    .click()
   await expect.poll(async () => (await stateOf(page)).invoiceAdministration[0].archived).toBe(true)
   expect((await stateOf(page)).documentVersions).toEqual(finalized.documentVersions)
   expect((await stateOf(page)).invoices).toEqual(finalized.invoices)
@@ -197,9 +216,18 @@ test('3.AP5: fehlende zugehörige Person zeigt Fehler ohne Wiederherstellung', a
 
 test('3.AP5: maximal letzte drei Undo-Toasts, unabhängige Timer und Doppelklick', async ({ page }) => {
   let state = undoFixture()
-  for (let index = 0; index < 3; index++) state = requireSuccess(saveInvoiceState(state, {
-    ...invoiceDraftFields(state.invoices[0]), items: state.invoices[0].items.map((item) => ({ ...item, id: `extra-${index}-${item.id}` })),
-  }, false, undoAt))
+  for (let index = 0; index < 3; index++)
+    state = requireSuccess(
+      saveInvoiceState(
+        state,
+        {
+          ...invoiceDraftFields(state.invoices[0]),
+          items: state.invoices[0].items.map((item) => ({ ...item, id: `extra-${index}-${item.id}` })),
+        },
+        false,
+        undoAt,
+      ),
+    )
   await seed(page, state)
   await navigateToInvoices(page)
   for (let index = 0; index < 4; index++) {
@@ -212,7 +240,10 @@ test('3.AP5: maximal letzte drei Undo-Toasts, unabhängige Timer und Doppelklick
   await expect(undoButton(page)).toHaveCount(2)
   const target = undoButton(page).last()
   // Two same-turn activations exercise the claim guard before React unmounts.
-  await target.evaluate((element) => { (element as HTMLButtonElement).click(); (element as HTMLButtonElement).click() })
+  await target.evaluate((element) => {
+    ;(element as HTMLButtonElement).click()
+    ;(element as HTMLButtonElement).click()
+  })
   await finishExits(page)
   await expect.poll(async () => (await stateOf(page)).invoices.length).toBe(1)
   expect((await stateOf(page)).audit.filter((event) => event.label === 'Löschen rückgängig gemacht')).toHaveLength(1)
@@ -281,4 +312,3 @@ test('3.AP5: Demo-Undo bleibt in der Sitzung und Unmount entfernt Timer', async 
   await expect(page.locator('.toast')).toHaveCount(0)
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(before)
 })
-

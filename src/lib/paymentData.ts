@@ -8,14 +8,20 @@ export interface PaymentData {
 }
 
 export type PaymentField = keyof PaymentData
-export interface PaymentDataError { field: PaymentField; code: 'required' | 'country' | 'format' | 'checksum'; message: string }
+export interface PaymentDataError {
+  field: PaymentField
+  code: 'required' | 'country' | 'format' | 'checksum'
+  message: string
+}
 
 export function cleanIban(value: string): string {
   return value.replace(/\s/gu, '').toUpperCase()
 }
 
 export function formatIban(value: string): string {
-  return cleanIban(value).replace(/(.{4})/gu, '$1 ').trim()
+  return cleanIban(value)
+    .replace(/(.{4})/gu, '$1 ')
+    .trim()
 }
 
 function hasValidMod97(value: string): boolean {
@@ -32,7 +38,8 @@ export function germanIbanError(input: string): string | null {
   const iban = cleanIban(input)
   if (/^[A-Z]{2}/u.test(iban) && !iban.startsWith('DE')) return 'Es werden nur deutsche IBANs unterstützt.'
   if (!iban) return 'Bitte eine deutsche IBAN eingeben.'
-  if (!/^DE\d{20}$/u.test(iban)) return 'Bitte eine deutsche IBAN im Format DE plus 20 Ziffern (insgesamt 22 Zeichen) eingeben.'
+  if (!/^DE\d{20}$/u.test(iban))
+    return 'Bitte eine deutsche IBAN im Format DE plus 20 Ziffern (insgesamt 22 Zeichen) eingeben.'
   if (!hasValidMod97(iban)) return 'Die Prüfsumme der deutschen IBAN ist nicht korrekt.'
   return null
 }
@@ -60,9 +67,22 @@ export function normalizePaymentData(data: PaymentData): PaymentData {
 
 export function paymentDataErrors(data: Pick<PaymentData, 'accountHolder' | 'iban' | 'bic'>): PaymentDataError[] {
   const errors: PaymentDataError[] = []
-  if (!data.accountHolder.trim()) errors.push({ field: 'accountHolder', code: 'required', message: 'Kontoinhaber in den Einstellungen angeben.' })
+  if (!data.accountHolder.trim())
+    errors.push({ field: 'accountHolder', code: 'required', message: 'Kontoinhaber in den Einstellungen angeben.' })
   const ibanMessage = germanIbanError(data.iban)
-  if (ibanMessage) errors.push({ field: 'iban', code: ibanMessage === 'Es werden nur deutsche IBANs unterstützt.' ? 'country' : cleanIban(data.iban) && /^DE\d{20}$/u.test(cleanIban(data.iban)) ? 'checksum' : cleanIban(data.iban) ? 'format' : 'required', message: ibanMessage })
+  if (ibanMessage)
+    errors.push({
+      field: 'iban',
+      code:
+        ibanMessage === 'Es werden nur deutsche IBANs unterstützt.'
+          ? 'country'
+          : cleanIban(data.iban) && /^DE\d{20}$/u.test(cleanIban(data.iban))
+            ? 'checksum'
+            : cleanIban(data.iban)
+              ? 'format'
+              : 'required',
+      message: ibanMessage,
+    })
   const bicMessage = bicError(data.bic)
   if (bicMessage) errors.push({ field: 'bic', code: 'format', message: bicMessage })
   return errors
@@ -78,9 +98,11 @@ export function paymentDataForInvoice(invoice: Pick<Invoice, 'snapshot'>, settin
   }
 }
 
-
 function sanitizeEpc(value: string, maxLength: number): string {
-  return value.replace(/[\r\n]/g, ' ').trim().slice(0, maxLength)
+  return value
+    .replace(/[\r\n]/g, ' ')
+    .trim()
+    .slice(0, maxLength)
 }
 
 export function buildEpcPayload(invoice: Invoice, settings: Settings, amount: number): string {
@@ -111,9 +133,9 @@ export function buildEpcPayload(invoice: Invoice, settings: Settings, amount: nu
   while (fields.at(-1) === '') fields.pop()
   const payload = fields.join('\n')
   const byteLength = new TextEncoder().encode(payload).byteLength
-  if (byteLength > 331) throw new Error(`EPC-GiroCode: Die Payload überschreitet mit ${byteLength} Byte das Maximum von 331 Byte.`)
+  if (byteLength > 331)
+    throw new Error(`EPC-GiroCode: Die Payload überschreitet mit ${byteLength} Byte das Maximum von 331 Byte.`)
   return payload
 }
-
 
 export { isValidGermanIban as isValidIban }

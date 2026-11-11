@@ -4,15 +4,24 @@ import { documentAt, documentDraft, documentFamily, legacyFixture } from '../doc
 import { saveInvoiceDraft } from '../../src/lib/invoiceActions'
 import { parseBackup, serializeBackup, STORAGE_KEY, LEGACY_STORAGE_KEY } from '../../src/lib/storage'
 
-async function settings(page: Page) { await page.getByRole('button', { name: 'Einstellungen', exact: true }).click() }
-async function save(page: Page) { await page.getByRole('button', { name: 'Jetzt speichern', exact: true }).click(); await expect(page.getByRole('button', { name: 'Lokal gespeichert', exact: true })).toBeDisabled() }
+async function settings(page: Page) {
+  await page.getByRole('button', { name: 'Einstellungen', exact: true }).click()
+}
+async function save(page: Page) {
+  await page.getByRole('button', { name: 'Jetzt speichern', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Lokal gespeichert', exact: true })).toBeDisabled()
+}
 async function keepEditing(page: Page) {
   const confirmation = page.getByRole('alertdialog', { name: 'Ungespeicherte Einstellungen verwerfen?' })
   await confirmation.getByRole('button', { name: 'Weiter bearbeiten', exact: true }).click()
   await expect(confirmation).not.toBeVisible()
 }
-async function raw(page: Page) { return page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY) }
-async function stateOf(page: Page) { return parseBackup((await raw(page))!) }
+async function raw(page: Page) {
+  return page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)
+}
+async function stateOf(page: Page) {
+  return parseBackup((await raw(page))!)
+}
 async function seed(page: Page, state: AppState) {
   await page.goto('/')
   await page.evaluate(async (source) => {
@@ -28,7 +37,10 @@ async function confirmMigration(page: Page) {
   await page.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
 }
 
-test('P12 Browser: negativer Preis verhindert Ansichtswechsel; gültiger Abschluss überlebt Schließen', async ({ page, context }) => {
+test('P12 Browser: negativer Preis verhindert Ansichtswechsel; gültiger Abschluss überlebt Schließen', async ({
+  page,
+  context,
+}) => {
   await seed(page, documentFamily())
   await settings(page)
   const before = await raw(page)
@@ -51,7 +63,9 @@ test('P12 Browser: negativer Preis verhindert Ansichtswechsel; gültiger Abschlu
   expect((await stateOf(reopened)).settings.privateRate).toBe(37.5)
 })
 
-test('P12 Browser mit Fehlerinjektion: Quota-Fehler bestätigt nichts und Wiederholung speichert den Formularwert', async ({ page }) => {
+test('P12 Browser mit Fehlerinjektion: Quota-Fehler bestätigt nichts und Wiederholung speichert den Formularwert', async ({
+  page,
+}) => {
   await seed(page, documentFamily())
   await settings(page)
   const before = await raw(page)
@@ -59,7 +73,8 @@ test('P12 Browser mit Fehlerinjektion: Quota-Fehler bestätigt nichts und Wieder
     const original = Storage.prototype.setItem
     Reflect.set(window, 'p12FailWrite', true)
     Storage.prototype.setItem = function (name, value) {
-      if (name === key && Reflect.get(window, 'p12FailWrite')) throw new DOMException('Synthetischer Speicherfehler', 'QuotaExceededError')
+      if (name === key && Reflect.get(window, 'p12FailWrite'))
+        throw new DOMException('Synthetischer Speicherfehler', 'QuotaExceededError')
       return original.call(this, name, value)
     }
   }, STORAGE_KEY)
@@ -101,10 +116,12 @@ test('P12 Browser: ausländisches Konto abweisen, DE speichern und leere Origina
   expect((await stateOf(page)).documentVersions[0]).toEqual(original)
   expect((await stateOf(page)).settings.iban).toBe('DE89370400440532013000')
   const payload = await page.evaluate(async () => {
-    const storagePath = '/src/lib/storage.ts', documentPath = '/src/lib/documents.ts'
+    const storagePath = '/src/lib/storage.ts',
+      documentPath = '/src/lib/documents.ts'
     const { StorageSession } = await import(storagePath)
     const { selectInvoice } = await import(documentPath)
-    const paymentPath = '/src/lib/paymentData.ts', moneyPath = '/src/lib/money.ts'
+    const paymentPath = '/src/lib/paymentData.ts',
+      moneyPath = '/src/lib/money.ts'
     const { buildEpcPayload } = await import(paymentPath)
     const { invoiceTotal } = await import(moneyPath)
     const state = new StorageSession().state
@@ -115,7 +132,8 @@ test('P12 Browser: ausländisches Konto abweisen, DE speichern und leere Origina
 })
 
 test('P12 Browser: unterbrochene Migration erhält Rohdaten und lässt sich nach Reload fortsetzen', async ({ page }) => {
-  const source = JSON.stringify(legacyFixture(saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt))) + '\r\n'
+  const source =
+    JSON.stringify(legacyFixture(saveInvoiceDraft(documentFamily(), documentDraft(), true, documentAt))) + '\r\n'
   await page.goto('/')
   await page.evaluate(({ key, source }) => localStorage.setItem(key, source), { key: LEGACY_STORAGE_KEY, source })
   await page.reload()
@@ -134,7 +152,12 @@ test('P12 Browser: unterbrochene Migration erhält Rohdaten und lässt sich nach
   await confirmMigration(page)
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
   const committed = await raw(page)
-  const archives = () => page.evaluate(() => Object.keys(localStorage).filter((key) => key.includes('-recovery-')).map((key) => localStorage.getItem(key)))
+  const archives = () =>
+    page.evaluate(() =>
+      Object.keys(localStorage)
+        .filter((key) => key.includes('-recovery-'))
+        .map((key) => localStorage.getItem(key)),
+    )
   const savedArchives = await archives()
   expect(savedArchives.every((entry) => JSON.parse(entry!).legacyRaw === source)).toBe(true)
   await page.reload()
@@ -143,7 +166,9 @@ test('P12 Browser: unterbrochene Migration erhält Rohdaten und lässt sich nach
   expect((await stateOf(page)).documentVersions).toHaveLength(1)
 })
 
-test('P12 Browser: unbekanntes neueres Format bleibt auch bei Wiederherstellungsversuch bytegleich', async ({ page }) => {
+test('P12 Browser: unbekanntes neueres Format bleibt auch bei Wiederherstellungsversuch bytegleich', async ({
+  page,
+}) => {
   const future = JSON.stringify({ schemaVersion: 16, data: 'Synthetisches unbekanntes Format' })
   await page.goto('/')
   await page.evaluate(({ key, future }) => localStorage.setItem(key, future), { key: STORAGE_KEY, future })
@@ -152,7 +177,12 @@ test('P12 Browser: unbekanntes neueres Format bleibt auch bei Wiederherstellungs
   const error = await page.evaluate(async (source) => {
     const path = '/src/lib/storage.ts'
     const { StorageSession } = await import(path)
-    try { await new StorageSession().restore(source); return null } catch (error) { return String(error) }
+    try {
+      await new StorageSession().restore(source)
+      return null
+    } catch (error) {
+      return String(error)
+    }
   }, serializeBackup(documentFamily()))
   expect(error).toContain('schreibgeschützt')
   expect(await raw(page)).toBe(future)
@@ -198,5 +228,7 @@ test('P12 Browser: lokale Mitternacht in Berlin erzeugt den richtigen Rechnungst
     await page.goto('/')
     await page.getByRole('button', { name: 'Neue Rechnung', exact: true }).click()
     await expect(page.getByRole('dialog').getByLabel('Rechnungsdatum', { exact: true })).toHaveValue('2026-09-01')
-  } finally { await context.close() }
+  } finally {
+    await context.close()
+  }
 })
