@@ -1,3 +1,4 @@
+import { confirmBackupImport } from './navigation'
 import { test, expect } from '@playwright/test'
 import {
   documentAt,
@@ -56,8 +57,7 @@ test('P09 Browser: Altbeleg, interne Kopien und Wiederausgabe werden textbereini
   await expect(page.getByRole('heading', { name: 'Lokale Daten benötigen Wiederherstellung' })).toBeVisible()
   await page.getByRole('button', { name: 'Altformat und Reparatur prüfen' }).click()
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(raw)
-  await page.getByRole('button', { name: 'Wiederherstellung vorbereiten' }).click()
-  await page.getByRole('button', { name: 'Wiederherstellung bestätigen' }).click()
+  await confirmBackupImport(page)
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
   await page.reload()
   const migrated = parseBackup((await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY))!)

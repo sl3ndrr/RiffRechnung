@@ -147,13 +147,16 @@ export function useLocalWorkspace(
   }
 
   const exportBackup = () => {
-    downloadText(`riffrechnung-backup-${new Date().toISOString().slice(0, 10)}.json`, session.export())
+    const now = new Date()
+    const pad = (value: number) => String(value).padStart(2, '0')
+    const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`
+    downloadText(`riffrechnung-backup-${timestamp}.json`, session.export())
     try {
       if (mode === 'real') setLastBackupAt(recordBackupExport())
     } catch {
       setLastBackupAt(new Date().toISOString())
     }
-    toast('JSON-Export des zuletzt bestätigten Stands gestartet.', 'info')
+    toast('Backup-Datei wird heruntergeladen. Bitte im Download-Ordner prüfen.', 'info')
   }
 
   return {

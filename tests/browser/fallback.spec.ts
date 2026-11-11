@@ -1,3 +1,4 @@
+import { confirmBackupImport } from './navigation'
 import { test, expect, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { serializeBackup, parseBackup, STORAGE_KEY } from '../../src/lib/storage'
@@ -26,8 +27,7 @@ async function restore(page: Page, buffer: Buffer) {
   await page
     .locator('#backup input[type=file]')
     .setInputFiles({ name: 'synthetisch.json', mimeType: 'application/json', buffer })
-  await page.getByRole('button', { name: 'Wiederherstellung vorbereiten', exact: true }).click()
-  await page.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
+  await confirmBackupImport(page)
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
 }
 
@@ -110,7 +110,7 @@ test('AP1 Fallback: gemeinsame Rechnung an zwei Personen als JSON exportieren, i
   await settings(page)
   const downloading = page.waitForEvent('download')
   await page.getByRole('button', { name: 'JSON exportieren', exact: true }).click()
-  await expect(page.getByText('JSON-Export des zuletzt bestätigten Stands gestartet.')).toBeVisible()
+  await expect(page.getByText('Backup-Datei wird heruntergeladen. Bitte im Download-Ordner prüfen.')).toBeVisible()
   const buffer = await readFile((await (await downloading).path())!)
   expect(parseBackup(buffer.toString())).toEqual(result)
   const destination = await browser.newContext({ baseURL: 'http://127.0.0.1:4173' })

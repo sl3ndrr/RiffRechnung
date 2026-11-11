@@ -83,7 +83,7 @@ test('3.AP5: genau 10 Sekunden, anschließend kein Undo; normale Toasts weiter 4
   expect((await stateOf(page)).invoices).toHaveLength(0)
   await page.locator('.sidebar').getByRole('button', { name: 'Einstellungen', exact: true }).click()
   await page.getByRole('button', { name: 'JSON exportieren', exact: true }).click()
-  await expect(page.locator('.toast')).toContainText('JSON-Export')
+  await expect(page.locator('.toast')).toContainText('Backup-Datei wird heruntergeladen.')
   await page.mouse.move(0, 0)
   await page.clock.runFor(4199)
   await expect(page.locator('.toast')).toHaveCount(1)

@@ -1,3 +1,4 @@
+import { confirmBackupImport } from './navigation'
 import { test, expect, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import type { AppState } from '../../src/types'
@@ -163,8 +164,7 @@ test('3.AP3: Wiederherstellung und Zurücksetzen führen auf das Dashboard', asy
     mimeType: 'application/json',
     buffer: Buffer.from(serializeBackup(fixture)),
   })
-  await page.getByRole('button', { name: 'Wiederherstellung vorbereiten', exact: true }).click()
-  await page.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
+  await confirmBackupImport(page)
   await expect(page.locator('.dashboard-page')).toBeVisible()
   await expect(amount(page, 'Offen')).toHaveText(euro.format(55))
   // Exercise the explicit confirmation in a fresh profile as well.
