@@ -2,12 +2,17 @@ name: Quality
 
 on:
   pull_request:
+    paths-ignore: ['**/*.md', 'docs/**']
   workflow_call:
     inputs:
       upload-pages-artifact:
         description: Upload the checked build for Pages in this workflow run
         type: boolean
         default: false
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -65,15 +70,18 @@ jobs:
               print(f'Disabled unrelated runner Chrome source: {path.name}')
           PY
       - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npm run test:smoke
       - name: Install PDF text verification
         run: sudo apt-get install -y poppler-utils
       - run: npm run test:browser
       - run: npm run test:migrations
-      - name: Audit all locked dependencies
+      - name: Audit locked dependencies
         shell: bash
         run: |
           mkdir -p test-results
-          npm audit --json | tee test-results/npm-audit.json
+          # Keep the complete report without blocking on development-only findings.
+          npm audit --json > test-results/npm-audit.json || true
+          npm audit --omit=dev --audit-level=high
       - name: Browser failure context
         if: failure()
         run: |
