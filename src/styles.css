@@ -1116,3 +1116,12 @@ select option { background: var(--surface-container-lowest); color: var(--on-sur
   .invoice-list-summary { padding-inline: 12px; }
 }
 
+/* Reserve space for Undo messages so they remain reachable without covering modal actions. */
+.modal-layer:has(.toast--action) { grid-template-rows: minmax(0, 1fr) auto; gap: 12px; }
+.modal-layer:has(.toast--action) > .modal { max-height: 100%; }
+.modal-layer:has(.toast--action) .toast-region { position: static; justify-self: end; }
+@media (max-width: 820px) {
+  .modal-layer:has(.toast--action) { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+  .modal-layer:has(.toast--action) .toast-region { margin-inline: 16px; }
+}
+

@@ -1,3 +1,4 @@
+import { confirmBackupImport } from './navigation'
 import { expectedTextless } from '../documentFixtures'
 import { expectedConsolidatedVersions, historicalOutputFixture } from '../documentFixtures'
 import { cleanLegacyContacts, normalizeLegacyRecipients } from '../../src/lib/legacyContactsRecipients'
@@ -253,8 +254,7 @@ test('P04 Browser: Zahlungen manuell zuordnen, archivieren und vollständiges Ba
     await next
       .locator('#backup input[type=file]')
       .setInputFiles({ name: 'synthetische-versionen.json', mimeType: 'application/json', buffer })
-    await next.getByRole('button', { name: 'Wiederherstellung vorbereiten', exact: true }).click()
-    await next.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
+    await confirmBackupImport(next)
     await expect(next.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
     await next.reload()
     expect(await stateOf(next)).toEqual(before)
@@ -314,8 +314,7 @@ test('AP1 Browser/PDF: gemeinsame Rechnung ohne Aufteilung, Export und Import', 
     await imported
       .locator('#backup input[type=file]')
       .setInputFiles({ name: 'gemeinsam.json', mimeType: 'application/json', buffer })
-    await imported.getByRole('button', { name: 'Wiederherstellung vorbereiten', exact: true }).click()
-    await imported.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
+    await confirmBackupImport(imported)
     await expect(imported.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
     await imported.reload()
     expect(await stateOf(imported)).toEqual(finalized)
@@ -413,8 +412,7 @@ test('P04 Browser: Schema-3-Umstieg zeigt Konflikte und behält die unverändert
   await page.getByRole('button', { name: 'Altformat und Reparatur prüfen', exact: true }).click()
   await expect(page.getByText(/Zuordnung und Snapshot-Empfänger widersprechen/)).toBeVisible()
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(raw)
-  await page.getByRole('button', { name: 'Wiederherstellung vorbereiten', exact: true }).click()
-  await page.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
+  await confirmBackupImport(page)
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
   await page.reload()
   const state = await stateOf(page)
@@ -602,8 +600,7 @@ test('AP5 Browser/PDF: Selbstzahlerin und Minderjähriger mit zwei Empfängern v
     await imported
       .locator('#backup input[type=file]')
       .setInputFiles({ name: 'ap5-synthetisch.json', mimeType: 'application/json', buffer })
-    await imported.getByRole('button', { name: 'Wiederherstellung vorbereiten' }).click()
-    await imported.getByRole('button', { name: 'Wiederherstellung bestätigen' }).click()
+    await confirmBackupImport(imported)
     await expect(imported.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
     await imported.reload()
     expect(await stateOf(imported)).toEqual(before)
@@ -643,8 +640,7 @@ test('P07 Browser/PDF: Schema-12-Konflikte behalten dieselbe Ansicht, Druckausga
   await expect(page.getByRole('heading', { name: 'Lokale Daten benötigen Wiederherstellung' })).toBeVisible()
   await page.getByRole('button', { name: 'Altformat und Reparatur prüfen' }).click()
   expect(await page.evaluate((key) => localStorage.getItem(key), STORAGE_KEY)).toBe(raw)
-  await page.getByRole('button', { name: 'Wiederherstellung vorbereiten' }).click()
-  await page.getByRole('button', { name: 'Wiederherstellung bestätigen' }).click()
+  await confirmBackupImport(page)
   await expect(page.getByText(/Wiederherstellung lokal gespeichert/)).toBeVisible()
   await page.reload()
   const migrated = await stateOf(page)

@@ -1,3 +1,4 @@
+import { confirmBackupImport } from './navigation'
 import { test, expect, type Page } from '@playwright/test'
 import type { AppState } from '../../src/types'
 import { documentAt, documentDraft, documentFamily, legacyFixture } from '../documentFixtures'
@@ -33,8 +34,7 @@ async function seed(page: Page, state: AppState) {
 }
 async function confirmMigration(page: Page) {
   await page.getByRole('button', { name: 'Altformat und Reparatur prüfen', exact: true }).click()
-  await page.getByRole('button', { name: 'Wiederherstellung vorbereiten', exact: true }).click()
-  await page.getByRole('button', { name: 'Wiederherstellung bestätigen', exact: true }).click()
+  await confirmBackupImport(page)
 }
 
 test('P12 Browser: negativer Preis verhindert Ansichtswechsel; gültiger Abschluss überlebt Schließen', async ({
