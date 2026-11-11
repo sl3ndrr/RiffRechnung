@@ -4,7 +4,7 @@
 
 ## Stack und Version
 
-React 19, TypeScript 5.7, Vite 6; Inter, Lucide und `qrcode` für UI/GiroCode. Aufgelöste Versionen stehen in `package-lock.json`, `.nvmrc` verlangt Node 22. `package.json.version` ist die einzige App-Versionsquelle; `src/version.ts` importiert sie mit bestehendem `resolveJsonModule`. Beide Lockfile-Wurzelversionen folgen ihr. Historische UI-Nummern sind keine aktuelle Versionsvorgabe.
+Aktuelle App-Version: **1.2.2**. React 19, TypeScript 5.7, Vite 6; Inter, Lucide und `qrcode` für UI/GiroCode. Aufgelöste Versionen stehen in `package-lock.json`, `.nvmrc` verlangt Node 22. `package.json.version` ist die einzige App-Versionsquelle; `src/version.ts` importiert sie mit bestehendem `resolveJsonModule`. Beide Lockfile-Wurzelversionen folgen ihr. Historische UI-Nummern sind keine aktuelle Versionsvorgabe.
 
 ## Speicherung, Theme und Reset
 
@@ -37,7 +37,7 @@ GiroCode verwendet eingefrorene Konto-/Betrags-/Nummerndaten. Druck wartet auf S
 `dashboardStats(state, now, year?)` liest rein; Jahr ist standardmäßig das lokale Jahr von `now`, Monate sind immer 1–12. `availableYears` enthält bestätigte Zahlungsjahre und laufendes Jahr absteigend. Jeder Zahlungsdatensatz zählt einmal, auch zu ersetzten/archivierten Belegen oder nach Zuordnungswechsel. Teilzahlungen zählen nach bestätigtem Tag; `confirmedPaymentDay` bezeichnet dagegen vollständige Begleichung. Unbekannte Tage gehören nur zu `paid.allTimeCents`/`withoutConfirmedDay`, nicht Jahresbetrag/Monatsreihe.
 Offene Ansprüche folgen `isActiveClaim`, `openCents`, `effectiveStatus`; Archive entfallen, Korrekturentwürfe ersetzen Originalansprüche nicht. Labels stammen aus Snapshots. `calendarDaysBetween` vermeidet Millisekundenrechnung; zukünftige Rechnungen zeigen null Tage seit Ausstellung, `daysUntilDue` ist nichtnegativ. `drafts.count`/`totalCents` enthalten berechenbare Entwürfe, `uncalculableCount` die übrigen, `totalCount` beide. Summen verwenden `sumCents`: ohne Überzahlung gilt Summe = Zuordnung + Rest. Überzahlte niedrigere Korrekturen behalten den vollen Zahlungseingang bei Rest null.
 `Dashboard.tsx` memoisiert Bestand/Uhr/Jahr, aktualisiert die Uhr minütlich und folgt ohne ausdrückliche Jahreswahl dem laufenden Jahr. Begrüßung: 05:00–10:59 „Guten Morgen“, 11:00–17:59 „Guten Tag“, sonst „Guten Abend“, ergänzt um das erste Wort des bestätigten Ausstellernamens. Durchschnitt: Jahressumme geteilt durch bisherige Monate im laufenden Jahr, sonst zwölf, auf Cent gerundet. Nächste Fälligkeit: frühester nicht überfälliger offener Termin einschließlich heute; rein überfällige Ansprüche liefern keinen. Dekorativer Fristanteil bleibt 0–1.
-Dashboard ist Startziel sowie Restore-/Resetziel. Die Vorschau umfasst acht offene Ansprüche; „Alle“ setzt `unpaid` für aktive, nicht archivierte positive Restbeträge. Rechnungssprünge erhalten Detail-Fokus/Escape. „Person anlegen“ öffnet ohne Erziehungsberechtigte deren Formular, sonst Lernende. Backup-Erinnerung gilt nur echt, bei Rechnungen und fehlendem Export oder mehr als 30 × 24 Stunden seit Export, über den bestehenden `useLocalWorkspace`-Export.
+Dashboard ist Startziel sowie Restore-/Resetziel. Die Vorschau umfasst acht offene Ansprüche; „Alle in Rechnungen anzeigen“ setzt den Chip „Offen“ (`unpaid`) für aktive, nicht archivierte positive Restbeträge. Rechnungssprünge erhalten Detail-Fokus/Escape. „Person anlegen“ öffnet ohne Erziehungsberechtigte deren Formular, sonst Lernende. Backup-Erinnerung gilt nur echt, bei Rechnungen und fehlendem Export oder mehr als 30 × 24 Stunden seit Export, über den bestehenden `useLocalWorkspace`-Export.
 Die Rechnungsliste gruppiert nach Rechnungsdatum, nicht Leistungszeitraum; Monatsköpfe summieren gefilterte Belege. Alle Monate starten offen; Einklappzustand bleibt bei Suche/Filter, „Ältere Monate“ lässt den aktuellen Monat offen. Facetten zählen mit Suche/Jahr/Archivfilter, ausgewählter Chip bestimmt die Liste. „Offen“ folgt aktiven Restansprüchen, „Versendet“/„Überfällig“ `effectiveStatus`. Eingeklappte Belege bleiben in Zählern enthalten. Tabellen-/Monatsköpfe sind sticky im begrenzten Tastatur-Scrollbereich; auch die Desktop-Detailkarte bleibt innerhalb der Fensterhöhe intern scrollbar.
 
 ## Darstellung und Accessibility
@@ -90,18 +90,22 @@ Lokale Entwicklung: `npm run dev`; gebautes Ergebnis: `npm run preview`. Gates a
 ```sh
 npm ci
 npm run lint
+npm run format:check
 npm run typecheck
 npm test
 npm run build
 npx playwright install --with-deps chromium firefox webkit
+npm run test:smoke
 # Ubuntu/Debian: pdftotext und PDF-Rasterung bereitstellen.
 sudo apt-get install -y poppler-utils
 npm run test:browser
 npm run test:migrations
 npm audit --json
+npm audit --omit=dev --audit-level=high
 ```
 
 CI verwendet Node 22 auf Ubuntu 24.04, Matrix `RIFF_REDUCED_MOTION=reduce`/`no-preference`, drei isolierte Browserworker (lokal einer), Quality-Limit 15 Minuten. `npm run typecheck` wird ausdrücklich zusätzlich zu `npm run build` ausgeführt; Build nutzt `tsc -b && vite build` einschließlich App/Node/Tests. `npm test` bündelt `tests/*.test.ts` über `scripts/bundle-tests.mjs` für `node --test`, einschließlich schneller Altformatfälle. Pages ruft Quality auf `main` auf und deployt nur nach Erfolg; Deploy hat separat zehn Minuten. Der bestehende APT-Workaround bleibt Teil der CI.
+`test:smoke` prüft den gebauten Stand über Vite Preview in Chromium. Das CI-Audit-Gate gilt für Produktionsabhängigkeiten ab Schweregrad „high“; der vollständige Auditbericht wird zusätzlich nicht blockierend gespeichert. Prettier prüft die konfigurierten Quellen mit Ausnahmen in `.prettierignore`.
 `test:browser`: Chromium-Hauptlauf/PDF, dunkle Accessibility, Theme/Motion/Seitenbewegung in Firefox/Linux-WebKit, drei JSON-Fallbackfälle je Engine. `test:migrations` baut separat den echten Commit `ba7857fd9180fa392c42a0235643e478e5077ee5` und prüft zwei historische Browserfälle unter gleicher Origin; benötigt Git-Historie oder erreichbares `origin`, Vite/Playwright. Temporäre Altcode-Pfade werden aufgeräumt.
 Ergebnisse: `test-results/browser-results.json`, `migration-results.json`, synthetische PDFs/Bilder/Fehlerkontext. Artefakte `browser-evidence-reduce`/`browser-evidence-no-preference` werden sieben Tage aufbewahrt. Browserprüfungen warten auf geschlossene Dialoge/Theme-Ende/ruhende Geometrie; Undo beendet dekorative Exits ohne Geschäftsuhrsprung. Fehlerreporter schreibt Assertions sofort ins Log.
 `use-count-up.test.ts`/`page-motion.spec.ts` prüfen Lebensdauer, Endwerte, Eintritte, Filter, Detail-Fokus und Editor; sechsfache Chromium-CPU-Drosselung ersetzt keinen realen Hardwarebenchmark. `undo.test.ts`/`browser/undo.spec.ts` prüfen Konflikte/Replay und exakte Fristen. Accessibility prüft u. a. Desktop-Detailfooter/Fokusrückgabe bei 1280 × 720 in beiden Themes. `design-evidence.spec.ts` erzeugt 24 Screenshots (Dashboard/Liste/Editor/Einstellungen, 1440/1024/390 px, Hell/Dunkel); `expressive-workspace.spec.ts` prüft Reset, Monatsgruppen, Facetten, Sticky-Köpfe und native Select-Anker bei 1440/390 px.

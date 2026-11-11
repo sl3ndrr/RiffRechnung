@@ -1,4 +1,4 @@
 import { version } from '../package.json'
 
-// Version 1.2.1 verwendet weiterhin package.json als einzige Versionsquelle.
+// package.json ist die einzige Versionsquelle für die Anzeige.
 export const APP_VERSION = version
